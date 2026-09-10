@@ -260,6 +260,47 @@ flutter build web --release --dart-define-from-file=.env
 Do not commit `.env`, `supabase/functions/.env.local`, or
 `supabase/functions/.env.production`.
 
+## iOS release shortcut
+
+From the repository root, run:
+
+```sh
+npm run release
+# Or: pnpm release
+```
+
+This builds a signed release and opens the new archive in Xcode Organizer.
+It uses `.env.json` when present, otherwise `.env`, and reads the release version
+from `pubspec.yaml`. It increments the highest local build number and preserves
+an archive under `build/ios/releases/`. It does not upload automatically.
+
+In Organizer, select the archive → **Distribute App → App Store Connect → Upload**
+(the exact labels can vary by Xcode version). Review signing and finish the upload.
+After Apple processes it, select it in TestFlight or attach it to your App Store
+release in App Store Connect.
+
+Options:
+
+```sh
+npm run release -- --env .env.production
+npm run release -- --build-number 10
+npm run release -- --no-open
+```
+
+With pnpm, pass options directly, for example `pnpm release --build-number 10`.
+No root dependency installation is needed. The shell script can also be run directly.
+
+If another machine uploaded a higher build, supply a number above it. The local
+counter lives in `.dart_tool/ios-release-build-number`; failed builds also consume
+a number. Set a new marketing version (for example `1.1.0+1`) in `pubspec.yaml`
+when preparing the next App Store version. Build numbers continue increasing.
+
+Requires macOS, Flutter on PATH, Xcode selected as the developer directory, and
+your Apple Developer account/team set up in Xcode. If signing fails, open
+`ios/Runner.xcworkspace`, check **Runner → Signing & Capabilities**, then rerun.
+If IPA export fails but Flutter reports an archive was created, you can distribute
+that archive from Xcode; the script verifies it is fresh before opening it.
+
 ## Checks
 
 ```sh

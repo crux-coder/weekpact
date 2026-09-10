@@ -1,0 +1,7 @@
+{
+  "name": "weekpact",
+  "private": true,
+  "scripts": {
+    "release": "bash tool/release_ios.sh"
+  }
+}
