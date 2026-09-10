@@ -17,8 +17,10 @@ export function readSiteConfig(env = process.env) {
   }
   const androidPackage = env.ANDROID_PACKAGE_NAME || 'com.example.keepup';
   if (!/^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$/.test(androidPackage)) throw new Error('Invalid Android package name.');
-  const iosAppId = env.IOS_APP_ID || 'R5L8RZTV6R.dev.codepeaktrail.weekpact';
-  if (!/^[A-Z0-9]{10}\.[a-zA-Z0-9.-]+$/.test(iosAppId)) throw new Error('Invalid iOS application identifier.');
+  const iosAppId = env.IOS_APP_ID?.trim() || 'R5L8RZTV6R.dev.codepeaktrail.weekpact';
+  if (!/^[A-Z0-9]{10}\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(iosAppId)) {
+    throw new Error('IOS_APP_ID must be the Apple application identifier (prefix.bundleIdentifier), for example R5L8RZTV6R.dev.codepeaktrail.weekpact. Use the full identifier, not just the bundle ID or numeric App Store ID; leave it empty to use this project’s default.');
+  }
   return {
     siteUrl: url.origin,
     iosInstallUrl: installUrl(env.PUBLIC_IOS_INSTALL_URL, ['apps.apple.com', 'testflight.apple.com']),

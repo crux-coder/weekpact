@@ -23,3 +23,13 @@ test('invalid domains, download hosts and certificate formats fail the build', (
   assert.throws(() => readSiteConfig({PUBLIC_IOS_INSTALL_URL:'https://apps.apple.com.evil.example/app'}));
   assert.throws(() => readSiteConfig({ANDROID_SHA256_CERT_FINGERPRINTS:'missing'}));
 });
+test('iOS identifier accepts surrounding environment whitespace and blank defaults', () => {
+  const expected = 'R5L8RZTV6R.dev.codepeaktrail.weekpact';
+  assert.equal(readSiteConfig({IOS_APP_ID: ` ${expected}\n`}).iosAppId, expected);
+  assert.equal(readSiteConfig({IOS_APP_ID: '  '}).iosAppId, expected);
+});
+test('invalid iOS identifiers explain the required setting', () => {
+  for (const IOS_APP_ID of ['dev.codepeaktrail.weekpact', '123456789', 'R5L8RZTV6R.dev..weekpact']) {
+    assert.throws(() => readSiteConfig({IOS_APP_ID}), /IOS_APP_ID must be.*R5L8RZTV6R\.dev\.codepeaktrail\.weekpact/);
+  }
+});
