@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "674213249994",
+    "project_id": "week-pact",
+    "storage_bucket": "week-pact.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:674213249994:android:ae445aaf90c36fed77c533",
+        "android_client_info": {
+          "package_name": "dev.codepeaktrail.weekpact"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBooHoUlv26JzW9N_BSYUL-myDs6zqYPPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

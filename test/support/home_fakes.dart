@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:keepup/src/goals/goals_backend.dart';
-import 'package:keepup/src/home/home_backend.dart';
+import 'package:weekpact/src/goals/goals_backend.dart';
+import 'package:weekpact/src/home/home_backend.dart';
 
 class DashboardGoals extends MissingGoalsBackend {
   List<GoalCrew> crews = [

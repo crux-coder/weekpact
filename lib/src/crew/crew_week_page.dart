@@ -4,7 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../goals/goal_icons.dart';
 import '../goals/goals_backend.dart';
 import '../home/home_backend.dart';
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/page_frame.dart';
 
@@ -60,7 +60,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
         return a.email.compareTo(b.email);
       });
     return Scaffold(
-      body: KeepUpBackground(
+      body: WeekPactBackground(
         child: PageFrame(
           topPadding: 12,
           header: Column(
@@ -289,8 +289,8 @@ class _MemberGoalWeek extends StatelessWidget {
                                   ? context.border.withValues(alpha: .35)
                                   : context.border,
                               width: today
-                                  ? KeepUpMetrics.border
-                                  : KeepUpMetrics.fineBorder,
+                                  ? WeekPactMetrics.border
+                                  : WeekPactMetrics.fineBorder,
                             ),
                           ),
                           child: done

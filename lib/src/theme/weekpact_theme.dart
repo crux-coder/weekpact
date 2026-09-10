@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Shared stroke and depth values for the app's outlined surfaces.
-abstract final class KeepUpMetrics {
+abstract final class WeekPactMetrics {
   static const border = 1.5;
   static const fineBorder = 1.0;
   static const selectedBorder = 2.0;
@@ -15,7 +15,7 @@ abstract final class KeepUpMetrics {
   );
 }
 
-abstract final class KeepUpColors {
+abstract final class WeekPactColors {
   static const black = Color(0xFF090909);
   static const cream = Color(0xFFFFFCF3);
   static const lightCanvas = Color(0xFFF8F5EC);
@@ -40,19 +40,19 @@ abstract final class KeepUpColors {
   static const error = Color(0xFFC94F59);
 }
 
-abstract final class KeepUpTheme {
+abstract final class WeekPactTheme {
   static ThemeData get light => _build(
     brightness: Brightness.light,
-    background: KeepUpColors.lightCanvas,
-    foreground: KeepUpColors.black,
-    primary: KeepUpColors.softYellow,
+    background: WeekPactColors.lightCanvas,
+    foreground: WeekPactColors.black,
+    primary: WeekPactColors.softYellow,
   );
 
   static ThemeData get dark => _build(
     brightness: Brightness.dark,
-    background: KeepUpColors.darkCanvas,
-    foreground: KeepUpColors.darkInk,
-    primary: KeepUpColors.softYellow,
+    background: WeekPactColors.darkCanvas,
+    foreground: WeekPactColors.darkInk,
+    primary: WeekPactColors.softYellow,
   );
 
   static ThemeData _build({
@@ -62,8 +62,18 @@ abstract final class KeepUpTheme {
     required Color primary,
   }) {
     final dark = brightness == Brightness.dark;
-    final surface = dark ? KeepUpColors.darkSurface : KeepUpColors.cream;
-    final outline = dark ? KeepUpColors.darkBorder : KeepUpColors.black;
+    final surface = dark ? WeekPactColors.darkSurface : WeekPactColors.cream;
+    final outline = dark ? WeekPactColors.darkBorder : WeekPactColors.black;
+    final inputBorder = OutlineInputBorder(
+      borderSide: BorderSide(color: outline, width: WeekPactMetrics.border),
+      borderRadius: BorderRadius.circular(8),
+    );
+    final inputErrorBorder = inputBorder.copyWith(
+      borderSide: BorderSide(
+        color: dark ? WeekPactColors.darkError : WeekPactColors.error,
+        width: WeekPactMetrics.border,
+      ),
+    );
     final base = ThemeData(
       useMaterial3: true,
       fontFamily: 'RobotoCondensed',
@@ -77,12 +87,12 @@ abstract final class KeepUpTheme {
           ).copyWith(
             onSurface: foreground,
             onSurfaceVariant: dark
-                ? KeepUpColors.darkMuted
-                : KeepUpColors.mutedLight,
-            primary: dark ? const Color(0xFFF1D68A) : KeepUpColors.pinkInk,
-            onPrimary: KeepUpColors.black,
+                ? WeekPactColors.darkMuted
+                : WeekPactColors.mutedLight,
+            primary: dark ? const Color(0xFFF1D68A) : WeekPactColors.pinkInk,
+            onPrimary: WeekPactColors.black,
             outline: outline,
-            error: dark ? KeepUpColors.darkError : KeepUpColors.error,
+            error: dark ? WeekPactColors.darkError : WeekPactColors.error,
             surfaceTint: Colors.transparent,
           ),
     );
@@ -94,19 +104,22 @@ abstract final class KeepUpTheme {
         filled: true,
         fillColor: surface,
         labelStyle: TextStyle(color: foreground),
+        floatingLabelStyle: TextStyle(color: foreground),
         hintStyle: TextStyle(
-          color: dark ? KeepUpColors.darkMuted : KeepUpColors.mutedLight,
+          color: dark ? WeekPactColors.darkMuted : WeekPactColors.mutedLight,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: outline, width: KeepUpMetrics.border),
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: inputBorder,
+        enabledBorder: inputBorder,
+        focusedBorder: inputBorder,
+        disabledBorder: inputBorder,
+        errorBorder: inputErrorBorder,
+        focusedErrorBorder: inputErrorBorder,
       ),
       chipTheme: base.chipTheme.copyWith(
         labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w700),
         checkmarkColor: foreground,
         backgroundColor: surface,
-        side: BorderSide(color: outline, width: KeepUpMetrics.fineBorder),
+        side: BorderSide(color: outline, width: WeekPactMetrics.fineBorder),
       ),
       textTheme: base.textTheme.apply(
         bodyColor: foreground,
@@ -120,14 +133,14 @@ abstract final class KeepUpTheme {
           fontWeight: FontWeight.w700,
         ),
         behavior: SnackBarBehavior.floating,
-        shape: Border.all(color: background, width: KeepUpMetrics.border),
+        shape: Border.all(color: background, width: WeekPactMetrics.border),
       ),
     );
   }
 }
 
-class KeepUpBackground extends StatelessWidget {
-  const KeepUpBackground({super.key, required this.child});
+class WeekPactBackground extends StatelessWidget {
+  const WeekPactBackground({super.key, required this.child});
 
   final Widget child;
 
@@ -173,33 +186,39 @@ class _GridPaperPainter extends CustomPainter {
   }
 }
 
-extension KeepUpThemeX on BuildContext {
+extension WeekPactThemeX on BuildContext {
   bool get isDark => Theme.of(this).brightness == Brightness.dark;
-  Color get ink => isDark ? KeepUpColors.darkInk : KeepUpColors.black;
+  Color get ink => isDark ? WeekPactColors.darkInk : WeekPactColors.black;
   Color get canvas =>
-      isDark ? KeepUpColors.darkCanvas : KeepUpColors.lightCanvas;
-  Color get surface => isDark ? KeepUpColors.darkSurface : KeepUpColors.cream;
-  Color get border => isDark ? KeepUpColors.darkBorder : KeepUpColors.black;
-  Color get shadow => isDark ? KeepUpColors.darkShadow : KeepUpColors.black;
+      isDark ? WeekPactColors.darkCanvas : WeekPactColors.lightCanvas;
+  Color get surface =>
+      isDark ? WeekPactColors.darkSurface : WeekPactColors.cream;
+  Color get border => isDark ? WeekPactColors.darkBorder : WeekPactColors.black;
+  Color get shadow => isDark ? WeekPactColors.darkShadow : WeekPactColors.black;
   Color get yellow =>
-      isDark ? KeepUpColors.darkYellow : KeepUpColors.softYellow;
-  Color get mint => isDark ? KeepUpColors.darkMint : KeepUpColors.mintGreen;
-  Color get coral => isDark ? KeepUpColors.darkCoral : KeepUpColors.softCoral;
-  Color get pink => isDark ? KeepUpColors.darkPink : KeepUpColors.bubblegumPink;
+      isDark ? WeekPactColors.darkYellow : WeekPactColors.softYellow;
+  Color get mint => isDark ? WeekPactColors.darkMint : WeekPactColors.mintGreen;
+  Color get coral =>
+      isDark ? WeekPactColors.darkCoral : WeekPactColors.softCoral;
+  Color get pink =>
+      isDark ? WeekPactColors.darkPink : WeekPactColors.bubblegumPink;
   Color get primary => yellow;
-  Color get accent => isDark ? KeepUpColors.darkAccent : KeepUpColors.pinkInk;
+  Color get accent =>
+      isDark ? WeekPactColors.darkAccent : WeekPactColors.pinkInk;
   Color get fieldInk => ink;
-  Color get muted => isDark ? KeepUpColors.darkMuted : KeepUpColors.mutedLight;
-  Color get errorInk => isDark ? KeepUpColors.darkError : KeepUpColors.error;
+  Color get muted =>
+      isDark ? WeekPactColors.darkMuted : WeekPactColors.mutedLight;
+  Color get errorInk =>
+      isDark ? WeekPactColors.darkError : WeekPactColors.error;
 
   /// Resolve fixed accent colors carried by navigation and other view models.
   Color tone(Color color) {
     if (!isDark) return color;
-    if (color == KeepUpColors.softYellow) return yellow;
-    if (color == KeepUpColors.mintGreen) return mint;
-    if (color == KeepUpColors.softCoral) return coral;
-    if (color == KeepUpColors.bubblegumPink) return pink;
-    if (color == KeepUpColors.cream) return surface;
+    if (color == WeekPactColors.softYellow) return yellow;
+    if (color == WeekPactColors.mintGreen) return mint;
+    if (color == WeekPactColors.softCoral) return coral;
+    if (color == WeekPactColors.bubblegumPink) return pink;
+    if (color == WeekPactColors.cream) return surface;
     return color;
   }
 }

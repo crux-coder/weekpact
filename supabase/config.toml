@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "keepup"
+project_id = "weekpact"
 
 [api]
 enabled = true
@@ -152,8 +152,8 @@ site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = [
   "https://127.0.0.1:3000",
   "http://127.0.0.1:3000/**",
-  "keepup://invite",
   "weekpact://invite",
+  "weekpact://invite?invite=*",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -226,6 +226,10 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+[auth.email.template.confirmation]
+subject = "Confirm your WeekPact account"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -398,3 +402,10 @@ entrypoint = "./functions/invite-crew-member/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/invite-crew-member/*.html" ]
+
+[functions.dispatch-notifications]
+verify_jwt = false
+
+[functions.delete-account]
+# The function validates the bearer token with Auth and verifies the password.
+verify_jwt = false

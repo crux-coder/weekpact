@@ -3,6 +3,12 @@
 WeekPact is a Flutter crew-goal app with Supabase authentication, crew
 membership, owner-managed email invitations, and deep-link invite acceptance.
 
+Crew goal check-ins notify other crew members through Firebase Messaging. Device
+opt-in is available under Account → Notifications; delivery uses a reusable event
+queue, templates, and a Supabase worker with retries.
+Follow [the Firebase and Apple setup guide](docs/notifications.md) to connect your
+project and test delivery. Run `npm run firebase:configure` after installing the CLIs.
+
 ## What is implemented
 
 - Each user can belong to exactly one crew.
@@ -52,8 +58,8 @@ Goal widgets are covered by `flutter test`. Database permission and constraint
 tests can also run against PGlite without touching a Supabase project:
 
 ```sh
-npm install --prefix /tmp/keepup-goals-sql @electric-sql/pglite@0.5.8
-PGLITE_MODULE=/tmp/keepup-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_goals_database.mjs
+npm install --prefix /tmp/weekpact-goals-sql @electric-sql/pglite@0.5.8
+PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_goals_database.mjs
 ```
 
 ## 1. Local prerequisites
@@ -79,8 +85,8 @@ cp supabase/functions/.env.example supabase/functions/.env.local
 
 Add AWS API credentials, the SES region, and an SES-verified sender (see below). For immediate
 iPhone development, use `APP_BASE_URL=weekpact://invite` for crew emails.
-The app also accepts legacy `keepup://invite` links. Keep the Auth redirect
-setting on its existing scheme until the deployed Auth allow-list is updated.
+Authentication callbacks use `weekpact://invite`. Add `weekpact://invite` and
+`weekpact://invite?invite=*` to the Supabase Auth redirect allow-list.
 
 ## 2. Start and test locally
 
@@ -97,7 +103,7 @@ Local Supabase Auth emails appear in Inbucket at
 To open a test invite directly in the iOS Simulator:
 
 ```sh
-xcrun simctl openurl booted "keepup://invite?invite=YOUR_RAW_INVITE_TOKEN"
+xcrun simctl openurl booted "weekpact://invite?invite=YOUR_RAW_INVITE_TOKEN"
 ```
 
 The raw token only exists in the sent email. The database stores its hash.
@@ -122,13 +128,31 @@ In Supabase Dashboard:
 
 1. Enable Email under **Authentication → Providers**.
 2. Under **Authentication → URL Configuration**, set your production site URL
-   and allow both `keepup://invite` and
-   `https://app.YOUR_DOMAIN.com/**` as redirect URLs.
+   and allow `weekpact://invite` and `weekpact://invite?invite=*` as
+   redirect URLs for the mobile app.
 3. Confirm the migration appears under **Database → Migrations**.
 4. Confirm the invitation configuration values appear under **Edge Functions → Secrets**.
 
 Only the publishable key belongs in `.env` or your client build configuration.
 Never add a secret/service-role key or AWS credentials to the Flutter build.
+
+## Account confirmation email
+
+`supabase/templates/confirmation.html` styles Supabase's **Confirm sign up** email
+like the crew invitation. Its button uses `{{ .ConfirmationURL }}`, which verifies
+the email with Supabase before returning to the callback supplied by the app.
+The template is configured locally in `supabase/config.toml` and deployed separately
+to hosted Auth email settings.
+
+Every sign-up now passes `weekpact://invite`, retaining `?invite=TOKEN` when joining
+through a crew invitation. Supabase Flutter handles the callback, exchanges the
+PKCE code for a session, and the app opens Home (or the pending crew invitation).
+Open the confirmation on the same phone/app installation used to sign up. On
+another device, or after reinstalling the app, confirm the email and log in using
+the password instead. The website does not process authentication callbacks.
+
+Rebuild the app after changing this flow. Already-sent confirmation emails retain
+their original callback and template.
 
 ## AWS SES for crew invitations
 
@@ -177,7 +201,7 @@ invalid and a fresh invitation is needed.
 
 ## 4. Production app links
 
-The custom `weekpact://` scheme (with `keepup://` compatibility) is configured for iOS and Android and is useful
+The custom `weekpact://` scheme is configured for iOS and Android and is useful
 for development. Production emails should use an HTTPS universal/app link so
 the link opens the installed app and falls back to the static invitation webpage.
 The Astro site in [`website/`](website/README.md) includes the product homepage,
@@ -202,7 +226,22 @@ recipient; normal member-only table access and check-in privacy stay intact.
 Email delivery and token-based acceptance continue to work as before.
 
 ```sh
-PGLITE_MODULE=/tmp/keepup-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invites_database.mjs
+PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invites_database.mjs
+```
+
+### Leaving and managing membership
+
+Members can choose **Leave crew**. Owners can remove non-owner members using the
+remove icon next to their name. Both actions require confirmation. An owner who
+leaves chooses a replacement from current members; a sole owner must first invite
+another member. Leaving returns to Home. Former members lose crew access and need
+a fresh invitation to rejoin; existing check-in history stays stored.
+
+Apply `20260910104118_add_crew_membership_actions.sql` and rebuild the mobile app.
+Membership permissions are checked by the database, including owner transfer.
+
+```sh
+PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_membership_database.mjs
 ```
 
 ### iOS
@@ -310,3 +349,26 @@ flutter analyze
 flutter test
 supabase db lint --local --fail-on error
 ```
+# First-login onboarding
+
+Signed-in accounts without a completed profile see an introduction, then one page
+containing their optional avatar photo, required display name, and optional surname.
+Successful completion opens Home; received crew invitations remain in Crews → Invites.
+Existing development accounts will also see this flow once.
+
+Names, `avatar_path`, and `onboarding_completed` are saved in Supabase Auth user
+metadata. This metadata is used for presentation only, never authorization.
+Photos are resized to at most 512 pixels and re-encoded as PNG without photo
+metadata. The private `avatars` bucket allows each account to read and replace
+only its own `<user-id>/avatar.png`. The Account screen displays the saved profile.
+
+Deploy `20260910110607_create_avatar_storage.sql` with `supabase db push` before
+using onboarding against a new Supabase environment. iOS photo-library usage
+text is included; rebuild the native app after installing the image-picker dependency.
+
+## Account settings and App Review
+
+Account deletion, password recovery, confirmation resend, and privacy/support pages
+are implemented. See [the account deployment and review guide](docs/app-review-accounts.md)
+for the required migration/function deployment, reviewer-account provisioning,
+and device verification steps.

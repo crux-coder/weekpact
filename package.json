@@ -2,6 +2,7 @@
   "name": "weekpact",
   "private": true,
   "scripts": {
-    "release": "bash tool/release_ios.sh"
+    "release": "bash tool/release_ios.sh",
+    "firebase:configure": "dart pub global run flutterfire_cli:flutterfire configure --platforms=ios,android --ios-bundle-id=dev.codepeaktrail.weekpact --android-package-name=dev.codepeaktrail.weekpact --out=lib/firebase_options.dart"
   }
 }

@@ -8,6 +8,9 @@ import 'src/theme/theme_preference.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
+import 'src/notifications/messaging_client.dart';
+import 'src/notifications/notification_service.dart';
+import 'src/notifications/push_registration.dart';
 import 'src/goals/goals_backend.dart';
 import 'src/auth/auth_backend.dart';
 import 'src/crew/crew_backend.dart';
@@ -41,13 +44,33 @@ Future<void> main() async {
     homeBackend = const MissingHomeBackend();
   }
 
-  final themePreference = ThemePreferenceStore(
-    await SharedPreferences.getInstance(),
+  final preferences = await SharedPreferences.getInstance();
+  final themePreference = ThemePreferenceStore(preferences);
+  final notifications = NotificationService(
+    createClient: FirebaseMessagingClient.create,
+    enabled: preferences.getBool('notifications_enabled') ?? false,
+    saveEnabled: (enabled) async {
+      if (!await preferences.setBool('notifications_enabled', enabled)) {
+        throw StateError('Could not save notification preference.');
+      }
+    },
   );
+  if (authBackend is SupabaseAuthBackend) {
+    final registration = PushRegistration(
+      authBackend,
+      notifications,
+      SupabasePushDeviceRegistry(Supabase.instance.client),
+    );
+    registration.start();
+    authBackend.beforeSignOut = registration.prepareSignOut;
+    authBackend.afterSignOutAttempt = registration.resume;
+    notifications.beforeDisable = registration.unregisterCurrentDevice;
+  }
 
   runApp(
-    KeepUpApp(
+    WeekPactApp(
       authBackend: authBackend,
+      notifications: notifications,
       initialThemeMode: themePreference.mode,
       onThemeModeChanged: themePreference.save,
       crewBackend: crewBackend,

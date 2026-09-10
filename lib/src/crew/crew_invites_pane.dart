@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
@@ -172,7 +172,10 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         color: context.yellow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: context.border, width: KeepUpMetrics.border),
+          side: BorderSide(
+            color: context.border,
+            width: WeekPactMetrics.border,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

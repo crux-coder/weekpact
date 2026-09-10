@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 
 class BrutalShadow extends StatelessWidget {
   const BrutalShadow({
     super.key,
     required this.child,
     this.fillColor,
-    this.shadowOffset = KeepUpMetrics.shadow,
-    this.borderWidth = KeepUpMetrics.border,
+    this.shadowOffset = WeekPactMetrics.shadow,
+    this.borderWidth = WeekPactMetrics.border,
     this.borderRadius = 8,
     this.cornerRadius,
   });
@@ -94,15 +94,15 @@ class BrutalTabbedCard extends StatelessWidget {
                         border: Border(
                           top: BorderSide(
                             color: context.border,
-                            width: KeepUpMetrics.border,
+                            width: WeekPactMetrics.border,
                           ),
                           left: BorderSide(
                             color: context.border,
-                            width: KeepUpMetrics.border,
+                            width: WeekPactMetrics.border,
                           ),
                           right: BorderSide(
                             color: context.border,
-                            width: KeepUpMetrics.border,
+                            width: WeekPactMetrics.border,
                           ),
                         ),
                         borderRadius: const BorderRadius.vertical(
@@ -111,7 +111,7 @@ class BrutalTabbedCard extends StatelessWidget {
                         boxShadow: [
                           BoxShadow(
                             color: context.shadow,
-                            offset: KeepUpMetrics.shadow,
+                            offset: WeekPactMetrics.shadow,
                           ),
                         ],
                       ),
@@ -144,7 +144,7 @@ class BrutalTabbedCard extends StatelessWidget {
         ),
         BrutalShadow(
           fillColor: fillColor,
-          shadowOffset: KeepUpMetrics.shadow,
+          shadowOffset: WeekPactMetrics.shadow,
           cornerRadius: const BorderRadius.only(
             topRight: Radius.circular(8),
             bottomLeft: Radius.circular(8),
@@ -166,7 +166,7 @@ class BrutalButton extends StatelessWidget {
     this.foregroundColor,
     this.icon,
     this.isLoading = false,
-    this.height = KeepUpMetrics.buttonHeight,
+    this.height = WeekPactMetrics.buttonHeight,
   });
 
   final String label;
@@ -190,7 +190,7 @@ class BrutalButton extends StatelessWidget {
         child: TextButton(
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
-            padding: KeepUpMetrics.buttonPadding,
+            padding: WeekPactMetrics.buttonPadding,
             minimumSize: Size(0, height),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             foregroundColor: effectiveForeground,
@@ -266,7 +266,7 @@ class BrutalBottomNavigationBar extends StatelessWidget {
       minimum: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       child: BrutalShadow(
         borderRadius: 12,
-        shadowOffset: KeepUpMetrics.shadow,
+        shadowOffset: WeekPactMetrics.shadow,
         fillColor: context.shadow,
         child: SizedBox(
           height: 74,
@@ -343,8 +343,8 @@ class _BrutalNavigationButtonState extends State<_BrutalNavigationButton> {
           duration: const Duration(milliseconds: 110),
           curve: Curves.easeOut,
           margin: EdgeInsets.only(
-            top: isPressed ? KeepUpMetrics.pressDepth : 0,
-            bottom: isPressed ? 0 : KeepUpMetrics.pressDepth,
+            top: isPressed ? WeekPactMetrics.pressDepth : 0,
+            bottom: isPressed ? 0 : WeekPactMetrics.pressDepth,
           ),
           decoration: BoxDecoration(
             color: widget.selected
@@ -395,7 +395,7 @@ class _BrutalNavigationButtonState extends State<_BrutalNavigationButton> {
                   top: 0,
                   right: 0,
                   bottom: 0,
-                  width: KeepUpMetrics.border,
+                  width: WeekPactMetrics.border,
                   child: ColoredBox(color: context.border),
                 ),
             ],

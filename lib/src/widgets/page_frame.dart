@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import 'viewport_scroll_view.dart';
 
 /// Shared full-height page shell. Headers stay visible during initial loading.

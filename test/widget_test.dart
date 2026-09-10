@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'support/home_fakes.dart';
 
 import 'dart:async';
@@ -5,13 +7,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:keepup/src/app.dart';
-import 'package:keepup/src/auth/auth_backend.dart';
-import 'package:keepup/src/crew/crew_backend.dart';
-import 'package:keepup/src/crew/crew_page.dart';
-import 'package:keepup/src/invites/invite_links.dart';
-import 'package:keepup/src/theme/keepup_theme.dart';
-import 'package:keepup/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/app.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/invites/invite_links.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/brutal_widgets.dart';
 
 void main() {
   testWidgets('account switches between light, dark and device appearance', (
@@ -23,7 +25,7 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -69,7 +71,7 @@ void main() {
       final crews = DelayedCrewBackend();
       await tester.pumpWidget(
         MaterialApp(
-          theme: KeepUpTheme.light,
+          theme: WeekPactTheme.light,
           home: Scaffold(
             body: CrewPage(
               backend: crews,
@@ -105,7 +107,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -129,7 +131,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -150,7 +152,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -170,11 +172,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.signUpCalls, 1);
+    expect(auth.lastEmailRedirectTo, 'weekpact://invite');
     expect(
       find.text('Check your email to confirm your account.'),
       findsOneWidget,
     );
     expect(find.text('Welcome back.'), findsOneWidget);
+    // Supabase emits the signed-in session after exchanging the email callback.
+    auth.confirmEmail('new@example.com');
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back.'), findsNothing);
+    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+    expect(auth.signInCalls, 0);
+  });
+
+  testWidgets('signup confirmation retains the pending crew invitation', (
+    tester,
+  ) async {
+    final auth = FakeAuthBackend(
+      signUpResult: SignUpResult.emailConfirmationRequired,
+    );
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(
+        authBackend: auth,
+        homeBackend: DashboardBackend(),
+        goalsBackend: DashboardGoals(),
+        inviteLinkSource: FakeInviteLinkSource(
+          Uri.parse('weekpact://invite?invite=crew-token'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final mode = find.byType(TextButton).last;
+    await tester.ensureVisible(mode);
+    await tester.tap(mode);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
+    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
+    await tester.ensureVisible(find.text('CREATE ACCOUNT'));
+    await tester.tap(find.text('CREATE ACCOUNT'));
+    await tester.pumpAndSettle();
+    expect(auth.lastEmailRedirectTo, 'weekpact://invite?invite=crew-token');
+    auth.confirmEmail('new@example.com');
+    await tester.pumpAndSettle();
+    expect(find.text('JOIN THE CREW.'), findsOneWidget);
+    expect(auth.signInCalls, 0);
   });
 
   testWidgets('signs in, shows account, and signs out', (tester) async {
@@ -182,7 +226,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -214,7 +258,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -255,7 +299,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -290,7 +334,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -320,7 +364,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -353,7 +397,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -397,7 +441,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -441,14 +485,14 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
       ),
     );
 
-    expect(find.byType(KeepUpBackground), findsOneWidget);
+    expect(find.byType(WeekPactBackground), findsOneWidget);
     expect(
       Theme.of(tester.element(find.byType(Scaffold))).scaffoldBackgroundColor,
       Colors.transparent,
@@ -464,7 +508,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -485,7 +529,7 @@ void main() {
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -535,12 +579,12 @@ void main() {
     final auth = FakeAuthBackend();
     final crews = FakeCrewBackend();
     final links = FakeInviteLinkSource(
-      Uri.parse('keepup://invite?invite=secret-token'),
+      Uri.parse('weekpact://invite?invite=secret-token'),
     );
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
-      KeepUpApp(
+      WeekPactApp(
         homeBackend: DashboardBackend(),
         goalsBackend: DashboardGoals(),
         authBackend: auth,
@@ -571,6 +615,17 @@ void main() {
 }
 
 class FakeAuthBackend implements AuthBackend {
+  @override
+  Future<void> requestPasswordReset(String email) async {}
+  @override
+  Future<void> resendConfirmation(
+    String email, {
+    String? emailRedirectTo,
+  }) async {}
+  @override
+  Future<void> updatePassword(String password) async {}
+  @override
+  Future<void> deleteAccount(String password) => signOut();
   FakeAuthBackend({this.signUpResult = SignUpResult.signedIn});
 
   final _controller = StreamController<AuthUser?>.broadcast();
@@ -578,6 +633,12 @@ class FakeAuthBackend implements AuthBackend {
   AuthUser? _user;
   int signInCalls = 0;
   int signUpCalls = 0;
+  String? lastEmailRedirectTo;
+
+  void confirmEmail(String email) {
+    _user = AuthUser(email: email, onboardingCompleted: true);
+    _controller.add(_user);
+  }
 
   @override
   Stream<AuthUser?> get authStateChanges => _controller.stream;
@@ -588,7 +649,7 @@ class FakeAuthBackend implements AuthBackend {
   @override
   Future<void> signIn({required String email, required String password}) async {
     signInCalls++;
-    _user = AuthUser(email: email);
+    _user = AuthUser(email: email, onboardingCompleted: true);
     _controller.add(_user);
   }
 
@@ -599,8 +660,9 @@ class FakeAuthBackend implements AuthBackend {
     String? emailRedirectTo,
   }) async {
     signUpCalls++;
+    lastEmailRedirectTo = emailRedirectTo;
     if (signUpResult == SignUpResult.signedIn) {
-      _user = AuthUser(email: email);
+      _user = AuthUser(email: email, onboardingCompleted: true);
       _controller.add(_user);
     }
     return signUpResult;
@@ -612,10 +674,41 @@ class FakeAuthBackend implements AuthBackend {
     _controller.add(null);
   }
 
+  @override
+  Future<AuthUser> completeOnboarding({
+    required String firstName,
+    required String lastName,
+    Uint8List? avatar,
+  }) async {
+    _user = AuthUser(
+      email: _user!.email,
+      firstName: firstName,
+      lastName: lastName,
+      avatarPath: 'avatar.png',
+      onboardingCompleted: true,
+    );
+    _controller.add(_user);
+    return _user!;
+  }
+
+  @override
+  Future<Uint8List?> loadAvatar() async => null;
+
   Future<void> dispose() => _controller.close();
 }
 
 class FakeCrewBackend implements CrewBackend {
+  @override
+  Future<void> leaveCrew({required String crewId, String? successorId}) async {
+    crew = null;
+  }
+
+  @override
+  Future<void> removeMember({
+    required String crewId,
+    required String userId,
+  }) async {}
+
   @override
   Future<List<ReceivedCrewInvite>> fetchReceivedInvites() async => [];
   @override

@@ -15,7 +15,7 @@ export function readSiteConfig(env = process.env) {
   if (fingerprints.some(value => !/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(value))) {
     throw new Error('Android fingerprints must contain 32 colon-separated hexadecimal bytes.');
   }
-  const androidPackage = env.ANDROID_PACKAGE_NAME || 'com.example.keepup';
+  const androidPackage = env.ANDROID_PACKAGE_NAME || 'dev.codepeaktrail.weekpact';
   if (!/^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$/.test(androidPackage)) throw new Error('Invalid Android package name.');
   const iosAppId = env.IOS_APP_ID?.trim() || 'R5L8RZTV6R.dev.codepeaktrail.weekpact';
   if (!/^[A-Z0-9]{10}\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(iosAppId)) {

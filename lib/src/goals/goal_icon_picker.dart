@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_drawer.dart';
 import '../widgets/brutal_widgets.dart';
 import 'goal_icons.dart';
@@ -100,8 +100,8 @@ class _GoalIconPickerState extends State<GoalIconPicker> {
                             side: BorderSide(
                               color: context.border,
                               width: selected
-                                  ? KeepUpMetrics.selectedBorder
-                                  : KeepUpMetrics.border,
+                                  ? WeekPactMetrics.selectedBorder
+                                  : WeekPactMetrics.border,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),

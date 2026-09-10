@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keepup/src/goals/goals_backend.dart';
-import 'package:keepup/src/goals/goals_page.dart';
-import 'package:keepup/src/goals/goal_icons.dart';
-import 'package:keepup/src/theme/keepup_theme.dart';
+import 'package:weekpact/src/goals/goals_backend.dart';
+import 'package:weekpact/src/goals/goals_page.dart';
+import 'package:weekpact/src/goals/goal_icons.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 const ownerCrew = GoalCrew(
   id: 'a',
@@ -78,7 +78,7 @@ class FakeGoals implements GoalsBackend {
 Future<void> pumpGoals(WidgetTester tester, FakeGoals backend) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: KeepUpTheme.light,
+      theme: WeekPactTheme.light,
       home: Scaffold(
         body: GoalsPage(backend: backend, onOpenCrews: () {}),
       ),

@@ -4,20 +4,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keepup/src/auth/auth_backend.dart';
-import 'package:keepup/src/crew/crew_backend.dart';
-import 'package:keepup/src/home/home_backend.dart';
-import 'package:keepup/src/home/home_page.dart';
-import 'package:keepup/src/theme/keepup_theme.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/home/home_backend.dart';
+import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
 
-import 'package:keepup/src/crew/crew_week_page.dart';
+import 'package:weekpact/src/crew/crew_week_page.dart';
 
 Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: KeepUpTheme.light,
+      theme: WeekPactTheme.light,
       home: HomePage(
         user: const AuthUser(email: 'person@example.com'),
         authBackend: const MissingConfigurationAuthBackend(),
@@ -151,7 +151,7 @@ void main() {
     final backend = DashboardBackend()..failLoad = true;
     await tester.pumpWidget(
       MaterialApp(
-        theme: KeepUpTheme.dark,
+        theme: WeekPactTheme.dark,
         home: CrewWeekPage(
           crew: backend.goals.crews.first,
           backend: backend,

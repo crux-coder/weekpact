@@ -1,18 +1,18 @@
 import 'dart:async';
 
-import 'package:keepup/src/auth/auth_backend.dart';
-import 'package:keepup/src/home/home_page.dart';
-import 'package:keepup/src/theme/theme_preference.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/theme/theme_preference.dart';
 
 import 'support/home_fakes.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keepup/src/crew/crew_backend.dart';
-import 'package:keepup/src/crew/crew_page.dart';
-import 'package:keepup/src/goals/goals_backend.dart';
-import 'package:keepup/src/theme/keepup_theme.dart';
-import 'package:keepup/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/goals/goals_backend.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/brutal_widgets.dart';
 
 import 'widget_test.dart' show FakeCrewBackend;
 
@@ -81,7 +81,7 @@ class InboxBackend extends FakeCrewBackend {
 Future<void> showInbox(WidgetTester tester, InboxBackend backend) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: KeepUpTheme.light,
+      theme: WeekPactTheme.light,
       home: Scaffold(
         body: CrewPage(
           backend: backend,
@@ -111,7 +111,7 @@ void main() {
         final home = DashboardBackend(goals: goals);
         await tester.pumpWidget(
           MaterialApp(
-            theme: KeepUpTheme.light,
+            theme: WeekPactTheme.light,
             builder: (context, child) => ThemePreference(
               mode: ThemeMode.light,
               onChanged: (_) {},
@@ -289,7 +289,7 @@ void main() {
     final backend = InboxBackend();
     await tester.pumpWidget(
       MaterialApp(
-        theme: KeepUpTheme.dark,
+        theme: WeekPactTheme.dark,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: const TextScaler.linear(1.5)),

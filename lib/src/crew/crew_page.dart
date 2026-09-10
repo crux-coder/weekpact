@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import 'crew_invites_pane.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/brutal_drawer.dart';
@@ -21,12 +21,14 @@ class CrewPage extends StatefulWidget {
     required this.currentUserEmail,
     this.active = true,
     this.onInviteAccepted,
+    this.onCrewLeft,
   });
 
   final bool active;
   final CrewBackend backend;
   final String currentUserEmail;
   final VoidCallback? onInviteAccepted;
+  final VoidCallback? onCrewLeft;
 
   @override
   State<CrewPage> createState() => _CrewPageState();
@@ -43,6 +45,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   Future<void>? _crewLoad;
   bool _hasLoaded = false;
   bool _creating = false;
+  bool _changingMembership = false;
   String? _error;
 
   @override
@@ -100,6 +103,118 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       if (mounted) setState(() => _error = _messageFor(error));
     } finally {
       if (mounted) setState(() => _creating = false);
+    }
+  }
+
+  Future<void> _changeMembership({CrewMember? member}) async {
+    final crew = _crew;
+    if (crew == null || _changingMembership) return;
+    final leaving = member == null;
+    final successors = crew.members
+        .where((m) => m.userId != crew.ownerId)
+        .toList();
+    if (leaving && crew.isOwner && successors.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('You’re the only member'),
+          content: const Text(
+            'Invite another member before leaving, then choose them as the new owner.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    String? successorId;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(leaving ? 'Leave crew?' : 'Remove member?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                leaving
+                    ? 'You’ll lose access to ${crew.name}. You’ll need a new invitation to rejoin.'
+                    : 'Remove ${member.email} from ${crew.name}? They’ll lose access and need a new invitation to rejoin.',
+              ),
+              if (leaving && crew.isOwner) ...[
+                const SizedBox(height: 16),
+                const Text('Choose the new owner:'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  hint: const Text('Select a member'),
+                  items: successors
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m.userId,
+                          child: Text(m.email, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => successorId = value),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: leaving && crew.isOwner && successorId == null
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: Text(leaving ? 'LEAVE' : 'REMOVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted || _changingMembership) return;
+    setState(() {
+      _changingMembership = true;
+      _error = null;
+    });
+    try {
+      if (leaving) {
+        await widget.backend.leaveCrew(
+          crewId: crew.id,
+          successorId: successorId,
+        );
+      } else {
+        await widget.backend.removeMember(
+          crewId: crew.id,
+          userId: member.userId,
+        );
+      }
+      // Discard any fetch begun before the membership mutation.
+      await _crewLoad;
+      if (!mounted) return;
+      if (leaving) setState(() => _crew = null);
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(leaving ? 'You left the crew.' : 'Member removed.'),
+        ),
+      );
+      if (leaving) widget.onCrewLeft?.call();
+    } catch (error) {
+      if (mounted) setState(() => _error = _messageFor(error));
+    } finally {
+      if (mounted) setState(() => _changingMembership = false);
     }
   }
 
@@ -163,15 +278,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             border: Border(
               top: BorderSide(
                 color: context.border,
-                width: KeepUpMetrics.border,
+                width: WeekPactMetrics.border,
               ),
               left: BorderSide(
                 color: context.border,
-                width: KeepUpMetrics.border,
+                width: WeekPactMetrics.border,
               ),
               right: BorderSide(
                 color: context.border,
-                width: KeepUpMetrics.border,
+                width: WeekPactMetrics.border,
               ),
             ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
@@ -190,7 +305,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     onPressed: () => setState(() => _showInvites = false),
                   ),
                 ),
-                Container(width: KeepUpMetrics.border, color: context.border),
+                Container(width: WeekPactMetrics.border, color: context.border),
                 Flexible(
                   child: _CrewTab(
                     label: 'INVITES',
@@ -317,7 +432,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                       color: context.mint,
                       border: Border.all(
                         color: context.border,
-                        width: KeepUpMetrics.border,
+                        width: WeekPactMetrics.border,
                       ),
                       borderRadius: BorderRadius.circular(7),
                     ),
@@ -412,7 +527,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               ),
               Divider(
                 color: context.border,
-                thickness: KeepUpMetrics.fineBorder,
+                thickness: WeekPactMetrics.fineBorder,
                 height: 2,
               ),
               Padding(
@@ -430,6 +545,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               for (var index = 0; index < crew.members.length; index++) ...[
                 _MemberRow(
                   member: crew.members[index],
+                  onRemove:
+                      crew.isOwner &&
+                          !crew.members[index].isOwner &&
+                          !_changingMembership
+                      ? () => _changeMembership(member: crew.members[index])
+                      : null,
                   isCurrentUser:
                       crew.members[index].email.toLowerCase() ==
                       widget.currentUserEmail.toLowerCase(),
@@ -437,14 +558,14 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 if (index != crew.members.length - 1)
                   Divider(
                     color: context.ink,
-                    thickness: KeepUpMetrics.fineBorder,
+                    thickness: WeekPactMetrics.fineBorder,
                     height: 2,
                   ),
               ],
               if (crew.isOwner && crew.pendingInvites.isNotEmpty) ...[
                 Divider(
                   color: context.ink,
-                  thickness: KeepUpMetrics.fineBorder,
+                  thickness: WeekPactMetrics.fineBorder,
                   height: 2,
                 ),
                 ColoredBox(
@@ -477,7 +598,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   if (index != crew.pendingInvites.length - 1)
                     Divider(
                       color: context.ink,
-                      thickness: KeepUpMetrics.fineBorder,
+                      thickness: WeekPactMetrics.fineBorder,
                       height: 2,
                     ),
                 ],
@@ -489,9 +610,20 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     label: 'INVITE SOMEONE',
                     icon: HugeIconsStrokeRounded.mailSend01,
                     color: context.coral,
-                    onPressed: _openInviteDrawer,
+                    onPressed: _changingMembership ? null : _openInviteDrawer,
                   ),
                 ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 18, 16),
+                child: BrutalButton(
+                  label: 'LEAVE CREW',
+                  color: context.surface,
+                  isLoading: _changingMembership,
+                  onPressed: _changingMembership
+                      ? null
+                      : () => _changeMembership(),
+                ),
+              ),
             ],
           ),
         ),
@@ -672,7 +804,7 @@ class _CrewSkeleton extends StatelessWidget {
             Divider(
               color: context.border,
               height: 2,
-              thickness: KeepUpMetrics.fineBorder,
+              thickness: WeekPactMetrics.fineBorder,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 16, 14, 4),
@@ -716,7 +848,7 @@ class _CrewSkeleton extends StatelessWidget {
                 Divider(
                   color: context.border,
                   height: 2,
-                  thickness: KeepUpMetrics.fineBorder,
+                  thickness: WeekPactMetrics.fineBorder,
                 ),
             ],
           ],
@@ -727,9 +859,14 @@ class _CrewSkeleton extends StatelessWidget {
 }
 
 class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.member, required this.isCurrentUser});
+  const _MemberRow({
+    required this.member,
+    required this.isCurrentUser,
+    this.onRemove,
+  });
   final CrewMember member;
   final bool isCurrentUser;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -746,7 +883,7 @@ class _MemberRow extends StatelessWidget {
               color: isCurrentUser ? context.mint : context.surface,
               border: Border.all(
                 color: context.border,
-                width: KeepUpMetrics.border,
+                width: WeekPactMetrics.border,
               ),
               borderRadius: BorderRadius.circular(6),
             ),
@@ -773,6 +910,12 @@ class _MemberRow extends StatelessWidget {
           ),
           if (member.isOwner)
             _StatusLabel(text: 'OWNER', color: context.yellow),
+          if (onRemove != null)
+            IconButton(
+              tooltip: 'Remove ${member.email}',
+              onPressed: onRemove,
+              icon: const Icon(Icons.person_remove_outlined, size: 22),
+            ),
         ],
       ),
     );
@@ -824,7 +967,7 @@ class _InviteRow extends StatelessWidget {
               backgroundColor: context.pink,
               side: BorderSide(
                 color: context.border,
-                width: KeepUpMetrics.border,
+                width: WeekPactMetrics.border,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(5),
@@ -852,7 +995,10 @@ class _StatusLabel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color,
-        border: Border.all(color: context.border, width: KeepUpMetrics.border),
+        border: Border.all(
+          color: context.border,
+          width: WeekPactMetrics.border,
+        ),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
@@ -882,6 +1028,14 @@ String _messageFor(Object error) {
   if (message.contains('Supabase is not configured')) {
     return 'Connect Supabase before creating a crew.';
   }
+  if (message.contains('no longer in the crew') ||
+      message.contains('new owner must belong')) {
+    return 'Membership changed. Refresh the crew and try again.';
+  }
+  if (message.contains('Only the owner') ||
+      message.contains('Choose another member')) {
+    return 'Only the current owner can manage members. Choose a new owner before leaving.';
+  }
   return 'Something went wrong. Please try again.';
 }
 
@@ -906,7 +1060,7 @@ class _CrewTabState extends State<_CrewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final depth = _isHeld || widget.selected ? KeepUpMetrics.pressDepth : 0.0;
+    final depth = _isHeld || widget.selected ? WeekPactMetrics.pressDepth : 0.0;
     return Semantics(
       button: true,
       selected: widget.selected,
@@ -920,7 +1074,7 @@ class _CrewTabState extends State<_CrewTab> {
             curve: Curves.easeOut,
             margin: EdgeInsets.only(
               top: depth,
-              bottom: KeepUpMetrics.pressDepth - depth,
+              bottom: WeekPactMetrics.pressDepth - depth,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
             decoration: BoxDecoration(

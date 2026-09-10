@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:keepup/src/theme/theme_preference.dart';
+import 'package:weekpact/src/theme/theme_preference.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keepup/src/theme/keepup_theme.dart';
-import 'package:keepup/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/brutal_widgets.dart';
 
 double contrast(Color a, Color b) {
   final first = a.computeLuminance();
@@ -37,14 +37,14 @@ void main() {
       late BuildContext themed;
       await tester.pumpWidget(
         MaterialApp(
-          theme: KeepUpTheme.dark,
+          theme: WeekPactTheme.dark,
           home: Scaffold(
             body: Builder(
               builder: (context) {
                 themed = context;
                 return BrutalTabbedCard(
                   title: 'WEEKLY GOALS',
-                  tabColor: KeepUpColors.mintGreen,
+                  tabColor: WeekPactColors.mintGreen,
                   child: Column(
                     children: [
                       const Text('Small steps start here.'),
@@ -56,7 +56,7 @@ void main() {
                       ),
                       BrutalButton(
                         label: 'ADD GOAL',
-                        color: KeepUpColors.softCoral,
+                        color: WeekPactColors.softCoral,
                         onPressed: () {},
                       ),
                     ],
@@ -67,7 +67,7 @@ void main() {
           ),
         ),
       );
-      expect(themed.surface, KeepUpColors.darkSurface);
+      expect(themed.surface, WeekPactColors.darkSurface);
       expect(themed.fieldInk, themed.ink);
       for (final background in [
         themed.canvas,
@@ -86,18 +86,18 @@ void main() {
           .map((widget) => widget.decoration)
           .whereType<BoxDecoration>();
       expect(
-        decorations.any((decoration) => decoration.color == KeepUpColors.cream),
+        decorations.any((decoration) => decoration.color == WeekPactColors.cream),
         isFalse,
       );
       expect(
         decorations.any(
-          (decoration) => decoration.color == KeepUpColors.darkMint,
+          (decoration) => decoration.color == WeekPactColors.darkMint,
         ),
         isTrue,
       );
       expect(
         decorations.any(
-          (decoration) => decoration.color == KeepUpColors.darkCoral,
+          (decoration) => decoration.color == WeekPactColors.darkCoral,
         ),
         isTrue,
       );
@@ -105,7 +105,7 @@ void main() {
         decorations.any(
           (decoration) =>
               decoration.boxShadow?.any(
-                (shadow) => shadow.color == KeepUpColors.darkShadow,
+                (shadow) => shadow.color == WeekPactColors.darkShadow,
               ) ??
               false,
         ),

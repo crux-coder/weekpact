@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 
 Future<T?> showBrutalDrawer<T>({
   required BuildContext context,
@@ -11,7 +11,7 @@ Future<T?> showBrutalDrawer<T>({
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    barrierColor: KeepUpColors.black.withValues(alpha: .55),
+    barrierColor: WeekPactColors.black.withValues(alpha: .55),
     constraints: BoxConstraints.tightFor(
       width: MediaQuery.sizeOf(context).width,
     ),
@@ -46,7 +46,7 @@ class BrutalDrawer extends StatelessWidget {
                 border: Border(
                   top: BorderSide(
                     color: context.border,
-                    width: KeepUpMetrics.border,
+                    width: WeekPactMetrics.border,
                   ),
                 ),
                 borderRadius: const BorderRadius.vertical(

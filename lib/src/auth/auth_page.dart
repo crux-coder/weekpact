@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/viewport_scroll_view.dart';
 import 'auth_backend.dart';
+import 'password_page.dart';
+import 'account_actions.dart';
 
 enum AuthMode { login, signup }
 
 const _inviteRedirectBase = String.fromEnvironment(
   'INVITE_REDIRECT_BASE',
-  defaultValue: 'keepup://invite',
+  defaultValue: 'weekpact://invite',
 );
 
 class AuthPage extends StatefulWidget {
@@ -18,10 +20,12 @@ class AuthPage extends StatefulWidget {
     super.key,
     required this.authBackend,
     this.pendingInviteToken,
+    this.initialError,
   });
 
   final AuthBackend authBackend;
   final String? pendingInviteToken;
+  final String? initialError;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -71,7 +75,7 @@ class _AuthPageState extends State<AuthPage> {
         final result = await widget.authBackend.signUp(
           email: email,
           password: password,
-          emailRedirectTo: _inviteRedirectUrl,
+          emailRedirectTo: _confirmationRedirectUrl,
         );
         if (result == SignUpResult.emailConfirmationRequired && mounted) {
           _showMessage('Check your email to confirm your account.');
@@ -92,9 +96,9 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  String? get _inviteRedirectUrl {
+  String get _confirmationRedirectUrl {
     final token = widget.pendingInviteToken;
-    if (token == null) return null;
+    if (token == null) return _inviteRedirectBase;
     return Uri.parse(_inviteRedirectBase)
         .replace(queryParameters: {'invite': token})
         .toString();
@@ -167,7 +171,7 @@ class _AuthPageState extends State<AuthPage> {
                         const SizedBox(height: 24),
                         BrutalShadow(
                           fillColor: context.mint,
-                          shadowOffset: KeepUpMetrics.smallShadow,
+                          shadowOffset: WeekPactMetrics.smallShadow,
                           child: Padding(
                             padding: EdgeInsets.all(14),
                             child: Text(
@@ -214,6 +218,13 @@ class _AuthPageState extends State<AuthPage> {
                           ],
                         ),
                       ),
+                      if (widget.initialError != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.initialError!,
+                          style: TextStyle(color: context.errorInk),
+                        ),
+                      ],
                       const SizedBox(height: 34),
                       BrutalTextField(
                         label: 'EMAIL',
@@ -271,7 +282,7 @@ class _AuthPageState extends State<AuthPage> {
                           Expanded(
                             child: Divider(
                               color: context.border,
-                              thickness: KeepUpMetrics.fineBorder,
+                              thickness: WeekPactMetrics.fineBorder,
                             ),
                           ),
                           Padding(
@@ -287,11 +298,30 @@ class _AuthPageState extends State<AuthPage> {
                           Expanded(
                             child: Divider(
                               color: context.border,
-                              thickness: KeepUpMetrics.fineBorder,
+                              thickness: WeekPactMetrics.fineBorder,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => PasswordPage(
+                                    backend: widget.authBackend,
+                                    initialEmail: _emailController.text,
+                                    confirmationRedirect:
+                                        _confirmationRedirectUrl,
+                                  ),
+                                ),
+                              ),
+                        child: const Text(
+                          'Forgot password or need a confirmation email?',
+                        ),
+                      ),
+                      const PublicAccountLinks(),
                       const SizedBox(height: 28),
                       BrutalShadow(
                         child: TextButton(
@@ -301,11 +331,11 @@ class _AuthPageState extends State<AuthPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                             ),
-                            padding: KeepUpMetrics.buttonPadding,
+                            padding: WeekPactMetrics.buttonPadding,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             minimumSize: const Size(
                               0,
-                              KeepUpMetrics.buttonHeight,
+                              WeekPactMetrics.buttonHeight,
                             ),
                           ),
                           child: Text.rich(

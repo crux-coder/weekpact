@@ -39,7 +39,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     </header>
     <slot />
     <footer class="site-footer">
-      <div class="container footer-content"><a class="wordmark" href="/">WeekPact.</a><p>Good habits. Great company.</p></div>
+      <div class="container footer-content"><a class="wordmark" href="/">WeekPact.</a><nav aria-label="Help and privacy"><a href="/privacy/">Privacy</a><a href="/support/">Support</a></nav><p>Good habits. Great company.</p></div>
     </footer>
   </body>
 </html>

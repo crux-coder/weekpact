@@ -95,6 +95,8 @@ class ReceivedCrewInvite {
 }
 
 abstract interface class CrewBackend {
+  Future<void> leaveCrew({required String crewId, String? successorId});
+  Future<void> removeMember({required String crewId, required String userId});
   Future<List<ReceivedCrewInvite>> fetchReceivedInvites();
   Future<void> respondToInvite({
     required String inviteId,
@@ -251,6 +253,25 @@ class SupabaseCrewBackend implements CrewBackend {
     );
   }
 
+  @override
+  Future<void> leaveCrew({required String crewId, String? successorId}) async {
+    await _client.rpc(
+      'leave_crew',
+      params: {'p_crew_id': crewId, 'p_successor_id': successorId},
+    );
+  }
+
+  @override
+  Future<void> removeMember({
+    required String crewId,
+    required String userId,
+  }) async {
+    await _client.rpc(
+      'remove_crew_member',
+      params: {'p_crew_id': crewId, 'p_user_id': userId},
+    );
+  }
+
   String _requireUserId() {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('You must be signed in.');
@@ -260,6 +281,14 @@ class SupabaseCrewBackend implements CrewBackend {
 
 class MissingCrewBackend implements CrewBackend {
   const MissingCrewBackend();
+
+  @override
+  Future<void> leaveCrew({required String crewId, String? successorId}) =>
+      Future.error(_error);
+
+  @override
+  Future<void> removeMember({required String crewId, required String userId}) =>
+      Future.error(_error);
 
   @override
   Future<List<ReceivedCrewInvite>> fetchReceivedInvites() async => [];

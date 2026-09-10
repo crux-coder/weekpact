@@ -1,3 +1,7 @@
+import '../onboarding/profile_avatar.dart';
+import '../auth/account_actions.dart';
+import '../notifications/notification_settings_card.dart';
+
 import 'package:flutter/services.dart';
 
 import '../crew/crew_week_page.dart';
@@ -11,13 +15,12 @@ import 'package:flutter/material.dart';
 import '../goals/goals_backend.dart';
 import '../goals/goals_page.dart';
 
-import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../auth/auth_backend.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_page.dart';
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../theme/theme_preference.dart';
 import '../widgets/brutal_widgets.dart';
 import 'today_widgets.dart';
@@ -48,22 +51,22 @@ class _HomePageState extends State<HomePage> {
     BrutalNavigationItem(
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
-      color: KeepUpColors.softYellow,
+      color: WeekPactColors.softYellow,
     ),
     BrutalNavigationItem(
       label: 'Goals',
       icon: HugeIconsStrokeRounded.target02,
-      color: KeepUpColors.mintGreen,
+      color: WeekPactColors.mintGreen,
     ),
     BrutalNavigationItem(
       label: 'Crews',
       icon: HugeIconsStrokeRounded.userGroup,
-      color: KeepUpColors.softYellow,
+      color: WeekPactColors.softYellow,
     ),
     BrutalNavigationItem(
       label: 'Account',
       icon: HugeIconsStrokeRounded.userAccount,
-      color: KeepUpColors.softCoral,
+      color: WeekPactColors.softCoral,
     ),
   ];
 
@@ -124,11 +127,13 @@ class _HomePageState extends State<HomePage> {
           CrewPage(
             active: _selectedIndex == 2,
             onInviteAccepted: () => _selectDestination(0),
+            onCrewLeft: () => _selectDestination(0),
             backend: widget.crewBackend,
             currentUserEmail: widget.user.email,
           ),
           _AccountDestination(
-            email: widget.user.email,
+            user: widget.user,
+            backend: widget.authBackend,
             signingOut: _signingOut,
             onSignOut: _signOut,
           ),
@@ -374,11 +379,13 @@ class _HomeDestinationState extends State<_HomeDestination>
 
 class _AccountDestination extends StatelessWidget {
   const _AccountDestination({
-    required this.email,
+    required this.user,
+    required this.backend,
     required this.signingOut,
     required this.onSignOut,
   });
-  final String email;
+  final AuthUser user;
+  final AuthBackend backend;
   final bool signingOut;
   final VoidCallback onSignOut;
 
@@ -396,12 +403,18 @@ class _AccountDestination extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  HugeIcon(
-                    icon: HugeIconsStrokeRounded.userAccount,
-                    color: context.ink,
-                    size: 46,
-                    strokeWidth: 2,
-                  ),
+                  ProfileAvatar(backend: backend),
+                  if (user.firstName.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '${user.firstName} ${user.lastName}',
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   Text(
                     'SIGNED IN AS',
@@ -414,7 +427,7 @@ class _AccountDestination extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    email,
+                    user.email,
                     style: TextStyle(
                       color: context.ink,
                       fontSize: 18,
@@ -460,7 +473,7 @@ class _AccountDestination extends StatelessWidget {
                       side: WidgetStatePropertyAll(
                         BorderSide(
                           color: context.border,
-                          width: KeepUpMetrics.border,
+                          width: WeekPactMetrics.border,
                         ),
                       ),
                       textStyle: const WidgetStatePropertyAll(
@@ -478,6 +491,8 @@ class _AccountDestination extends StatelessWidget {
               ),
             ),
           ),
+          const NotificationSettingsCard(),
+          AccountActions(backend: backend, enabled: !signingOut),
           const SizedBox(height: 30),
           BrutalButton(
             label: 'LOG OUT',

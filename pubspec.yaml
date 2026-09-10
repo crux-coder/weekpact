@@ -1,4 +1,4 @@
-name: keepup
+name: weekpact
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -31,7 +31,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  url_launcher: 6.3.2
   app_links: 7.2.1
+  image_picker: 1.2.3
+  firebase_core: 4.14.0
+  firebase_messaging: 16.6.0
   hugeicons: 1.1.7
   shared_preferences: 2.5.5
   supabase_flutter: 2.17.2

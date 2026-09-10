@@ -14,7 +14,7 @@ const email = {
   from: "WeekPact <invites@example.com>",
   to: "member@example.com",
   subject: "Join Željko's crew",
-  text: "Open keepup://invite?invite=test-token",
+  text: "Open weekpact://invite?invite=test-token",
   html: "<p>Join the crew</p>",
 };
 

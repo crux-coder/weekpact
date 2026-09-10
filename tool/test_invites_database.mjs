@@ -1,3 +1,5 @@
+import { notificationTestSchema } from './notification_test_schema.mjs';
+import { storageTestSchema } from './storage_test_schema.mjs';
 // PGLITE_MODULE may point to a local @electric-sql/pglite installation.
 import { readFile, readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -16,12 +18,14 @@ await db.exec(`
   grant execute on function auth.uid() to authenticated;
   create function extensions.digest(value text, algorithm text) returns bytea language sql as $$ select sha256(convert_to(value, 'UTF8')) $$;
 `);
+await db.exec(storageTestSchema);
+await db.exec(notificationTestSchema);
 const directory = new URL('../supabase/migrations/', import.meta.url);
 for (const file of (await readdir(directory)).filter(f => f.endsWith('.sql')).sort()) {
   await db.exec((await readFile(new URL(file, directory), 'utf8')).replace('create extension if not exists pgcrypto with schema extensions;', ''));
 }
 for (const [user, email, confirmed] of [[owner,'owner@example.com',true],[recipient,'Member@Example.com',true],[outsider,'outsider@example.com',true],[unverified,'unverified@example.com',false],[otherOwner,'other@example.com',true]]) {
-  await db.query('insert into auth.users values($1,$2,case when $3 then now() else null end)', [user,email,confirmed]);
+  await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,case when $3 then now() else null end)', [user,email,confirmed]);
 }
 await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2),($3,'Other Crew',$4)", [crew,owner,otherCrew,otherOwner]);
 await db.query("insert into crew_goals(crew_id,title,frequency,days_per_week,created_by) values($1,'Morning walk','weekly',3,$2)", [crew,owner]);

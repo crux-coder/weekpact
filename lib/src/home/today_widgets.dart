@@ -8,7 +8,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../goals/goal_icons.dart';
 import '../goals/goals_backend.dart';
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/page_frame.dart';
 import 'home_backend.dart';
@@ -74,7 +74,7 @@ class TodayHeader extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: BrutalShadow(
                     fillColor: context.mint,
-                    shadowOffset: KeepUpMetrics.smallShadow,
+                    shadowOffset: WeekPactMetrics.smallShadow,
                     child: PopupMenuButton<String>(
                       tooltip: 'Select crew',
                       enabled: crews.length > 1 && onSelect != null,
@@ -178,7 +178,7 @@ class TodayGoalsCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: context.border,
-                        width: KeepUpMetrics.border,
+                        width: WeekPactMetrics.border,
                       ),
                       borderRadius: BorderRadius.circular(7),
                     ),
@@ -255,7 +255,10 @@ class _TodayGoalRow extends StatelessWidget {
         color: checked ? context.mint : context.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(9),
-          side: BorderSide(color: context.border, width: KeepUpMetrics.border),
+          side: BorderSide(
+            color: context.border,
+            width: WeekPactMetrics.border,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -275,7 +278,7 @@ class _TodayGoalRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: context.border,
-                      width: KeepUpMetrics.border,
+                      width: WeekPactMetrics.border,
                     ),
                   ),
                   child: HugeIcon(
@@ -315,7 +318,7 @@ class _TodayGoalRow extends StatelessWidget {
                               border: i < progress
                                   ? Border.all(
                                       color: context.border,
-                                      width: KeepUpMetrics.fineBorder,
+                                      width: WeekPactMetrics.fineBorder,
                                     )
                                   : null,
                             ),
@@ -333,7 +336,7 @@ class _TodayGoalRow extends StatelessWidget {
                     color: checked ? context.mint : context.surface,
                     border: Border.all(
                       color: context.border,
-                      width: KeepUpMetrics.border,
+                      width: WeekPactMetrics.border,
                     ),
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -440,7 +443,7 @@ class TodayCrewCard extends StatelessWidget {
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: context.border,
-                                width: KeepUpMetrics.border,
+                                width: WeekPactMetrics.border,
                               ),
                             ),
                             child: Text(
@@ -477,7 +480,7 @@ class TodayCrewCard extends StatelessWidget {
                                     : context.surface,
                                 border: Border.all(
                                   color: context.border,
-                                  width: KeepUpMetrics.border,
+                                  width: WeekPactMetrics.border,
                                 ),
                               ),
                             ),

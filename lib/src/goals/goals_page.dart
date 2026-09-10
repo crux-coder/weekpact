@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_drawer.dart';
 import '../widgets/brutal_widgets.dart';
 import '../widgets/page_frame.dart';
@@ -213,7 +213,7 @@ class _GoalsPageState extends State<GoalsPage> {
                       if (index < _goals!.length - 1)
                         Divider(
                           color: context.border,
-                          thickness: KeepUpMetrics.fineBorder,
+                          thickness: WeekPactMetrics.fineBorder,
                           height: 2,
                         ),
                     ],
@@ -227,14 +227,6 @@ class _GoalsPageState extends State<GoalsPage> {
                         ),
                       ),
                   ],
-                ),
-              ),
-            if (!crew.isOwner)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  'Your crew owner manages these goals.',
-                  style: TextStyle(color: context.muted),
                 ),
               ),
           ],
@@ -275,7 +267,7 @@ class _GoalRow extends StatelessWidget {
                 : context.mint,
             border: Border.all(
               color: context.border,
-              width: KeepUpMetrics.border,
+              width: WeekPactMetrics.border,
             ),
             borderRadius: BorderRadius.circular(7),
           ),
@@ -490,8 +482,8 @@ class _GoalDrawerState extends State<_GoalDrawer> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: KeepUpMetrics.buttonHeight,
-                  height: KeepUpMetrics.buttonHeight,
+                  width: WeekPactMetrics.buttonHeight,
+                  height: WeekPactMetrics.buttonHeight,
                   child: BrutalShadow(
                     fillColor: context.yellow,
                     child: IconButton(

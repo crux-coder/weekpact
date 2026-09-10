@@ -29,7 +29,7 @@ export function createInviteEmailSender(
     },
     requestHandler: new FetchHttpHandler({ requestTimeout: 10_000 }),
     // Edge runtimes do not expose the host OS details used by the Node default.
-    defaultUserAgentProvider: async () => [["keepup-invites", "1.0"]],
+    defaultUserAgentProvider: async () => [["weekpact-invites", "1.0"]],
     // SES SendEmail has no idempotency key. Do not automatically retry sends.
     maxAttempts: 1,
   });

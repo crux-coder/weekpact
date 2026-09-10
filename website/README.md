@@ -26,7 +26,7 @@ Set these in `website/.env` or the hosting provider's build environment, then re
 - `PUBLIC_IOS_INSTALL_URL`: optional App Store or public TestFlight URL.
 - `PUBLIC_ANDROID_INSTALL_URL`: optional Google Play URL.
 - `IOS_APP_ID`: Apple application identifier, defaults to the current project's `R5L8RZTV6R.dev.codepeaktrail.weekpact`. Confirm it matches the signed app's application-identifier entitlement.
-- `ANDROID_PACKAGE_NAME`: defaults to the current `com.example.keepup`; change alongside the app before publishing.
+- `ANDROID_PACKAGE_NAME`: defaults to the current `dev.codepeaktrail.weekpact`; change alongside the app before publishing.
 - `ANDROID_SHA256_CERT_FINGERPRINTS`: comma-separated SHA-256 signing certificate fingerprints. Use the Play App Signing certificate for Play builds. Empty means Android association is disabled (`assetlinks.json` contains an empty array).
 
 Download links are omitted until supplied. These are public build settings; do not add credentials.
@@ -66,3 +66,10 @@ supabase secrets set APP_BASE_URL=https://weekpact.codepeaktrail.dev/invite/
 This changes future crew invitation emails. Existing emailed links do not change. Keep Flutter's `INVITE_REDIRECT_BASE` and the Supabase Auth redirect allow-list on their working custom scheme: this site is not an authentication callback handler. Crew email links and authentication callbacks have separate jobs.
 
 No live email settings, native entitlements, DNS, or hosting were changed when creating this website.
+
+## Privacy and support
+
+`/privacy/` and `/support/` are public static pages linked from the site footer
+and the mobile app. Both use `codepeaktrail@gmail.com`. Update the policy when
+production data practices change. Publish these pages before submitting the app;
+see [account readiness](../docs/app-review-accounts.md).

@@ -3,7 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
-import '../theme/keepup_theme.dart';
+import '../theme/weekpact_theme.dart';
 import '../widgets/brutal_widgets.dart';
 
 class InviteAcceptancePage extends StatefulWidget {
@@ -75,7 +75,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                               color: context.surface,
                               border: Border.all(
                                 color: context.ink,
-                                width: KeepUpMetrics.border,
+                                width: WeekPactMetrics.border,
                               ),
                               borderRadius: BorderRadius.circular(9),
                             ),
