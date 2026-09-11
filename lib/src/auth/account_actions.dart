@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/app_sheet.dart';
+import '../widgets/settings_row.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,7 +19,8 @@ const supportUrl = String.fromEnvironment(
 );
 
 class PublicAccountLinks extends StatelessWidget {
-  const PublicAccountLinks({super.key});
+  const PublicAccountLinks({super.key, this.asRows = false});
+  final bool asRows;
 
   Future<void> _open(BuildContext context, String url) async {
     try {
@@ -38,19 +43,35 @@ class PublicAccountLinks extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    alignment: WrapAlignment.center,
-    children: [
-      TextButton(
-        onPressed: () => _open(context, privacyUrl),
-        child: const Text('Privacy policy'),
-      ),
-      TextButton(
-        onPressed: () => _open(context, supportUrl),
-        child: const Text('Support'),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) => asRows
+      ? Column(
+          children: [
+            SettingsRow(
+              icon: Icons.support_agent,
+              label: 'Support',
+              onTap: () => _open(context, supportUrl),
+            ),
+            const Divider(height: 1),
+            SettingsRow(
+              icon: Icons.description_outlined,
+              label: 'Privacy policy',
+              onTap: () => _open(context, privacyUrl),
+            ),
+          ],
+        )
+      : Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () => _open(context, privacyUrl),
+              child: const Text('Privacy policy'),
+            ),
+            TextButton(
+              onPressed: () => _open(context, supportUrl),
+              child: const Text('Support'),
+            ),
+          ],
+        );
 }
 
 class AccountActions extends StatefulWidget {
@@ -59,7 +80,9 @@ class AccountActions extends StatefulWidget {
     required this.backend,
     this.showPasswordReset = true,
     this.enabled = true,
+    this.asRows = false,
   });
+  final bool asRows;
   final AuthBackend backend;
   final bool showPasswordReset;
   final bool enabled;
@@ -72,7 +95,7 @@ class _AccountActionsState extends State<AccountActions> {
   String? _error;
 
   Future<void> _delete() async {
-    final password = await showDialog<String>(
+    final password = await showAppDialog<String>(
       context: context,
       builder: (_) => const _DeleteAccountDialog(),
     );
@@ -100,8 +123,25 @@ class _AccountActionsState extends State<AccountActions> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const SizedBox(height: 20),
-      if (widget.showPasswordReset)
+      if (!widget.asRows) const SizedBox(height: 20),
+      if (widget.showPasswordReset && widget.asRows) ...[
+        SettingsRow(
+          icon: Icons.lock_outline,
+          label: 'Reset password',
+          onTap: _busy || !widget.enabled
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PasswordPage(
+                      backend: widget.backend,
+                      initialEmail: widget.backend.currentUser?.email ?? '',
+                    ),
+                  ),
+                ),
+        ),
+        const Divider(height: 1),
+      ],
+      if (widget.showPasswordReset && !widget.asRows)
         TextButton(
           onPressed: _busy || !widget.enabled
               ? null
@@ -115,7 +155,7 @@ class _AccountActionsState extends State<AccountActions> {
                 ),
           child: const Text('Reset password'),
         ),
-      const PublicAccountLinks(),
+      PublicAccountLinks(asRows: widget.asRows),
       TextButton(
         onPressed: _busy || !widget.enabled ? null : _delete,
         style: TextButton.styleFrom(

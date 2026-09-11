@@ -1,7 +1,5 @@
+import '../auth/account_page.dart';
 import 'home_surface.dart';
-import '../onboarding/profile_avatar.dart';
-import '../auth/account_actions.dart';
-import '../notifications/notification_settings_card.dart';
 
 import 'package:flutter/services.dart';
 
@@ -22,10 +20,8 @@ import '../auth/auth_backend.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_page.dart';
 import '../theme/weekpact_theme.dart';
-import '../theme/theme_preference.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import 'today_widgets.dart';
-import '../widgets/page_frame.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -49,22 +45,22 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static const _navigationItems = [
-    BrutalNavigationItem(
+    AppNavigationItem(
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
       color: WeekPactColors.softYellow,
     ),
-    BrutalNavigationItem(
+    AppNavigationItem(
       label: 'Goals',
       icon: HugeIconsStrokeRounded.target02,
       color: WeekPactColors.mintGreen,
     ),
-    BrutalNavigationItem(
+    AppNavigationItem(
       label: 'Crews',
       icon: HugeIconsStrokeRounded.userGroup,
       color: WeekPactColors.softYellow,
     ),
-    BrutalNavigationItem(
+    AppNavigationItem(
       label: 'Account',
       icon: HugeIconsStrokeRounded.userAccount,
       color: WeekPactColors.softCoral,
@@ -135,9 +131,10 @@ class _HomePageState extends State<HomePage> {
             onInviteAccepted: () => _selectDestination(0),
             onCrewLeft: () => _selectDestination(0),
             backend: widget.crewBackend,
+            profileBackend: widget.homeBackend,
             currentUserEmail: widget.user.email,
           ),
-          _AccountDestination(
+          AccountPage(
             user: widget.user,
             backend: widget.authBackend,
             signingOut: _signingOut,
@@ -145,16 +142,14 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      bottomNavigationBar: BrutalBottomNavigationBar(
+      bottomNavigationBar: AppBottomNavigationBar(
         items: _navigationItems,
-        flatHome: _selectedIndex == 0,
         selectedIndex: _selectedIndex,
         onSelected: _selectDestination,
       ),
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value:
-          _selectedIndex == 0 || Theme.of(context).brightness == Brightness.dark
+      value: Theme.of(context).brightness == Brightness.dark
           ? SystemUiOverlayStyle.light
           : SystemUiOverlayStyle.dark,
       child: HomeBackground(child: scaffold),
@@ -320,7 +315,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                         Text(
                           _error!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: homePaper),
+                          style: TextStyle(color: context.ink),
                         ),
                         TextButton(
                           onPressed: _refresh,
@@ -335,18 +330,18 @@ class _HomeDestinationState extends State<_HomeDestination>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'Your week starts with a crew.',
                           style: TextStyle(
-                            color: homePaper,
+                            color: context.ink,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        BrutalButton(
+                        AppButton(
                           label: 'GO TO CREWS',
-                          color: context.mint,
+
                           onPressed: widget.onOpenCrews,
                         ),
                       ],
@@ -383,18 +378,18 @@ class _HomeDestinationState extends State<_HomeDestination>
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'No goals yet.',
                                     style: TextStyle(
-                                      color: homePaper,
+                                      color: context.ink,
                                       fontSize: 24,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  BrutalButton(
+                                  AppButton(
                                     label: 'VIEW GOALS',
-                                    color: context.yellow,
+
                                     onPressed: widget.onOpenGoals,
                                   ),
                                 ],
@@ -438,145 +433,5 @@ class _HomeDestinationState extends State<_HomeDestination>
         ),
       ),
     );
-  }
-}
-
-class _AccountDestination extends StatelessWidget {
-  const _AccountDestination({
-    required this.user,
-    required this.backend,
-    required this.signingOut,
-    required this.onSignOut,
-  });
-  final AuthUser user;
-  final AuthBackend backend;
-  final bool signingOut;
-  final VoidCallback onSignOut;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DestinationFrame(
-      title: 'ACCOUNT.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          BrutalShadow(
-            fillColor: context.coral,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ProfileAvatar(backend: backend),
-                  if (user.firstName.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      '${user.firstName} ${user.lastName}',
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Text(
-                    'SIGNED IN AS',
-                    style: TextStyle(
-                      color: context.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    user.email,
-                    style: TextStyle(
-                      color: context.ink,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 26),
-          BrutalTabbedCard(
-            title: 'APPEARANCE',
-            tabColor: context.mint,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SegmentedButton<ThemeMode>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Light'),
-                      ),
-                      ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('Device'),
-                      ),
-                    ],
-                    selected: {ThemePreference.of(context).mode},
-                    onSelectionChanged: (selection) =>
-                        ThemePreference.of(context).onChanged(selection.single),
-                    style: ButtonStyle(
-                      foregroundColor: WidgetStatePropertyAll(context.ink),
-                      backgroundColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected)
-                            ? context.yellow
-                            : context.surface,
-                      ),
-                      side: WidgetStatePropertyAll(
-                        BorderSide(
-                          color: context.border,
-                          width: WeekPactMetrics.border,
-                        ),
-                      ),
-                      textStyle: const WidgetStatePropertyAll(
-                        TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Device follows your system appearance.',
-                    style: TextStyle(color: context.muted, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const NotificationSettingsCard(),
-          AccountActions(backend: backend, enabled: !signingOut),
-          const SizedBox(height: 30),
-          BrutalButton(
-            label: 'LOG OUT',
-            color: context.pink,
-            isLoading: signingOut,
-            onPressed: onSignOut,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DestinationFrame extends StatelessWidget {
-  const _DestinationFrame({required this.title, required this.child});
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return PageFrame(header: PageHeading(title), child: child);
   }
 }

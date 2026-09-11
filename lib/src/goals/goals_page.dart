@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_drawer.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_sheet.dart';
+import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 import 'goals_backend.dart';
 import 'goal_icons.dart';
+import 'goals_overview.dart';
 import 'goal_icon_picker.dart';
 
 import 'package:hugeicons/hugeicons.dart';
@@ -85,7 +86,7 @@ class _GoalsPageState extends State<GoalsPage> {
   Future<void> _addGoal([CrewGoal? existing]) async {
     final crew = _selected;
     if (crew == null || !crew.isOwner) return;
-    final goal = await showBrutalDrawer<CrewGoal>(
+    final goal = await showAppSheet<CrewGoal>(
       context: context,
       builder: (_) =>
           _GoalDrawer(crew: crew, backend: widget.backend, goal: existing),
@@ -99,18 +100,55 @@ class _GoalsPageState extends State<GoalsPage> {
   Widget build(BuildContext context) {
     final crew = _selected;
     return PageFrame(
-      header: const PageHeading('GOALS.'),
+      header: Row(
+        children: [
+          const Expanded(child: PageHeading('Goals')),
+          if (crew != null) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: AppSurface(
+                builder: (context) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: crew.id,
+                      isExpanded: true,
+                      dropdownColor: context.surface,
+                      items: _crews!
+                          .map(
+                            (entry) => DropdownMenuItem(
+                              value: entry.id,
+                              child: Text(
+                                entry.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _select,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
       onRefresh: _refresh,
       loading: _crews == null && _error == null,
-      skeleton: const _GoalsSkeleton(includeSelector: true),
+      skeleton: const _GoalsSkeleton(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_crews != null && _crews!.isEmpty)
-            BrutalTabbedCard(
-              title: 'A SHARED START',
-              tabColor: context.mint,
-              child: Padding(
+            AppSectionCard(
+              title: 'A shared start',
+              builder: (context) => Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -128,9 +166,9 @@ class _GoalsPageState extends State<GoalsPage> {
                       'Create or join a crew to start building weekly habits together.',
                     ),
                     const SizedBox(height: 22),
-                    BrutalButton(
+                    AppButton(
                       label: 'GO TO CREWS',
-                      color: context.coral,
+
                       onPressed: widget.onOpenCrews,
                     ),
                   ],
@@ -138,97 +176,58 @@ class _GoalsPageState extends State<GoalsPage> {
               ),
             ),
           if (crew != null) ...[
-            BrutalTabbedCard(
-              title: 'SELECT CREW',
-              tabColor: context.yellow,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: crew.id,
-                    isExpanded: true,
-                    dropdownColor: context.surface,
-                    items: _crews!
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.id,
-                            child: Text(
-                              entry.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _select,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 26),
             if (_goals == null && _error == null)
               const _GoalsSkeleton()
-            else if (_goals != null)
-              BrutalTabbedCard(
-                title: 'WEEKLY GOALS',
-                tabColor: context.mint,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_goals!.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Small steps start here.',
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              crew.isOwner
-                                  ? 'Add your first shared goal. Choose every day or a few days each week.'
-                                  : 'Your crew owner hasn’t added any goals yet.',
-                            ),
-                          ],
-                        ),
-                      ),
-                    for (var index = 0; index < _goals!.length; index++) ...[
-                      _GoalRow(
-                        goal: _goals![index],
-                        onEdit: crew.isOwner
-                            ? () => _addGoal(_goals![index])
-                            : null,
-                      ),
-                      if (index < _goals!.length - 1)
-                        Divider(
-                          color: context.border,
-                          thickness: WeekPactMetrics.fineBorder,
-                          height: 2,
-                        ),
-                    ],
-                    if (crew.isOwner)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 16, 18, 22),
-                        child: BrutalButton(
-                          label: 'ADD GOAL',
-                          color: context.coral,
-                          onPressed: _addGoal,
-                        ),
-                      ),
-                  ],
+            else if (_goals != null) ...[
+              WeeklyRhythmCard(goals: _goals!),
+              const SizedBox(height: 22),
+              Text(
+                'Your goals',
+                style: TextStyle(
+                  color: context.ink,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 12),
+              if (_goals!.isEmpty)
+                AppSurface(
+                  builder: (context) => Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Small steps start here.',
+                          style: TextStyle(
+                            fontSize: 23,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          crew.isOwner
+                              ? 'Add your first shared goal. Choose every day or a few days each week.'
+                              : 'Your crew owner hasn’t added any goals yet.',
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                GoalSquareGrid(
+                  goals: _goals!,
+                  onEdit: crew.isOwner ? (goal) => _addGoal(goal) : null,
+                ),
+              if (crew.isOwner) ...[
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'ADD GOAL',
+                  color: WeekPactColors.mintGreen,
+                  onPressed: _addGoal,
+                ),
+              ],
+            ],
           ],
           if (_error != null) ...[
             const SizedBox(height: 16),
@@ -247,75 +246,8 @@ class _GoalsPageState extends State<GoalsPage> {
   }
 }
 
-class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.goal, this.onEdit});
-  final VoidCallback? onEdit;
-  final CrewGoal goal;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(16),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: goal.frequency == GoalFrequency.daily
-                ? context.yellow
-                : context.mint,
-            border: Border.all(
-              color: context.border,
-              width: WeekPactMetrics.border,
-            ),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: HugeIcon(
-            icon: GoalIcon.find(goal.iconKey).data,
-            color: context.ink,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                goal.title,
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                goal.schedule,
-                style: TextStyle(
-                  color: context.muted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (onEdit != null)
-          IconButton(
-            tooltip: 'Edit ${goal.title}',
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
-          ),
-      ],
-    ),
-  );
-}
-
 class _GoalsSkeleton extends StatelessWidget {
-  const _GoalsSkeleton({this.includeSelector = false});
-  final bool includeSelector;
-
+  const _GoalsSkeleton();
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading goals',
@@ -324,44 +256,60 @@ class _GoalsSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (includeSelector) ...[
-            BrutalTabbedCard(
-              title: 'SELECT CREW',
-              tabColor: context.yellow,
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: SkeletonBar(height: 22),
+          AppSurface(
+            fillColor: WeekPactColors.softYellow,
+            builder: (context) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBar(width: 160, height: 20),
+                  SizedBox(height: 20),
+                  SkeletonBar(width: 90, height: 64),
+                  SizedBox(height: 14),
+                  SkeletonBar(height: 14),
+                ],
               ),
             ),
-            const SizedBox(height: 28),
-          ],
-          BrutalTabbedCard(
-            title: 'WEEKLY GOALS',
-            tabColor: context.mint,
-            child: Column(
-              children: [
-                for (var index = 0; index < 3; index++)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        SkeletonBar(width: 42, height: 42),
-                        SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SkeletonBar(height: 18),
-                              SizedBox(height: 8),
-                              SkeletonBar(width: 110, height: 12),
-                            ],
-                          ),
+          ),
+          const SizedBox(height: 22),
+          Text(
+            'Your goals',
+            style: TextStyle(
+              color: context.ink,
+              fontSize: 25,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < 2; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: AppSurface(
+                      builder: (context) => Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: SkeletonBar(width: 36, height: 36),
+                            ),
+                            Spacer(),
+                            SkeletonBar(height: 18),
+                            SizedBox(height: 8),
+                            SkeletonBar(height: 12),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
+                ),
               ],
-            ),
+            ],
           ),
         ],
       ),
@@ -443,8 +391,8 @@ class _GoalDrawerState extends State<_GoalDrawer> {
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: !_saving,
-    child: BrutalDrawer(
-      child: Form(
+    child: AppSheet(
+      builder: (context) => Form(
         key: _form,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -478,52 +426,54 @@ class _GoalDrawerState extends State<_GoalDrawer> {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: WeekPactMetrics.buttonHeight,
-                  height: WeekPactMetrics.buttonHeight,
-                  child: BrutalShadow(
-                    fillColor: context.yellow,
-                    child: IconButton(
-                      tooltip: 'Change icon: ${GoalIcon.find(_iconKey).label}',
-                      onPressed: _saving
-                          ? null
-                          : () async {
-                              FocusScope.of(context).unfocus();
-                              final selected = await showBrutalDrawer<String>(
-                                context: context,
-                                builder: (_) =>
-                                    GoalIconPicker(selectedKey: _iconKey),
-                              );
-                              if (mounted && selected != null) {
-                                setState(() => _iconKey = selected);
-                              }
-                            },
-                      icon: HugeIcon(
-                        icon: GoalIcon.find(_iconKey).data,
-                        color: context.ink,
-                        size: 24,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: AppSurface(
+                      fillColor: context.yellow,
+                      builder: (context) => IconButton(
+                        tooltip:
+                            'Change icon: ${GoalIcon.find(_iconKey).label}',
+                        onPressed: _saving
+                            ? null
+                            : () async {
+                                FocusScope.of(context).unfocus();
+                                final selected = await showAppSheet<String>(
+                                  context: context,
+                                  builder: (_) =>
+                                      GoalIconPicker(selectedKey: _iconKey),
+                                );
+                                if (mounted && selected != null) {
+                                  setState(() => _iconKey = selected);
+                                }
+                              },
+                        icon: HugeIcon(
+                          icon: GoalIcon.find(_iconKey).data,
+                          color: context.ink,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: BrutalTextField(
-                    hint: 'Move for 30 minutes',
-                    controller: _title,
-                    validator: (value) {
-                      final title = value?.trim() ?? '';
-                      if (title.length < 2 || title.length > 100) {
-                        return 'Use 2–100 characters';
-                      }
-                      return null;
-                    },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppTextField(
+                      hint: 'Move for 30 minutes',
+                      controller: _title,
+                      validator: (value) {
+                        final title = value?.trim() ?? '';
+                        if (title.length < 2 || title.length > 100) {
+                          return 'Use 2–100 characters';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 22),
             const Text(
@@ -581,9 +531,9 @@ class _GoalDrawerState extends State<_GoalDrawer> {
                 child: Text(_error!, style: TextStyle(color: context.errorInk)),
               ),
             const SizedBox(height: 24),
-            BrutalButton(
+            AppButton(
               label: widget.goal == null ? 'SAVE GOAL' : 'SAVE CHANGES',
-              color: context.coral,
+
               isLoading: _saving,
               onPressed: _save,
             ),

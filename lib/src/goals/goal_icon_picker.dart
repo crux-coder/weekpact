@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_drawer.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_sheet.dart';
+import '../widgets/app_components.dart';
 import 'goal_icons.dart';
 
 class GoalIconPicker extends StatefulWidget {
@@ -25,8 +25,8 @@ class _GoalIconPickerState extends State<GoalIconPicker> {
               '${icon.label} ${icon.keywords}'.toLowerCase().contains(_query),
         )
         .toList();
-    return BrutalDrawer(
-      child: Column(
+    return AppSheet(
+      builder: (context) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -45,8 +45,8 @@ class _GoalIconPickerState extends State<GoalIconPicker> {
             ],
           ),
           const SizedBox(height: 16),
-          BrutalShadow(
-            child: TextField(
+          AppSurface(
+            builder: (context) => TextField(
               style: TextStyle(color: context.fieldInk, fontSize: 17),
               decoration: InputDecoration(
                 hintText: 'Search icons',

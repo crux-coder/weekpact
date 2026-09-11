@@ -13,7 +13,7 @@ class PageFrame extends StatelessWidget {
     this.skeleton,
     this.onRefresh,
     this.footer,
-    this.topPadding = 26,
+    this.topPadding = 16,
   }) : assert(!loading || skeleton != null);
 
   final double topPadding;
@@ -32,7 +32,7 @@ class PageFrame extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
-          const SizedBox(height: 30),
+          const SizedBox(height: WeekPactMetrics.sectionGap),
           if (loading) skeleton! else child,
         ],
       ),
@@ -76,18 +76,24 @@ class PageHeading extends StatelessWidget {
     title,
     style: TextStyle(
       color: context.ink,
-      fontSize: 42,
-      height: .9,
+      fontSize: 32,
+      height: 1.1,
       fontWeight: FontWeight.w900,
-      letterSpacing: -2,
+      letterSpacing: -.5,
     ),
   );
 }
 
 class SkeletonBar extends StatelessWidget {
-  const SkeletonBar({super.key, this.width, required this.height});
+  const SkeletonBar({
+    super.key,
+    this.width,
+    required this.height,
+    this.radius = 5,
+  });
   final double? width;
   final double height;
+  final double radius;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -95,7 +101,7 @@ class SkeletonBar extends StatelessWidget {
     height: height,
     decoration: BoxDecoration(
       color: context.ink.withValues(alpha: .14),
-      borderRadius: BorderRadius.circular(5),
+      borderRadius: BorderRadius.circular(radius),
     ),
   );
 }

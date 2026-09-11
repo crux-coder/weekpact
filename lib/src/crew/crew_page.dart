@@ -4,10 +4,12 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
 import 'crew_invites_pane.dart';
-import '../widgets/brutal_widgets.dart';
-import '../widgets/brutal_drawer.dart';
+import '../widgets/app_components.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
+import '../home/home_backend.dart';
+import 'crew_people_grid.dart';
 
 const _appTimezone = String.fromEnvironment(
   'APP_TIMEZONE',
@@ -19,11 +21,13 @@ class CrewPage extends StatefulWidget {
     super.key,
     required this.backend,
     required this.currentUserEmail,
+    this.profileBackend,
     this.active = true,
     this.onInviteAccepted,
     this.onCrewLeft,
   });
 
+  final HomeBackend? profileBackend;
   final bool active;
   final CrewBackend backend;
   final String currentUserEmail;
@@ -35,12 +39,15 @@ class CrewPage extends StatefulWidget {
 }
 
 class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
-  bool _showInvites = false;
+  bool _invitesOpen = false;
+  int _receivedInviteCount = 0;
   final _invitesKey = GlobalKey<CrewInvitesPaneState>();
   final _crewNameController = TextEditingController();
   final _createFormKey = GlobalKey<FormState>();
 
   CrewDetails? _crew;
+  String? _profileCrewId;
+  Map<String, WeekMember> _memberProfiles = {};
   bool _loading = false;
   Future<void>? _crewLoad;
   bool _hasLoaded = false;
@@ -53,6 +60,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadCrew();
+    _loadInviteCount();
   }
 
   @override
@@ -74,6 +82,27 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     }
     try {
       final crew = await widget.backend.fetchCrew();
+      if (crew?.id != _profileCrewId) {
+        _memberProfiles = {};
+        _profileCrewId = crew?.id;
+      }
+      if (crew != null && widget.profileBackend != null) {
+        try {
+          final week = await widget.profileBackend!.fetchWeek(crew.id);
+          if (!mounted) return;
+          _memberProfiles = {
+            for (final member in week.members) member.id: member,
+          };
+        } catch (_) {
+          if (mounted) {
+            setState(
+              () => _error =
+                  'Could not refresh member profiles. Pull down to retry.',
+            );
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _crew = crew;
@@ -114,7 +143,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         .where((m) => m.userId != crew.ownerId)
         .toList();
     if (leaving && crew.isOwner && successors.isEmpty) {
-      await showDialog<void>(
+      await showAppDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('You’re the only member'),
@@ -132,7 +161,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       return;
     }
     String? successorId;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -221,7 +250,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   Future<void> _openInviteDrawer() async {
     final crew = _crew;
     if (crew == null || !crew.isOwner) return;
-    final updated = await showBrutalDrawer<CrewDetails>(
+    final updated = await showAppSheet<CrewDetails>(
       context: context,
       builder: (context) => _InviteDrawer(
         crew: crew,
@@ -242,7 +271,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant CrewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !oldWidget.active) _refresh();
+    if ((widget.active && !oldWidget.active) ||
+        widget.profileBackend != oldWidget.profileBackend) {
+      _refresh();
+    }
   }
 
   @override
@@ -253,6 +285,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   Future<void> _refresh() async {
     await Future.wait([
       _loadCrew(),
+      _loadInviteCount(),
       if (_invitesKey.currentState != null) _invitesKey.currentState!.refresh(),
     ]);
   }
@@ -263,65 +296,86 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     if (!mounted) return;
     await _loadCrew();
     if (!mounted) return;
-    setState(() => _showInvites = false);
+    if (_invitesOpen && _invitesKey.currentContext != null) {
+      Navigator.of(_invitesKey.currentContext!).pop();
+    }
     widget.onInviteAccepted?.call();
   }
 
-  Widget _crewCard({required Widget child}) => BrutalTabbedCard(
-    title: 'YOUR CREW',
-    tabColor: context.mint,
-    tabs: [
-      Flexible(
-        child: Container(
-          decoration: BoxDecoration(
-            color: context.shadow,
-            border: Border(
-              top: BorderSide(
-                color: context.border,
-                width: WeekPactMetrics.border,
-              ),
-              left: BorderSide(
-                color: context.border,
-                width: WeekPactMetrics.border,
-              ),
-              right: BorderSide(
-                color: context.border,
-                width: WeekPactMetrics.border,
-              ),
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: IntrinsicHeight(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Flexible(
-                  child: _CrewTab(
-                    label: 'YOUR CREW',
-                    selected: !_showInvites,
-                    isFirst: true,
-                    onPressed: () => setState(() => _showInvites = false),
+  Widget _crewCard({required Widget child}) =>
+      AppSectionCard(title: 'Your crew', builder: (_) => child);
+
+  Future<void> _loadInviteCount() async {
+    try {
+      final invites = await widget.backend.fetchReceivedInvites();
+      if (mounted) setState(() => _receivedInviteCount = invites.length);
+    } catch (_) {
+      // Keep the last badge state; the drawer provides retry and error feedback.
+    }
+  }
+
+  Future<void> _openInvites() async {
+    setState(() => _invitesOpen = true);
+    await showAppSheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, updateDrawer) => AppSheet(
+          builder: (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Invites',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-                Container(width: WeekPactMetrics.border, color: context.border),
-                Flexible(
-                  child: _CrewTab(
-                    label: 'INVITES',
-                    selected: _showInvites,
-                    isFirst: false,
-                    onPressed: () => setState(() => _showInvites = true),
+                  IconButton(
+                    tooltip: 'Close invites',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
                   ),
+                ],
+              ),
+              if ((_crew?.isOwner ?? false) &&
+                  _crew!.pendingInvites.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Sent',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
+                for (final invite in _crew!.pendingInvites)
+                  _InviteRow(
+                    invite: invite,
+                    onRevoke: () async {
+                      await _revokeInvite(invite);
+                      if (sheetContext.mounted) updateDrawer(() {});
+                    },
+                  ),
+                if (_error != null)
+                  Text(_error!, style: TextStyle(color: context.errorInk)),
               ],
-            ),
+              CrewInvitesPane(
+                key: _invitesKey,
+                backend: widget.backend,
+                alreadyInCrew: _crew != null,
+                onAccepted: _joinedCrew,
+                showEmptyState: !(_crew?.pendingInvites.isNotEmpty ?? false),
+              ),
+            ],
           ),
         ),
       ),
-    ],
-    child: child,
-  );
+    );
+    if (!mounted) return;
+    setState(() => _invitesOpen = false);
+    await _loadInviteCount();
+  }
 
   Future<void> _revokeInvite(CrewInvite invite) async {
     final crew = _crew;
@@ -347,26 +401,33 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return PageFrame(
-      header: const PageHeading('CREWS.'),
+      header: Row(
+        children: [
+          const Expanded(child: PageHeading('Crews')),
+          IconButton(
+            tooltip: 'Invites',
+            onPressed: _invitesOpen ? null : _openInvites,
+            icon: Badge(
+              key: const ValueKey('crew-invites-badge'),
+              isLabelVisible:
+                  _receivedInviteCount > 0 ||
+                  (_crew?.pendingInvites.isNotEmpty ?? false),
+              backgroundColor: WeekPactColors.softYellow,
+              child: const Icon(Icons.inbox_outlined),
+            ),
+          ),
+        ],
+      ),
       loading: !_hasLoaded && _loading,
       skeleton: const _CrewSkeleton(),
       onRefresh: _refresh,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_showInvites)
-            _crewCard(
-              child: CrewInvitesPane(
-                key: _invitesKey,
-                backend: widget.backend,
-                alreadyInCrew: _crew != null,
-                onAccepted: _joinedCrew,
-              ),
-            )
-          else if (_crew != null)
-            _buildCrewState(_crew!)
+          if (_crew != null)
+            _buildCrewState(context, _crew!)
           else if (_hasLoaded)
-            _buildCreateState(),
+            AppSurfaceTheme(builder: (context) => _buildCreateState(context)),
           if (_error != null) ...[
             const SizedBox(height: 18),
             Text(
@@ -391,7 +452,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildCreateState() {
+  Widget _buildCreateState(BuildContext context) {
     return Form(
       key: _createFormKey,
       child: Column(
@@ -404,11 +465,11 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'START YOUR CREW',
+                    'Start your crew',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 20),
-                  BrutalTextField(
+                  AppTextField(
                     label: 'CREW NAME',
                     hint: 'Early Birds',
                     controller: _crewNameController,
@@ -459,10 +520,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  BrutalButton(
+                  AppButton(
                     label: 'CREATE CREW',
                     icon: HugeIconsStrokeRounded.userGroup02,
-                    color: context.coral,
+
                     isLoading: _creating,
                     onPressed: _createCrew,
                   ),
@@ -475,156 +536,92 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildCrewState(CrewDetails crew) {
+  CrewMember _withProfile(CrewMember member) {
+    final profile = _memberProfiles[member.userId];
+    return CrewMember(
+      userId: member.userId,
+      email: member.email,
+      role: member.role,
+      joinedAt: member.joinedAt,
+      displayName: profile?.displayName.trim().isNotEmpty == true
+          ? profile!.displayName
+          : member.displayName,
+      avatarUrl: profile?.avatarUrl ?? member.avatarUrl,
+    );
+  }
+
+  Widget _buildCrewState(BuildContext context, CrewDetails crew) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _crewCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ColoredBox(
-                color: context.yellow,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 18,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              crew.name.toUpperCase(),
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 26,
-                                height: 1,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _StatusLabel(
-                            text: crew.isOwner ? 'OWNER' : 'MEMBER',
-                            color: context.surface,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '${crew.members.length} ${crew.members.length == 1 ? 'member' : 'members'} · Showing up together',
-                        style: TextStyle(
-                          color: context.ink,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+        AppSurface(
+          builder: (context) => Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.people_outline, size: 26),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    crew.name,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              Divider(
-                color: context.border,
-                thickness: WeekPactMetrics.fineBorder,
-                height: 2,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 16, 14, 4),
-                child: Text(
-                  'MEMBERS',
-                  style: TextStyle(
-                    color: context.ink,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .7,
-                  ),
-                ),
-              ),
-              for (var index = 0; index < crew.members.length; index++) ...[
-                _MemberRow(
-                  member: crew.members[index],
-                  onRemove:
-                      crew.isOwner &&
-                          !crew.members[index].isOwner &&
-                          !_changingMembership
-                      ? () => _changeMembership(member: crew.members[index])
-                      : null,
-                  isCurrentUser:
-                      crew.members[index].email.toLowerCase() ==
-                      widget.currentUserEmail.toLowerCase(),
-                ),
-                if (index != crew.members.length - 1)
-                  Divider(
-                    color: context.ink,
-                    thickness: WeekPactMetrics.fineBorder,
-                    height: 2,
-                  ),
               ],
-              if (crew.isOwner && crew.pendingInvites.isNotEmpty) ...[
-                Divider(
-                  color: context.ink,
-                  thickness: WeekPactMetrics.fineBorder,
-                  height: 2,
-                ),
-                ColoredBox(
-                  color: context.yellow,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      'PENDING INVITES',
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .7,
-                      ),
-                    ),
-                  ),
-                ),
-                for (
-                  var index = 0;
-                  index < crew.pendingInvites.length;
-                  index++
-                ) ...[
-                  _InviteRow(
-                    invite: crew.pendingInvites[index],
-                    onRevoke: () => _revokeInvite(crew.pendingInvites[index]),
-                  ),
-                  if (index != crew.pendingInvites.length - 1)
-                    Divider(
-                      color: context.ink,
-                      thickness: WeekPactMetrics.fineBorder,
-                      height: 2,
-                    ),
-                ],
-              ],
-              if (crew.isOwner)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 18, 20),
-                  child: BrutalButton(
-                    label: 'INVITE SOMEONE',
-                    icon: HugeIconsStrokeRounded.mailSend01,
-                    color: context.coral,
-                    onPressed: _changingMembership ? null : _openInviteDrawer,
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 18, 16),
-                child: BrutalButton(
-                  label: 'LEAVE CREW',
-                  color: context.surface,
-                  isLoading: _changingMembership,
-                  onPressed: _changingMembership
-                      ? null
-                      : () => _changeMembership(),
-                ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'YOUR PEOPLE · ${crew.members.length}',
+          style: TextStyle(
+            color: context.muted,
+            fontSize: 14,
+            letterSpacing: 1.1,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        CrewPeopleGrid(
+          children: [
+            for (var i = 0; i < crew.members.length; i++)
+              CrewPersonCard(
+                key: ValueKey(crew.members[i].userId),
+                member: _withProfile(crew.members[i]),
+                isCurrentUser:
+                    crew.members[i].email.toLowerCase() ==
+                    widget.currentUserEmail.toLowerCase(),
+                color:
+                    crew.members[i].email.toLowerCase() ==
+                        widget.currentUserEmail.toLowerCase()
+                    ? WeekPactColors.mintGreen
+                    : (i.isEven
+                          ? WeekPactColors.softYellow
+                          : WeekPactColors.cream),
+                onRemove:
+                    crew.isOwner &&
+                        !crew.members[i].isOwner &&
+                        !_changingMembership
+                    ? () => _changeMembership(member: crew.members[i])
+                    : null,
               ),
-            ],
+            if (crew.isOwner)
+              CrewInviteTile(
+                onPressed: _changingMembership ? null : _openInviteDrawer,
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: _changingMembership ? null : () => _changeMembership(),
+          icon: const Icon(Icons.logout, size: 20),
+          label: const Text('LEAVE CREW'),
+          style: TextButton.styleFrom(
+            foregroundColor: context.ink,
+            minimumSize: const Size.fromHeight(48),
           ),
         ),
       ],
@@ -685,8 +682,8 @@ class _InviteDrawerState extends State<_InviteDrawer> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: !_sending,
-      child: BrutalDrawer(
-        child: Form(
+      child: AppSheet(
+        builder: (context) => Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -721,7 +718,7 @@ class _InviteDrawerState extends State<_InviteDrawer> {
                 style: TextStyle(color: context.ink, height: 1.4),
               ),
               const SizedBox(height: 22),
-              BrutalTextField(
+              AppTextField(
                 label: 'EMAIL ADDRESS',
                 hint: 'friend@example.com',
                 controller: _controller,
@@ -751,10 +748,10 @@ class _InviteDrawerState extends State<_InviteDrawer> {
                   ),
                 ),
               const SizedBox(height: 24),
-              BrutalButton(
+              AppButton(
                 label: 'SEND INVITE',
                 icon: HugeIconsStrokeRounded.mailSend01,
-                color: context.coral,
+
                 isLoading: _sending,
                 onPressed: _send,
               ),
@@ -766,7 +763,7 @@ class _InviteDrawerState extends State<_InviteDrawer> {
   }
 }
 
-/// Mirrors the grouped crew header and member list without assuming ownership.
+/// Reserves the same square tiles as the loaded people grid.
 class _CrewSkeleton extends StatelessWidget {
   const _CrewSkeleton();
 
@@ -775,151 +772,54 @@ class _CrewSkeleton extends StatelessWidget {
     label: 'Loading crews',
     liveRegion: true,
     child: ExcludeSemantics(
-      child: BrutalTabbedCard(
-        title: 'YOUR CREW',
-        tabColor: context.mint,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ColoredBox(
-              color: context.yellow,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSurface(
+            builder: (_) => const Padding(
+              padding: EdgeInsets.all(16),
+              child: SkeletonBar(height: 30),
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: SkeletonBar(width: 120, height: 16),
+          ),
+          const SizedBox(height: 12),
+          CrewPeopleGrid(
+            children: [
+              for (var i = 0; i < 4; i++)
+                AppSurface(
+                  fillColor: i == 0
+                      ? WeekPactColors.mintGreen
+                      : WeekPactColors.cream,
+                  builder: (_) => const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
                       children: [
-                        Expanded(child: SkeletonBar(height: 26)),
-                        SizedBox(width: 32),
-                        SkeletonBar(width: 65, height: 26),
+                        Expanded(
+                          child: Center(
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: SkeletonBar(height: 100, radius: 100),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        SkeletonBar(height: 15),
+                        SizedBox(height: 8),
+                        SkeletonBar(width: 60, height: 10),
                       ],
                     ),
-                    SizedBox(height: 12),
-                    SkeletonBar(width: 180, height: 14),
-                  ],
-                ),
-              ),
-            ),
-            Divider(
-              color: context.border,
-              height: 2,
-              thickness: WeekPactMetrics.fineBorder,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 4),
-              child: Text(
-                'MEMBERS',
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .7,
-                ),
-              ),
-            ),
-            for (var index = 0; index < 3; index++) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                child: Row(
-                  children: [
-                    SkeletonBar(width: 40, height: 40),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FractionallySizedBox(
-                            widthFactor: .75,
-                            child: SkeletonBar(height: 14),
-                          ),
-                          SizedBox(height: 9),
-                          FractionallySizedBox(
-                            widthFactor: .45,
-                            child: SkeletonBar(height: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (index < 2)
-                Divider(
-                  color: context.border,
-                  height: 2,
-                  thickness: WeekPactMetrics.fineBorder,
+                  ),
                 ),
             ],
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );
-}
-
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({
-    required this.member,
-    required this.isCurrentUser,
-    this.onRemove,
-  });
-  final CrewMember member;
-  final bool isCurrentUser;
-  final VoidCallback? onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = member.email.substring(0, 1).toUpperCase();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isCurrentUser ? context.mint : context.surface,
-              border: Border.all(
-                color: context.border,
-                width: WeekPactMetrics.border,
-              ),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: context.ink,
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              isCurrentUser ? 'YOU · ${member.email}' : member.email,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: context.ink,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          if (member.isOwner)
-            _StatusLabel(text: 'OWNER', color: context.yellow),
-          if (onRemove != null)
-            IconButton(
-              tooltip: 'Remove ${member.email}',
-              onPressed: onRemove,
-              icon: const Icon(Icons.person_remove_outlined, size: 22),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InviteRow extends StatelessWidget {
@@ -984,35 +884,6 @@ class _InviteRow extends StatelessWidget {
   }
 }
 
-class _StatusLabel extends StatelessWidget {
-  const _StatusLabel({required this.text, required this.color});
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color,
-        border: Border.all(
-          color: context.border,
-          width: WeekPactMetrics.border,
-        ),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: context.ink,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
 String _messageFor(Object error) {
   final message = error.toString();
   if (message.contains('already belong to a crew') ||
@@ -1037,72 +908,4 @@ String _messageFor(Object error) {
     return 'Only the current owner can manage members. Choose a new owner before leaving.';
   }
   return 'Something went wrong. Please try again.';
-}
-
-class _CrewTab extends StatefulWidget {
-  const _CrewTab({
-    required this.label,
-    required this.selected,
-    required this.isFirst,
-    required this.onPressed,
-  });
-  final String label;
-  final bool selected;
-  final bool isFirst;
-  final VoidCallback onPressed;
-
-  @override
-  State<_CrewTab> createState() => _CrewTabState();
-}
-
-class _CrewTabState extends State<_CrewTab> {
-  bool _isHeld = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final depth = _isHeld || widget.selected ? WeekPactMetrics.pressDepth : 0.0;
-    return Semantics(
-      button: true,
-      selected: widget.selected,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onPressed,
-          onHighlightChanged: (held) => setState(() => _isHeld = held),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 110),
-            curve: Curves.easeOut,
-            margin: EdgeInsets.only(
-              top: depth,
-              bottom: WeekPactMetrics.pressDepth - depth,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-            decoration: BoxDecoration(
-              color: widget.selected
-                  ? context.mint
-                  : Color.lerp(context.surface, context.mint, .15),
-              borderRadius: BorderRadius.only(
-                topLeft: widget.isFirst
-                    ? const Radius.circular(5)
-                    : Radius.zero,
-                topRight: widget.isFirst
-                    ? Radius.zero
-                    : const Radius.circular(5),
-              ),
-            ),
-            child: Text(
-              widget.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: widget.selected ? context.ink : context.muted,
-                fontSize: 15,
-                fontWeight: widget.selected ? FontWeight.w900 : FontWeight.w700,
-                letterSpacing: .4,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

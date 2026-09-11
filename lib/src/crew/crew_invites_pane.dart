@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 
@@ -11,7 +11,9 @@ class CrewInvitesPane extends StatefulWidget {
     required this.backend,
     required this.alreadyInCrew,
     required this.onAccepted,
+    this.showEmptyState = true,
   });
+  final bool showEmptyState;
   final CrewBackend backend;
   final bool alreadyInCrew;
   final Future<void> Function() onAccepted;
@@ -139,33 +141,23 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
   );
 
   List<Widget> _inbox() => [
-    Text(
-      'YOUR INVITATIONS',
-      style: TextStyle(
-        color: context.ink,
-        fontSize: 24,
-        fontWeight: FontWeight.w900,
-      ),
-    ),
-    const SizedBox(height: 10),
-    Text(
-      'Take a look at the crew before you join.',
-      style: TextStyle(color: context.muted),
-    ),
-    const SizedBox(height: 20),
-    if (_invites.isEmpty && _error == null) ...[
-      const Icon(Icons.mail_outline, size: 40),
-      const SizedBox(height: 16),
+    if (_invites.isNotEmpty) ...[
       const Text(
-        'NO INVITES YET',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontWeight: FontWeight.w900),
+        'Received',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 12),
+    ],
+    if (_invites.isEmpty && _error == null && widget.showEmptyState) ...[
+      const SizedBox(height: 12),
+      Icon(Icons.mail_outline, size: 32, color: context.muted),
+      const SizedBox(height: 12),
       const Text(
-        'Invitations sent to your account’s email will appear here. Pull down to refresh.',
+        'No invites yet',
         textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
       ),
+      const SizedBox(height: 12),
     ],
     for (final invite in _invites) ...[
       Material(
@@ -328,18 +320,18 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         ),
       ],
       const SizedBox(height: 20),
-      BrutalButton(
+      AppButton(
         label: 'ACCEPT INVITE',
-        color: context.mint,
+
         isLoading: _responding && _accepting,
         onPressed: _responding || widget.alreadyInCrew || expired
             ? null
             : () => _respond(true),
       ),
       const SizedBox(height: 16),
-      BrutalButton(
+      AppButton(
         label: 'DECLINE INVITE',
-        color: context.pink,
+
         isLoading: _responding && !_accepting,
         onPressed: _responding || expired ? null : () => _respond(false),
       ),

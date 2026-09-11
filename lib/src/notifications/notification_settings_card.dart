@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import 'notification_scope.dart';
 
 class NotificationSettingsCard extends StatelessWidget {
@@ -17,10 +17,9 @@ class NotificationSettingsCard extends StatelessWidget {
     final denied = service.permission == AuthorizationStatus.denied;
     return Padding(
       padding: const EdgeInsets.only(top: 26),
-      child: BrutalTabbedCard(
-        title: 'NOTIFICATIONS',
-        tabColor: context.yellow,
-        child: Padding(
+      child: AppSectionCard(
+        title: 'Notifications',
+        builder: (context) => Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,13 +50,13 @@ class NotificationSettingsCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 12),
-              BrutalButton(
+              AppButton(
                 label: !service.available
                     ? 'RETRY SETUP'
                     : service.enabled
                     ? 'TURN OFF'
                     : 'ENABLE NOTIFICATIONS',
-                color: context.mint,
+
                 isLoading: service.busy,
                 onPressed: service.busy
                     ? null

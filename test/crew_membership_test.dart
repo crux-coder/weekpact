@@ -49,6 +49,7 @@ CrewDetails details({bool owner = false, bool alone = false}) => CrewDetails(
     CrewMember(
       userId: 'owner',
       email: 'owner@example.com',
+      displayName: 'Alex',
       role: 'owner',
       joinedAt: DateTime(2026),
     ),
@@ -56,6 +57,7 @@ CrewDetails details({bool owner = false, bool alone = false}) => CrewDetails(
       CrewMember(
         userId: 'member',
         email: 'member@example.com',
+        displayName: 'Sam',
         role: 'member',
         joinedAt: DateTime(2026),
       ),
@@ -114,14 +116,14 @@ void main() {
   ) async {
     final backend = MembershipBackend()..crew = details(owner: true);
     await showCrew(tester, backend);
-    expect(find.byTooltip('Remove owner@example.com'), findsNothing);
-    await tester.tap(find.byTooltip('Remove member@example.com'));
+    expect(find.byTooltip('Remove Alex'), findsNothing);
+    await tester.tap(find.byTooltip('Remove Sam'));
     await tester.pumpAndSettle();
     expect(backend.removed, isEmpty);
     await tester.tap(find.text('REMOVE'));
     await tester.pumpAndSettle();
     expect(backend.removed, ['member']);
-    expect(find.text('member@example.com'), findsNothing);
+    expect(find.text('Sam'), findsNothing);
   });
   testWidgets('owner must choose a replacement to leave', (tester) async {
     final backend = MembershipBackend()..crew = details(owner: true);
@@ -159,11 +161,11 @@ void main() {
       ..crew = details(owner: true)
       ..failure = StateError('offline');
     await showCrew(tester, backend);
-    await tester.tap(find.byTooltip('Remove member@example.com'));
+    await tester.tap(find.byTooltip('Remove Sam'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('REMOVE'));
     await tester.pumpAndSettle();
-    expect(find.text('member@example.com'), findsOneWidget);
+    expect(find.text('Sam'), findsOneWidget);
     expect(
       find.text('Something went wrong. Please try again.'),
       findsOneWidget,

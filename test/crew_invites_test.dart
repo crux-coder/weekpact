@@ -14,7 +14,7 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/goals/goals_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
-import 'package:weekpact/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/widgets/app_components.dart';
 
 import 'widget_test.dart' show FakeCrewBackend;
 
@@ -93,7 +93,7 @@ Future<void> showInbox(WidgetTester tester, InboxBackend backend) async {
     ),
   );
   await tester.pumpUi();
-  await tester.tap(find.text('INVITES'));
+  await tester.tap(find.byTooltip('Invites'));
   await tester.pumpUi();
 }
 
@@ -132,7 +132,7 @@ void main() {
         expect(home.fetches, 0);
         await tester.tap(find.byKey(const ValueKey('nav-crews')));
         await tester.pumpUi();
-        await tester.tap(find.text('INVITES'));
+        await tester.tap(find.byTooltip('Invites'));
         await tester.pumpUi();
         await openPreview(tester);
         final action = find.text(
@@ -143,8 +143,8 @@ void main() {
         await tester.pumpUi();
         expect(
           tester
-              .widget<BrutalBottomNavigationBar>(
-                find.byType(BrutalBottomNavigationBar),
+              .widget<AppBottomNavigationBar>(
+                find.byType(AppBottomNavigationBar),
               )
               .selectedIndex,
           outcome == 'accept' ? 0 : 2,
@@ -169,7 +169,7 @@ void main() {
   ) async {
     final backend = InboxBackend();
     await showInbox(tester, backend);
-    expect(find.text('YOUR CREW'), findsOneWidget);
+    expect(find.text('Invites'), findsOneWidget);
     expect(find.text('ACCEPT INVITE'), findsNothing);
     await openPreview(tester);
     expect(find.text('owner@example.com'), findsOneWidget);
@@ -180,7 +180,7 @@ void main() {
     await tester.tap(find.text('ACCEPT INVITE'));
     await tester.pumpUi();
     expect(backend.responses, [true]);
-    expect(find.text('EARLY BIRDS'), findsOneWidget);
+    expect(find.text('Early Birds'), findsOneWidget);
     expect(find.text('DECLINE INVITE'), findsNothing);
   });
 
@@ -195,7 +195,7 @@ void main() {
     await tester.pumpUi();
     expect(backend.responses, [false]);
     expect(backend.crew, isNull);
-    expect(find.text('NO INVITES YET'), findsOneWidget);
+    expect(find.text('No invites yet'), findsOneWidget);
   });
 
   testWidgets('back from preview leaves the invitation pending', (
@@ -217,10 +217,10 @@ void main() {
       await backend.createCrew(name: 'My existing crew', timezone: 'UTC');
       await showInbox(tester, backend);
       await openPreview(tester);
-      final accept = tester.widget<BrutalButton>(
+      final accept = tester.widget<AppButton>(
         find.ancestor(
           of: find.text('ACCEPT INVITE'),
-          matching: find.byType(BrutalButton),
+          matching: find.byType(AppButton),
         ),
       );
       expect(accept.onPressed, isNull);
@@ -236,7 +236,7 @@ void main() {
   testWidgets('inbox fetch failure can be retried', (tester) async {
     final backend = InboxBackend()..fetchError = StateError('offline');
     await showInbox(tester, backend);
-    expect(find.text('NO INVITES YET'), findsNothing);
+    expect(find.text('No invites yet'), findsNothing);
     backend.fetchError = null;
     await tester.tap(find.text('RETRY'));
     await tester.pumpUi();
@@ -259,7 +259,7 @@ void main() {
       await tester.ensureVisible(find.text('RETRY'));
       await tester.tap(find.text('RETRY'));
       await tester.pumpUi();
-      expect(find.text('NO INVITES YET'), findsOneWidget);
+      expect(find.text('No invites yet'), findsOneWidget);
     },
   );
 
@@ -270,17 +270,17 @@ void main() {
     await tester.ensureVisible(find.text('ACCEPT INVITE'));
     await tester.tap(find.text('ACCEPT INVITE'));
     await tester.pump();
-    final decline = tester.widget<BrutalButton>(
+    final decline = tester.widget<AppButton>(
       find.ancestor(
         of: find.text('DECLINE INVITE'),
-        matching: find.byType(BrutalButton),
+        matching: find.byType(AppButton),
       ),
     );
     expect(decline.onPressed, isNull);
     expect(backend.responses, [true]);
     backend.pending!.complete();
     await tester.pumpUi();
-    expect(find.text('EARLY BIRDS'), findsOneWidget);
+    expect(find.text('Early Birds'), findsOneWidget);
   });
 
   testWidgets('tabs and preview fit a narrow phone with large text', (
@@ -308,7 +308,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await tester.tap(find.text('INVITES'));
+    await tester.tap(find.byTooltip('Invites'));
     await tester.pumpUi();
     await openPreview(tester);
     await tester.ensureVisible(find.text('DECLINE INVITE'));

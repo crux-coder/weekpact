@@ -172,8 +172,8 @@ void main() {
   ) async {
     final backend = FakeGoals()..loading = Completer<List<GoalCrew>>();
     await pumpGoals(tester, backend);
-    expect(find.text('GOALS.'), findsOneWidget);
-    expect(find.text('WEEKLY GOALS'), findsOneWidget);
+    expect(find.text('Goals'), findsOneWidget);
+    expect(find.text('Your goals'), findsOneWidget);
     expect(find.text('ADD GOAL'), findsNothing);
     backend.loading!.complete([ownerCrew]);
     await tester.pumpAndSettle();
@@ -223,7 +223,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(backend.goals.last.frequency, GoalFrequency.weekly);
     expect(backend.goals.last.daysPerWeek, 3);
-    expect(find.text('3 days / week'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics && widget.properties.label == '3 days / week',
+      ),
+      findsOneWidget,
+    );
 
     await tester.ensureVisible(find.byType(DropdownButton<String>));
     await tester.tap(find.byType(DropdownButton<String>));

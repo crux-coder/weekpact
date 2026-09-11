@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
 
-Future<T?> showBrutalDrawer<T>({
+Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
@@ -15,15 +15,15 @@ Future<T?> showBrutalDrawer<T>({
     constraints: BoxConstraints.tightFor(
       width: MediaQuery.sizeOf(context).width,
     ),
-    builder: builder,
+    builder: (context) => AppSurfaceTheme(builder: builder),
   );
 }
 
 /// A content-sized, edge-to-edge sheet with safe-area space inside its surface.
-class BrutalDrawer extends StatelessWidget {
-  const BrutalDrawer({super.key, required this.child});
+class AppSheet extends StatelessWidget {
+  const AppSheet({super.key, required this.builder});
 
-  final Widget child;
+  final WidgetBuilder builder;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,7 @@ class BrutalDrawer extends StatelessWidget {
                   ),
                 ),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(16),
                 ),
               ),
               child: SafeArea(
@@ -72,7 +72,7 @@ class BrutalDrawer extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      child,
+                      builder(context),
                     ],
                   ),
                 ),
@@ -84,3 +84,11 @@ class BrutalDrawer extends StatelessWidget {
     );
   }
 }
+
+Future<T?> showAppDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) => showDialog<T>(
+  context: context,
+  builder: (context) => AppSurfaceTheme(builder: builder),
+);

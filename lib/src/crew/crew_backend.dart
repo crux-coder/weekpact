@@ -8,12 +8,16 @@ class CrewMember {
     required this.email,
     required this.role,
     required this.joinedAt,
+    this.displayName,
+    this.avatarUrl,
   });
 
   final String userId;
   final String email;
   final String role;
   final DateTime joinedAt;
+  final String? displayName;
+  final String? avatarUrl;
 
   bool get isOwner => role == 'owner';
 }

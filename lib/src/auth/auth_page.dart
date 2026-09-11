@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import '../widgets/viewport_scroll_view.dart';
 import 'auth_backend.dart';
 import 'password_page.dart';
@@ -169,10 +169,9 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       if (widget.pendingInviteToken != null) ...[
                         const SizedBox(height: 24),
-                        BrutalShadow(
+                        AppSurface(
                           fillColor: context.mint,
-                          shadowOffset: WeekPactMetrics.smallShadow,
-                          child: Padding(
+                          builder: (context) => Padding(
                             padding: EdgeInsets.all(14),
                             child: Text(
                               'CREW INVITE READY · LOG IN OR CREATE AN ACCOUNT WITH THE INVITED EMAIL.',
@@ -226,7 +225,7 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ],
                       const SizedBox(height: 34),
-                      BrutalTextField(
+                      AppTextField(
                         label: 'EMAIL',
                         hint: 'you@example.com',
                         controller: _emailController,
@@ -236,7 +235,7 @@ class _AuthPageState extends State<AuthPage> {
                         autofillHints: const [AutofillHints.email],
                       ),
                       const SizedBox(height: 24),
-                      BrutalTextField(
+                      AppTextField(
                         label: 'PASSWORD',
                         hint: 'At least 8 characters',
                         controller: _passwordController,
@@ -255,7 +254,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       if (!_isLogin) ...[
                         const SizedBox(height: 24),
-                        BrutalTextField(
+                        AppTextField(
                           label: 'CONFIRM PASSWORD',
                           hint: 'Type it again',
                           controller: _confirmPasswordController,
@@ -270,9 +269,9 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ],
                       const SizedBox(height: 34),
-                      BrutalButton(
+                      AppButton(
                         label: _isLogin ? 'LOG IN' : 'CREATE ACCOUNT',
-                        color: _isLogin ? context.coral : context.yellow,
+
                         isLoading: _submitting,
                         onPressed: _submit,
                       ),
@@ -323,8 +322,8 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       const PublicAccountLinks(),
                       const SizedBox(height: 28),
-                      BrutalShadow(
-                        child: TextButton(
+                      AppSurface(
+                        builder: (context) => TextButton(
                           onPressed: _submitting ? null : _switchMode,
                           style: TextButton.styleFrom(
                             foregroundColor: context.fieldInk,

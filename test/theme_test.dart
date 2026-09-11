@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weekpact/src/theme/theme_preference.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
-import 'package:weekpact/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/widgets/app_components.dart';
 
 double contrast(Color a, Color b) {
   final first = a.computeLuminance();
@@ -29,7 +29,7 @@ void main() {
     },
   );
 
-  testWidgets('dark cards and inputs retain contrast without shadows', (
+  testWidgets('home palette cards retain contrast on the dark canvas', (
     tester,
   ) async {
     final controller = TextEditingController();
@@ -42,19 +42,18 @@ void main() {
           body: Builder(
             builder: (context) {
               themed = context;
-              return BrutalTabbedCard(
-                title: 'WEEKLY GOALS',
-                tabColor: WeekPactColors.mintGreen,
-                child: Column(
+              return AppSectionCard(
+                title: 'Weekly goals',
+                builder: (context) => Column(
                   children: [
                     const Text('Small steps start here.'),
-                    BrutalTextField(
+                    AppTextField(
                       label: 'GOAL NAME',
                       hint: 'Read',
                       controller: controller,
                       validator: (_) => null,
                     ),
-                    BrutalButton(
+                    AppButton(
                       label: 'ADD GOAL',
                       color: WeekPactColors.softCoral,
                       onPressed: () {},
@@ -67,50 +66,33 @@ void main() {
         ),
       ),
     );
-    expect(themed.surface, WeekPactColors.darkSurface);
-    expect(themed.fieldInk, themed.ink);
-    for (final background in [
-      themed.canvas,
-      themed.surface,
-      themed.yellow,
-      themed.mint,
-      themed.coral,
-      themed.pink,
+    expect(contrast(themed.ink, themed.canvas), greaterThanOrEqualTo(4.5));
+    final cardContext = tester.element(find.byType(TextFormField));
+    expect(cardContext.surface, WeekPactColors.cream);
+    expect(cardContext.ink, WeekPactColors.black);
+    for (final fill in [
+      cardContext.surface,
+      cardContext.yellow,
+      cardContext.mint,
     ]) {
-      expect(contrast(themed.ink, background), greaterThanOrEqualTo(4.5));
+      expect(contrast(cardContext.ink, fill), greaterThanOrEqualTo(4.5));
     }
-    expect(contrast(themed.muted, themed.surface), greaterThanOrEqualTo(4.5));
-    expect(contrast(themed.shadow, themed.canvas), greaterThanOrEqualTo(3));
-    final decorations = tester
-        .widgetList<Container>(find.byType(Container))
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>();
     expect(
-      decorations.any((decoration) => decoration.color == WeekPactColors.cream),
-      isFalse,
+      contrast(cardContext.muted, cardContext.surface),
+      greaterThanOrEqualTo(4.5),
     );
-    expect(
-      decorations.any(
-        (decoration) => decoration.color == WeekPactColors.darkMint,
-      ),
-      isTrue,
-    );
-    expect(
-      tester
-          .widgetList<Material>(find.byType(Material))
-          .any((material) => material.color == WeekPactColors.darkCoral),
-      isTrue,
-    );
-    expect(
-      decorations.any(
-        (decoration) =>
-            decoration.boxShadow?.any(
-              (shadow) => shadow.color == WeekPactColors.darkShadow,
-            ) ??
-            false,
-      ),
-      isFalse,
-    );
+    final materials = tester.widgetList<Material>(find.byType(Material));
+    expect(materials.any((m) => m.color == WeekPactColors.cream), isTrue);
+    for (final legacy in [
+      WeekPactColors.darkSurface,
+      WeekPactColors.darkMint,
+      WeekPactColors.darkCoral,
+      WeekPactColors.darkYellow,
+      WeekPactColors.darkPink,
+    ]) {
+      expect(materials.any((m) => m.color == legacy), isFalse);
+    }
+    expect(materials.every((m) => m.elevation == 0), isTrue);
     expect(
       tester.widget<TextFormField>(find.byType(TextFormField)).controller,
       controller,

@@ -4,143 +4,103 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
 
-class BrutalShadow extends StatelessWidget {
-  const BrutalShadow({
+class AppSurface extends StatelessWidget {
+  const AppSurface({
     super.key,
-    required this.child,
+    required this.builder,
     this.fillColor,
-    this.shadowOffset = WeekPactMetrics.shadow,
     this.borderWidth = WeekPactMetrics.border,
-    this.borderRadius = 8,
+    this.borderRadius = WeekPactMetrics.cardRadius,
     this.cornerRadius,
+    this.outlineColor,
+    this.resolveTone = true,
   });
 
-  final Widget child;
+  final WidgetBuilder builder;
   final Color? fillColor;
-  final Offset shadowOffset;
   final double borderWidth;
   final double borderRadius;
   final BorderRadius? cornerRadius;
+  final Color? outlineColor;
+  final bool resolveTone;
 
   @override
   Widget build(BuildContext context) {
     final radius = cornerRadius ?? BorderRadius.circular(borderRadius);
     return Material(
-      color: context.tone(fillColor ?? context.surface),
+      color: resolveTone
+          ? context.tone(fillColor ?? context.surface)
+          : fillColor ?? context.surface,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: context.border, width: borderWidth),
+        side: BorderSide(
+          color: outlineColor ?? WeekPactColors.black.withValues(alpha: .10),
+          width: borderWidth,
+        ),
       ),
       borderOnForeground: true,
       clipBehavior: Clip.antiAlias,
-      child: child,
+      child: AppSurfaceTheme(builder: builder),
     );
   }
 }
 
-/// A raised card with an attached title tab and a square joining corner.
-class BrutalTabbedCard extends StatelessWidget {
-  const BrutalTabbedCard({
+/// A flat section surface with an integrated heading and optional actions.
+class AppSectionCard extends StatelessWidget {
+  const AppSectionCard({
     super.key,
     required this.title,
-    required this.tabColor,
-    required this.child,
+    required this.builder,
     this.fillColor,
     this.tabTrailing,
     this.tabs,
   });
 
   final String title;
-  final Color tabColor;
   final Color? fillColor;
-  final Widget child;
+  final WidgetBuilder builder;
   final Widget? tabTrailing;
   final List<Widget>? tabs;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget build(BuildContext context) => AppSurface(
+    fillColor: fillColor,
+    builder: (context) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (tabs != null)
-              ...tabs!
-            else
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(15, 8, 15, 7),
-                      decoration: BoxDecoration(
-                        color: context.tone(tabColor),
-                        border: Border(
-                          top: BorderSide(
-                            color: context.border,
-                            width: WeekPactMetrics.border,
-                          ),
-                          left: BorderSide(
-                            color: context.border,
-                            width: WeekPactMetrics.border,
-                          ),
-                          right: BorderSide(
-                            color: context.border,
-                            width: WeekPactMetrics.border,
-                          ),
-                        ),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(8),
-                        ),
-                        boxShadow: const [],
-                      ),
-                      child: Text(
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: tabs == null
+                    ? Text(
                         title,
                         style: TextStyle(
                           color: context.ink,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: .4,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: .3,
                         ),
-                      ),
-                    ),
-                  ),
-                ),
+                      )
+                    : Row(children: tabs!),
               ),
-            if (tabTrailing != null) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 2, bottom: 9),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: tabTrailing!,
-                  ),
-                ),
-              ),
+              if (tabTrailing != null) ...[
+                const SizedBox(width: 12),
+                tabTrailing!,
+              ],
             ],
-          ],
-        ),
-        BrutalShadow(
-          fillColor: fillColor,
-          shadowOffset: WeekPactMetrics.shadow,
-          cornerRadius: const BorderRadius.only(
-            topRight: Radius.circular(8),
-            bottomLeft: Radius.circular(8),
-            bottomRight: Radius.circular(8),
           ),
-          child: child,
         ),
+        builder(context),
       ],
-    );
-  }
+    ),
+  );
 }
 
-class BrutalButton extends StatelessWidget {
-  const BrutalButton({
+class AppButton extends StatelessWidget {
+  const AppButton({
     super.key,
     required this.label,
     required this.onPressed,
@@ -161,12 +121,14 @@ class BrutalButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? context.primary;
-    final effectiveForeground = foregroundColor ?? context.ink;
+    final effectiveColor = color ?? context.ink;
+    final effectiveForeground =
+        foregroundColor ??
+        (color == null ? context.canvas : WeekPactColors.black);
 
-    return BrutalShadow(
+    return AppSurface(
       fillColor: effectiveColor,
-      child: Container(
+      builder: (context) => Container(
         width: double.infinity,
         constraints: BoxConstraints(minHeight: height),
         child: TextButton(
@@ -178,7 +140,9 @@ class BrutalButton extends StatelessWidget {
             foregroundColor: effectiveForeground,
             disabledForegroundColor: effectiveForeground,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(
+                WeekPactMetrics.controlRadius,
+              ),
             ),
             textStyle: const TextStyle(
               fontFamily: 'RobotoCondensed',
@@ -217,8 +181,8 @@ class BrutalButton extends StatelessWidget {
   }
 }
 
-class BrutalNavigationItem {
-  const BrutalNavigationItem({
+class AppNavigationItem {
+  const AppNavigationItem({
     required this.label,
     required this.icon,
     required this.color,
@@ -229,16 +193,14 @@ class BrutalNavigationItem {
   final Color color;
 }
 
-class BrutalBottomNavigationBar extends StatelessWidget {
-  const BrutalBottomNavigationBar({
+class AppBottomNavigationBar extends StatelessWidget {
+  const AppBottomNavigationBar({
     super.key,
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
-    this.flatHome = false,
   });
-  final bool flatHome;
-  final List<BrutalNavigationItem> items;
+  final List<AppNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   @override
@@ -248,12 +210,9 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: flatHome ? const Color(0xFF191B19) : context.surface,
+        color: context.canvas,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: flatHome ? Colors.transparent : WeekPactColors.outlineInk,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.transparent, width: 2),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -281,10 +240,8 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                         message: items[i].label,
                         child: Material(
                           color: Color.lerp(
-                            flatHome ? Colors.transparent : context.surface,
-                            flatHome
-                                ? const Color(0xFFF3F5F2)
-                                : WeekPactColors.salmon,
+                            Colors.transparent,
+                            context.ink,
                             amount,
                           ),
                           borderRadius: BorderRadius.circular(10),
@@ -302,8 +259,8 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                                   HugeIcon(
                                     icon: items[i].icon,
                                     color: Color.lerp(
-                                      flatHome ? Colors.white : context.ink,
-                                      WeekPactColors.outlineInk,
+                                      context.ink,
+                                      context.canvas,
                                       amount,
                                     ),
                                     size: 25,
@@ -322,9 +279,8 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                                                 items[i].label,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  color:
-                                                      WeekPactColors.outlineInk,
+                                                style: TextStyle(
+                                                  color: context.canvas,
                                                   fontWeight: FontWeight.w900,
                                                 ),
                                               ),
@@ -351,8 +307,8 @@ class BrutalBottomNavigationBar extends StatelessWidget {
   );
 }
 
-class BrutalTextField extends StatelessWidget {
-  const BrutalTextField({
+class AppTextField extends StatelessWidget {
+  const AppTextField({
     super.key,
     this.label,
     required this.hint,
@@ -391,8 +347,8 @@ class BrutalTextField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        BrutalShadow(
-          child: TextFormField(
+        AppSurface(
+          builder: (context) => TextFormField(
             controller: controller,
             validator: validator,
             keyboardType: keyboardType,
@@ -410,7 +366,7 @@ class BrutalTextField extends StatelessWidget {
                 color: context.muted,
                 fontWeight: FontWeight.w500,
               ),
-              // The rounded BrutalShadow owns the fill and outline. A second
+              // The rounded AppSurface owns the fill and outline. A second
               // borderless input fill paints square corners over its interior.
               filled: false,
               border: InputBorder.none,

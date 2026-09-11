@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import 'auth_backend.dart';
 
 class PasswordPage extends StatefulWidget {
@@ -127,107 +127,114 @@ class _PasswordPageState extends State<PasswordPage> {
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_updated) ...[
-                    const Text(
-                      'Your password has been updated. Sign in again with your new password.',
-                    ),
-                    const SizedBox(height: 24),
-                    BrutalButton(
-                      label: 'BACK TO LOGIN',
-                      color: context.coral,
-                      isLoading: _busy,
-                      onPressed: _busy ? null : _leaveRecovery,
-                    ),
-                  ] else ...[
-                    Text(
-                      widget.recovery
-                          ? 'Use at least 8 characters for your new password.'
-                          : 'Enter your account email to reset your password or resend your signup confirmation.',
-                    ),
-                    const SizedBox(height: 24),
-                    if (!widget.recovery)
-                      TextFormField(
-                        controller: _email,
-                        enabled: !_busy,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(labelText: 'Email'),
-                        validator: (value) =>
-                            RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                .hasMatch(value?.trim() ?? '')
-                            ? null
-                            : 'Enter a valid email',
-                      ),
-                    if (widget.recovery) ...[
-                      TextFormField(
-                        controller: _password,
-                        obscureText: true,
-                        enabled: !_busy,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: const InputDecoration(
-                          labelText: 'New password',
+            child: AppSurface(
+              builder: (context) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_updated) ...[
+                        const Text(
+                          'Your password has been updated. Sign in again with your new password.',
                         ),
-                        validator: (value) => (value?.length ?? 0) < 8
-                            ? 'Use at least 8 characters'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _confirmation,
-                        obscureText: true,
-                        enabled: !_busy,
-                        decoration: const InputDecoration(
-                          labelText: 'Confirm new password',
+                        const SizedBox(height: 24),
+                        AppButton(
+                          label: 'BACK TO LOGIN',
+
+                          isLoading: _busy,
+                          onPressed: _busy ? null : _leaveRecovery,
                         ),
-                        validator: (value) => value == _password.text
-                            ? null
-                            : 'Passwords do not match',
-                      ),
+                      ] else ...[
+                        Text(
+                          widget.recovery
+                              ? 'Use at least 8 characters for your new password.'
+                              : 'Enter your account email to reset your password or resend your signup confirmation.',
+                        ),
+                        const SizedBox(height: 24),
+                        if (!widget.recovery)
+                          TextFormField(
+                            controller: _email,
+                            enabled: !_busy,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                            ),
+                            validator: (value) =>
+                                RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                    .hasMatch(value?.trim() ?? '')
+                                ? null
+                                : 'Enter a valid email',
+                          ),
+                        if (widget.recovery) ...[
+                          TextFormField(
+                            controller: _password,
+                            obscureText: true,
+                            enabled: !_busy,
+                            autofillHints: const [AutofillHints.newPassword],
+                            decoration: const InputDecoration(
+                              labelText: 'New password',
+                            ),
+                            validator: (value) => (value?.length ?? 0) < 8
+                                ? 'Use at least 8 characters'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _confirmation,
+                            obscureText: true,
+                            enabled: !_busy,
+                            decoration: const InputDecoration(
+                              labelText: 'Confirm new password',
+                            ),
+                            validator: (value) => value == _password.text
+                                ? null
+                                : 'Passwords do not match',
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        AppButton(
+                          label: widget.recovery
+                              ? 'SAVE PASSWORD'
+                              : 'SEND RESET LINK',
+
+                          isLoading: _busy,
+                          onPressed: _busy || _cooldown > 0
+                              ? null
+                              : () => _submit(),
+                        ),
+                        if (!widget.recovery)
+                          TextButton(
+                            onPressed: _busy || _cooldown > 0
+                                ? null
+                                : () => _submit(resend: true),
+                            child: const Text('Resend confirmation email'),
+                          ),
+                        if (_cooldown > 0)
+                          Text(
+                            'You can request another email in $_cooldown seconds.',
+                          ),
+                        if (widget.recovery)
+                          TextButton(
+                            onPressed: _busy ? null : _leaveRecovery,
+                            child: const Text('Cancel and sign out'),
+                          ),
+                      ],
+                      if (_message != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Text(
+                            _message!,
+                            style: TextStyle(
+                              color: _failed ? context.errorInk : context.ink,
+                            ),
+                          ),
+                        ),
                     ],
-                    const SizedBox(height: 24),
-                    BrutalButton(
-                      label: widget.recovery
-                          ? 'SAVE PASSWORD'
-                          : 'SEND RESET LINK',
-                      color: context.coral,
-                      isLoading: _busy,
-                      onPressed: _busy || _cooldown > 0
-                          ? null
-                          : () => _submit(),
-                    ),
-                    if (!widget.recovery)
-                      TextButton(
-                        onPressed: _busy || _cooldown > 0
-                            ? null
-                            : () => _submit(resend: true),
-                        child: const Text('Resend confirmation email'),
-                      ),
-                    if (_cooldown > 0)
-                      Text(
-                        'You can request another email in $_cooldown seconds.',
-                      ),
-                    if (widget.recovery)
-                      TextButton(
-                        onPressed: _busy ? null : _leaveRecovery,
-                        child: const Text('Cancel and sign out'),
-                      ),
-                  ],
-                  if (_message != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        _message!,
-                        style: TextStyle(
-                          color: _failed ? context.errorInk : context.ink,
-                        ),
-                      ),
-                    ),
-                ],
+                  ),
+                ),
               ),
             ),
           ),

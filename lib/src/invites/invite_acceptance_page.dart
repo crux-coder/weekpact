@@ -4,7 +4,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 
 class InviteAcceptancePage extends StatefulWidget {
   const InviteAcceptancePage({
@@ -59,9 +59,9 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  BrutalShadow(
+                  AppSurface(
                     fillColor: context.mint,
-                    child: Padding(
+                    builder: (context) => Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 26,
@@ -125,10 +125,10 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                     ),
                   ],
                   const SizedBox(height: 26),
-                  BrutalButton(
+                  AppButton(
                     label: 'ACCEPT INVITE',
                     icon: HugeIconsStrokeRounded.tick02,
-                    color: context.coral,
+
                     isLoading: _accepting,
                     onPressed: _accept,
                   ),

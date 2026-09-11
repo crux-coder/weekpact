@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'home_surface.dart';
+import '../theme/weekpact_theme.dart';
 
 import 'package:card_swiper/card_swiper.dart';
 
@@ -17,8 +18,10 @@ import '../widgets/page_frame.dart';
 import 'home_backend.dart';
 
 const _ink = homeInk;
-BoxDecoration _panel(Color color, [double radius = 12]) =>
-    BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius));
+BoxDecoration _panel(
+  Color color, [
+  double radius = WeekPactMetrics.cardRadius,
+]) => BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius));
 
 class CrewTitleBanner extends StatelessWidget {
   const CrewTitleBanner({
@@ -42,7 +45,7 @@ class CrewTitleBanner extends StatelessWidget {
           width: constraints.maxWidth + 24,
           padding: const EdgeInsets.fromLTRB(12, 7, 12, 9),
           decoration: BoxDecoration(
-            color: const Color(0xFF191B19),
+            color: context.canvas,
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(16),
             ),
@@ -54,13 +57,13 @@ class CrewTitleBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FittedBox(
+                    FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'YOUR CREW',
                         style: TextStyle(
-                          color: Color(0xFFB8BEB5),
+                          color: context.muted,
                           fontSize: 10,
                           letterSpacing: 2,
                           fontWeight: FontWeight.w700,
@@ -73,8 +76,8 @@ class CrewTitleBanner extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           name,
-                          style: const TextStyle(
-                            color: homePaper,
+                          style: TextStyle(
+                            color: context.ink,
                             fontSize: 25,
                             fontWeight: FontWeight.w700,
                           ),
@@ -85,7 +88,7 @@ class CrewTitleBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const SizedBox(
+              SizedBox(
                 width: 36,
                 height: 32,
                 child: FittedBox(
@@ -94,7 +97,7 @@ class CrewTitleBanner extends StatelessWidget {
                     'THIS\nWEEK',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: Color(0xFFB8BEB5),
+                      color: context.muted,
                       fontSize: 10,
                       height: 1.25,
                       letterSpacing: 1,
@@ -130,8 +133,8 @@ class CrewTitleBanner extends StatelessWidget {
                                 value: progress,
                                 strokeWidth: 3,
                                 strokeCap: StrokeCap.round,
-                                color: const Color(0xFFD0E5BA),
-                                backgroundColor: homePaper.withValues(
+                                color: WeekPactColors.mintGreen,
+                                backgroundColor: context.ink.withValues(
                                   alpha: .14,
                                 ),
                               ),
@@ -142,8 +145,8 @@ class CrewTitleBanner extends StatelessWidget {
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   '${(progress * 100).round()}%',
-                                  style: const TextStyle(
-                                    color: homePaper,
+                                  style: TextStyle(
+                                    color: context.ink,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -250,10 +253,10 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: const Text(
+                    child: Text(
                       'Today',
                       style: TextStyle(
-                        color: homePaper,
+                        color: context.ink,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -267,8 +270,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                     child: Text(
                       '${(_index + 1).toString().padLeft(2, '0')} / ${goals.length.toString().padLeft(2, '0')}',
                       key: const ValueKey('goal-position'),
-                      style: const TextStyle(
-                        color: Color(0xFFB8BEB5),
+                      style: TextStyle(
+                        color: context.muted,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -355,8 +358,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                                 week: widget.week,
                                 userId: widget.userId,
                                 color: [
-                                  const Color(0xFFF5F6F5),
-                                  const Color(0xFFF4D88F),
+                                  WeekPactColors.cream,
+                                  WeekPactColors.softYellow,
                                   const Color(0xFFE0EED4),
                                 ][widget.week.goals.indexOf(goals[index]) % 3],
                                 busy: widget.savingGoal == goals[index].id,
@@ -400,8 +403,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: dot == _index
-                              ? homePaper
-                              : homePaper.withValues(alpha: .3),
+                              ? context.ink
+                              : context.ink.withValues(alpha: .3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -702,7 +705,7 @@ class _GoalCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 7),
                               decoration: BoxDecoration(
                                 color: current
-                                    ? const Color(0xFFD0E5BA)
+                                    ? WeekPactColors.mintGreen
                                     : Colors.white.withValues(alpha: .35),
                                 border: Border.all(
                                   color: _ink.withValues(
@@ -921,7 +924,7 @@ class TodayCrewCard extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
-                      style: const TextStyle(color: homePaper, fontSize: 13),
+                      style: TextStyle(color: context.ink, fontSize: 13),
                     ),
                   ),
                 ),
@@ -934,7 +937,7 @@ class TodayCrewCard extends StatelessWidget {
                       child: TextButton(
                         onPressed: onOpen,
                         style: TextButton.styleFrom(
-                          foregroundColor: homePaper,
+                          foregroundColor: context.ink,
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                         ),
                         child: const FittedBox(
@@ -972,7 +975,7 @@ class TodayCrewCard extends StatelessWidget {
     required List<WeekMember> members,
     required bool done,
   }) => HomeSurface(
-    tint: done ? const Color(0xFFD0E5BA) : const Color(0xFFF5F6F5),
+    tint: done ? WeekPactColors.mintGreen : WeekPactColors.cream,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1120,9 +1123,7 @@ class TodayCrewCard extends StatelessWidget {
     double size,
   ) {
     final ink = _ink;
-    final statusColor = done
-        ? const Color(0xFF4C8C5D)
-        : const Color(0xFFC48A42);
+    final statusColor = done ? WeekPactColors.success : WeekPactColors.warning;
     final fallback = Center(
       child: Text(
         member.initials,
@@ -1191,18 +1192,269 @@ class TodayCrewCard extends StatelessWidget {
   }
 }
 
-class TodaySkeleton extends StatelessWidget {
+class TodaySkeleton extends StatefulWidget {
   const TodaySkeleton({super.key});
   @override
-  Widget build(BuildContext context) => const Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      SkeletonBar(width: 120, height: 28),
-      SizedBox(height: 12),
-      Expanded(flex: 3, child: SkeletonBar(height: 200)),
-      SizedBox(height: 16),
-      Expanded(flex: 2, child: SkeletonBar(height: 120)),
-    ],
+  State<TodaySkeleton> createState() => _TodaySkeletonState();
+}
+
+class _TodaySkeletonState extends State<TodaySkeleton>
+    with SingleTickerProviderStateMixin {
+  late final _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  late final _opacity = Tween<double>(
+    begin: .65,
+    end: 1,
+  ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse.stop();
+      _pulse.value = 1;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  Widget _line(double width, double height) => Align(
+    alignment: Alignment.centerLeft,
+    child: SkeletonBar(width: width, height: height),
+  );
+
+  Widget _crewTile(Color color) => Expanded(
+    child: HomeSurface(
+      tint: color,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _line(85, 13),
+          const Spacer(),
+          const Center(child: SkeletonBar(width: 44, height: 44, radius: 22)),
+          const SizedBox(height: 8),
+          Center(child: SizedBox(width: 36, child: _line(36, 8))),
+          const Spacer(),
+        ],
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Loading your home',
+    liveRegion: true,
+    child: ExcludeSemantics(
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _opacity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 60,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _line(72, 8),
+                          const SizedBox(height: 10),
+                          _line(145, 22),
+                        ],
+                      ),
+                    ),
+                    const SkeletonBar(width: 44, height: 44, radius: 22),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          SkeletonBar(width: 50, height: 14),
+                          SkeletonBar(width: 42, height: 12),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Positioned(
+                              left: 10,
+                              right: 10,
+                              bottom: -7,
+                              height: 24,
+                              child: HomeSurface(
+                                tint: WeekPactColors.softYellow,
+                                child: SizedBox(),
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: HomeSurface(
+                                key: const ValueKey('skeleton-goal-card'),
+                                tint: WeekPactColors.cream,
+                                padding: const EdgeInsets.all(12),
+                                child: LayoutBuilder(
+                                  builder: (context, space) => Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(child: _line(150, 20)),
+                                            const SizedBox(width: 12),
+                                            SkeletonBar(
+                                              width: math.min(
+                                                44,
+                                                space.maxHeight * .16,
+                                              ),
+                                              height: math.min(
+                                                44,
+                                                space.maxHeight * .16,
+                                              ),
+                                              radius: 10,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 3,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            _line(
+                                              110,
+                                              math.min(
+                                                58,
+                                                space.maxHeight * .18,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: space.maxHeight * .02,
+                                            ),
+                                            _line(
+                                              100,
+                                              math.min(
+                                                13,
+                                                space.maxHeight * .05,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SkeletonBar(
+                                        height: math.min(
+                                          10,
+                                          space.maxHeight * .04,
+                                        ),
+                                      ),
+                                      Spacer(),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Row(
+                                          children: [
+                                            for (
+                                              var day = 0;
+                                              day < 7;
+                                              day++
+                                            ) ...[
+                                              if (day > 0)
+                                                const SizedBox(width: 5),
+                                              Expanded(
+                                                child: SkeletonBar(
+                                                  height: double.infinity,
+                                                  radius: 8,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(height: space.maxHeight * .04),
+                                      SkeletonBar(
+                                        height: math.min(
+                                          48,
+                                          space.maxHeight * .16,
+                                        ),
+                                        radius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 24,
+                      child: Center(child: SkeletonBar(width: 32, height: 6)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                key: const ValueKey('skeleton-crew-board'),
+                height: 180,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _crewTile(WeekPactColors.mintGreen),
+                          const SizedBox(width: 6),
+                          _crewTile(WeekPactColors.cream),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 42,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          SkeletonBar(width: 95, height: 12),
+                          SkeletonBar(width: 70, height: 12),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -1234,11 +1486,11 @@ class _CrewConnectionPainter extends CustomPainter {
     canvas.clipPath(bridge);
     canvas.drawRect(
       Rect.fromLTRB(left, top, middle, bottom),
-      Paint()..color = const Color(0xFFD0E5BA),
+      Paint()..color = WeekPactColors.mintGreen,
     );
     canvas.drawRect(
       Rect.fromLTRB(middle, top, right, bottom),
-      Paint()..color = const Color(0xFFF5F6F5),
+      Paint()..color = WeekPactColors.cream,
     );
     canvas.restore();
     final outline = Paint()

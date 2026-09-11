@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../auth/auth_backend.dart';
 import '../auth/account_actions.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({
@@ -258,9 +258,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ),
                 const SizedBox(height: 28),
                 if (!_details) ...[
-                  BrutalShadow(
+                  AppSurface(
                     fillColor: context.mint,
-                    child: Padding(
+                    builder: (context) => Padding(
                       padding: const EdgeInsets.all(22),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,9 +293,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                   const SizedBox(height: 28),
-                  BrutalButton(
+                  AppButton(
                     label: 'LET’S GET STARTED',
-                    color: context.coral,
+
                     onPressed: () => setState(() {
                       _details = true;
                       _error = null;
@@ -328,12 +328,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                         color: context.border,
                                         width: WeekPactMetrics.border,
                                       ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: context.shadow,
-                                          offset: WeekPactMetrics.shadow,
-                                        ),
-                                      ],
                                     ),
                                     child: ClipOval(
                                       child: _avatar == null
@@ -401,9 +395,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           onFieldSubmitted: (_) => _save(),
                         ),
                         const SizedBox(height: 28),
-                        BrutalButton(
+                        AppButton(
                           label: 'LET’S GO',
-                          color: context.coral,
+
                           isLoading: _saving,
                           onPressed: _saving || _picking ? null : _save,
                         ),

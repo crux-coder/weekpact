@@ -77,10 +77,19 @@ void main() {
       await tester.pump();
       expect(find.text('WeekPact'), findsNothing);
       expect(find.text('CHECK IN'), findsNothing);
+      expect(find.byKey(const ValueKey('skeleton-goal-card')), findsOneWidget);
+      final loadingCrew = tester.getRect(
+        find.byKey(const ValueKey('skeleton-crew-board')),
+      );
       backend.loading!.complete(week);
       backend.loading = null;
       await tester.pumpUi();
       expect(find.text('Early Birds'), findsOneWidget);
+      expect(find.byKey(const ValueKey('skeleton-goal-card')), findsNothing);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('crew-board'))),
+        loadingCrew,
+      );
       expect(find.text('Mark done').hitTestable(), findsOneWidget);
       backend.failSave = true;
       await tester.tap(

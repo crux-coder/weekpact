@@ -5,7 +5,7 @@ import '../goals/goal_icons.dart';
 import '../goals/goals_backend.dart';
 import '../home/home_backend.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/brutal_widgets.dart';
+import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 
 class CrewWeekPage extends StatefulWidget {
@@ -127,12 +127,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                 const Text('No members to show.'),
               if (week != null && week.goals.isNotEmpty)
                 for (final member in members) ...[
-                  BrutalTabbedCard(
+                  AppSectionCard(
                     title: member.id == widget.userId ? 'YOU' : member.email,
-                    tabColor: member.id == widget.userId
-                        ? context.yellow
-                        : context.mint,
-                    child: Padding(
+                    builder: (context) => Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

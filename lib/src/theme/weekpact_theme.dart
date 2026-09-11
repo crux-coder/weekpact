@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 /// Shared stroke and depth values for the app's outlined surfaces.
 abstract final class WeekPactMetrics {
-  static const border = 2.0;
+  static const border = 1.0;
+  static const cardRadius = 12.0;
+  static const controlRadius = 8.0;
+  static const pageInset = 12.0;
+  static const sectionGap = 20.0;
   static const fineBorder = 1.0;
   static const selectedBorder = 2.0;
   static const shadow = Offset.zero;
   static const smallShadow = Offset.zero;
   static const pressDepth = 0.0;
-  static const buttonHeight = 40.0;
+  static const buttonHeight = 48.0;
   static const buttonPadding = EdgeInsets.symmetric(
     horizontal: 12,
     vertical: 6,
@@ -16,32 +20,34 @@ abstract final class WeekPactMetrics {
 }
 
 abstract final class WeekPactColors {
+  static const success = Color(0xFF4C8C5D);
+  static const warning = Color(0xFFC48A42);
   static const outlineInk = Color(0xFF161C23);
   static const sky = Color(0xFF87CFFA);
   static const lavender = Color(0xFFBEA8F5);
   static const lime = Color(0xFFBBDC99);
   static const salmon = Color(0xFFFF836F);
-  static const black = Color(0xFF090909);
-  static const cream = Color(0xFFFFFCF3);
-  static const lightCanvas = Color(0xFFF8F5EC);
-  static const darkCanvas = Color(0xFF303642);
-  static const darkSurface = Color(0xFF3D4553);
-  static const darkInk = Color(0xFFF6F1E5);
-  static const darkBorder = Color(0xFFB0BCC4);
+  static const black = Color(0xFF191B19);
+  static const cream = Color(0xFFF5F6F5);
+  static const lightCanvas = Color(0xFFF7F3E9);
+  static const darkCanvas = Color(0xFF191B19);
+  static const darkSurface = Color(0xFF282D28);
+  static const darkInk = Color(0xFFF3F5F2);
+  static const darkBorder = Color(0xFF747E70);
   static const darkShadow = darkBorder;
-  static const darkMuted = Color(0xFFB6BEC7);
-  static const darkYellow = Color(0xFF51452B);
-  static const darkMint = Color(0xFF294B3E);
-  static const darkCoral = Color(0xFF633B46);
-  static const darkPink = Color(0xFF60354F);
-  static const darkAccent = Color(0xFFFFB4CE);
+  static const darkMuted = Color(0xFFB8BEB5);
+  static const darkYellow = Color(0xFF49412B);
+  static const darkMint = Color(0xFF304531);
+  static const darkCoral = Color(0xFF523732);
+  static const darkPink = Color(0xFF483743);
+  static const darkAccent = Color(0xFFD0E5BA);
   static const darkError = Color(0xFFFFA8AE);
-  static const softYellow = Color(0xFFFFEFAE);
-  static const mintGreen = Color(0xFFBFE3B2);
-  static const bubblegumPink = Color(0xFFF45B91);
-  static const pinkInk = Color(0xFFB83363);
-  static const softCoral = Color(0xFFFF999B);
-  static const mutedLight = Color(0xFF74716A);
+  static const softYellow = Color(0xFFF4D88F);
+  static const mintGreen = Color(0xFFD0E5BA);
+  static const bubblegumPink = Color(0xFFEAC7D4);
+  static const pinkInk = Color(0xFF47623B);
+  static const softCoral = Color(0xFFF0C6B6);
+  static const mutedLight = Color(0xFF686D63);
   static const error = Color(0xFFC94F59);
 }
 
@@ -67,11 +73,11 @@ abstract final class WeekPactTheme {
     required Color primary,
   }) {
     final dark = brightness == Brightness.dark;
-    final surface = dark ? WeekPactColors.darkSurface : WeekPactColors.cream;
-    final outline = dark ? WeekPactColors.darkBorder : WeekPactColors.black;
+    final surface = WeekPactColors.cream;
+    final outline = const Color(0xFFD9DDD5);
     final inputBorder = OutlineInputBorder(
       borderSide: BorderSide(color: outline, width: WeekPactMetrics.border),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
     );
     final inputErrorBorder = inputBorder.copyWith(
       borderSide: BorderSide(
@@ -83,17 +89,15 @@ abstract final class WeekPactTheme {
       useMaterial3: true,
       fontFamily: 'RobotoCondensed',
       brightness: brightness,
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: background,
       colorScheme:
           ColorScheme.fromSeed(
             seedColor: primary,
             brightness: brightness,
             surface: surface,
           ).copyWith(
-            onSurface: foreground,
-            onSurfaceVariant: dark
-                ? WeekPactColors.darkMuted
-                : WeekPactColors.mutedLight,
+            onSurface: WeekPactColors.black,
+            onSurfaceVariant: WeekPactColors.mutedLight,
             primary: dark ? const Color(0xFFF1D68A) : WeekPactColors.pinkInk,
             onPrimary: WeekPactColors.black,
             outline: outline,
@@ -103,6 +107,43 @@ abstract final class WeekPactTheme {
     );
 
     return base.copyWith(
+      appBarTheme: AppBarTheme(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+          side: BorderSide(color: outline),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          backgroundColor: foreground,
+          foregroundColor: background,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+          ),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: dark ? WeekPactColors.mintGreen : WeekPactColors.pinkInk,
+      ),
       iconTheme: IconThemeData(color: foreground),
       dividerColor: outline,
       inputDecorationTheme: InputDecorationTheme(
@@ -138,7 +179,9 @@ abstract final class WeekPactTheme {
           fontWeight: FontWeight.w700,
         ),
         behavior: SnackBarBehavior.floating,
-        shape: Border.all(color: background, width: WeekPactMetrics.border),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+        ),
       ),
     );
   }
@@ -160,17 +203,13 @@ extension WeekPactThemeX on BuildContext {
   Color get ink => isDark ? WeekPactColors.darkInk : WeekPactColors.black;
   Color get canvas =>
       isDark ? WeekPactColors.darkCanvas : WeekPactColors.lightCanvas;
-  Color get surface =>
-      isDark ? WeekPactColors.darkSurface : WeekPactColors.cream;
-  Color get border => isDark ? WeekPactColors.darkBorder : WeekPactColors.black;
-  Color get shadow => isDark ? WeekPactColors.darkShadow : WeekPactColors.black;
-  Color get yellow =>
-      isDark ? WeekPactColors.darkYellow : WeekPactColors.softYellow;
-  Color get mint => isDark ? WeekPactColors.darkMint : WeekPactColors.mintGreen;
-  Color get coral =>
-      isDark ? WeekPactColors.darkCoral : WeekPactColors.softCoral;
-  Color get pink =>
-      isDark ? WeekPactColors.darkPink : WeekPactColors.bubblegumPink;
+  Color get surface => WeekPactColors.cream;
+  Color get border => WeekPactColors.black.withValues(alpha: .10);
+  Color get shadow => border;
+  Color get yellow => WeekPactColors.softYellow;
+  Color get mint => WeekPactColors.mintGreen;
+  Color get coral => WeekPactColors.mintGreen;
+  Color get pink => WeekPactColors.cream;
   Color get primary => yellow;
   Color get accent =>
       isDark ? WeekPactColors.darkAccent : WeekPactColors.pinkInk;
@@ -182,12 +221,30 @@ extension WeekPactThemeX on BuildContext {
 
   /// Resolve fixed accent colors carried by navigation and other view models.
   Color tone(Color color) {
-    if (!isDark) return color;
-    if (color == WeekPactColors.softYellow) return yellow;
-    if (color == WeekPactColors.mintGreen) return mint;
-    if (color == WeekPactColors.softCoral) return coral;
-    if (color == WeekPactColors.bubblegumPink) return pink;
-    if (color == WeekPactColors.cream) return surface;
+    if (color == WeekPactColors.softCoral ||
+        color == WeekPactColors.bubblegumPink) {
+      return WeekPactColors.mintGreen;
+    }
     return color;
   }
+}
+
+/// Home's pale surfaces retain dark content in either canvas theme.
+/// Build content within this scope so explicit context colors also match.
+class AppSurfaceTheme extends StatelessWidget {
+  const AppSurfaceTheme({super.key, required this.builder});
+  final WidgetBuilder builder;
+  @override
+  Widget build(BuildContext context) => Theme(
+    data: WeekPactTheme.light,
+    child: Builder(
+      builder: (context) => DefaultTextStyle(
+        style: Theme.of(context).textTheme.bodyMedium!,
+        child: IconTheme(
+          data: const IconThemeData(color: WeekPactColors.black),
+          child: builder(context),
+        ),
+      ),
+    ),
+  );
 }

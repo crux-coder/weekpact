@@ -1,5 +1,7 @@
 import 'support/pump_ui.dart';
 
+import 'package:weekpact/src/widgets/page_frame.dart';
+
 import 'dart:typed_data';
 
 import 'support/home_fakes.dart';
@@ -15,7 +17,7 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
-import 'package:weekpact/src/widgets/brutal_widgets.dart';
+import 'package:weekpact/src/widgets/app_components.dart';
 
 void main() {
   testWidgets('account switches between light, dark and device appearance', (
@@ -54,7 +56,7 @@ void main() {
       await tester.tap(find.text(entry.$1));
       await tester.pumpUi();
       expect(
-        Theme.of(tester.element(find.text('ACCOUNT.'))).brightness,
+        Theme.of(tester.element(find.text('Account').first)).brightness,
         entry.$3,
       );
       expect(saved.last, entry.$2);
@@ -62,7 +64,7 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     await tester.pumpUi();
     expect(
-      Theme.of(tester.element(find.text('ACCOUNT.'))).brightness,
+      Theme.of(tester.element(find.text('Account').first)).brightness,
       Brightness.light,
     );
   });
@@ -82,8 +84,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('CREWS.'), findsOneWidget);
-      expect(find.text('MEMBERS'), findsOneWidget);
+      expect(find.text('Crews'), findsWidgets);
+      expect(find.byType(SkeletonBar), findsWidgets);
       expect(find.text('CREATE CREW'), findsNothing);
       expect(find.byTooltip('Refresh crew'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -280,20 +282,20 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pumpUi();
 
-    expect(find.text('GOALS.'), findsOneWidget);
-    expect(find.text('WEEKLY GOALS'), findsOneWidget);
+    expect(find.text('Goals'), findsWidgets);
+    expect(find.text('Your goals'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
 
-    expect(find.text('CREWS.'), findsOneWidget);
-    expect(find.text('START YOUR CREW'), findsOneWidget);
+    expect(find.text('Crews'), findsWidgets);
+    expect(find.text('Start your crew'), findsOneWidget);
     expect(find.text('CREATE CREW'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
 
-    expect(find.text('ACCOUNT.'), findsOneWidget);
+    expect(find.text('Account'), findsWidgets);
     expect(find.text('LOG OUT'), findsOneWidget);
   });
 
@@ -398,7 +400,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('GOALS.'), findsOneWidget);
+    expect(find.text('Goals'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (
@@ -444,7 +446,7 @@ void main() {
       tester.getCenter(homeIcon).dy,
       equals(tester.getCenter(crewsIcon).dy),
     );
-    expect(find.text('CREWS.'), findsOneWidget);
+    expect(find.text('Crews'), findsWidgets);
   });
 
   testWidgets('uses a rounded rectangle navigation container', (tester) async {
@@ -466,7 +468,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    final navigation = find.byType(BrutalBottomNavigationBar);
+    final navigation = find.byType(AppBottomNavigationBar);
     final container = tester
         .widgetList<Container>(
           find.descendant(of: navigation, matching: find.byType(Container)),
@@ -494,7 +496,7 @@ void main() {
     expect(find.byType(WeekPactBackground), findsOneWidget);
     expect(
       Theme.of(tester.element(find.byType(Scaffold))).scaffoldBackgroundColor,
-      Colors.transparent,
+      WeekPactColors.lightCanvas,
     );
   });
 
@@ -549,7 +551,8 @@ void main() {
     await tester.tap(find.text('CREATE CREW'));
     await tester.pumpUi();
 
-    expect(find.text('OWNER'), findsNWidgets(2));
+    expect(find.text('You · Owner'), findsOneWidget);
+    expect(find.text('Pending invites'), findsNothing);
     expect(find.text('INVITE SOMEONE'), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);
     await tester.ensureVisible(find.text('INVITE SOMEONE'));
@@ -562,15 +565,17 @@ void main() {
     await tester.pumpUi();
 
     expect(crews.invitedEmails, ['friend@example.com']);
-    expect(find.text('PENDING INVITES'), findsOneWidget);
-    final crewCard = find.ancestor(
-      of: find.text('YOUR CREW'),
-      matching: find.byType(BrutalTabbedCard),
-    );
+    expect(find.text('Pending invites'), findsNothing);
     expect(
-      find.descendant(of: crewCard, matching: find.text('PENDING INVITES')),
-      findsOneWidget,
+      tester
+          .widget<Badge>(find.byKey(const ValueKey('crew-invites-badge')))
+          .isLabelVisible,
+      isTrue,
     );
+    await tester.ensureVisible(find.byTooltip('Invites'));
+    await tester.tap(find.byTooltip('Invites'));
+    await tester.pumpUi();
+    expect(find.text('Sent'), findsOneWidget);
     expect(find.text('friend@example.com'), findsWidgets);
   });
 
