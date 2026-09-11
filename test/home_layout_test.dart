@@ -72,6 +72,12 @@ void main() {
           expect(verticalScrolls, isEmpty);
           final board = find.byKey(const ValueKey('crew-board'));
           final position = tester.getTopLeft(board);
+          final activeGoal = tester.getRect(
+            find.byKey(const ValueKey('move')).hitTestable(),
+          );
+          final crewBounds = tester.getRect(board);
+          expect(activeGoal.left, closeTo(crewBounds.left, 1));
+          expect(activeGoal.right, closeTo(crewBounds.right, 1));
           final titleBottom = tester
               .getBottomRight(find.byType(CrewTitleBanner))
               .dy;

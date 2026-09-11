@@ -81,14 +81,18 @@ void main() {
       backend.loading = null;
       await tester.pumpUi();
       expect(find.text('Early Birds'), findsOneWidget);
-      expect(find.text('Mark done'), findsOneWidget);
+      expect(find.text('Mark done').hitTestable(), findsOneWidget);
       backend.failSave = true;
-      await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
+      await tester.tap(
+        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+      );
       await tester.pumpUi();
       expect(find.textContaining('Could not save.'), findsOneWidget);
       expect(backend.selected, {'read'});
       backend.failSave = false;
-      await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
+      await tester.tap(
+        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+      );
       await tester.pumpUi();
       expect(backend.selected, {'move', 'read'});
       expect(find.text('Undo check-in'), findsWidgets);
@@ -111,7 +115,7 @@ void main() {
     backend.failLoad = false;
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
-    expect(find.text('Move for 30 min'), findsOneWidget);
+    expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pumpUi();
     backend.goals.goals = [];
@@ -195,7 +199,9 @@ void main() {
     await pumpHome(tester, backend);
     await tester.pumpUi();
     expect(calls, isEmpty);
-    final goal = find.byKey(const ValueKey('check-in-Move for 30 min'));
+    final goal = find
+        .byKey(const ValueKey('check-in-Move for 30 min'))
+        .hitTestable();
     backend.failSave = true;
     await tester.tap(goal);
     await tester.pumpUi();

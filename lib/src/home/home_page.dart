@@ -317,7 +317,11 @@ class _HomeDestinationState extends State<_HomeDestination>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(_error!, textAlign: TextAlign.center),
+                        Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: homePaper),
+                        ),
                         TextButton(
                           onPressed: _refresh,
                           child: const Text('TRY AGAIN'),
@@ -334,6 +338,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                         const Text(
                           'Your week starts with a crew.',
                           style: TextStyle(
+                            color: homePaper,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                           ),
@@ -353,7 +358,11 @@ class _HomeDestinationState extends State<_HomeDestination>
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    CrewTitleBanner(name: _crew!.name),
+                    CrewTitleBanner(
+                      name: _crew!.name,
+                      completed: week.completed(widget.userId),
+                      target: week.target,
+                    ),
                     const SizedBox(height: 12),
                     if (_saveError != null)
                       SizedBox(
@@ -363,7 +372,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: context.errorInk,
+                            color: const Color(0xFFFFB4A9),
                             fontSize: 13,
                           ),
                         ),
@@ -377,6 +386,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   const Text(
                                     'No goals yet.',
                                     style: TextStyle(
+                                      color: homePaper,
                                       fontSize: 24,
                                       fontWeight: FontWeight.w900,
                                     ),
@@ -403,7 +413,6 @@ class _HomeDestinationState extends State<_HomeDestination>
                     ),
                     const SizedBox(height: 12),
                     TodayCrewCard(
-                      animate: widget.active,
                       height: crewHeight,
                       crewName: _crew!.name,
                       week: week,

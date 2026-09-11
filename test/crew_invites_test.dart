@@ -152,7 +152,9 @@ void main() {
         if (outcome == 'accept') {
           expect(home.fetches, greaterThan(0));
           expect(
-            find.byKey(const ValueKey('check-in-Move for 30 min')),
+            find
+                .byKey(const ValueKey('check-in-Move for 30 min'))
+                .hitTestable(),
             findsOneWidget,
           );
           expect(find.text('Early Birds'), findsOneWidget);

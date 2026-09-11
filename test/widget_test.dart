@@ -243,7 +243,8 @@ void main() {
     await tester.pumpUi();
 
     expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.text('1 of 2 checked in'), findsOneWidget);
+    expect(find.text('Checked in · 1'), findsOneWidget);
+    expect(find.text('Not yet · 1'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
@@ -353,14 +354,18 @@ void main() {
     await tester.pumpUi();
 
     expect(find.text('Your goals'), findsNothing);
-    expect(find.text('Move for 30 min'), findsOneWidget);
-    expect(find.text('Mark done'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
+    expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
+    expect(find.text('Mark done').hitTestable(), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    );
     await tester.pumpUi();
     expect(find.text('Undo check-in'), findsWidgets);
-    await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
+    await tester.tap(
+      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    );
     await tester.pumpUi();
-    expect(find.text('Mark done'), findsOneWidget);
+    expect(find.text('Mark done').hitTestable(), findsOneWidget);
   });
 
   testWidgets('slides horizontally between destinations', (tester) async {

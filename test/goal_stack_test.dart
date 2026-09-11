@@ -12,6 +12,113 @@ import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'support/home_fakes.dart';
 
 void main() {
+  testWidgets('carousel wraps repeatedly in both directions', (tester) async {
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TodayGoalsCard(
+            week: week,
+            userId: '',
+            savingGoal: null,
+            onToggle: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    for (final direction in [-1, 1]) {
+      for (var step = 0; step < 6; step++) {
+        await tester.drag(
+          find.byKey(const ValueKey('goal-stack')),
+          Offset(direction * 650.0, 0),
+        );
+        await tester.pumpUi();
+        expect(
+          find
+              .text(step.isEven ? 'Read 20 pages' : 'Move for 30 min')
+              .hitTestable(),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets('swiping card stays within the vertical clipping bounds', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: TodayGoalsCard(
+              week: week,
+              height: 400,
+              horizontalBleed: 12,
+              userId: '',
+              savingGoal: null,
+              onToggle: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    Finder goalCopy() => nearestCopy(tester, const ValueKey('move'));
+    final goal = goalCopy();
+    Rect paintedBounds(Finder finder) {
+      final box = tester.renderObject<RenderBox>(finder);
+      return MatrixUtils.transformRect(
+        box.getTransformTo(null),
+        Offset.zero & box.size,
+      );
+    }
+
+    final restingBottom = paintedBounds(goal).bottom;
+    void checkFrame() {
+      if (goal.evaluate().isEmpty) return;
+      final box = tester.renderObject<RenderBox>(goal);
+      // A slide must remain upright even while the pointer is moving.
+      expect(box.getTransformTo(null).storage[1], closeTo(0, .001));
+      final bounds = paintedBounds(goal);
+      final clips = find.ancestor(of: goal, matching: find.byType(ClipRect));
+      expect(clips, findsWidgets);
+      for (final clip in clips.evaluate()) {
+        final clipBox = clip.renderObject! as RenderBox;
+        final viewport = MatrixUtils.transformRect(
+          clipBox.getTransformTo(null),
+          Offset.zero & clipBox.size,
+        );
+        expect(bounds.top, greaterThanOrEqualTo(viewport.top - 1));
+        expect(bounds.bottom, lessThanOrEqualTo(viewport.bottom + 1));
+      }
+      final incoming = paintedBounds(
+        nearestCopy(tester, const ValueKey('read')),
+      );
+      expect(incoming.bottom, lessThanOrEqualTo(restingBottom + 8));
+      expect(incoming.bottom, greaterThanOrEqualTo(restingBottom - 1));
+    }
+
+    final gesture = await tester.startGesture(tester.getCenter(goal));
+    for (var step = 0; step < 13; step++) {
+      await gesture.moveBy(const Offset(-20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      checkFrame();
+    }
+    await gesture.up();
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      checkFrame();
+    }
+    await tester.pumpUi();
+  });
+
   testWidgets(
     'keeps goal order and selected card after completing and undoing',
     (tester) async {
@@ -67,7 +174,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 150));
       expect(
         find.byKey(const ValueKey('goal-completion-effect')),
-        findsOneWidget,
+        findsWidgets,
       );
       await tester.pumpUi();
       expect(
@@ -97,64 +204,73 @@ void main() {
     },
   );
 
-  testWidgets('coverflow centers the selected card and angles its neighbor', (
-    tester,
-  ) async {
-    final haptics = <Object?>[];
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'HapticFeedback.vibrate') {
-          haptics.add(call.arguments);
-        }
-        return null;
-      },
-    );
-    addTearDown(
-      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+  testWidgets(
+    'slide and stack keeps the selected card upright and provides haptics',
+    (tester) async {
+      final haptics = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
-        null,
-      ),
-    );
-    final week = await DashboardBackend().fetchWeek('crew');
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: Scaffold(
-          body: TodayGoalsCard(
-            week: week,
-            userId: '',
-            savingGoal: null,
-            onToggle: (_) {},
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            haptics.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final week = await DashboardBackend().fetchWeek('crew');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: WeekPactTheme.dark,
+          home: Scaffold(
+            body: TodayGoalsCard(
+              horizontalBleed: 12,
+              week: week,
+              userId: '',
+              savingGoal: null,
+              onToggle: (_) {},
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpUi();
-    expect(haptics, isEmpty);
-    final first = find.byKey(const ValueKey('goal-coverflow-0'));
-    final second = find.byKey(const ValueKey('goal-coverflow-1'));
-    expect(
-      tester.widget<Transform>(first).transform.storage[2],
-      closeTo(0, .001),
-    );
-    expect(
-      tester.widget<Transform>(second).transform.storage[2].abs(),
-      greaterThan(.1),
-    );
-    await tester.tap(find.byTooltip('Goal 2 of 2'));
-    await tester.pumpUi();
-    expect(
-      tester.widget<Transform>(second).transform.storage[2],
-      closeTo(0, .001),
-    );
-    expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-    expect(haptics, ['HapticFeedbackType.selectionClick']);
-    await tester.tap(find.byTooltip('Goal 2 of 2'));
-    await tester.pumpUi();
-    expect(haptics, hasLength(1));
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpUi();
+      expect(haptics, isEmpty);
+      final first = nearestCopy(tester, const ValueKey('goal-slide-stack-0'));
+      expect(
+        tester.widget<Transform>(first).transform.storage[1],
+        closeTo(0, .001),
+      );
+      final front = tester.getRect(nearestCopy(tester, const ValueKey('move')));
+      final behind = tester.getRect(
+        nearestCopy(tester, const ValueKey('read')),
+      );
+      expect(behind.bottom, greaterThan(front.bottom));
+      expect(behind.bottom - front.bottom, lessThan(12));
+      expect(behind.width, lessThan(front.width));
+      await tester.tap(find.byTooltip('Goal 2 of 2'));
+      await tester.pumpUi();
+      expect(
+        tester
+            .widget<Transform>(
+              nearestCopy(tester, const ValueKey('goal-slide-stack-1')),
+            )
+            .transform
+            .storage[1],
+        closeTo(0, .001),
+      );
+      expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+      expect(haptics, ['HapticFeedbackType.selectionClick']);
+      await tester.tap(find.byTooltip('Goal 2 of 2'));
+      await tester.pumpUi();
+      expect(haptics, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'many goals and crew members fit narrow screens with large text',
@@ -220,5 +336,24 @@ void main() {
       expect(find.textContaining(RegExp(r'^\+\d+$')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
+  );
+}
+
+// Looping renders extra copies; inspect the largest copy nearest the viewport.
+Finder nearestCopy(WidgetTester tester, Key key) {
+  final candidates = find.byKey(key).evaluate().toList();
+  final center = tester.getCenter(find.byKey(const ValueKey('goal-stack')));
+  double score(Element element) {
+    final box = element.renderObject! as RenderBox;
+    final bounds = MatrixUtils.transformRect(
+      box.getTransformTo(null),
+      Offset.zero & box.size,
+    );
+    return bounds.width - (bounds.center.dx - center.dx).abs() * 10;
+  }
+
+  candidates.sort((a, b) => score(b).compareTo(score(a)));
+  return find.byElementPredicate(
+    (element) => identical(element, candidates.first),
   );
 }

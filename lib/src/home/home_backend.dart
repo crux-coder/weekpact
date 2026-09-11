@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../goals/goals_backend.dart';
+import 'avatar_url_cache.dart';
 
 class WeekMember {
   const WeekMember(
@@ -150,7 +151,8 @@ abstract interface class HomeBackend {
 }
 
 class SupabaseHomeBackend implements HomeBackend {
-  const SupabaseHomeBackend(this.client);
+  SupabaseHomeBackend(this.client);
+  final _avatarUrls = AvatarUrlCache();
   final SupabaseClient client;
   @override
   Future<CrewWeek> fetchWeek(String crewId) async {
@@ -165,19 +167,19 @@ class SupabaseHomeBackend implements HomeBackend {
         .where((m) => m.avatarPath == '${m.id}/avatar.png')
         .map((m) => m.avatarPath!)
         .toList();
-    final urls = <String, String>{};
-    if (paths.isNotEmpty) {
-      try {
+    final urls = await _avatarUrls.resolve(
+      scope: '${client.auth.currentUser?.id}:$crewId',
+      paths: paths,
+      sign: (missing, lifetime) async {
         final signed = await client.storage
             .from('avatars')
-            .createSignedUrlsResult(paths, 300);
-        for (final result in signed) {
-          if (result is SignedUrlSuccess) urls[result.path] = result.signedUrl;
-        }
-      } catch (_) {
-        /* Profile images must not prevent loading check-ins. */
-      }
-    }
+            .createSignedUrlsResult(missing, lifetime);
+        return {
+          for (final result in signed)
+            if (result is SignedUrlSuccess) result.path: result.signedUrl,
+        };
+      },
+    );
     return CrewWeek(
       today: week.today,
       weekStart: week.weekStart,
