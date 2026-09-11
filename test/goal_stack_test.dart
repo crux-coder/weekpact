@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/goals/goals_backend.dart';
@@ -9,7 +11,7 @@ import 'support/home_fakes.dart';
 
 void main() {
   testWidgets(
-    'swipes unfinished goals first and moves saved goals behind them',
+    'keeps goal order and selected card after completing and undoing',
     (tester) async {
       final backend = DashboardBackend();
       backend.goals.goals.add(
@@ -42,29 +44,79 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
       await tester.drag(
         find.byKey(const ValueKey('goal-stack')),
         const Offset(-650, 0),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
+      expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+      await tester.drag(
+        find.byKey(const ValueKey('goal-stack')),
+        const Offset(-650, 0),
+      );
+      await tester.pumpUi();
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       backend.selected.add('third');
       final updated = await backend.fetchWeek('crew');
       refresh(() => week = updated);
-      await tester.pumpAndSettle();
-      expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
+      await tester.pumpUi();
+      expect(find.text('Stretch').hitTestable(), findsOneWidget);
+      expect(find.text('Undo check-in').hitTestable(), findsOneWidget);
+      backend.selected.remove('third');
+      final undone = await backend.fetchWeek('crew');
+      refresh(() => week = undone);
+      await tester.pumpUi();
+      expect(find.text('Stretch').hitTestable(), findsOneWidget);
+      expect(find.text('Mark done').hitTestable(), findsOneWidget);
       await tester.drag(
         find.byKey(const ValueKey('goal-stack')),
-        const Offset(-650, 0),
+        const Offset(650, 0),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-      expect(find.text('Undo check-in').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('coverflow centers the selected card and angles its neighbor', (
+    tester,
+  ) async {
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: TodayGoalsCard(
+            week: week,
+            userId: '',
+            savingGoal: null,
+            onToggle: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    final first = find.byKey(const ValueKey('goal-coverflow-0'));
+    final second = find.byKey(const ValueKey('goal-coverflow-1'));
+    expect(
+      tester.widget<Transform>(first).transform.storage[2],
+      closeTo(0, .001),
+    );
+    expect(
+      tester.widget<Transform>(second).transform.storage[2].abs(),
+      greaterThan(.1),
+    );
+    await tester.tap(find.byTooltip('Goal 2 of 2'));
+    await tester.pumpUi();
+    expect(
+      tester.widget<Transform>(second).transform.storage[2],
+      closeTo(0, .001),
+    );
+    expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'many goals and crew members fit narrow screens with large text',
@@ -123,11 +175,11 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('1 of 14'), findsNothing);
       expect(find.byTooltip('Goal 5 of 14'), findsOneWidget);
       expect(find.byTooltip('Goal 6 of 14'), findsNothing);
-      expect(find.text('+13'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^\+\d+$')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

@@ -235,7 +235,9 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    this.glass = false,
   });
+  final bool glass;
   final List<BrutalNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -246,9 +248,12 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: context.surface,
+        color: glass ? const Color(0xB3443C62) : context.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WeekPactColors.outlineInk, width: 2),
+        border: Border.all(
+          color: glass ? const Color(0x50FFFFFF) : WeekPactColors.outlineInk,
+          width: 2,
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -276,8 +281,10 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                         message: items[i].label,
                         child: Material(
                           color: Color.lerp(
-                            context.surface,
-                            WeekPactColors.salmon,
+                            glass ? Colors.transparent : context.surface,
+                            glass
+                                ? const Color(0xFFCAB8FA)
+                                : WeekPactColors.salmon,
                             amount,
                           ),
                           borderRadius: BorderRadius.circular(10),
@@ -295,7 +302,7 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                                   HugeIcon(
                                     icon: items[i].icon,
                                     color: Color.lerp(
-                                      context.ink,
+                                      glass ? Colors.white : context.ink,
                                       WeekPactColors.outlineInk,
                                       amount,
                                     ),

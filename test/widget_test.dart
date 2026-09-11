@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'dart:typed_data';
 
 import 'support/home_fakes.dart';
@@ -40,9 +42,9 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-account')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     for (final entry in [
       ('Light', ThemeMode.light, Brightness.light),
       ('Dark', ThemeMode.dark, Brightness.dark),
@@ -50,7 +52,7 @@ void main() {
     ]) {
       await tester.ensureVisible(find.text(entry.$1));
       await tester.tap(find.text(entry.$1));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(
         Theme.of(tester.element(find.text('ACCOUNT.'))).brightness,
         entry.$3,
@@ -58,7 +60,7 @@ void main() {
       expect(saved.last, entry.$2);
     }
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(
       Theme.of(tester.element(find.text('ACCOUNT.'))).brightness,
       Brightness.light,
@@ -87,7 +89,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
       crews.pending.complete(null);
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('CREATE CREW'), findsOneWidget);
       crews.pending = Completer<CrewDetails?>();
       await tester.dragFrom(const Offset(400, 80), const Offset(0, 600));
@@ -96,7 +98,7 @@ void main() {
       expect(crews.fetches, 2);
       expect(find.text('CREATE CREW'), findsOneWidget);
       crews.pending.completeError(Exception('Network unavailable'));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('CREATE CREW'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -120,7 +122,7 @@ void main() {
     final modeButton = find.byType(TextButton).last;
     await tester.ensureVisible(modeButton);
     await tester.tap(modeButton);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('Make it official.'), findsOneWidget);
     expect(find.text('CONFIRM PASSWORD'), findsOneWidget);
@@ -161,7 +163,7 @@ void main() {
     final modeButton = find.byType(TextButton).last;
     await tester.ensureVisible(modeButton);
     await tester.tap(modeButton);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
@@ -169,7 +171,7 @@ void main() {
     final submitButton = find.text('CREATE ACCOUNT');
     await tester.ensureVisible(submitButton);
     await tester.tap(submitButton);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(auth.signUpCalls, 1);
     expect(auth.lastEmailRedirectTo, 'weekpact://invite');
@@ -180,7 +182,7 @@ void main() {
     expect(find.text('Welcome back.'), findsOneWidget);
     // Supabase emits the signed-in session after exchanging the email callback.
     auth.confirmEmail('new@example.com');
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('Welcome back.'), findsNothing);
     expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
     expect(auth.signInCalls, 0);
@@ -203,20 +205,20 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     final mode = find.byType(TextButton).last;
     await tester.ensureVisible(mode);
     await tester.tap(mode);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.enterText(find.byType(TextFormField).at(2), 'password123');
     await tester.ensureVisible(find.text('CREATE ACCOUNT'));
     await tester.tap(find.text('CREATE ACCOUNT'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(auth.lastEmailRedirectTo, 'weekpact://invite?invite=crew-token');
     auth.confirmEmail('new@example.com');
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('JOIN THE CREW.'), findsOneWidget);
     expect(auth.signInCalls, 0);
   });
@@ -238,17 +240,17 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.text('1 / 2 checked in'), findsOneWidget);
+    expect(find.text('1 of 2 checked in'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     await tester.ensureVisible(find.text('LOG OUT'));
     await tester.tap(find.text('LOG OUT'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('Welcome back.'), findsOneWidget);
   });
@@ -270,25 +272,25 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('Early Birds'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('GOALS.'), findsOneWidget);
     expect(find.text('WEEKLY GOALS'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('CREWS.'), findsOneWidget);
     expect(find.text('START YOUR CREW'), findsOneWidget);
     expect(find.text('CREATE CREW'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('ACCOUNT.'), findsOneWidget);
     expect(find.text('LOG OUT'), findsOneWidget);
@@ -313,7 +315,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     final homeButton = find.byKey(const ValueKey('nav-home'));
     final homeIcon = find.descendant(
@@ -348,16 +350,16 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('Your goals'), findsNothing);
     expect(find.text('Move for 30 min'), findsOneWidget);
     expect(find.text('Mark done'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('Undo check-in'), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('Mark done'), findsOneWidget);
   });
 
@@ -378,7 +380,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     final initialHomeX = tester.getTopLeft(find.text('Early Birds')).dx;
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
@@ -390,7 +392,7 @@ void main() {
       lessThan(initialHomeX),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('GOALS.'), findsOneWidget);
   });
 
@@ -413,7 +415,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     final homeButton = find.byKey(const ValueKey('nav-home'));
     final crewsButton = find.byKey(const ValueKey('nav-crews'));
@@ -430,7 +432,7 @@ void main() {
     expect(tester.getCenter(homeIcon).dy, equals(initialCrewsY));
 
     await tester.tap(crewsButton);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(tester.getCenter(crewsIcon).dy, equals(initialCrewsY));
     expect(
@@ -457,7 +459,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     final navigation = find.byType(BrutalBottomNavigationBar);
     final container = tester
@@ -534,25 +536,25 @@ void main() {
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     await tester.enterText(find.byType(TextFormField), 'Weekend Warriors');
     await tester.tap(find.text('CREATE CREW'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('OWNER'), findsNWidgets(2));
     expect(find.text('INVITE SOMEONE'), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);
     await tester.ensureVisible(find.text('INVITE SOMEONE'));
     await tester.tap(find.text('INVITE SOMEONE'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('INVITE TO YOUR CREW'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField), 'friend@example.com');
     await tester.tap(find.text('SEND INVITE'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(crews.invitedEmails, ['friend@example.com']);
     expect(find.text('PENDING INVITES'), findsOneWidget);
@@ -584,7 +586,7 @@ void main() {
         inviteLinkSource: links,
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.textContaining('CREW INVITE READY'), findsOneWidget);
     await tester.enterText(
@@ -594,11 +596,11 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.ensureVisible(find.text('LOG IN'));
     await tester.tap(find.text('LOG IN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(find.text('JOIN THE CREW.'), findsOneWidget);
     await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
 
     expect(crews.acceptedTokens, ['secret-token']);
     expect(find.text('JOIN THE CREW.'), findsNothing);

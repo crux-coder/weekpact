@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/home_backend.dart';
@@ -44,7 +46,7 @@ void main() {
         expect(fraction, greaterThan((count - 1) / 2));
         expect(fraction, lessThan(count / 2));
       }
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(
         tester
             .widget<FractionallySizedBox>(

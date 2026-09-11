@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'dart:async';
 
 import 'package:weekpact/src/auth/auth_backend.dart';
@@ -90,14 +92,14 @@ Future<void> showInbox(WidgetTester tester, InboxBackend backend) async {
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pumpUi();
   await tester.tap(find.text('INVITES'));
-  await tester.pumpAndSettle();
+  await tester.pumpUi();
 }
 
 Future<void> openPreview(WidgetTester tester) async {
   await tester.tap(find.text('VIEW CREW'));
-  await tester.pumpAndSettle();
+  await tester.pumpUi();
 }
 
 void main() {
@@ -126,19 +128,19 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        await tester.pumpUi();
         expect(home.fetches, 0);
         await tester.tap(find.byKey(const ValueKey('nav-crews')));
-        await tester.pumpAndSettle();
+        await tester.pumpUi();
         await tester.tap(find.text('INVITES'));
-        await tester.pumpAndSettle();
+        await tester.pumpUi();
         await openPreview(tester);
         final action = find.text(
           outcome == 'decline' ? 'DECLINE INVITE' : 'ACCEPT INVITE',
         );
         await tester.ensureVisible(action);
         await tester.tap(action);
-        await tester.pumpAndSettle();
+        await tester.pumpUi();
         expect(
           tester
               .widget<BrutalBottomNavigationBar>(
@@ -174,7 +176,7 @@ void main() {
     expect(backend.responses, isEmpty);
     await tester.ensureVisible(find.text('ACCEPT INVITE'));
     await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(backend.responses, [true]);
     expect(find.text('EARLY BIRDS'), findsOneWidget);
     expect(find.text('DECLINE INVITE'), findsNothing);
@@ -188,7 +190,7 @@ void main() {
     await openPreview(tester);
     await tester.ensureVisible(find.text('DECLINE INVITE'));
     await tester.tap(find.text('DECLINE INVITE'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(backend.responses, [false]);
     expect(backend.crew, isNull);
     expect(find.text('NO INVITES YET'), findsOneWidget);
@@ -201,7 +203,7 @@ void main() {
     await showInbox(tester, backend);
     await openPreview(tester);
     await tester.tap(find.text('ALL INVITES'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('VIEW CREW'), findsOneWidget);
     expect(backend.responses, isEmpty);
   });
@@ -223,7 +225,7 @@ void main() {
       expect(find.textContaining('only join one crew'), findsOneWidget);
       await tester.ensureVisible(find.text('DECLINE INVITE'));
       await tester.tap(find.text('DECLINE INVITE'));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(backend.crew!.name, 'My existing crew');
       expect(backend.responses, [false]);
     },
@@ -235,7 +237,7 @@ void main() {
     expect(find.text('NO INVITES YET'), findsNothing);
     backend.fetchError = null;
     await tester.tap(find.text('RETRY'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('VIEW CREW'), findsOneWidget);
   });
 
@@ -248,13 +250,13 @@ void main() {
       await openPreview(tester);
       await tester.ensureVisible(find.text('ACCEPT INVITE'));
       await tester.tap(find.text('ACCEPT INVITE'));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.textContaining('was revoked'), findsOneWidget);
       expect(backend.crew, isNull);
       backend.inbox.clear();
       await tester.ensureVisible(find.text('RETRY'));
       await tester.tap(find.text('RETRY'));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('NO INVITES YET'), findsOneWidget);
     },
   );
@@ -275,7 +277,7 @@ void main() {
     expect(decline.onPressed, isNull);
     expect(backend.responses, [true]);
     backend.pending!.complete();
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('EARLY BIRDS'), findsOneWidget);
   });
 
@@ -303,9 +305,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await tester.tap(find.text('INVITES'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await openPreview(tester);
     await tester.ensureVisible(find.text('DECLINE INVITE'));
     expect(tester.takeException(), isNull);

@@ -1,3 +1,4 @@
+import 'home_glass.dart';
 import '../onboarding/profile_avatar.dart';
 import '../auth/account_actions.dart';
 import '../notifications/notification_settings_card.dart';
@@ -111,7 +112,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final scaffold = Scaffold(
+      backgroundColor: _selectedIndex == 0 ? Colors.transparent : null,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
@@ -145,10 +147,12 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BrutalBottomNavigationBar(
         items: _navigationItems,
+        glass: _selectedIndex == 0,
         selectedIndex: _selectedIndex,
         onSelected: _selectDestination,
       ),
     );
+    return HomeGlassBackground(child: scaffold);
   }
 }
 
@@ -339,7 +343,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                   );
                 }
                 if (week == null) return const SizedBox.shrink();
-                const crewHeight = 206.0;
+                const crewHeight = 180.0;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -382,6 +386,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                             )
                           : LayoutBuilder(
                               builder: (context, space) => TodayGoalsCard(
+                                horizontalBleed: 12,
                                 height: space.maxHeight,
                                 week: week,
                                 userId: widget.userId,
@@ -392,6 +397,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                     ),
                     const SizedBox(height: 12),
                     TodayCrewCard(
+                      animate: widget.active,
                       height: crewHeight,
                       crewName: _crew!.name,
                       week: week,

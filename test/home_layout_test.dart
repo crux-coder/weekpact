@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,7 +56,7 @@ void main() {
               ),
             ),
           );
-          await tester.pumpAndSettle();
+          await tester.pumpUi();
           expect(tester.takeException(), isNull);
           expect(find.text('WeekPact'), findsNothing);
           expect(find.byType(Swiper), findsOneWidget);
@@ -69,7 +71,7 @@ void main() {
           final board = find.byKey(const ValueKey('crew-board'));
           final position = tester.getTopLeft(board);
           await tester.drag(board, const Offset(0, -180));
-          await tester.pumpAndSettle();
+          await tester.pumpUi();
           expect(tester.getTopLeft(board), position);
           expect(
             tester.getBottomRight(board).dy,
@@ -81,7 +83,7 @@ void main() {
           final before = find.text('Early Birds');
           expect(before, findsOneWidget);
           await tester.drag(find.byType(Swiper), Offset(-size.width * .7, 0));
-          await tester.pumpAndSettle();
+          await tester.pumpUi();
           expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
           expect(find.text('Your goals'), findsNothing);
           expect(find.text('1 of 2'), findsNothing);

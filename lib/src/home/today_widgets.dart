@@ -1,3 +1,9 @@
+// card_swiper exposes the transformer option but does not re-export its builder.
+// ignore: implementation_imports
+import 'package:card_swiper/src/transformer_page_view/transformer_page_view.dart';
+
+import 'home_glass.dart';
+
 import 'package:card_swiper/card_swiper.dart';
 
 import 'dart:math' as math;
@@ -12,108 +18,67 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/page_frame.dart';
 import 'home_backend.dart';
 
-const _ink = WeekPactColors.outlineInk;
+const _ink = Color(0xFFF6F3FF);
 BoxDecoration _panel(Color color, [double radius = 18]) => BoxDecoration(
-  color: color,
+  gradient: LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [color.withValues(alpha: .28), color.withValues(alpha: .08)],
+  ),
   borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: _ink, width: 2),
+  border: Border.all(color: Colors.white.withValues(alpha: .3)),
 );
 
-/// A compact crew nameplate that keeps the home screen's fixed layout.
 class CrewTitleBanner extends StatelessWidget {
   const CrewTitleBanner({super.key, required this.name});
   final String name;
-
   @override
-  Widget build(BuildContext context) => Material(
-    color: context.surface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-      side: const BorderSide(color: _ink, width: 2),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: SizedBox(
-      height: 60,
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              color: WeekPactColors.lavender,
-              border: Border(right: BorderSide(color: _ink, width: 2)),
-            ),
-            child: const Center(
-              child: HugeIcon(
-                icon: HugeIconsStrokeRounded.userGroup,
-                color: _ink,
-                size: 29,
-              ),
-            ),
+  Widget build(BuildContext context) => SizedBox(
+    height: 60,
+    child: Row(
+      children: [
+        HomeGlassSurface(
+          radius: 16,
+          padding: const EdgeInsets.all(12),
+          child: const HugeIcon(
+            icon: HugeIconsStrokeRounded.userGroup,
+            color: _ink,
+            size: 25,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Tooltip(
-              message: name,
-              child: Semantics(
-                header: true,
-                child: Align(
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'YOUR CREW',
+                style: TextStyle(
+                  color: Color(0xFFBDB7D8),
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 25,
-                        height: 1.3,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 25,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 10),
-          ExcludeSemantics(
-            child: SizedBox(
-              width: 22,
-              height: 26,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 1,
-                    right: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: WeekPactColors.salmon,
-                        border: Border.all(color: _ink),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 1,
-                    left: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: WeekPactColors.lime,
-                        border: Border.all(color: _ink),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }
@@ -123,11 +88,13 @@ class TodayGoalsCard extends StatefulWidget {
     super.key,
     required this.week,
     this.height,
+    this.horizontalBleed = 0,
     required this.userId,
     required this.savingGoal,
     required this.onToggle,
   });
   final double? height;
+  final double horizontalBleed;
   final CrewWeek week;
   final String userId;
   final String? savingGoal;
@@ -139,24 +106,28 @@ class TodayGoalsCard extends StatefulWidget {
 class _TodayGoalsCardState extends State<TodayGoalsCard> {
   final _controller = SwiperController();
   int _index = 0;
-  List<CrewGoal> get _goals {
-    final checked = widget.week.checkedToday(widget.userId);
-    return [
-      ...widget.week.goals.where((g) => !checked.contains(g.id)),
-      ...widget.week.goals.where((g) => checked.contains(g.id)),
-    ];
-  }
+  List<CrewGoal> get _goals => widget.week.goals;
 
   @override
   void didUpdateWidget(covariant TodayGoalsCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final before = oldWidget.week.checkedToday(oldWidget.userId);
-    final after = widget.week.checkedToday(widget.userId);
-    final completed = after.difference(before).isNotEmpty;
-    if (completed || _index >= _goals.length) {
+    if (_goals.isEmpty) {
       _index = 0;
+      return;
+    }
+    final previousId = _index < oldWidget.week.goals.length
+        ? oldWidget.week.goals[_index].id
+        : null;
+    final retainedIndex = _goals.indexWhere((goal) => goal.id == previousId);
+    final nextIndex = retainedIndex >= 0
+        ? retainedIndex
+        : math.min(_index, _goals.length - 1);
+    if (nextIndex != _index) {
+      _index = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _controller.move(0, animation: false);
+        if (mounted && _goals.isNotEmpty) {
+          _controller.move(_index, animation: false);
+        }
       });
     }
   }
@@ -191,40 +162,68 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
           SizedBox(
             height: cardHeight,
             child: LayoutBuilder(
-              builder: (context, space) => Swiper(
-                key: const ValueKey('goal-stack'),
-                controller: _controller,
-                itemCount: goals.length,
-                layout: SwiperLayout.STACK,
-                itemWidth: space.maxWidth - (goals.length > 1 ? 32 : 0),
-                itemHeight: cardHeight - 4,
-                axisDirection: AxisDirection.right,
-                scrollDirection: Axis.horizontal,
-                loop: false,
-                autoplay: false,
-                duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
-                onIndexChanged: (index) => setState(() => _index = index),
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
+              builder: (context, space) => OverflowBox(
+                minWidth: space.maxWidth + widget.horizontalBleed * 2,
+                maxWidth: space.maxWidth + widget.horizontalBleed * 2,
+                child: Swiper(
+                  key: const ValueKey('goal-stack'),
+                  controller: _controller,
+                  itemCount: goals.length,
+                  layout: SwiperLayout.DEFAULT,
+                  viewportFraction:
+                      space.maxWidth *
+                      (goals.length > 1 ? .84 : 1) /
+                      (space.maxWidth + widget.horizontalBleed * 2),
+                  transformer: PageTransformerBuilder(
+                    builder: (child, info) {
+                      final position = (info.position ?? 0).clamp(-1.0, 1.0);
+                      final reduced = MediaQuery.disableAnimationsOf(context);
+                      final angle = reduced ? 0.0 : -position * .42;
+                      final scale = reduced ? 1.0 : 1 - position.abs() * .12;
+                      return Transform(
+                        key: ValueKey('goal-coverflow-${info.index}'),
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, .0012)
+                          ..rotateY(angle)
+                          ..scaleByDouble(scale, scale, 1, 1),
+                        child: IgnorePointer(
+                          ignoring: position.abs() > .5,
+                          child: child,
+                        ),
+                      );
+                    },
                   ),
-                  child: SizedBox.expand(
-                    child: _GoalCard(
-                      key: ValueKey(goals[index].id),
-                      goal: goals[index],
-                      week: widget.week,
-                      userId: widget.userId,
-                      color: [
-                        WeekPactColors.sky,
-                        WeekPactColors.lavender,
-                        WeekPactColors.lime,
-                      ][widget.week.goals.indexOf(goals[index]) % 3],
-                      busy: widget.savingGoal == goals[index].id,
-                      onToggle:
-                          widget.savingGoal != null || widget.onToggle == null
-                          ? null
-                          : () => widget.onToggle!(goals[index].id),
+                  itemWidth: space.maxWidth - (goals.length > 1 ? 32 : 0),
+                  itemHeight: cardHeight - 4,
+                  axisDirection: AxisDirection.right,
+                  scrollDirection: Axis.horizontal,
+                  loop: false,
+                  autoplay: false,
+                  duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
+                  onIndexChanged: (index) => setState(() => _index = index),
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    child: SizedBox.expand(
+                      child: _GoalCard(
+                        key: ValueKey(goals[index].id),
+                        goal: goals[index],
+                        week: widget.week,
+                        userId: widget.userId,
+                        color: [
+                          WeekPactColors.sky,
+                          WeekPactColors.lavender,
+                          WeekPactColors.lime,
+                        ][widget.week.goals.indexOf(goals[index]) % 3],
+                        busy: widget.savingGoal == goals[index].id,
+                        onToggle:
+                            widget.savingGoal != null || widget.onToggle == null
+                            ? null
+                            : () => widget.onToggle!(goals[index].id),
+                      ),
                     ),
                   ),
                 ),
@@ -255,8 +254,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: dot == _index
-                              ? context.ink
-                              : context.muted.withValues(alpha: .45),
+                              ? _ink
+                              : Colors.white.withValues(alpha: .25),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -292,10 +291,10 @@ class _GoalCard extends StatelessWidget {
     final checked = week.checkedToday(userId).contains(goal.id);
     final start = DateTime.parse(week.weekStart);
     final completed = week.days(goal.id, userId);
-    return Container(
-      decoration: _panel(color),
-      padding: const EdgeInsets.all(16),
-      clipBehavior: Clip.antiAlias,
+    return HomeGlassSurface(
+      tint: color,
+      backingOpacity: .96,
+      padding: const EdgeInsets.all(18),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minimumHeight =
@@ -318,7 +317,7 @@ class _GoalCard extends StatelessWidget {
                         Container(
                           width: 52,
                           height: 52,
-                          decoration: _panel(WeekPactColors.softYellow, 12),
+                          decoration: _panel(WeekPactColors.lavender, 16),
                           child: Center(
                             child: HugeIcon(
                               icon: GoalIcon.find(goal.iconKey).data,
@@ -427,12 +426,27 @@ class _GoalCard extends StatelessWidget {
                                     : 'not completed'}',
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 2),
-                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: current
-                                    ? WeekPactColors.softYellow
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(9),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: current
+                                      ? const [
+                                          Color(0xB77F52D8),
+                                          Color(0x905038A6),
+                                        ]
+                                      : const [
+                                          Color(0x285F658F),
+                                          Color(0x153F4166),
+                                        ],
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(
+                                    alpha: current ? .4 : .18,
+                                  ),
+                                ),
+                                borderRadius: BorderRadius.circular(24),
                               ),
                               child: Column(
                                 children: [
@@ -458,16 +472,8 @@ class _GoalCard extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: done
-                                          ? WeekPactColors.lime
-                                          : future
-                                          ? _ink.withValues(alpha: .14)
+                                          ? const Color(0xFF488E7D)
                                           : Colors.transparent,
-                                      border: future
-                                          ? null
-                                          : Border.all(
-                                              color: _ink,
-                                              width: current ? 3 : 1.5,
-                                            ),
                                     ),
                                     child: done
                                         ? const Icon(
@@ -504,8 +510,8 @@ class _GoalCard extends StatelessWidget {
                         key: ValueKey('check-in-${goal.title}'),
                         onPressed: onToggle,
                         style: FilledButton.styleFrom(
-                          backgroundColor: _ink,
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFFD5C7FF),
+                          foregroundColor: const Color(0xFF28213F),
                           minimumSize: const Size(0, 48),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -553,13 +559,15 @@ class TodayCrewCard extends StatelessWidget {
     required this.userId,
     required this.onOpen,
     this.crewName = '',
-    this.height = 206,
+    this.height = 180,
+    this.animate = true,
   });
   final CrewWeek week;
   final String userId;
   final String crewName;
   final VoidCallback onOpen;
   final double height;
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
@@ -585,65 +593,60 @@ class TodayCrewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Transform.translate(
-              offset: const Offset(0, 2),
-              child: Container(
-                key: const ValueKey('crew-title-tab'),
-                margin: const EdgeInsets.only(left: 12),
-                height: 26,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 3,
-                ),
-                decoration: const BoxDecoration(
-                  color: WeekPactColors.softYellow,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                  border: Border(
-                    top: BorderSide(color: _ink, width: 2),
-                    left: BorderSide(color: _ink, width: 2),
-                    right: BorderSide(color: _ink, width: 2),
-                  ),
-                ),
-                child: const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.groups_2_outlined, size: 16, color: _ink),
-                      SizedBox(width: 5),
-                      Text(
-                        'CREW',
-                        style: TextStyle(
-                          color: _ink,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           Expanded(
-            child: Material(
+            child: HomeGlassSurface(
               key: const ValueKey('crew-board'),
-              color: const Color(0xFFFFFBEF),
-              shape: RoundedRectangleBorder(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                ),
-                side: const BorderSide(color: _ink, width: 2),
-              ),
-              clipBehavior: Clip.antiAlias,
-              borderOnForeground: true,
+              radius: 26,
+              sheen: .1,
+              tint: const Color(0xFF94B5D7),
               child: Column(
                 children: [
+                  Container(
+                    key: const ValueKey('crew-status-header'),
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0x0FFFFFFF),
+                      border: Border(
+                        bottom: BorderSide(color: Color(0x35FFFFFF)),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              headline,
+                              style: const TextStyle(
+                                color: _ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '${checked.length} of $total checked in',
+                              style: const TextStyle(
+                                color: Color(0xFFD6D2EA),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Expanded(
                     child: Padding(
                       padding: EdgeInsets.zero,
@@ -667,55 +670,15 @@ class TodayCrewCard extends StatelessWidget {
                                       key: const ValueKey('crew-progress-fill'),
                                       widthFactor: value,
                                       heightFactor: 1,
-                                      child: ClipPath(
-                                        clipper: _CrewFillClipper(
-                                          wavy: value > 0 && value < 1,
-                                        ),
-                                        child: const ColoredBox(
-                                          color: WeekPactColors.lime,
-                                        ),
+                                      child: _FlowingCrewFill(
+                                        wavy: value > 0 && value < 1,
+                                        animate: animate,
                                       ),
                                     ),
                                   ),
                                 ),
                                 Positioned(
-                                  top: 6,
-                                  left: 8,
-                                  right: value >= .45
-                                      ? space.maxWidth * (1 - value) + 8
-                                      : 8,
-                                  height: 44,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          headline,
-                                          style: const TextStyle(
-                                            color: _ink,
-                                            fontSize: 23,
-                                            height: 1.1,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          '${checked.length} of $total checked in',
-                                          style: const TextStyle(
-                                            color: _ink,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 54,
+                                  top: 8,
                                   bottom: 4,
                                   left: 0,
                                   width: space.maxWidth * value,
@@ -725,7 +688,7 @@ class TodayCrewCard extends StatelessWidget {
                                   ),
                                 ),
                                 Positioned(
-                                  top: value >= .45 ? 4 : 54,
+                                  top: 8,
                                   bottom: 4,
                                   right: 0,
                                   width: space.maxWidth * (1 - value),
@@ -744,7 +707,9 @@ class TodayCrewCard extends StatelessWidget {
                   Container(
                     height: 48,
                     decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: _ink, width: 1)),
+                      border: Border(
+                        top: BorderSide(color: Color(0x35FFFFFF), width: 1),
+                      ),
                     ),
                     padding: const EdgeInsets.fromLTRB(8, 2, 4, 4),
                     child: Row(
@@ -761,7 +726,7 @@ class TodayCrewCard extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
-                              style: const TextStyle(fontSize: 13),
+                              style: const TextStyle(color: _ink, fontSize: 13),
                             ),
                           ),
                         ),
@@ -773,8 +738,8 @@ class TodayCrewCard extends StatelessWidget {
                               child: FilledButton(
                                 onPressed: onOpen,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: WeekPactColors.lavender,
-                                  foregroundColor: _ink,
+                                  backgroundColor: const Color(0xFFCAB8FA),
+                                  foregroundColor: const Color(0xFF28213F),
                                   minimumSize: const Size(40, 40),
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
@@ -866,9 +831,11 @@ class TodayCrewCard extends StatelessWidget {
                             width: size,
                             height: size,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFFBEF),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: _ink, width: 2),
+                              color: const Color(0xFF34354F),
+                              borderRadius: BorderRadius.circular(size * .32),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: .25),
+                              ),
                             ),
                             child: Center(
                               child: FittedBox(
@@ -903,8 +870,8 @@ class TodayCrewCard extends StatelessWidget {
   ) {
     final ink = _ink;
     final statusColor = done
-        ? const Color(0xFF368447)
-        : const Color(0xFFD47A20);
+        ? const Color(0xFF88E2B5)
+        : const Color(0xFFFFC27B);
     final fallback = Center(
       child: Text(
         member.initials,
@@ -928,12 +895,25 @@ class TodayCrewCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Container(
+                      padding: const EdgeInsets.all(2.5),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: done ? const Color(0xFF97BA7C) : context.surface,
-                        border: Border.all(color: statusColor, width: 3),
+                        borderRadius: BorderRadius.circular(size * .32),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: .24),
+                            statusColor.withValues(alpha: .16),
+                            const Color(0x80403D60),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: .55),
+                          width: 1,
+                        ),
                       ),
-                      child: ClipOval(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(size * .25),
                         child: member.avatarUrl == null
                             ? fallback
                             : Image.network(
@@ -942,28 +922,6 @@ class TodayCrewCard extends StatelessWidget {
                                 errorBuilder: (_, _, _) => fallback,
                               ),
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -2,
-                    right: -2,
-                    child: Container(
-                      width: 15,
-                      height: 15,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: done
-                            ? const Color(0xFF4C9653)
-                            : const Color(0xFFFFFBEF),
-                        border: Border.all(color: _ink),
-                      ),
-                      child: done
-                          ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 11,
-                            )
-                          : Icon(Icons.schedule, color: _ink, size: 11),
                     ),
                   ),
                 ],
@@ -981,7 +939,7 @@ class TodayCrewCard extends StatelessWidget {
                   style: TextStyle(
                     color: ink,
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -1008,39 +966,107 @@ class TodaySkeleton extends StatelessWidget {
   );
 }
 
-/// Rounded inset fill with a soft scalloped boundary between member groups.
-class _CrewFillClipper extends CustomClipper<Path> {
-  const _CrewFillClipper({required this.wavy});
+class _FlowingCrewFill extends StatefulWidget {
+  const _FlowingCrewFill({required this.wavy, required this.animate});
   final bool wavy;
+  final bool animate;
+  @override
+  State<_FlowingCrewFill> createState() => _FlowingCrewFillState();
+}
+
+class _FlowingCrewFillState extends State<_FlowingCrewFill>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  late final AnimationController _phase = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 5),
+  );
+  bool _resumed = true;
 
   @override
-  Path getClip(Size size) {
-    // The enclosing card clips its outer corners and paints the border.
-    if (!wavy || size.width == 0) {
-      return Path()..addRect(Offset.zero & size);
-    }
-    final amplitude = math.min(3.0, size.width / 4);
-    final baseline = size.width - amplitude;
-    final edge = Path()
-      ..moveTo(0, 0)
-      ..lineTo(baseline, 0);
-    // Three complete sine waves with identical amplitude and wavelength.
-    const samples = 144;
-    for (var i = 1; i <= samples; i++) {
-      final fraction = i / samples;
-      edge.lineTo(
-        baseline + amplitude * math.sin(fraction * math.pi * 6),
-        size.height * fraction,
-      );
-    }
-    edge
-      ..lineTo(0, size.height)
-      ..close();
-    final leftCorners = Path()
-      ..addRRect(RRect.fromRectAndCorners(Offset.zero & size));
-    return Path.combine(PathOperation.intersect, leftCorners, edge);
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _resumed =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
   }
 
   @override
-  bool shouldReclip(_CrewFillClipper oldClipper) => oldClipper.wavy != wavy;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FlowingCrewFill oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _resumed = state == AppLifecycleState.resumed;
+    _sync();
+  }
+
+  void _sync() {
+    final enabled =
+        widget.animate &&
+        widget.wavy &&
+        _resumed &&
+        TickerMode.valuesOf(context).enabled &&
+        !MediaQuery.disableAnimationsOf(context);
+    if (enabled && !_phase.isAnimating) _phase.repeat();
+    if (!enabled) _phase.stop();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _phase.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: ClipPath(
+      clipper: _CrewFillClipper(wavy: widget.wavy, phase: _phase),
+      child: const ColoredBox(color: Color(0x9034BD83)),
+    ),
+  );
+}
+
+// Uniform flowing edge for the progress fill.
+Path _crewWaveEdge(Size size, double phase) {
+  final amplitude = math.min(3.0, size.width / 4);
+  final baseline = size.width - amplitude;
+  final edge = Path()
+    ..moveTo(baseline + amplitude * math.sin(phase * math.pi * 2), 0);
+  for (var i = 1; i <= 144; i++) {
+    final fraction = i / 144;
+    edge.lineTo(
+      baseline + amplitude * math.sin((fraction * 3 + phase) * math.pi * 2),
+      size.height * fraction,
+    );
+  }
+  return edge;
+}
+
+class _CrewFillClipper extends CustomClipper<Path> {
+  _CrewFillClipper({required this.wavy, required this.phase})
+    : super(reclip: phase);
+  final bool wavy;
+  final Animation<double> phase;
+  @override
+  Path getClip(Size size) {
+    if (!wavy || size.isEmpty) return Path()..addRect(Offset.zero & size);
+    return _crewWaveEdge(size, phase.value)
+      ..lineTo(0, size.height)
+      ..lineTo(0, 0)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_CrewFillClipper old) =>
+      old.wavy != wavy || old.phase != phase;
 }

@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/home_backend.dart';
@@ -60,7 +62,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       final boundary = tester
           .getTopLeft(find.byKey(const ValueKey('pending-members')))
           .dx;

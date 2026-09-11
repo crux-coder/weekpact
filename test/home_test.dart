@@ -1,3 +1,5 @@
+import 'support/pump_ui.dart';
+
 import 'package:flutter/services.dart';
 
 import 'dart:async';
@@ -77,22 +79,22 @@ void main() {
       expect(find.text('CHECK IN'), findsNothing);
       backend.loading!.complete(week);
       backend.loading = null;
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('Early Birds'), findsOneWidget);
       expect(find.text('Mark done'), findsOneWidget);
       backend.failSave = true;
       await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.textContaining('Could not save.'), findsOneWidget);
       expect(backend.selected, {'read'});
       backend.failSave = false;
       await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(backend.selected, {'move', 'read'});
       expect(find.text('Undo check-in'), findsWidgets);
       await tester.pumpWidget(const SizedBox());
       await pumpHome(tester, backend);
-      await tester.pumpAndSettle();
+      await tester.pumpUi();
       expect(find.text('Undo check-in'), findsWidgets);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
@@ -104,17 +106,17 @@ void main() {
   ) async {
     final backend = DashboardBackend()..failLoad = true;
     await pumpHome(tester, backend);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('TRY AGAIN'), findsOneWidget);
     backend.failLoad = false;
     await tester.tap(find.text('TRY AGAIN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('Move for 30 min'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     backend.goals.goals = [];
     await tester.tap(find.byKey(const ValueKey('nav-home')));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('No goals yet.'), findsOneWidget);
     expect(find.text('CHECK IN'), findsNothing);
     await tester.pumpWidget(const SizedBox());
@@ -129,10 +131,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     await tester.ensureVisible(find.byTooltip('View week'));
     await tester.tap(find.byTooltip('View week'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsOneWidget);
     expect(find.text('THIS WEEK'), findsOneWidget);
     expect(find.text('Sep 7 – Sep 13'), findsOneWidget);
@@ -142,7 +144,7 @@ void main() {
     expect(find.byTooltip('Sep 10 · Upcoming'), findsNWidgets(4));
     expect(tester.takeException(), isNull);
     await tester.tap(find.byTooltip('Back to home'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
@@ -159,14 +161,14 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(
       find.text('Could not load crew activity. Try again.'),
       findsOneWidget,
     );
     backend.failLoad = false;
     await tester.tap(find.text('TRY AGAIN'));
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('1 / 10 WEEKLY CHECK-INS'), findsOneWidget);
     expect(find.text('TRY AGAIN'), findsNothing);
     await tester.pumpWidget(const SizedBox());
@@ -191,19 +193,19 @@ void main() {
     );
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(calls, isEmpty);
     final goal = find.byKey(const ValueKey('check-in-Move for 30 min'));
     backend.failSave = true;
     await tester.tap(goal);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(calls, isEmpty);
     backend.failSave = false;
     await tester.tap(goal);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.lightImpact');
     await tester.tap(goal);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(calls.length, 1);
     await tester.pumpWidget(const SizedBox());
   });
@@ -214,7 +216,7 @@ void main() {
     final backend = DashboardBackend();
     backend.goals.crews = [];
     await pumpHome(tester, backend);
-    await tester.pumpAndSettle();
+    await tester.pumpUi();
     expect(find.text('GO TO CREWS'), findsOneWidget);
     expect(find.text('CREW THIS WEEK'), findsNothing);
     expect(backend.fetches, 0);
