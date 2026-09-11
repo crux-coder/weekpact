@@ -152,7 +152,13 @@ class _HomePageState extends State<HomePage> {
         onSelected: _selectDestination,
       ),
     );
-    return HomeBackground(child: scaffold);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value:
+          _selectedIndex == 0 || Theme.of(context).brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: HomeBackground(child: scaffold),
+    );
   }
 }
 

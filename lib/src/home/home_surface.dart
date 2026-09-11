@@ -16,7 +16,7 @@ class HomeBackground extends StatelessWidget {
           left: 0,
           right: 0,
           height: MediaQuery.paddingOf(context).top + 10,
-          child: const ColoredBox(color: Color(0xFFD7E3C8)),
+          child: const ColoredBox(color: Color(0xFF191B19)),
         ),
         child,
       ],

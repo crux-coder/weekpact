@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 // card_swiper exposes the transformer option but does not re-export its builder.
 // ignore: implementation_imports
 import 'package:card_swiper/src/transformer_page_view/transformer_page_view.dart';
@@ -35,7 +38,7 @@ class CrewTitleBanner extends StatelessWidget {
           width: constraints.maxWidth + 24,
           padding: const EdgeInsets.fromLTRB(24, 7, 24, 9),
           decoration: BoxDecoration(
-            color: const Color(0xFFD7E3C8),
+            color: const Color(0xFF191B19),
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(24),
             ),
@@ -47,7 +50,7 @@ class CrewTitleBanner extends StatelessWidget {
               const Text(
                 'YOUR CREW',
                 style: TextStyle(
-                  color: Color(0xFF59634F),
+                  color: Color(0xFFB8BEB5),
                   fontSize: 10,
                   letterSpacing: 2,
                   fontWeight: FontWeight.w700,
@@ -60,7 +63,7 @@ class CrewTitleBanner extends StatelessWidget {
                   child: Text(
                     name,
                     style: const TextStyle(
-                      color: _ink,
+                      color: homePaper,
                       fontSize: 25,
                       fontWeight: FontWeight.w700,
                     ),
@@ -195,28 +198,41 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                   loop: false,
                   autoplay: false,
                   duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
-                  onIndexChanged: (index) => setState(() => _index = index),
+                  onIndexChanged: (index) {
+                    if (index == _index) return;
+                    setState(() => _index = index);
+                    unawaited(
+                      HapticFeedback.selectionClick().catchError((Object _) {}),
+                    );
+                  },
                   itemBuilder: (context, index) => Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 5,
                       vertical: 2,
                     ),
                     child: SizedBox.expand(
-                      child: _GoalCard(
-                        key: ValueKey(goals[index].id),
-                        goal: goals[index],
-                        week: widget.week,
-                        userId: widget.userId,
-                        color: [
-                          const Color(0xFFF5F6F5),
-                          const Color(0xFFF4D88F),
-                          const Color(0xFFE0EED4),
-                        ][widget.week.goals.indexOf(goals[index]) % 3],
-                        busy: widget.savingGoal == goals[index].id,
-                        onToggle:
-                            widget.savingGoal != null || widget.onToggle == null
-                            ? null
-                            : () => widget.onToggle!(goals[index].id),
+                      child: _GoalCompletionEffect(
+                        key: ValueKey('completion-${goals[index].id}'),
+                        completed: widget.week
+                            .checkedToday(widget.userId)
+                            .contains(goals[index].id),
+                        child: _GoalCard(
+                          key: ValueKey(goals[index].id),
+                          goal: goals[index],
+                          week: widget.week,
+                          userId: widget.userId,
+                          color: [
+                            const Color(0xFFF5F6F5),
+                            const Color(0xFFF4D88F),
+                            const Color(0xFFE0EED4),
+                          ][widget.week.goals.indexOf(goals[index]) % 3],
+                          busy: widget.savingGoal == goals[index].id,
+                          onToggle:
+                              widget.savingGoal != null ||
+                                  widget.onToggle == null
+                              ? null
+                              : () => widget.onToggle!(goals[index].id),
+                        ),
                       ),
                     ),
                   ),
@@ -264,6 +280,115 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
   }
 }
 
+/// Celebrates a confirmed state change, never the tap or an initial load.
+class _GoalCompletionEffect extends StatefulWidget {
+  const _GoalCompletionEffect({
+    super.key,
+    required this.completed,
+    required this.child,
+  });
+  final bool completed;
+  final Widget child;
+  @override
+  State<_GoalCompletionEffect> createState() => _GoalCompletionEffectState();
+}
+
+class _GoalCompletionEffectState extends State<_GoalCompletionEffect>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+  @override
+  void didUpdateWidget(covariant _GoalCompletionEffect oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.completed) _animation.stop();
+    if (widget.completed &&
+        !oldWidget.completed &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _animation.forward(from: 0);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _animation.stop();
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _animation,
+    child: widget.child,
+    builder: (context, child) {
+      final active = _animation.isAnimating;
+      final pulse = active ? math.sin(_animation.value * math.pi) : 0.0;
+      return Transform.scale(
+        scale: 1 - pulse * .018,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            child!,
+            if (active)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: Opacity(
+                      opacity: pulse,
+                      child: Container(
+                        key: const ValueKey('goal-completion-effect'),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8DBD70).withValues(alpha: .09),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF80AB64),
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Transform.translate(
+                            offset: Offset(0, -12 * _animation.value),
+                            child: Transform.scale(
+                              scale:
+                                  .85 +
+                                  .15 *
+                                      Curves.easeOut.transform(
+                                        _animation.value,
+                                      ),
+                              child: Container(
+                                width: 58,
+                                height: 58,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFD0E5BA),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check_rounded,
+                                  color: Color(0xFF375D31),
+                                  size: 34,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _GoalCard extends StatelessWidget {
   const _GoalCard({
     super.key,
@@ -287,13 +412,13 @@ class _GoalCard extends StatelessWidget {
     final completed = week.days(goal.id, userId);
     return HomeSurface(
       tint: color,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minimumHeight =
-              310 +
+              362 +
               math.max(0.0, MediaQuery.textScalerOf(context).scale(1) - 1) *
-                  300;
+                  340;
           return FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
@@ -306,7 +431,24 @@ class _GoalCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Expanded(
+                          child: Tooltip(
+                            message: goal.title,
+                            child: Text(
+                              goal.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 25,
+                                height: 1.15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Container(
                           width: 52,
                           height: 52,
@@ -316,19 +458,6 @@ class _GoalCard extends StatelessWidget {
                               icon: GoalIcon.find(goal.iconKey).data,
                               color: _ink,
                               size: 30,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            goal.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              height: 1.05,
-                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -419,11 +548,16 @@ class _GoalCard extends StatelessWidget {
                                     : 'not completed'}',
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 2),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(vertical: 7),
                               decoration: BoxDecoration(
                                 color: current
                                     ? const Color(0xFFD0E5BA)
-                                    : Colors.transparent,
+                                    : Colors.white.withValues(alpha: .35),
+                                border: Border.all(
+                                  color: _ink.withValues(
+                                    alpha: current ? .18 : .06,
+                                  ),
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Column(
@@ -444,32 +578,38 @@ class _GoalCard extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Container(
-                                    width: 25,
-                                    height: 25,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: done
-                                          ? const Color(0xFF99C78E)
-                                          : Colors.transparent,
+                                  Text(
+                                    '${date.day}',
+                                    key: ValueKey('goal-date-${goal.id}-$day'),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: current
+                                          ? FontWeight.w900
+                                          : FontWeight.w600,
+                                      color: _ink.withValues(
+                                        alpha: future ? .4 : 1,
+                                      ),
                                     ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  SizedBox(
+                                    height: 12,
                                     child: done
                                         ? const Icon(
-                                            Icons.check,
-                                            color: _ink,
-                                            size: 18,
+                                            Icons.check_circle,
+                                            color: Color(0xFF4C8050),
+                                            size: 12,
                                           )
                                         : Center(
-                                            child: Text(
-                                              '${date.day}',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: current
-                                                    ? FontWeight.w900
-                                                    : FontWeight.w500,
+                                            child: Container(
+                                              width: current ? 12 : 3,
+                                              height: 3,
+                                              decoration: BoxDecoration(
                                                 color: _ink.withValues(
-                                                  alpha: future ? .45 : 1,
+                                                  alpha: current ? .7 : .12,
                                                 ),
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
                                               ),
                                             ),
                                           ),

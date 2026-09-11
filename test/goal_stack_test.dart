@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+
 import 'support/pump_ui.dart';
 
 import 'package:flutter/material.dart';
@@ -61,12 +63,27 @@ void main() {
       backend.selected.add('third');
       final updated = await backend.fetchWeek('crew');
       refresh(() => week = updated);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(
+        find.byKey(const ValueKey('goal-completion-effect')),
+        findsOneWidget,
+      );
       await tester.pumpUi();
+      expect(
+        find.byKey(const ValueKey('goal-completion-effect')),
+        findsNothing,
+      );
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Undo check-in').hitTestable(), findsOneWidget);
       backend.selected.remove('third');
       final undone = await backend.fetchWeek('crew');
       refresh(() => week = undone);
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('goal-completion-effect')),
+        findsNothing,
+      );
       await tester.pumpUi();
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Mark done').hitTestable(), findsOneWidget);
@@ -83,6 +100,22 @@ void main() {
   testWidgets('coverflow centers the selected card and angles its neighbor', (
     tester,
   ) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
     final week = await DashboardBackend().fetchWeek('crew');
     await tester.pumpWidget(
       MaterialApp(
@@ -98,6 +131,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
+    expect(haptics, isEmpty);
     final first = find.byKey(const ValueKey('goal-coverflow-0'));
     final second = find.byKey(const ValueKey('goal-coverflow-1'));
     expect(
@@ -115,6 +149,10 @@ void main() {
       closeTo(0, .001),
     );
     expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
+    await tester.tap(find.byTooltip('Goal 2 of 2'));
+    await tester.pumpUi();
+    expect(haptics, hasLength(1));
     expect(tester.takeException(), isNull);
   });
 
