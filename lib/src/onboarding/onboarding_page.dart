@@ -9,6 +9,7 @@ import '../auth/auth_backend.dart';
 import '../auth/account_actions.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/welcome_card.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({
@@ -182,14 +183,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.transparent,
+    backgroundColor: context.canvas,
     body: SafeArea(
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -229,70 +230,50 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                Text(
-                  _details ? 'STEP 2 OF 2' : 'STEP 1 OF 2',
-                  style: TextStyle(
-                    color: context.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
+                const SizedBox(height: 20),
+                WelcomeCard(
+                  title: _details
+                      ? 'Make it you.'
+                      : 'Good habits.\nGreat company.',
+                  subtitle: _details
+                      ? 'A name your crew knows. Photo and surname optional.'
+                      : 'A few small steps. Better together.',
+                  eyebrow: _details ? 'STEP 2 OF 2' : 'STEP 1 OF 2',
+                  color: _details
+                      ? WeekPactColors.mintGreen
+                      : WeekPactColors.softYellow,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  _details ? 'Make it you.' : 'Good habits.\nGreat company.',
-                  style: TextStyle(
-                    fontSize: 42,
-                    height: 1.05,
-                    fontWeight: FontWeight.w900,
-                    color: context.ink,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _details
-                      ? 'Choose a display name your crew will recognize. Photo and surname are optional.'
-                      : 'Small steps feel better with your people. Here’s how your week comes together.',
-                  style: TextStyle(fontSize: 18, color: context.ink),
-                ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 8),
                 if (!_details) ...[
-                  AppSurface(
-                    fillColor: context.mint,
-                    builder: (context) => Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.people_alt_outlined,
-                            size: 48,
-                            color: context.ink,
-                          ),
-                          const SizedBox(height: 20),
-                          _introStep(
-                            '01',
-                            'Find your crew',
-                            'Invite your people or join a crew.',
-                          ),
-                          const SizedBox(height: 20),
-                          _introStep(
-                            '02',
-                            'Make a weekly pact',
-                            'Choose goals you can show up for.',
-                          ),
-                          const SizedBox(height: 20),
-                          _introStep(
-                            '03',
-                            'Keep showing up',
-                            'Check in and build a streak together.',
-                          ),
-                        ],
+                  for (final step in [
+                    (
+                      '01',
+                      'Find your crew',
+                      'Invite your people or join a crew.',
+                      WeekPactColors.mintGreen,
+                    ),
+                    (
+                      '02',
+                      'Make a weekly pact',
+                      'Choose goals you can show up for.',
+                      WeekPactColors.cream,
+                    ),
+                    (
+                      '03',
+                      'Keep showing up',
+                      'Check in. Build a streak together.',
+                      WeekPactColors.cream,
+                    ),
+                  ]) ...[
+                    AppSurface(
+                      fillColor: step.$4,
+                      builder: (context) => Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: _introStep(context, step.$1, step.$2, step.$3),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 8),
+                  ],
                   AppButton(
                     label: 'LET’S GET STARTED',
 
@@ -302,112 +283,118 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     }),
                   ),
                 ] else
-                  Form(
-                    key: _form,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Column(
-                            children: [
-                              Semantics(
-                                button: true,
-                                label: 'Choose avatar photo',
-                                child: InkWell(
-                                  onTap: _saving || _picking
-                                      ? null
-                                      : _choosePhoto,
-                                  borderRadius: BorderRadius.circular(60),
-                                  child: Container(
-                                    width: 112,
-                                    height: 112,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: context.yellow,
-                                      border: Border.all(
-                                        color: context.border,
-                                        width: WeekPactMetrics.border,
+                  AppSurface(
+                    builder: (context) => Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Form(
+                        key: _form,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Center(
+                              child: Column(
+                                children: [
+                                  Semantics(
+                                    button: true,
+                                    label: 'Choose avatar photo',
+                                    child: InkWell(
+                                      onTap: _saving || _picking
+                                          ? null
+                                          : _choosePhoto,
+                                      borderRadius: BorderRadius.circular(60),
+                                      child: Container(
+                                        width: 112,
+                                        height: 112,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: context.yellow,
+                                          border: Border.all(
+                                            color: context.border,
+                                            width: WeekPactMetrics.border,
+                                          ),
+                                        ),
+                                        child: ClipOval(
+                                          child: _avatar == null
+                                              ? Icon(
+                                                  Icons.add_a_photo_outlined,
+                                                  size: 36,
+                                                  color: context.ink,
+                                                )
+                                              : Image.memory(
+                                                  _avatar!,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                        ),
                                       ),
                                     ),
-                                    child: ClipOval(
-                                      child: _avatar == null
-                                          ? Icon(
-                                              Icons.add_a_photo_outlined,
-                                              size: 36,
-                                              color: context.ink,
-                                            )
-                                          : Image.memory(
-                                              _avatar!,
-                                              fit: BoxFit.cover,
-                                            ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _saving || _picking
+                                        ? null
+                                        : _choosePhoto,
+                                    child: Text(
+                                      _picking
+                                          ? 'Opening photos…'
+                                          : _avatar == null
+                                          ? 'Choose photo'
+                                          : 'Change photo',
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                              TextButton(
-                                onPressed: _saving || _picking
-                                    ? null
-                                    : _choosePhoto,
-                                child: Text(
-                                  _picking
-                                      ? 'Opening photos…'
-                                      : _avatar == null
-                                      ? 'Choose photo'
-                                      : 'Change photo',
-                                ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _first,
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                              enabled: !_saving,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.givenName],
+                              maxLength: 60,
+                              decoration: const InputDecoration(
+                                labelText: 'Display name',
+                                counterText: '',
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                          controller: _first,
-                          onTapOutside: (_) =>
-                              FocusManager.instance.primaryFocus?.unfocus(),
-                          enabled: !_saving,
-                          textCapitalization: TextCapitalization.words,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.givenName],
-                          maxLength: 60,
-                          decoration: const InputDecoration(
-                            labelText: 'Display name',
-                            counterText: '',
-                          ),
-                          validator: _validateName,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _last,
-                          onTapOutside: (_) =>
-                              FocusManager.instance.primaryFocus?.unfocus(),
-                          enabled: !_saving,
-                          textCapitalization: TextCapitalization.words,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.familyName],
-                          maxLength: 60,
-                          decoration: const InputDecoration(
-                            labelText: 'Last name (optional)',
-                            counterText: '',
-                          ),
-                          validator: (value) => (value?.trim().length ?? 0) > 60
-                              ? 'Use up to 60 characters.'
-                              : null,
-                          onFieldSubmitted: (_) => _save(),
-                        ),
-                        const SizedBox(height: 28),
-                        AppButton(
-                          label: 'LET’S GO',
+                              validator: _validateName,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _last,
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                              enabled: !_saving,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.familyName],
+                              maxLength: 60,
+                              decoration: const InputDecoration(
+                                labelText: 'Last name (optional)',
+                                counterText: '',
+                              ),
+                              validator: (value) =>
+                                  (value?.trim().length ?? 0) > 60
+                                  ? 'Use up to 60 characters.'
+                                  : null,
+                              onFieldSubmitted: (_) => _save(),
+                            ),
+                            const SizedBox(height: 16),
+                            AppButton(
+                              label: 'LET’S GO',
 
-                          isLoading: _saving,
-                          onPressed: _saving || _picking ? null : _save,
+                              isLoading: _saving,
+                              onPressed: _saving || _picking ? null : _save,
+                            ),
+                            TextButton(
+                              onPressed: _saving || _picking
+                                  ? null
+                                  : () => setState(() => _details = false),
+                              child: const Text('Back'),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: _saving || _picking
-                              ? null
-                              : () => setState(() => _details = false),
-                          child: const Text('Back'),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 AccountActions(
@@ -437,7 +424,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
       : value.trim().length > 60
       ? 'Use up to 60 characters.'
       : null;
-  Widget _introStep(String number, String title, String description) => Row(
+  Widget _introStep(
+    BuildContext context,
+    String number,
+    String title,
+    String description,
+  ) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(

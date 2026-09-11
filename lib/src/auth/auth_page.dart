@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/viewport_scroll_view.dart';
+import '../widgets/welcome_card.dart';
 import 'auth_backend.dart';
 import 'password_page.dart';
 import 'account_actions.dart';
@@ -130,241 +131,174 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final horizontalPadding = size.width < 420 ? 12.0 : 20.0;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: AutofillGroup(
-              child: Form(
-                key: _formKey,
-                child: ViewportScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    28,
-                    horizontalPadding,
-                    40,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'WEEKPACT',
-                          style: TextStyle(
-                            color: context.ink,
-                            fontSize: 44,
-                            height: 0.9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -2.4,
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: AutofillGroup(
+            child: Form(
+              key: _formKey,
+              child: ViewportScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'WeekPact.',
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    WelcomeCard(
+                      title: _isLogin ? 'Welcome back.' : 'Make it official.',
+                      subtitle: _isLogin
+                          ? 'Your people. Your goals. A fresh start today.'
+                          : 'Build better habits with your people.',
+                      color: _isLogin
+                          ? WeekPactColors.mintGreen
+                          : WeekPactColors.softYellow,
+                      eyebrow: _isLogin
+                          ? 'SHOW UP TOGETHER'
+                          : 'YOUR NEXT CHAPTER',
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget.pendingInviteToken != null) ...[
+                      AppSurface(
+                        fillColor: WeekPactColors.softYellow,
+                        builder: (context) => const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: Text(
+                            'Crew invite ready. Use your invited email.',
                           ),
                         ),
                       ),
-                      if (widget.pendingInviteToken != null) ...[
-                        const SizedBox(height: 24),
-                        AppSurface(
-                          fillColor: context.mint,
-                          builder: (context) => Padding(
-                            padding: EdgeInsets.all(14),
-                            child: Text(
-                              'CREW INVITE READY · LOG IN OR CREATE AN ACCOUNT WITH THE INVITED EMAIL.',
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 13,
-                                height: 1.25,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: _isLogin ? 58 : 44),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
+                      const SizedBox(height: 8),
+                    ],
+                    AppSurface(
+                      builder: (context) => Padding(
+                        padding: const EdgeInsets.all(18),
                         child: Column(
-                          key: ValueKey(_mode),
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              _isLogin ? 'Welcome back.' : 'Make it official.',
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: size.width < 380 ? 38 : 46,
-                                height: 0.95,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -1.8,
+                            if (widget.initialError != null) ...[
+                              Text(
+                                widget.initialError!,
+                                style: TextStyle(color: context.errorInk),
                               ),
+                              const SizedBox(height: 12),
+                            ],
+                            AppTextField(
+                              label: 'EMAIL',
+                              hint: 'you@example.com',
+                              controller: _emailController,
+                              validator: _validateEmail,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _isLogin
-                                  ? 'Good to see you again. Pick up where you left off.'
-                                  : 'One account. Shared goals. A pact to show up.',
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 17,
-                                height: 1.35,
-                                fontWeight: FontWeight.w500,
+                            const SizedBox(height: 14),
+                            AppTextField(
+                              label: 'PASSWORD',
+                              hint: 'At least 8 characters',
+                              controller: _passwordController,
+                              validator: _validatePassword,
+                              textInputAction: _isLogin
+                                  ? TextInputAction.done
+                                  : TextInputAction.next,
+                              obscureText: _passwordHidden,
+                              onToggleObscure: () => setState(
+                                () => _passwordHidden = !_passwordHidden,
+                              ),
+                              autofillHints: [
+                                _isLogin
+                                    ? AutofillHints.password
+                                    : AutofillHints.newPassword,
+                              ],
+                            ),
+                            if (!_isLogin) ...[
+                              const SizedBox(height: 14),
+                              AppTextField(
+                                label: 'CONFIRM PASSWORD',
+                                hint: 'Type it again',
+                                controller: _confirmPasswordController,
+                                validator: _validateConfirmation,
+                                textInputAction: TextInputAction.done,
+                                obscureText: _confirmPasswordHidden,
+                                onToggleObscure: () => setState(
+                                  () => _confirmPasswordHidden =
+                                      !_confirmPasswordHidden,
+                                ),
+                                autofillHints: const [
+                                  AutofillHints.newPassword,
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 20),
+                            AppButton(
+                              label: _isLogin ? 'LOG IN' : 'CREATE ACCOUNT',
+                              isLoading: _submitting,
+                              onPressed: _submit,
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _submitting
+                                  ? null
+                                  : () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => PasswordPage(
+                                          backend: widget.authBackend,
+                                          initialEmail: _emailController.text,
+                                          confirmationRedirect:
+                                              _confirmationRedirectUrl,
+                                        ),
+                                      ),
+                                    ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: context.muted,
+                              ),
+                              child: const Text(
+                                'Forgot password or need a confirmation email?',
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      if (widget.initialError != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.initialError!,
-                          style: TextStyle(color: context.errorInk),
+                    ),
+                    const SizedBox(height: 8),
+                    AppSurface(
+                      fillColor: _isLogin
+                          ? WeekPactColors.softYellow
+                          : WeekPactColors.mintGreen,
+                      builder: (context) => TextButton(
+                        onPressed: _submitting ? null : _switchMode,
+                        style: TextButton.styleFrom(
+                          foregroundColor: context.ink,
+                          minimumSize: const Size.fromHeight(52),
                         ),
-                      ],
-                      const SizedBox(height: 34),
-                      AppTextField(
-                        label: 'EMAIL',
-                        hint: 'you@example.com',
-                        controller: _emailController,
-                        validator: _validateEmail,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email],
-                      ),
-                      const SizedBox(height: 24),
-                      AppTextField(
-                        label: 'PASSWORD',
-                        hint: 'At least 8 characters',
-                        controller: _passwordController,
-                        validator: _validatePassword,
-                        textInputAction: _isLogin
-                            ? TextInputAction.done
-                            : TextInputAction.next,
-                        obscureText: _passwordHidden,
-                        onToggleObscure: () =>
-                            setState(() => _passwordHidden = !_passwordHidden),
-                        autofillHints: [
+                        child: Text(
                           _isLogin
-                              ? AutofillHints.password
-                              : AutofillHints.newPassword,
-                        ],
-                      ),
-                      if (!_isLogin) ...[
-                        const SizedBox(height: 24),
-                        AppTextField(
-                          label: 'CONFIRM PASSWORD',
-                          hint: 'Type it again',
-                          controller: _confirmPasswordController,
-                          validator: _validateConfirmation,
-                          textInputAction: TextInputAction.done,
-                          obscureText: _confirmPasswordHidden,
-                          onToggleObscure: () => setState(
-                            () => _confirmPasswordHidden =
-                                !_confirmPasswordHidden,
-                          ),
-                          autofillHints: const [AutofillHints.newPassword],
-                        ),
-                      ],
-                      const SizedBox(height: 34),
-                      AppButton(
-                        label: _isLogin ? 'LOG IN' : 'CREATE ACCOUNT',
-
-                        isLoading: _submitting,
-                        onPressed: _submit,
-                      ),
-                      const SizedBox(height: 34),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              color: context.border,
-                              thickness: WeekPactMetrics.fineBorder,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 22),
-                            child: Text(
-                              'OR',
-                              style: TextStyle(
-                                color: context.ink,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              color: context.border,
-                              thickness: WeekPactMetrics.fineBorder,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: _submitting
-                            ? null
-                            : () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => PasswordPage(
-                                    backend: widget.authBackend,
-                                    initialEmail: _emailController.text,
-                                    confirmationRedirect:
-                                        _confirmationRedirectUrl,
-                                  ),
-                                ),
-                              ),
-                        child: const Text(
-                          'Forgot password or need a confirmation email?',
+                              ? 'New here?  CREATE ACCOUNT'
+                              : 'Already in?  LOG IN',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      const PublicAccountLinks(),
-                      const SizedBox(height: 28),
-                      AppSurface(
-                        builder: (context) => TextButton(
-                          onPressed: _submitting ? null : _switchMode,
-                          style: TextButton.styleFrom(
-                            foregroundColor: context.fieldInk,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            padding: WeekPactMetrics.buttonPadding,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            minimumSize: const Size(
-                              0,
-                              WeekPactMetrics.buttonHeight,
-                            ),
-                          ),
-                          child: Text.rich(
-                            TextSpan(
-                              text: _isLogin ? 'New here?  ' : 'Already in?  ',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: _isLogin ? 'CREATE ACCOUNT' : 'LOG IN',
-                                  style: TextStyle(
-                                    color: context.accent,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    const PublicAccountLinks(),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

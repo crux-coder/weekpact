@@ -121,7 +121,7 @@ void main() {
     expect(find.text('Welcome back.'), findsOneWidget);
     expect(find.text('CONFIRM PASSWORD'), findsNothing);
 
-    final modeButton = find.byType(TextButton).last;
+    final modeButton = find.text('New here?  CREATE ACCOUNT');
     await tester.ensureVisible(modeButton);
     await tester.tap(modeButton);
     await tester.pumpUi();
@@ -162,7 +162,7 @@ void main() {
         authBackend: auth,
       ),
     );
-    final modeButton = find.byType(TextButton).last;
+    final modeButton = find.text('New here?  CREATE ACCOUNT');
     await tester.ensureVisible(modeButton);
     await tester.tap(modeButton);
     await tester.pumpUi();
@@ -208,7 +208,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    final mode = find.byType(TextButton).last;
+    final mode = find.text('New here?  CREATE ACCOUNT');
     await tester.ensureVisible(mode);
     await tester.tap(mode);
     await tester.pumpUi();
@@ -598,7 +598,7 @@ void main() {
     );
     await tester.pumpUi();
 
-    expect(find.textContaining('CREW INVITE READY'), findsOneWidget);
+    expect(find.textContaining('Crew invite ready'), findsOneWidget);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'member@example.com',

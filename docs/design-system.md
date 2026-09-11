@@ -44,3 +44,12 @@ spacing and hierarchy consistent; larger text or narrow screens use one column.
 `AppearanceChoices` is a compact Light/Dark/Device selector. Existing actions retain
 confirmation and error handling; notification setup details open when needed.
 `ProfileEditor` owns the name-editing form and lifecycle in a bottom sheet.
+
+### Login, registration, and onboarding
+
+`WelcomeCard` supplies a shared pastel introduction with an optional small eyebrow,
+large heading, and one short supporting sentence. Login uses sage; registration
+and the onboarding introduction use yellow. Forms sit on separate offwhite
+surfaces with 8px gaps between cards and compact spacing between fields.
+Onboarding presents three short step cards, then a photo/name form inside its own
+surface. Both entry flows use the app's black/cream canvas and shared controls.
