@@ -240,8 +240,8 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpAndSettle();
 
-    expect(find.text('EARLY BIRDS'), findsOneWidget);
-    expect(find.text('1 OF 2 CHECKED IN TODAY'), findsOneWidget);
+    expect(find.text('Early Birds'), findsOneWidget);
+    expect(find.text('1 / 2 checked in'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpAndSettle();
@@ -272,7 +272,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpAndSettle();
 
-    expect(find.text('EARLY BIRDS'), findsOneWidget);
+    expect(find.text('Early Birds'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pumpAndSettle();
@@ -294,7 +294,9 @@ void main() {
     expect(find.text('LOG OUT'), findsOneWidget);
   });
 
-  testWidgets('places navigation icons above their labels', (tester) async {
+  testWidgets('places the active navigation icon beside its label', (
+    tester,
+  ) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -320,12 +322,12 @@ void main() {
     );
     final homeLabel = find.descendant(
       of: homeButton,
-      matching: find.text('HOME'),
+      matching: find.text('Home'),
     );
 
     expect(
       tester.getCenter(homeIcon).dy,
-      lessThan(tester.getCenter(homeLabel).dy),
+      equals(tester.getCenter(homeLabel).dy),
     );
   });
 
@@ -348,15 +350,15 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpAndSettle();
 
-    expect(find.text('YOUR GOALS'), findsOneWidget);
+    expect(find.text('Your goals'), findsNothing);
     expect(find.text('Move for 30 min'), findsOneWidget);
-    expect(find.text('1 OF 2 DONE'), findsOneWidget);
+    expect(find.text('Mark done'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
     await tester.pumpAndSettle();
-    expect(find.text('2 OF 2 DONE'), findsOneWidget);
+    expect(find.text('Undo check-in'), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
     await tester.pumpAndSettle();
-    expect(find.text('1 OF 2 DONE'), findsOneWidget);
+    expect(find.text('Mark done'), findsOneWidget);
   });
 
   testWidgets('slides horizontally between destinations', (tester) async {
@@ -378,13 +380,13 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpAndSettle();
 
-    final initialHomeX = tester.getTopLeft(find.text('EARLY BIRDS')).dx;
+    final initialHomeX = tester.getTopLeft(find.text('Early Birds')).dx;
     await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(
-      tester.getTopLeft(find.text('EARLY BIRDS')).dx,
+      tester.getTopLeft(find.text('Early Birds')).dx,
       lessThan(initialHomeX),
     );
 
@@ -392,7 +394,9 @@ void main() {
     expect(find.text('GOALS.'), findsOneWidget);
   });
 
-  testWidgets('keeps the current navigation key pressed', (tester) async {
+  testWidgets('keeps navigation icons aligned when switching tabs', (
+    tester,
+  ) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -423,20 +427,20 @@ void main() {
     );
     final initialCrewsY = tester.getCenter(crewsIcon).dy;
 
-    expect(tester.getCenter(homeIcon).dy, greaterThan(initialCrewsY));
+    expect(tester.getCenter(homeIcon).dy, equals(initialCrewsY));
 
     await tester.tap(crewsButton);
     await tester.pumpAndSettle();
 
-    expect(tester.getCenter(crewsIcon).dy, greaterThan(initialCrewsY));
+    expect(tester.getCenter(crewsIcon).dy, equals(initialCrewsY));
     expect(
       tester.getCenter(homeIcon).dy,
-      lessThan(tester.getCenter(crewsIcon).dy),
+      equals(tester.getCenter(crewsIcon).dy),
     );
     expect(find.text('CREWS.'), findsOneWidget);
   });
 
-  testWidgets('rounds the outside navigation key corners', (tester) async {
+  testWidgets('uses a rounded rectangle navigation container', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -455,32 +459,20 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpAndSettle();
 
-    final firstKey = tester.widget<AnimatedContainer>(
-      find.byKey(const ValueKey('nav-key-home')),
-    );
-    final lastKey = tester.widget<AnimatedContainer>(
-      find.byKey(const ValueKey('nav-key-account')),
-    );
-    final firstRadius = (firstKey.decoration! as BoxDecoration).borderRadius;
-    final lastRadius = (lastKey.decoration! as BoxDecoration).borderRadius;
-
+    final navigation = find.byType(BrutalBottomNavigationBar);
+    final container = tester
+        .widgetList<Container>(
+          find.descendant(of: navigation, matching: find.byType(Container)),
+        )
+        .first;
     expect(
-      firstRadius,
-      const BorderRadius.only(
-        topLeft: Radius.circular(9),
-        bottomLeft: Radius.circular(9),
-      ),
+      (container.decoration! as BoxDecoration).borderRadius,
+      BorderRadius.circular(16),
     );
-    expect(
-      lastRadius,
-      const BorderRadius.only(
-        topRight: Radius.circular(9),
-        bottomRight: Radius.circular(9),
-      ),
-    );
+    expect(tester.getSize(navigation).height, lessThan(110));
   });
 
-  testWidgets('applies the grid background at the app root', (tester) async {
+  testWidgets('applies the flat background at the app root', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -610,7 +602,7 @@ void main() {
 
     expect(crews.acceptedTokens, ['secret-token']);
     expect(find.text('JOIN THE CREW.'), findsNothing);
-    expect(find.text('EARLY BIRDS'), findsWidgets);
+    expect(find.text('Early Birds'), findsWidgets);
   });
 }
 

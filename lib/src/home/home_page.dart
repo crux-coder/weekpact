@@ -89,6 +89,10 @@ class _HomePageState extends State<HomePage> {
   void _selectDestination(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pageController.jumpToPage(index);
+      return;
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 320),
@@ -230,10 +234,7 @@ class _HomeDestinationState extends State<_HomeDestination>
       if (mounted && request == _request) setState(() => _week = week);
     } catch (_) {
       if (mounted && request == _request) {
-        setState(
-          () => _error =
-              'Could not load your week. Pull to refresh or try again.',
-        );
+        setState(() => _error = 'Could not load your week. Please try again.');
       }
     }
   }
@@ -278,10 +279,7 @@ class _HomeDestinationState extends State<_HomeDestination>
       });
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _saveError =
-              'Could not save. Tap the goal to retry, or pull to refresh.',
-        );
+        setState(() => _saveError = 'Could not save. Tap the goal to retry.');
       }
     } finally {
       if (mounted) setState(() => _savingGoal = null);
@@ -294,84 +292,129 @@ class _HomeDestinationState extends State<_HomeDestination>
     final week = _week;
     final loading =
         _error == null && (_crews == null || (_crew != null && week == null));
-    return PageFrame(
-      topPadding: 12,
-      header: TodayHeader(
-        day: week?.today,
-        crews: _crews ?? [],
-        selected: _crew,
-        onSelect: _savingGoal != null ? null : (id) => _refresh(crewId: id),
-      ),
-      onRefresh: _refresh,
-      loading: loading,
-      skeleton: const TodaySkeleton(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_error != null) ...[
-            Text(_error!, style: TextStyle(color: context.errorInk)),
-            TextButton(onPressed: _refresh, child: const Text('TRY AGAIN')),
-          ],
-          if (_crews != null && _crews!.isEmpty) ...[
-            const Text(
-              'Your week starts with a crew.',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 20),
-            BrutalButton(
-              label: 'GO TO CREWS',
-              color: context.mint,
-              onPressed: widget.onOpenCrews,
-            ),
-          ],
-          if (_crew != null) ...[
-            if (week != null && week.goals.isEmpty) ...[
-              const Text(
-                'No goals yet.',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 16),
-              BrutalButton(
-                label: 'VIEW GOALS',
-                color: context.yellow,
-                onPressed: widget.onOpenGoals,
-              ),
-            ],
-            if (week != null && week.goals.isNotEmpty) ...[
-              if (_saveError != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    _saveError!,
-                    style: TextStyle(color: context.errorInk),
-                  ),
-                ),
-              TodayGoalsCard(
-                week: week,
-                userId: widget.userId,
-                savingGoal: _savingGoal,
-                onToggle: _error == null ? _toggleGoal : null,
-              ),
-              const SizedBox(height: 28),
-              TodayCrewCard(
-                week: week,
-                userId: widget.userId,
-                onOpen: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => CrewWeekPage(
-                        crew: _crew!,
-                        backend: widget.backend,
-                        userId: widget.userId,
-                      ),
+    return SafeArea(
+      bottom: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (loading) return const TodaySkeleton();
+                if (_error != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center),
+                        TextButton(
+                          onPressed: _refresh,
+                          child: const Text('TRY AGAIN'),
+                        ),
+                      ],
                     ),
                   );
-                  if (mounted) await _refresh();
-                },
-              ),
-            ],
-          ],
-        ],
+                }
+                if (_crews != null && _crews!.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Your week starts with a crew.',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        BrutalButton(
+                          label: 'GO TO CREWS',
+                          color: context.mint,
+                          onPressed: widget.onOpenCrews,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                if (week == null) return const SizedBox.shrink();
+                const crewHeight = 206.0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CrewTitleBanner(name: _crew!.name),
+                    const SizedBox(height: 8),
+                    if (_saveError != null)
+                      SizedBox(
+                        height: 40,
+                        child: Text(
+                          _saveError!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.errorInk,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: week.goals.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'No goals yet.',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  BrutalButton(
+                                    label: 'VIEW GOALS',
+                                    color: context.yellow,
+                                    onPressed: widget.onOpenGoals,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : LayoutBuilder(
+                              builder: (context, space) => TodayGoalsCard(
+                                height: space.maxHeight,
+                                week: week,
+                                userId: widget.userId,
+                                savingGoal: _savingGoal,
+                                onToggle: _toggleGoal,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    TodayCrewCard(
+                      height: crewHeight,
+                      crewName: _crew!.name,
+                      week: week,
+                      userId: widget.userId,
+                      onOpen: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CrewWeekPage(
+                              crew: _crew!,
+                              backend: widget.backend,
+                              userId: widget.userId,
+                            ),
+                          ),
+                        );
+                        if (mounted) await _refresh();
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }

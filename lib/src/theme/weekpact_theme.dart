@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 /// Shared stroke and depth values for the app's outlined surfaces.
 abstract final class WeekPactMetrics {
-  static const border = 1.5;
+  static const border = 2.0;
   static const fineBorder = 1.0;
   static const selectedBorder = 2.0;
-  static const shadow = Offset(2, 3);
-  static const smallShadow = Offset(1, 2);
-  static const pressDepth = 3.0;
+  static const shadow = Offset.zero;
+  static const smallShadow = Offset.zero;
+  static const pressDepth = 0.0;
   static const buttonHeight = 40.0;
   static const buttonPadding = EdgeInsets.symmetric(
     horizontal: 12,
@@ -16,11 +16,16 @@ abstract final class WeekPactMetrics {
 }
 
 abstract final class WeekPactColors {
+  static const outlineInk = Color(0xFF161C23);
+  static const sky = Color(0xFF87CFFA);
+  static const lavender = Color(0xFFBEA8F5);
+  static const lime = Color(0xFFBBDC99);
+  static const salmon = Color(0xFFFF836F);
   static const black = Color(0xFF090909);
   static const cream = Color(0xFFFFFCF3);
   static const lightCanvas = Color(0xFFF8F5EC);
-  static const darkCanvas = Color(0xFF191E25);
-  static const darkSurface = Color(0xFF292F38);
+  static const darkCanvas = Color(0xFF303642);
+  static const darkSurface = Color(0xFF3D4553);
   static const darkInk = Color(0xFFF6F1E5);
   static const darkBorder = Color(0xFFB0BCC4);
   static const darkShadow = darkBorder;
@@ -146,43 +151,7 @@ class WeekPactBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gridColor = context.isDark
-        ? const Color(0x14F8F5EC)
-        : const Color(0x10090909);
-
-    return ColoredBox(
-      color: context.canvas,
-      child: CustomPaint(
-        painter: _GridPaperPainter(color: gridColor),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _GridPaperPainter extends CustomPainter {
-  const _GridPaperPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    const spacing = 24.0;
-
-    for (var x = 0.0; x <= size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = 0.0; y <= size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GridPaperPainter oldDelegate) {
-    return oldDelegate.color != color;
+    return ColoredBox(color: context.canvas, child: child);
   }
 }
 

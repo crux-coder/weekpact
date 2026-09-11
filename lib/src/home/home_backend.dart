@@ -1,11 +1,41 @@
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../goals/goals_backend.dart';
 
 class WeekMember {
-  const WeekMember(this.id, this.email);
+  const WeekMember(
+    this.id,
+    this.email, {
+    this.displayName = '',
+    this.avatarPath,
+    this.avatarUrl,
+  });
+  final String displayName;
+  final String? avatarPath;
+  final String? avatarUrl;
+  String get initials {
+    final parts = displayName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty || displayName == 'Crew member') return '?';
+    return (parts.first.characters.first +
+            (parts.length > 1 ? parts.last.characters.first : ''))
+        .toUpperCase();
+  }
+
+  WeekMember withAvatar(String? url) => WeekMember(
+    id,
+    email,
+    displayName: displayName,
+    avatarPath: avatarPath,
+    avatarUrl: url,
+  );
   final String id;
   final String email;
 }
@@ -44,7 +74,14 @@ class CrewWeek {
         .map((g) => CrewGoal.fromJson(Map<String, dynamic>.from(g)))
         .toList(),
     members: (row['members'] as List)
-        .map((m) => WeekMember(m['user_id'] as String, m['email'] as String))
+        .map(
+          (m) => WeekMember(
+            m['user_id'] as String,
+            m['email'] as String,
+            displayName: m['display_name'] as String? ?? '',
+            avatarPath: m['avatar_path'] as String?,
+          ),
+        )
         .toList(),
     checkIns: (row['check_ins'] as List)
         .map(
@@ -116,14 +153,44 @@ class SupabaseHomeBackend implements HomeBackend {
   const SupabaseHomeBackend(this.client);
   final SupabaseClient client;
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async => CrewWeek.fromJson(
-    Map<String, dynamic>.from(
+  Future<CrewWeek> fetchWeek(String crewId) async {
+    final row = Map<String, dynamic>.from(
       await client.rpc(
         'crew_week_snapshot',
         params: {'target_crew_id': crewId},
       ),
-    ),
-  );
+    );
+    final week = CrewWeek.fromJson(row);
+    final paths = week.members
+        .where((m) => m.avatarPath == '${m.id}/avatar.png')
+        .map((m) => m.avatarPath!)
+        .toList();
+    final urls = <String, String>{};
+    if (paths.isNotEmpty) {
+      try {
+        final signed = await client.storage
+            .from('avatars')
+            .createSignedUrlsResult(paths, 300);
+        for (final result in signed) {
+          if (result is SignedUrlSuccess) urls[result.path] = result.signedUrl;
+        }
+      } catch (_) {
+        /* Profile images must not prevent loading check-ins. */
+      }
+    }
+    return CrewWeek(
+      today: week.today,
+      weekStart: week.weekStart,
+      timezone: week.timezone,
+      goals: week.goals,
+      members: week.members
+          .map((m) => m.withAvatar(urls[m.avatarPath]))
+          .toList(),
+      checkIns: week.checkIns,
+      streakWeeks: week.streakWeeks,
+    );
+  }
+
   @override
   Future<void> saveCheckIns({
     required String crewId,

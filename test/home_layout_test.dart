@@ -1,0 +1,94 @@
+import 'package:card_swiper/card_swiper.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/home/home_backend.dart';
+import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/theme/weekpact_theme.dart';
+
+import 'support/home_fakes.dart';
+
+class LargeCrewBackend extends DashboardBackend {
+  @override
+  Future<CrewWeek> fetchWeek(String crewId) async {
+    final week = await super.fetchWeek(crewId);
+    return CrewWeek(
+      today: week.today,
+      weekStart: week.weekStart,
+      timezone: week.timezone,
+      goals: week.goals,
+      members: [
+        for (var i = 0; i < 20; i++) WeekMember('$i', 'member$i@example.com'),
+      ],
+      checkIns: week.checkIns,
+    );
+  }
+}
+
+void main() {
+  for (final size in [const Size(390, 844), const Size(320, 568)]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'home stays fixed at $size with text scale $scale and a large crew',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final backend = LargeCrewBackend();
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: WeekPactTheme.dark,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: HomePage(
+                user: const AuthUser(email: 'person@example.com'),
+                authBackend: const MissingConfigurationAuthBackend(),
+                crewBackend: const MissingCrewBackend(),
+                goalsBackend: backend.goals,
+                homeBackend: backend,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.text('WeekPact'), findsNothing);
+          expect(find.byType(Swiper), findsOneWidget);
+          final verticalScrolls = tester
+              .widgetList<Scrollable>(find.byType(Scrollable))
+              .where(
+                (s) =>
+                    s.axisDirection == AxisDirection.down ||
+                    s.axisDirection == AxisDirection.up,
+              );
+          expect(verticalScrolls, isEmpty);
+          final board = find.byKey(const ValueKey('crew-board'));
+          final position = tester.getTopLeft(board);
+          await tester.drag(board, const Offset(0, -180));
+          await tester.pumpAndSettle();
+          expect(tester.getTopLeft(board), position);
+          expect(
+            tester.getBottomRight(board).dy,
+            lessThanOrEqualTo(
+              tester.getTopLeft(find.byKey(const ValueKey('nav-home'))).dy,
+            ),
+          );
+          expect(find.byTooltip('View week').hitTestable(), findsOneWidget);
+          final before = find.text('Early Birds');
+          expect(before, findsOneWidget);
+          await tester.drag(find.byType(Swiper), Offset(-size.width * .7, 0));
+          await tester.pumpAndSettle();
+          expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+          expect(find.text('Your goals'), findsNothing);
+          expect(find.text('1 of 2'), findsNothing);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
+}

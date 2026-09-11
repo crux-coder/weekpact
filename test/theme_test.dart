@@ -29,93 +29,92 @@ void main() {
     },
   );
 
-  testWidgets(
-    'dark cards, tabs, inputs and shadows use contrasting theme colors',
-    (tester) async {
-      final controller = TextEditingController();
-      addTearDown(controller.dispose);
-      late BuildContext themed;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: Scaffold(
-            body: Builder(
-              builder: (context) {
-                themed = context;
-                return BrutalTabbedCard(
-                  title: 'WEEKLY GOALS',
-                  tabColor: WeekPactColors.mintGreen,
-                  child: Column(
-                    children: [
-                      const Text('Small steps start here.'),
-                      BrutalTextField(
-                        label: 'GOAL NAME',
-                        hint: 'Read',
-                        controller: controller,
-                        validator: (_) => null,
-                      ),
-                      BrutalButton(
-                        label: 'ADD GOAL',
-                        color: WeekPactColors.softCoral,
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+  testWidgets('dark cards and inputs retain contrast without shadows', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    late BuildContext themed;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              themed = context;
+              return BrutalTabbedCard(
+                title: 'WEEKLY GOALS',
+                tabColor: WeekPactColors.mintGreen,
+                child: Column(
+                  children: [
+                    const Text('Small steps start here.'),
+                    BrutalTextField(
+                      label: 'GOAL NAME',
+                      hint: 'Read',
+                      controller: controller,
+                      validator: (_) => null,
+                    ),
+                    BrutalButton(
+                      label: 'ADD GOAL',
+                      color: WeekPactColors.softCoral,
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
-      );
-      expect(themed.surface, WeekPactColors.darkSurface);
-      expect(themed.fieldInk, themed.ink);
-      for (final background in [
-        themed.canvas,
-        themed.surface,
-        themed.yellow,
-        themed.mint,
-        themed.coral,
-        themed.pink,
-      ]) {
-        expect(contrast(themed.ink, background), greaterThanOrEqualTo(4.5));
-      }
-      expect(contrast(themed.muted, themed.surface), greaterThanOrEqualTo(4.5));
-      expect(contrast(themed.shadow, themed.canvas), greaterThanOrEqualTo(3));
-      final decorations = tester
-          .widgetList<Container>(find.byType(Container))
-          .map((widget) => widget.decoration)
-          .whereType<BoxDecoration>();
-      expect(
-        decorations.any((decoration) => decoration.color == WeekPactColors.cream),
-        isFalse,
-      );
-      expect(
-        decorations.any(
-          (decoration) => decoration.color == WeekPactColors.darkMint,
-        ),
-        isTrue,
-      );
-      expect(
-        decorations.any(
-          (decoration) => decoration.color == WeekPactColors.darkCoral,
-        ),
-        isTrue,
-      );
-      expect(
-        decorations.any(
-          (decoration) =>
-              decoration.boxShadow?.any(
-                (shadow) => shadow.color == WeekPactColors.darkShadow,
-              ) ??
-              false,
-        ),
-        isTrue,
-      );
-      expect(
-        tester.widget<TextFormField>(find.byType(TextFormField)).controller,
-        controller,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    expect(themed.surface, WeekPactColors.darkSurface);
+    expect(themed.fieldInk, themed.ink);
+    for (final background in [
+      themed.canvas,
+      themed.surface,
+      themed.yellow,
+      themed.mint,
+      themed.coral,
+      themed.pink,
+    ]) {
+      expect(contrast(themed.ink, background), greaterThanOrEqualTo(4.5));
+    }
+    expect(contrast(themed.muted, themed.surface), greaterThanOrEqualTo(4.5));
+    expect(contrast(themed.shadow, themed.canvas), greaterThanOrEqualTo(3));
+    final decorations = tester
+        .widgetList<Container>(find.byType(Container))
+        .map((widget) => widget.decoration)
+        .whereType<BoxDecoration>();
+    expect(
+      decorations.any((decoration) => decoration.color == WeekPactColors.cream),
+      isFalse,
+    );
+    expect(
+      decorations.any(
+        (decoration) => decoration.color == WeekPactColors.darkMint,
+      ),
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<Material>(find.byType(Material))
+          .any((material) => material.color == WeekPactColors.darkCoral),
+      isTrue,
+    );
+    expect(
+      decorations.any(
+        (decoration) =>
+            decoration.boxShadow?.any(
+              (shadow) => shadow.color == WeekPactColors.darkShadow,
+            ) ??
+            false,
+      ),
+      isFalse,
+    );
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField)).controller,
+      controller,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

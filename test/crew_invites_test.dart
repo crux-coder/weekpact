@@ -153,7 +153,7 @@ void main() {
             find.byKey(const ValueKey('check-in-Move for 30 min')),
             findsOneWidget,
           );
-          expect(find.text('EARLY BIRDS'), findsOneWidget);
+          expect(find.text('Early Birds'), findsOneWidget);
         }
         await tester.pumpWidget(const SizedBox());
       },

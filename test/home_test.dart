@@ -73,13 +73,13 @@ void main() {
       backend.loading = Completer<CrewWeek>();
       await pumpHome(tester, backend);
       await tester.pump();
-      expect(find.text('EARLY BIRDS'), findsOneWidget);
+      expect(find.text('WeekPact'), findsNothing);
       expect(find.text('CHECK IN'), findsNothing);
       backend.loading!.complete(week);
       backend.loading = null;
       await tester.pumpAndSettle();
-      expect(find.text('EARLY BIRDS'), findsOneWidget);
-      expect(find.text('1 OF 2 DONE'), findsOneWidget);
+      expect(find.text('Early Birds'), findsOneWidget);
+      expect(find.text('Mark done'), findsOneWidget);
       backend.failSave = true;
       await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
       await tester.pumpAndSettle();
@@ -89,11 +89,11 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('check-in-Move for 30 min')));
       await tester.pumpAndSettle();
       expect(backend.selected, {'move', 'read'});
-      expect(find.text('2 OF 2 DONE'), findsOneWidget);
+      expect(find.text('Undo check-in'), findsWidgets);
       await tester.pumpWidget(const SizedBox());
       await pumpHome(tester, backend);
       await tester.pumpAndSettle();
-      expect(find.text('2 OF 2 DONE'), findsOneWidget);
+      expect(find.text('Undo check-in'), findsWidgets);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

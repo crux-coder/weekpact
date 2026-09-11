@@ -25,28 +25,15 @@ class BrutalShadow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = cornerRadius ?? BorderRadius.circular(borderRadius);
-    Radius inset(Radius corner) => Radius.elliptical(
-      (corner.x - borderWidth).clamp(0.0, double.infinity),
-      (corner.y - borderWidth).clamp(0.0, double.infinity),
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.tone(fillColor ?? context.surface),
+    return Material(
+      color: context.tone(fillColor ?? context.surface),
+      shape: RoundedRectangleBorder(
         borderRadius: radius,
-        border: Border.all(color: context.border, width: borderWidth),
-        boxShadow: [BoxShadow(color: context.shadow, offset: shadowOffset)],
+        side: BorderSide(color: context.border, width: borderWidth),
       ),
+      borderOnForeground: true,
       clipBehavior: Clip.antiAlias,
-      child: ClipRRect(
-        borderRadius: BorderRadius.only(
-          topLeft: inset(radius.topLeft),
-          topRight: inset(radius.topRight),
-          bottomLeft: inset(radius.bottomLeft),
-          bottomRight: inset(radius.bottomRight),
-        ),
-        child: child,
-      ),
+      child: child,
     );
   }
 }
@@ -108,12 +95,7 @@ class BrutalTabbedCard extends StatelessWidget {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(8),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: context.shadow,
-                            offset: WeekPactMetrics.shadow,
-                          ),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: Text(
                         title,
@@ -254,156 +236,112 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
   });
-
   final List<BrutalNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
-
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      child: BrutalShadow(
-        borderRadius: 12,
-        shadowOffset: WeekPactMetrics.shadow,
-        fillColor: context.shadow,
-        child: SizedBox(
-          height: 74,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var index = 0; index < items.length; index++)
-                Expanded(
-                  child: _BrutalNavigationButton(
-                    key: ValueKey('nav-${items[index].label.toLowerCase()}'),
-                    item: items[index],
-                    selected: selectedIndex == index,
-                    isFirst: index == 0,
-                    isLast: index == items.length - 1,
-                    showDivider: index != items.length - 1,
-                    onPressed: () => onSelected(index),
-                  ),
-                ),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    minimum: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: WeekPactColors.outlineInk, width: 2),
       ),
-    );
-  }
-}
-
-class _BrutalNavigationButton extends StatefulWidget {
-  const _BrutalNavigationButton({
-    super.key,
-    required this.item,
-    required this.selected,
-    required this.isFirst,
-    required this.isLast,
-    required this.showDivider,
-    required this.onPressed,
-  });
-
-  final BrutalNavigationItem item;
-  final bool selected;
-  final bool isFirst;
-  final bool isLast;
-  final bool showDivider;
-  final VoidCallback onPressed;
-
-  @override
-  State<_BrutalNavigationButton> createState() =>
-      _BrutalNavigationButtonState();
-}
-
-class _BrutalNavigationButtonState extends State<_BrutalNavigationButton> {
-  bool _isHeld = false;
-
-  void _setHeld(bool value) {
-    if (_isHeld == value) return;
-    setState(() => _isHeld = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isPressed = widget.selected || _isHeld;
-
-    return Semantics(
-      selected: widget.selected,
-      button: true,
-      label: widget.item.label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => _setHeld(true),
-        onTapUp: (_) => _setHeld(false),
-        onTapCancel: () => _setHeld(false),
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          key: ValueKey('nav-key-${widget.item.label.toLowerCase()}'),
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
-          margin: EdgeInsets.only(
-            top: isPressed ? WeekPactMetrics.pressDepth : 0,
-            bottom: isPressed ? 0 : WeekPactMetrics.pressDepth,
-          ),
-          decoration: BoxDecoration(
-            color: widget.selected
-                ? context.tone(widget.item.color)
-                : context.surface,
-            borderRadius: BorderRadius.only(
-              topLeft: widget.isFirst ? const Radius.circular(9) : Radius.zero,
-              bottomLeft: widget.isFirst
-                  ? const Radius.circular(9)
-                  : Radius.zero,
-              topRight: widget.isLast ? const Radius.circular(9) : Radius.zero,
-              bottomRight: widget.isLast
-                  ? const Radius.circular(9)
-                  : Radius.zero,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final duration = MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 320);
+          final unit = constraints.maxWidth / (items.length + 1);
+          return Row(
             children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  HugeIcon(
-                    icon: widget.item.icon,
-                    color: context.ink,
-                    size: 24,
-                    strokeWidth: 2,
+              for (var i = 0; i < items.length; i++)
+                TweenAnimationBuilder<double>(
+                  key: ValueKey('nav-animation-${items[i].label}'),
+                  tween: Tween<double>(
+                    begin: selectedIndex == i ? 1 : 0,
+                    end: selectedIndex == i ? 1 : 0,
                   ),
-                  const SizedBox(height: 3),
-                  Flexible(
-                    child: Text(
-                      widget.item.label.toUpperCase(),
-                      overflow: TextOverflow.fade,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.3,
+                  duration: duration,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, amount, _) => SizedBox(
+                    width: unit * (1 + amount),
+                    child: Semantics(
+                      selected: selectedIndex == i,
+                      label: items[i].label,
+                      child: Tooltip(
+                        message: items[i].label,
+                        child: Material(
+                          color: Color.lerp(
+                            context.surface,
+                            WeekPactColors.salmon,
+                            amount,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            key: ValueKey(
+                              'nav-${items[i].label.toLowerCase()}',
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => onSelected(i),
+                            child: SizedBox(
+                              height: 52,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  HugeIcon(
+                                    icon: items[i].icon,
+                                    color: Color.lerp(
+                                      context.ink,
+                                      WeekPactColors.outlineInk,
+                                      amount,
+                                    ),
+                                    size: 25,
+                                  ),
+                                  if (amount > 0) ...[
+                                    SizedBox(width: 7 * amount),
+                                    Flexible(
+                                      child: ClipRect(
+                                        child: Align(
+                                          widthFactor: amount,
+                                          alignment: Alignment.centerLeft,
+                                          child: Opacity(
+                                            opacity: amount,
+                                            child: ExcludeSemantics(
+                                              child: Text(
+                                                items[i].label,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color:
+                                                      WeekPactColors.outlineInk,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
-              if (widget.showDivider)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: WeekPactMetrics.border,
-                  child: ColoredBox(color: context.border),
                 ),
             ],
-          ),
-        ),
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
 }
 
 class BrutalTextField extends StatelessWidget {
