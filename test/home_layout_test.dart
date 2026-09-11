@@ -1,3 +1,5 @@
+import 'package:weekpact/src/home/today_widgets.dart';
+
 import 'support/pump_ui.dart';
 
 import 'package:card_swiper/card_swiper.dart';
@@ -70,6 +72,14 @@ void main() {
           expect(verticalScrolls, isEmpty);
           final board = find.byKey(const ValueKey('crew-board'));
           final position = tester.getTopLeft(board);
+          final titleBottom = tester
+              .getBottomRight(find.byType(CrewTitleBanner))
+              .dy;
+          final crewTop = tester.getTopLeft(find.byType(TodayCrewCard)).dy;
+          expect(
+            tester.getCenter(find.byType(Swiper)).dy,
+            closeTo((titleBottom + crewTop) / 2, 1),
+          );
           await tester.drag(board, const Offset(0, -180));
           await tester.pumpUi();
           expect(tester.getTopLeft(board), position);

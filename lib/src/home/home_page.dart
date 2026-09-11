@@ -1,4 +1,4 @@
-import 'home_glass.dart';
+import 'home_surface.dart';
 import '../onboarding/profile_avatar.dart';
 import '../auth/account_actions.dart';
 import '../notifications/notification_settings_card.dart';
@@ -147,12 +147,12 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BrutalBottomNavigationBar(
         items: _navigationItems,
-        glass: _selectedIndex == 0,
+        flatHome: _selectedIndex == 0,
         selectedIndex: _selectedIndex,
         onSelected: _selectDestination,
       ),
     );
-    return HomeGlassBackground(child: scaffold);
+    return HomeBackground(child: scaffold);
   }
 }
 
@@ -348,7 +348,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     CrewTitleBanner(name: _crew!.name),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     if (_saveError != null)
                       SizedBox(
                         height: 40,

@@ -235,9 +235,9 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
-    this.glass = false,
+    this.flatHome = false,
   });
-  final bool glass;
+  final bool flatHome;
   final List<BrutalNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -248,10 +248,10 @@ class BrutalBottomNavigationBar extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: glass ? const Color(0xB3443C62) : context.surface,
+        color: flatHome ? const Color(0xFF191B19) : context.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: glass ? const Color(0x50FFFFFF) : WeekPactColors.outlineInk,
+          color: flatHome ? Colors.transparent : WeekPactColors.outlineInk,
           width: 2,
         ),
       ),
@@ -281,9 +281,9 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                         message: items[i].label,
                         child: Material(
                           color: Color.lerp(
-                            glass ? Colors.transparent : context.surface,
-                            glass
-                                ? const Color(0xFFCAB8FA)
+                            flatHome ? Colors.transparent : context.surface,
+                            flatHome
+                                ? const Color(0xFFF3F5F2)
                                 : WeekPactColors.salmon,
                             amount,
                           ),
@@ -302,7 +302,7 @@ class BrutalBottomNavigationBar extends StatelessWidget {
                                   HugeIcon(
                                     icon: items[i].icon,
                                     color: Color.lerp(
-                                      glass ? Colors.white : context.ink,
+                                      flatHome ? Colors.white : context.ink,
                                       WeekPactColors.outlineInk,
                                       amount,
                                     ),

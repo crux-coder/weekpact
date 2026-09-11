@@ -2,7 +2,7 @@
 // ignore: implementation_imports
 import 'package:card_swiper/src/transformer_page_view/transformer_page_view.dart';
 
-import 'home_glass.dart';
+import 'home_surface.dart';
 
 import 'package:card_swiper/card_swiper.dart';
 
@@ -10,24 +10,15 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../goals/goal_icons.dart';
 import '../goals/goals_backend.dart';
-import '../theme/weekpact_theme.dart';
 import '../widgets/page_frame.dart';
 import 'home_backend.dart';
 
-const _ink = Color(0xFFF6F3FF);
-BoxDecoration _panel(Color color, [double radius = 18]) => BoxDecoration(
-  gradient: LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [color.withValues(alpha: .28), color.withValues(alpha: .08)],
-  ),
-  borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: Colors.white.withValues(alpha: .3)),
-);
+const _ink = homeInk;
+BoxDecoration _panel(Color color, [double radius = 18]) =>
+    BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius));
 
 class CrewTitleBanner extends StatelessWidget {
   const CrewTitleBanner({super.key, required this.name});
@@ -35,19 +26,20 @@ class CrewTitleBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 60,
-    child: Row(
-      children: [
-        HomeGlassSurface(
-          radius: 16,
-          padding: const EdgeInsets.all(12),
-          child: const HugeIcon(
-            icon: HugeIconsStrokeRounded.userGroup,
-            color: _ink,
-            size: 25,
+    child: LayoutBuilder(
+      builder: (context, constraints) => OverflowBox(
+        minWidth: constraints.maxWidth + 24,
+        maxWidth: constraints.maxWidth + 24,
+        child: Container(
+          key: const ValueKey('crew-title-container'),
+          width: constraints.maxWidth + 24,
+          padding: const EdgeInsets.fromLTRB(24, 7, 24, 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD7E3C8),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(24),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -55,13 +47,13 @@ class CrewTitleBanner extends StatelessWidget {
               const Text(
                 'YOUR CREW',
                 style: TextStyle(
-                  color: Color(0xFFBDB7D8),
+                  color: Color(0xFF59634F),
                   fontSize: 10,
                   letterSpacing: 2,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              Flexible(
+              Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
@@ -78,7 +70,7 @@ class CrewTitleBanner extends StatelessWidget {
             ],
           ),
         ),
-      ],
+      ),
     ),
   );
 }
@@ -159,6 +151,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Balance the 24px indicator area below the cards.
+          const SizedBox(height: 24),
           SizedBox(
             height: cardHeight,
             child: LayoutBuilder(
@@ -214,9 +208,9 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                         week: widget.week,
                         userId: widget.userId,
                         color: [
-                          WeekPactColors.sky,
-                          WeekPactColors.lavender,
-                          WeekPactColors.lime,
+                          const Color(0xFFF5F6F5),
+                          const Color(0xFFF4D88F),
+                          const Color(0xFFE0EED4),
                         ][widget.week.goals.indexOf(goals[index]) % 3],
                         busy: widget.savingGoal == goals[index].id,
                         onToggle:
@@ -255,7 +249,7 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                         decoration: BoxDecoration(
                           color: dot == _index
                               ? _ink
-                              : Colors.white.withValues(alpha: .25),
+                              : _ink.withValues(alpha: .25),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -291,9 +285,8 @@ class _GoalCard extends StatelessWidget {
     final checked = week.checkedToday(userId).contains(goal.id);
     final start = DateTime.parse(week.weekStart);
     final completed = week.days(goal.id, userId);
-    return HomeGlassSurface(
+    return HomeSurface(
       tint: color,
-      backingOpacity: .96,
       padding: const EdgeInsets.all(18),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -317,7 +310,7 @@ class _GoalCard extends StatelessWidget {
                         Container(
                           width: 52,
                           height: 52,
-                          decoration: _panel(WeekPactColors.lavender, 16),
+                          decoration: _panel(const Color(0xFFE1E5DC), 12),
                           child: Center(
                             child: HugeIcon(
                               icon: GoalIcon.find(goal.iconKey).data,
@@ -428,25 +421,10 @@ class _GoalCard extends StatelessWidget {
                               margin: const EdgeInsets.symmetric(horizontal: 2),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: current
-                                      ? const [
-                                          Color(0xB77F52D8),
-                                          Color(0x905038A6),
-                                        ]
-                                      : const [
-                                          Color(0x285F658F),
-                                          Color(0x153F4166),
-                                        ],
-                                ),
-                                border: Border.all(
-                                  color: Colors.white.withValues(
-                                    alpha: current ? .4 : .18,
-                                  ),
-                                ),
-                                borderRadius: BorderRadius.circular(24),
+                                color: current
+                                    ? const Color(0xFFD0E5BA)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Column(
                                 children: [
@@ -472,7 +450,7 @@ class _GoalCard extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: done
-                                          ? const Color(0xFF488E7D)
+                                          ? const Color(0xFF99C78E)
                                           : Colors.transparent,
                                     ),
                                     child: done
@@ -510,11 +488,11 @@ class _GoalCard extends StatelessWidget {
                         key: ValueKey('check-in-${goal.title}'),
                         onPressed: onToggle,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFD5C7FF),
-                          foregroundColor: const Color(0xFF28213F),
+                          backgroundColor: _ink,
+                          foregroundColor: homePaper,
                           minimumSize: const Size(0, 48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         icon: busy
@@ -594,11 +572,10 @@ class TodayCrewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: HomeGlassSurface(
+            child: HomeSurface(
               key: const ValueKey('crew-board'),
-              radius: 26,
-              sheen: .1,
-              tint: const Color(0xFF94B5D7),
+              radius: 16,
+              tint: const Color(0xFFF5F6F5),
               child: Column(
                 children: [
                   Container(
@@ -608,10 +585,10 @@ class TodayCrewCard extends StatelessWidget {
                       horizontal: 14,
                       vertical: 10,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0x0FFFFFFF),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F6F5),
                       border: Border(
-                        bottom: BorderSide(color: Color(0x35FFFFFF)),
+                        bottom: BorderSide(color: _ink.withValues(alpha: .18)),
                       ),
                     ),
                     child: Row(
@@ -638,7 +615,7 @@ class TodayCrewCard extends StatelessWidget {
                             child: Text(
                               '${checked.length} of $total checked in',
                               style: const TextStyle(
-                                color: Color(0xFFD6D2EA),
+                                color: Color(0xFF55535C),
                                 fontSize: 12,
                               ),
                             ),
@@ -706,9 +683,9 @@ class TodayCrewCard extends StatelessWidget {
                   ),
                   Container(
                     height: 48,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0x35FFFFFF), width: 1),
+                        top: BorderSide(color: _ink.withValues(alpha: .18)),
                       ),
                     ),
                     padding: const EdgeInsets.fromLTRB(8, 2, 4, 4),
@@ -738,14 +715,16 @@ class TodayCrewCard extends StatelessWidget {
                               child: FilledButton(
                                 onPressed: onOpen,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFCAB8FA),
+                                  backgroundColor: const Color(0xFFD0E5BA),
                                   foregroundColor: const Color(0xFF28213F),
                                   minimumSize: const Size(40, 40),
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                   side: BorderSide.none,
                                   padding: EdgeInsets.zero,
-                                  shape: const CircleBorder(),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                                 child: const Icon(
                                   Icons.arrow_forward,
@@ -831,10 +810,10 @@ class TodayCrewCard extends StatelessWidget {
                             width: size,
                             height: size,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF34354F),
-                              borderRadius: BorderRadius.circular(size * .32),
+                              color: const Color(0xFFF7F3E9),
+                              borderRadius: BorderRadius.circular(size * .22),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: .25),
+                                color: _ink.withValues(alpha: .25),
                               ),
                             ),
                             child: Center(
@@ -870,8 +849,8 @@ class TodayCrewCard extends StatelessWidget {
   ) {
     final ink = _ink;
     final statusColor = done
-        ? const Color(0xFF88E2B5)
-        : const Color(0xFFFFC27B);
+        ? const Color(0xFF4C8C5D)
+        : const Color(0xFFC48A42);
     final fallback = Center(
       child: Text(
         member.initials,
@@ -897,23 +876,12 @@ class TodayCrewCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(2.5),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(size * .32),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: .24),
-                            statusColor.withValues(alpha: .16),
-                            const Color(0x80403D60),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: .55),
-                          width: 1,
-                        ),
+                        borderRadius: BorderRadius.circular(size * .22),
+                        color: homePaper,
+                        border: Border.all(color: statusColor, width: 1),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(size * .25),
+                        borderRadius: BorderRadius.circular(size * .16),
                         child: member.avatarUrl == null
                             ? fallback
                             : Image.network(
@@ -1031,21 +999,21 @@ class _FlowingCrewFillState extends State<_FlowingCrewFill>
   Widget build(BuildContext context) => RepaintBoundary(
     child: ClipPath(
       clipper: _CrewFillClipper(wavy: widget.wavy, phase: _phase),
-      child: const ColoredBox(color: Color(0x9034BD83)),
+      child: const ColoredBox(color: Color(0xFFD0E5BA)),
     ),
   );
 }
 
 // Uniform flowing edge for the progress fill.
 Path _crewWaveEdge(Size size, double phase) {
-  final amplitude = math.min(3.0, size.width / 4);
+  final amplitude = math.min(4.0, size.width / 4);
   final baseline = size.width - amplitude;
   final edge = Path()
     ..moveTo(baseline + amplitude * math.sin(phase * math.pi * 2), 0);
   for (var i = 1; i <= 144; i++) {
     final fraction = i / 144;
     edge.lineTo(
-      baseline + amplitude * math.sin((fraction * 3 + phase) * math.pi * 2),
+      baseline + amplitude * math.sin((fraction + phase) * math.pi * 2),
       size.height * fraction,
     );
   }
