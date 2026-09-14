@@ -25,20 +25,24 @@ in `website`. Configure real store/TestFlight links using its existing site conf
 
 Home's empty state opens a four-step setup: crew, editable starter pact,
 invitation, and an optional first check-in. Creating a crew from Crews also
-continues into this setup. Progress resumes from saved crew/pact data. Owners can reopen Setup guide in Crews. Members
+continues into this setup. Progress resumes from saved crew/pact data. Members
 can finish later; marking a check-in explicitly means they did the pact today.
 
 The pact editor has three editable starters. Owners can share an invitation
-through the native share sheet from setup or Crews. Links use the existing HTTPS
+through the native share sheet or copy a link from setup and the Invite someone
+drawer in Crews. The drawer offers Share, Copy, and Show QR code; its card comes
+first in the people grid. Email invitation creation is hidden in the UI; existing
+email invitations and backend support remain intact. QR codes encode the same
+HTTPS invite route for scanning with a phone camera. Links use the existing HTTPS
 invitation landing page and custom-scheme handoff; no automatic message is sent.
 Recipients install/sign in, return to the original link, then explicitly accept.
 
-A crew has one active share link. It expires after seven days. Creating another
-replaces the old link; revoking invalidates it immediately. Anyone with the link
+Every copy, share, or newly shown QR code creates a new invite link, active for
+seven days.
+Earlier links retain their own expiry; there is no revoke action. Anyone with the link
 can join with a confirmed account, subject to the existing one-crew-per-account
 rule. A retry by someone already in that crew is harmless. Email-bound invites
-remain supported. Tokens are stored only as SHA-256 hashes. The raw link stays
-in the owner's current UI state, not in analytics or persisted device settings.
+remain supported. Tokens are stored only as SHA-256 hashes. The raw link is passed only to the clipboard or share sheet, not in analytics or persisted device settings.
 
 `APP_SITE_URL` controls share-link origin; default is the existing WeekPact site.
 
@@ -134,3 +138,6 @@ and disabled leaked-password protection
 ([configuration guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)).
 The new migration keeps privileged workers private, authorizes public wrappers,
 and is covered by local access-control tests; run advisors again after deployment.
+
+The invite-link update also requires `20260914174347_independent_crew_invite_links.sql`.
+It preserves existing tokens and allows multiple links with independent expiry.

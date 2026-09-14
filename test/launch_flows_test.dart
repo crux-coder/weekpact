@@ -1,10 +1,12 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
+import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crew_people_grid.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/onboarding/crew_setup_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -83,15 +85,18 @@ class Sharing implements CrewSharingBackend {
       created++;
       return link = CrewShareLink(
         expiresAt: DateTime.now().add(const Duration(days: 7)),
-        token: 'a' * 64,
+        token: created.toRadixString(16).padLeft(64, '0'),
       );
-    }
-    if (action == 'revoke') {
-      link = null;
-      return null;
     }
     return link;
   }
+}
+
+class SharingCrew extends SetupCrew implements CrewSharingBackend {
+  final sharing = Sharing();
+  @override
+  Future<CrewShareLink?> manageShareLink(String crewId, String action) =>
+      sharing.manageShareLink(crewId, action);
 }
 
 class ShareFake implements AppShare {
@@ -218,9 +223,119 @@ void main() {
     expect(find.text('Step 3 of 4'), findsOneWidget);
     expect(crews.created, 1);
   });
-  testWidgets('invite share retries the same token and can revoke it', (
-    tester,
-  ) async {
+  testWidgets('first crew tile opens link-only invitations', (tester) async {
+    final backend = SharingCrew();
+    await backend.createCrew(name: 'Early Birds', timezone: 'UTC');
+    String? clipboard;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboard = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.light,
+        home: Scaffold(
+          body: CrewPage(backend: backend, currentUserEmail: ''),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    final invite = find.byType(CrewInviteTile);
+    final person = find.byType(CrewPersonCard).first;
+    expect(
+      tester.getTopLeft(invite).dy,
+      lessThanOrEqualTo(tester.getTopLeft(person).dy),
+    );
+    expect(
+      tester.getTopLeft(invite).dx,
+      lessThan(tester.getTopLeft(person).dx),
+    );
+    expect(find.text('Invite your people'), findsNothing);
+    await tester.tap(invite);
+    await tester.pumpUi();
+    expect(find.text('Email'), findsNothing);
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.text('SEND INVITE'), findsNothing);
+    expect(find.text('Share invite link'), findsOneWidget);
+    await tester.tap(find.text('Copy invite link'));
+    await tester.pumpUi();
+    expect(clipboard, backend.sharing.link!.url.toString());
+    expect(find.text('Link copied'), findsOneWidget);
+    expect(backend.sharing.created, 1);
+    final firstClipboard = clipboard;
+    await tester.tap(find.text('Link copied'));
+    await tester.pumpUi();
+    expect(backend.sharing.created, 2);
+    expect(clipboard, isNot(firstClipboard));
+    expect(find.text('Revoke invite link'), findsNothing);
+    expect(find.text('Invite links are active for 7 days.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'QR invitations retry failures and create a new code when reopened',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final backend = Sharing()..fail = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: WeekPactTheme.dark,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CrewShareControls(backend: backend, crewId: 'crew'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpUi();
+      expect(
+        find.text('Could not create the QR code. Please try again.'),
+        findsOneWidget,
+      );
+      expect(find.byType(QrImageView), findsNothing);
+      backend.fail = false;
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpUi();
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text('Scan to join your crew'), findsOneWidget);
+      expect(
+        find.text('Could not create the QR code. Please try again.'),
+        findsNothing,
+      );
+      expect(backend.created, 1);
+      final firstToken = backend.link!.token;
+      await tester.ensureVisible(find.text('Hide QR code'));
+      await tester.tap(find.text('Hide QR code'));
+      await tester.pumpUi();
+      expect(find.byType(QrImageView), findsNothing);
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpUi();
+      expect(backend.created, 2);
+      expect(backend.link!.token, isNot(firstToken));
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('each share action creates a new invite link', (tester) async {
     final backend = Sharing();
     final share = ShareFake()..fail = true;
     await tester.pumpWidget(
@@ -235,7 +350,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await tester.tap(find.text('Create & share link'));
+    await tester.tap(find.text('Share invite link'));
     await tester.pumpUi();
     expect(backend.created, 1);
     expect(
@@ -245,12 +360,15 @@ void main() {
     share.fail = false;
     await tester.tap(find.text('Share invite link'));
     await tester.pumpUi();
-    expect(backend.created, 1);
+    expect(backend.created, 2);
     expect(share.texts.single, contains('/invite/?invite='));
-    await tester.tap(find.text('Revoke invite link'));
+    final firstShared = share.texts.single;
+    await tester.tap(find.text('Share invite link'));
     await tester.pumpUi();
-    expect(backend.link, isNull);
-    expect(find.text('Create & share link'), findsOneWidget);
+    expect(backend.created, 3);
+    expect(share.texts.last, isNot(firstShared));
+    expect(find.text('Revoke invite link'), findsNothing);
+    expect(find.text('Share invite link'), findsOneWidget);
   });
   testWidgets(
     'recap appears on returning home, saves seen state and stays accessible',

@@ -15,6 +15,7 @@ import 'package:weekpact/src/app.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crew_sharing.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
@@ -524,7 +525,7 @@ void main() {
     expect(find.byIcon(Icons.dark_mode), findsNothing);
   });
 
-  testWidgets('creates a crew and sends an email invite', (tester) async {
+  testWidgets('creates a crew and opens link-only invitations', (tester) async {
     final auth = FakeAuthBackend();
     final crews = FakeCrewBackend();
     addTearDown(auth.dispose);
@@ -552,6 +553,7 @@ void main() {
     await tester.pumpUi();
 
     if (find.text('Finish later').evaluate().isNotEmpty) {
+      await tester.ensureVisible(find.text('Finish later'));
       await tester.tap(find.text('Finish later'));
       await tester.pumpUi();
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
@@ -566,23 +568,13 @@ void main() {
     await tester.pumpUi();
     expect(find.text('INVITE TO YOUR CREW'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextFormField), 'friend@example.com');
-    await tester.tap(find.text('SEND INVITE'));
-    await tester.pumpUi();
-
-    expect(crews.invitedEmails, ['friend@example.com']);
-    expect(find.text('Pending invites'), findsNothing);
-    expect(
-      tester
-          .widget<Badge>(find.byKey(const ValueKey('crew-invites-badge')))
-          .isLabelVisible,
-      isTrue,
-    );
-    await tester.ensureVisible(find.byTooltip('Invites'));
-    await tester.tap(find.byTooltip('Invites'));
-    await tester.pumpUi();
-    expect(find.text('Sent'), findsOneWidget);
-    expect(find.text('friend@example.com'), findsWidgets);
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.text('Email'), findsNothing);
+    expect(find.text('SEND INVITE'), findsNothing);
+    expect(find.text('Share invite link'), findsOneWidget);
+    expect(find.text('Copy invite link'), findsOneWidget);
+    expect(find.text('Show QR code'), findsOneWidget);
+    expect(crews.invitedEmails, isEmpty);
   });
 
   testWidgets('keeps an invite through login and accepts it', (tester) async {
@@ -707,7 +699,14 @@ class FakeAuthBackend implements AuthBackend {
   Future<void> dispose() => _controller.close();
 }
 
-class FakeCrewBackend implements CrewBackend {
+class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
+  @override
+  Future<CrewShareLink?> manageShareLink(String crewId, String action) async =>
+      CrewShareLink(
+        expiresAt: DateTime.now().add(const Duration(days: 7)),
+        token: 'a' * 64,
+      );
+
   @override
   Future<void> leaveCrew({required String crewId, String? successorId}) async {
     crew = null;

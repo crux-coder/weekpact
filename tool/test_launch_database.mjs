@@ -14,6 +14,7 @@ await db.query("insert into crew_members(crew_id,user_id,email,role,joined_at) v
 await db.query("insert into crew_pacts(id,crew_id,title,frequency,days_per_week,created_by,created_at) values($1,$2,'Read','weekly',1,$3,$4::date-21)",[pact,crew,owner,week]);
 for(const days of [14,7])for(const u of [owner,member])await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,$3::date-$4::int)',[pact,u,week,days]);
 await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20260914174347_independent_crew_invite_links.sql',import.meta.url),'utf8'));
 async function asUser(user,fn,role='authenticated'){
  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);await db.exec(`set role ${role}`);
  try{return await fn();}finally{await db.exec('reset role');}
@@ -44,15 +45,15 @@ const accepted=()=>db.query('select accept_crew_invite($1) crew',[first.token]);
 await asUser(joiner,accepted);
 assert.equal((await asUser(joiner,accepted)).rows[0].crew,crew,'same-crew retry is idempotent');
 assert.equal(await asUser(joiner,()=>recap()),null,'new members do not get recaps from before they joined');
-await asUser(owner,()=>link('revoke'));
-await asUser(outsider,()=>assert.rejects(accepted(),/invalid|already been used/));
+await asUser(owner,()=>assert.rejects(link('revoke'),/Invalid link action/));
 const second=await asUser(owner,()=>link('create'));
 assert.notEqual(second.token,first.token);
-await db.query("update private.crew_share_links set expires_at=now()-interval '1 second'");
+assert.equal((await db.query('select count(*) n from private.crew_share_links')).rows[0].n,2);
+await asUser(outsider,accepted); // Earlier link remains valid after a new creation.
+await db.query("update private.crew_share_links set expires_at=now()-interval '1 second' where token_hash=encode(extensions.digest($1,'sha256'),'hex')",[second.token]);
 await asUser(outsider,()=>assert.rejects(db.query('select accept_crew_invite($1)',[second.token]),/expired/));
-// Replacement invalidates a leaked/old link; confirmed accounts only.
+await asUser(outsider,accepted); // Expiring one link does not expire another.
 const third=await asUser(owner,()=>link('create'));
-await asUser(outsider,()=>assert.rejects(db.query('select accept_crew_invite($1)',[second.token]),/invalid|already been used/));
 await db.query('update auth.users set email_confirmed_at=null where id=$1',[outsider]);
 await asUser(outsider,()=>assert.rejects(db.query('select accept_crew_invite($1)',[third.token]),/Confirm your email/));
 // Aggregate history survives member/account deletion and cascading pact changes.
@@ -72,5 +73,5 @@ assert.deepEqual(events.sort((a,b)=>a.event.localeCompare(b.event)),[{event:'sig
 await asUser(fresh,()=>assert.rejects(db.query('select * from private.product_events'),/permission denied/));
 await db.query('delete from auth.users where id=$1',[fresh]);assert.equal((await db.query('select * from private.product_events where user_id=$1',[fresh])).rows.length,0);
 await db.exec(await readFile(new URL('./product_metrics.sql',import.meta.url),'utf8'));
-console.log('Launch database checks passed: frozen history, crew timezone, recap privacy/authorization/seen states, idempotent cron, revocable invites, acceptance retry, confirmation, and private funnel events.');
+console.log('Launch database checks passed: frozen history, crew timezone, recap privacy/authorization/seen states, idempotent cron, independent seven-day invites, acceptance retry, confirmation, and private funnel events.');
 await db.close();

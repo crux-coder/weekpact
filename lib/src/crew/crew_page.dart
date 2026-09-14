@@ -257,22 +257,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   Future<void> _openInviteDrawer() async {
     final crew = _crew;
     if (crew == null || !crew.isOwner) return;
-    final updated = await showAppSheet<CrewDetails>(
+    await showAppSheet<void>(
       context: context,
-      builder: (context) => _InviteDrawer(
-        crew: crew,
-        backend: widget.backend,
-        currentUserEmail: widget.currentUserEmail,
-      ),
+      builder: (context) => _InviteDrawer(crew: crew, backend: widget.backend),
     );
-    if (!mounted || updated == null) return;
-    setState(() {
-      _crew = updated;
-      _error = null;
-    });
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Invite sent.')));
   }
 
   @override
@@ -433,25 +421,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         children: [
           if (_crew != null) ...[
             _buildCrewState(context, _crew!),
-            if (_crew!.isOwner && widget.onCrewCreated != null)
-              TextButton.icon(
-                onPressed: () => widget.onCrewCreated!(_crew!),
-                icon: const Icon(Icons.flag_outlined),
-                label: const Text('Setup guide'),
-              ),
-            if (_crew!.isOwner && widget.backend is CrewSharingBackend) ...[
-              const SizedBox(height: 16),
-              AppSurface(
-                builder: (context) => Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: CrewShareControls(
-                    key: ValueKey(_crew!.id),
-                    backend: widget.backend as CrewSharingBackend,
-                    crewId: _crew!.id,
-                  ),
-                ),
-              ),
-            ],
           ] else if (_hasLoaded)
             AppSurfaceTheme(builder: (context) => _buildCreateState(context)),
           if (_error != null) ...[
@@ -613,6 +582,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         const SizedBox(height: 12),
         CrewPeopleGrid(
           children: [
+            if (crew.isOwner)
+              CrewInviteTile(
+                onPressed: _changingMembership ? null : _openInviteDrawer,
+              ),
             for (var i = 0; i < crew.members.length; i++)
               CrewPersonCard(
                 key: ValueKey(crew.members[i].userId),
@@ -634,10 +607,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     ? () => _changeMembership(member: crew.members[i])
                     : null,
               ),
-            if (crew.isOwner)
-              CrewInviteTile(
-                onPressed: _changingMembership ? null : _openInviteDrawer,
-              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -655,138 +624,52 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   }
 }
 
-class _InviteDrawer extends StatefulWidget {
-  const _InviteDrawer({
-    required this.crew,
-    required this.backend,
-    required this.currentUserEmail,
-  });
+class _InviteDrawer extends StatelessWidget {
+  const _InviteDrawer({required this.crew, required this.backend});
+
   final CrewDetails crew;
   final CrewBackend backend;
-  final String currentUserEmail;
 
   @override
-  State<_InviteDrawer> createState() => _InviteDrawerState();
-}
-
-class _InviteDrawerState extends State<_InviteDrawer> {
-  final _controller = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _sending = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    if (_sending || !_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _sending = true;
-      _error = null;
-    });
-    try {
-      final updated = await widget.backend.inviteMember(
-        crewId: widget.crew.id,
-        email: _controller.text.trim(),
-      );
-      if (mounted) Navigator.pop(context, updated);
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _sending = false;
-          _error = _messageFor(error);
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: !_sending,
-      child: AppSheet(
-        builder: (context) => Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'INVITE TO YOUR CREW',
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close invite',
-                    onPressed: _sending ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              Text(
-                widget.crew.name,
-                style: TextStyle(color: context.muted, fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Send an email invitation. They’ll sign in or create an account to join your crew.',
-                style: TextStyle(color: context.ink, height: 1.4),
-              ),
-              const SizedBox(height: 22),
-              AppTextField(
-                label: 'EMAIL ADDRESS',
-                hint: 'friend@example.com',
-                controller: _controller,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                validator: (value) {
-                  final email = value?.trim() ?? '';
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-                    return 'Enter a valid email';
-                  }
-                  if (email.toLowerCase() ==
-                      widget.currentUserEmail.toLowerCase()) {
-                    return 'You are already in this crew';
-                  }
-                  return null;
-                },
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 14),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: context.errorInk,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+  Widget build(BuildContext context) => AppSheet(
+    builder: (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'INVITE TO YOUR CREW',
+                style: TextStyle(
+                  color: context.ink,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
                 ),
-              const SizedBox(height: 24),
-              AppButton(
-                label: 'SEND INVITE',
-                icon: HugeIconsStrokeRounded.mailSend01,
-
-                isLoading: _sending,
-                onPressed: _send,
               ),
-            ],
-          ),
+            ),
+            IconButton(
+              tooltip: 'Close invite',
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close),
+            ),
+          ],
         ),
-      ),
-    );
-  }
+        Text(crew.name, style: TextStyle(color: context.muted, fontSize: 16)),
+        const SizedBox(height: 20),
+        if (backend is CrewSharingBackend)
+          CrewShareControls(
+            backend: backend as CrewSharingBackend,
+            crewId: crew.id,
+            showHeading: false,
+          )
+        else
+          const Text(
+            'Invitations are unavailable right now. Please try again later.',
+          ),
+      ],
+    ),
+  );
 }
 
 /// Reserves the same square tiles as the loaded people grid.
