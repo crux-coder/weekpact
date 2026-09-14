@@ -5,6 +5,7 @@ import '../widgets/app_components.dart';
 
 const homeInk = WeekPactColors.black;
 const homePaper = Color(0xFFECEDEC);
+const homePanel = Color(0xFF242724);
 
 class HomeBackground extends StatelessWidget {
   const HomeBackground({super.key, required this.child});

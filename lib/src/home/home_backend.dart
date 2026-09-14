@@ -1,5 +1,3 @@
-import '../recaps/weekly_recap.dart';
-
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -210,10 +208,7 @@ abstract interface class HomeBackend {
   });
 }
 
-class SupabaseHomeBackend implements HomeBackend, RecapBackend {
-  @override
-  Future<WeeklyRecap?> fetchRecap(String crewId, {String? markSeen}) =>
-      SupabaseRecapBackend(client).fetchRecap(crewId, markSeen: markSeen);
+class SupabaseHomeBackend implements HomeBackend {
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
   final SupabaseClient client;

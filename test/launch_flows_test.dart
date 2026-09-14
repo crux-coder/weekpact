@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crew_people_grid.dart';
-import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/onboarding/crew_setup_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
-import 'package:weekpact/src/recaps/weekly_recap.dart';
 import 'package:weekpact/src/sharing/app_share.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
@@ -101,49 +98,11 @@ class SharingCrew extends SetupCrew implements CrewSharingBackend {
 
 class ShareFake implements AppShare {
   final texts = <String>[];
-  int images = 0;
   bool fail = false;
   @override
   Future<void> text(String text, Rect origin) async {
     if (fail) throw StateError('cancelled');
     texts.add(text);
-  }
-
-  @override
-  Future<void> image(Uint8List png, Rect origin) async {
-    images++;
-  }
-}
-
-const recap = WeeklyRecap(
-  weekStart: '2026-09-07',
-  checkIns: 18,
-  activeMembers: 3,
-  completedPacts: 2,
-  totalPacts: 3,
-  earned: false,
-);
-
-class RecapHome extends DashboardBackend implements RecapBackend {
-  bool seen = false;
-  bool fail = false;
-  int marks = 0;
-  @override
-  Future<WeeklyRecap?> fetchRecap(String crewId, {String? markSeen}) async {
-    if (fail) throw StateError('offline');
-    if (markSeen != null) {
-      seen = true;
-      marks++;
-    }
-    return WeeklyRecap(
-      weekStart: recap.weekStart,
-      checkIns: 18,
-      activeMembers: 3,
-      completedPacts: 2,
-      totalPacts: 3,
-      earned: false,
-      seen: seen,
-    );
   }
 }
 
@@ -370,77 +329,4 @@ void main() {
     expect(find.text('Revoke invite link'), findsNothing);
     expect(find.text('Share invite link'), findsOneWidget);
   });
-  testWidgets(
-    'recap appears on returning home, saves seen state and stays accessible',
-    (tester) async {
-      final backend = RecapHome();
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: HomePage(
-            user: const AuthUser(email: ''),
-            authBackend: const MissingConfigurationAuthBackend(),
-            crewBackend: const MissingCrewBackend(),
-            pactsBackend: backend.pacts,
-            homeBackend: backend,
-          ),
-        ),
-      );
-      await tester.pumpUi();
-      expect(find.byType(WeeklyRecapPage), findsOneWidget);
-      expect(find.text('18'), findsOneWidget);
-      await tester.pageBack();
-      await tester.pumpUi();
-      expect(backend.marks, 1);
-      expect(find.byTooltip('Last week’s recap'), findsOneWidget);
-      await tester.tap(find.byTooltip('Last week’s recap'));
-      await tester.pumpUi();
-      expect(find.byType(WeeklyRecapPage), findsOneWidget);
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
-  testWidgets('recap failure never blocks today’s check-ins', (tester) async {
-    final backend = RecapHome()..fail = true;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.light,
-        home: HomePage(
-          user: const AuthUser(email: ''),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: const MissingCrewBackend(),
-          pactsBackend: backend.pacts,
-          homeBackend: backend,
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.byType(WeeklyRecapPage), findsNothing);
-    expect(find.text('Early Birds'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-  for (final size in [const Size(320, 568), const Size(390, 844)]) {
-    testWidgets('recap fits $size with large text and anonymous totals', (
-      tester,
-    ) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(
-        MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: TextScaler.linear(1.8)),
-            child: child!,
-          ),
-          home: const WeeklyRecapPage(recap: recap),
-        ),
-      );
-      await tester.pumpUi();
-      expect(tester.takeException(), isNull);
-      expect(find.textContaining('@'), findsNothing);
-      expect(find.textContaining('18'), findsOneWidget);
-    });
-  }
 }

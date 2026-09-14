@@ -14,7 +14,7 @@ Regenerate the three screenshots after future UI changes:
 flutter test tool/capture_marketing.dart
 ```
 
-The website uses `website/public/screenshots/home.png`, `crew.png`, and `recap.png`. The initial
+The website uses `website/public/screenshots/home.png`, and `crew.png`. The initial
 visual concepts were generated with the built-in Image Gen tool: charcoal hero,
 large “Good habits. Great company.” headline, angled iPhone with real screenshots;
 sage three-step section; charcoal closing call to action. Screen content is taken
@@ -46,7 +46,7 @@ remain supported. Tokens are stored only as SHA-256 hashes. The raw link is pass
 
 `APP_SITE_URL` controls share-link origin; default is the existing WeekPact site.
 
-## Frozen weeks and recaps
+## Frozen weeks
 
 `20260914170113_add_launch_foundations.sql` adds private immutable weekly
 aggregates. The crew's timezone determines Monday and Sunday. Each completed
@@ -61,22 +61,16 @@ never stored. From then on, completed weeks are protected before pact/membership
 check-in/timezone mutations, and streaks read those saved results. The current
 week remains live and can change when people undo a check-in or edit a target.
 
-The database job `weekpact-weekly-recaps` runs every 15 minutes, covering crew
+The database job `weekpact-finalize-crew-weeks` runs every 15 minutes, covering crew
 local timezones including quarter-hour offsets. It is idempotent. Foreground
-recap/streak requests also finalize missing weeks, so a delayed job does not
+streak requests also finalize missing weeks, so a delayed job does not
 block the feature. This is a Supabase pg_cron job, not a Codex automation.
 
-The latest completed week opens on the member's first visit in the new week.
-Seen state is per account and stored server-side. Recaps are available again
-through the Home recap icon. New members do not receive recaps for weeks that
-ended before they joined. Returning after several weeks shows the most recent
-week rather than presenting a backlog. No recap push notification is sent.
-
-Sharing renders only the recap card to PNG and opens the native share sheet.
-It contains date and aggregate totals; no crew name, member names, or photos.
 Finalized aggregates persist for the crew after individual account deletion.
-The full crew's deletion removes them. Personal recap-view records are deleted
-with their account.
+The full crew's deletion removes them. Weekly recap UI, automatic prompts,
+image sharing, RPCs, and view tracking were removed by
+`20260914181828_remove_weekly_recap.sql`. The finalization job remains solely
+for preserving completed-week streaks.
 
 ## Analytics and crash reporting
 
@@ -106,13 +100,13 @@ compilation and unit tests alone cannot verify remote delivery/symbolication.
 
 ## Deployment order and validation
 
-These launch changes are local until deployed. The final remote dry run confirms
-only `20260914170113_add_launch_foundations.sql` remains pending; the earlier nudge
-migration is already present remotely, and the notification worker is version 4.
-Apply the launch migration, publish the website, and release the new app. The launch migration preserves existing public RPC names;
-old app versions still use the original invitation and snapshot endpoints.
+The launch-foundation and independent-invite migrations are applied remotely.
+On September 14, 2026, `20260914181828_remove_weekly_recap.sql` was also applied:
+the recap RPCs and view records are gone, while finalized streak history remains.
+The updated app was built and installed in the local simulator. Website changes
+still need publishing and distributed app builds need a new release.
 
-Check `cron.job` for `weekpact-weekly-recaps` and `cron.job_run_details` after
+Check `cron.job` for `weekpact-finalize-crew-weeks` and `cron.job_run_details` after
 migration. The migration installs/schedules pg_cron when available (PGlite tests
 omit the extension). Confirm the job exists in the target before release.
 
@@ -123,16 +117,15 @@ PGLITE_MODULE=/path/to/pglite/dist/index.js node tool/test_launch_database.mjs
 PGLITE_MODULE=/path/to/pglite/dist/index.js node tool/test_pacts_database.mjs
 ```
 
-Verify on a release device: installation via an invite, acceptance, link revocation,
-native sharing to Messages/WhatsApp, first check-in, recap at local Monday rollover,
+Verify on a release device: installation via an invite, acceptance, independent seven-day link expiry and QR scanning,
+native sharing to Messages/WhatsApp, first check-in, preserved streaks at local Monday rollover,
 crash-report opt-in/opt-out, and the first symbolicated Firebase smoke report.
 
 Validation in this workspace: all 144 Flutter tests, database regression suites,
 website build/tests, and the iOS simulator build pass. Android compilation could
 not run because no Android SDK is installed on this machine.
 
-The production security advisor was read as a baseline, not as validation of the
-undeployed schema. It reports existing exposed security-definer helper warnings
+The production security advisor was read before the recap removal. It reports existing exposed security-definer helper warnings
 ([Supabase guidance](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable))
 and disabled leaked-password protection
 ([configuration guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)).

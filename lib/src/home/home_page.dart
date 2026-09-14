@@ -1,4 +1,3 @@
-import '../recaps/weekly_recap.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
@@ -216,9 +215,6 @@ class _HomeDestinationState extends State<_HomeDestination>
   Timer? _timer;
   String? _savingPact;
   String? _saveError;
-  WeeklyRecap? _recap;
-  String? _presentedRecap;
-  bool _recapOpen = false;
 
   @override
   void initState() {
@@ -271,27 +267,6 @@ class _HomeDestinationState extends State<_HomeDestination>
           : await widget.backend.fetchWeek(crew.id);
       if (mounted && request == _request) {
         setState(() => _week = week);
-        if (crew != null && widget.backend is RecapBackend) {
-          try {
-            final recap = await (widget.backend as RecapBackend).fetchRecap(
-              crew.id,
-            );
-            if (!mounted || request != _request || _crew?.id != crew.id) return;
-            setState(() => _recap = recap);
-            final key = '${crew.id}:${recap?.weekStart}';
-            if (recap != null &&
-                !recap.seen &&
-                widget.active &&
-                !_recapOpen &&
-                _presentedRecap != key &&
-                ModalRoute.of(context)?.isCurrent == true) {
-              _presentedRecap = key;
-              await _openRecap();
-            }
-          } catch (_) {
-            /* A recap outage must not block today's check-ins. */
-          }
-        }
       }
     } catch (_) {
       if (mounted && request == _request) {
@@ -352,26 +327,6 @@ class _HomeDestinationState extends State<_HomeDestination>
       if (mounted) setState(() => _savingPact = null);
     }
     if (mounted && _saveError == null) await _refresh();
-  }
-
-  Future<void> _openRecap() async {
-    final recap = _recap;
-    final crew = _crew;
-    if (recap == null || crew == null || _recapOpen) return;
-    _recapOpen = true;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => WeeklyRecapPage(recap: recap)),
-    );
-    _recapOpen = false;
-    if (!mounted) return;
-    try {
-      await (widget.backend as RecapBackend).fetchRecap(
-        crew.id,
-        markSeen: recap.weekStart,
-      );
-    } catch (_) {
-      /* Retry on the next visit. */
-    }
   }
 
   Future<void> _openCrewWeek() async {
@@ -477,25 +432,10 @@ class _HomeDestinationState extends State<_HomeDestination>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: CrewTitleBanner(
-                                      name: _crew!.name,
-                                      completed: week.completed(widget.userId),
-                                      target: week.target,
-                                    ),
-                                  ),
-                                  if (_recap != null)
-                                    IconButton(
-                                      tooltip: 'Last week’s recap',
-                                      onPressed: _openRecap,
-                                      icon: Icon(
-                                        Icons.auto_awesome_outlined,
-                                        color: context.ink,
-                                      ),
-                                    ),
-                                ],
+                              CrewTitleBanner(
+                                name: _crew!.name,
+                                completed: week.completed(widget.userId),
+                                target: week.target,
                               ),
                               const SizedBox(height: 12),
                               const SizedBox(height: LatestActivityRow.height),
@@ -551,7 +491,6 @@ class _HomeDestinationState extends State<_HomeDestination>
                                     : LayoutBuilder(
                                         builder: (context, space) =>
                                             TodayPactsCard(
-                                              horizontalBleed: 12,
                                               height: space.maxHeight,
                                               week: week,
                                               userId: widget.userId,

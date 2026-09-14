@@ -239,11 +239,17 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final height = widget.height ?? (370 + math.max(0.0, scale - 1) * 200);
-    final cardHeight = math.max(80.0, height - 48);
+    final verticalPadding = ((height - 128) / 2).clamp(0.0, 12.0);
+    final cardHeight = math.max(80.0, height - 48 - verticalPadding * 2);
     final visibleDots = math.min(5, pacts.length);
     final start = math.max(0, math.min(_index - 2, pacts.length - visibleDots));
-    return SizedBox(
+    return Container(
       height: height,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: verticalPadding),
+      decoration: BoxDecoration(
+        color: homePanel,
+        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -259,7 +265,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                     child: Text(
                       'Today',
                       style: TextStyle(
-                        color: context.ink,
+                        color: WeekPactColors.darkInk,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -274,7 +280,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                       '${(_index + 1).toString().padLeft(2, '0')} / ${pacts.length.toString().padLeft(2, '0')}',
                       key: const ValueKey('pact-position'),
                       style: TextStyle(
-                        color: context.muted,
+                        color: WeekPactColors.darkMuted,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -458,8 +464,8 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: dot == _index
-                              ? context.ink
-                              : context.ink.withValues(alpha: .3),
+                              ? WeekPactColors.darkInk
+                              : WeekPactColors.darkInk.withValues(alpha: .3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -1119,7 +1125,7 @@ class TodayCrewCard extends StatelessWidget {
             margin: const EdgeInsets.only(top: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: const Color(0xFF242724),
+              color: homePanel,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

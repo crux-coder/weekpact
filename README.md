@@ -417,7 +417,7 @@ and device verification steps.
 
 ## Launch features
 
-Guided crew setup, native share invitations, immutable weekly results, scheduled
-recaps, first-party product metrics, and optional Crashlytics are described in
+Guided crew setup, native share invitations, immutable weekly results,
+first-party product metrics, and optional Crashlytics are described in
 [the launch feature guide](docs/launch-features.md). That guide includes migration
 order, screenshot generation, metric queries, and release verification.

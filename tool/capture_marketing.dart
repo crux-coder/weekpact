@@ -1,5 +1,3 @@
-import 'package:weekpact/src/recaps/weekly_recap.dart';
-
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -100,32 +98,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('pending-tile')));
     await tester.pumpUi();
     await capture('crew');
-    await tester.pumpWidget(
-      RepaintBoundary(
-        key: key,
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: WeekPactTheme.dark,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(padding: const EdgeInsets.only(top: 52, bottom: 20)),
-            child: child!,
-          ),
-          home: const WeeklyRecapPage(
-            recap: WeeklyRecap(
-              weekStart: '2026-09-07',
-              checkIns: 18,
-              activeMembers: 4,
-              completedPacts: 2,
-              totalPacts: 2,
-              earned: true,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    await capture('recap');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

@@ -1,11 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 abstract interface class AppShare {
   Future<void> text(String text, Rect origin);
-  Future<void> image(Uint8List png, Rect origin);
 }
 
 class NativeAppShare implements AppShare {
@@ -14,17 +11,6 @@ class NativeAppShare implements AppShare {
   Future<void> text(String text, Rect origin) async {
     await SharePlus.instance.share(
       ShareParams(text: text, sharePositionOrigin: origin),
-    );
-  }
-
-  @override
-  Future<void> image(Uint8List png, Rect origin) async {
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile.fromData(png, mimeType: 'image/png')],
-        fileNameOverrides: ['weekpact-week.png'],
-        sharePositionOrigin: origin,
-      ),
     );
   }
 }

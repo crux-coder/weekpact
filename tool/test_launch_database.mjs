@@ -15,25 +15,22 @@ await db.query("insert into crew_pacts(id,crew_id,title,frequency,days_per_week,
 for(const days of [14,7])for(const u of [owner,member])await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,$3::date-$4::int)',[pact,u,week,days]);
 await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../supabase/migrations/20260914174347_independent_crew_invite_links.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20260914181828_remove_weekly_recap.sql',import.meta.url),'utf8'));
 async function asUser(user,fn,role='authenticated'){
  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);await db.exec(`set role ${role}`);
  try{return await fn();}finally{await db.exec('reset role');}
 }
 const streak=()=>db.query('select crew_weekly_streak($1) n',[crew]).then(r=>r.rows[0].n);
-const recap=(seen=null)=>db.query('select weekly_recap($1,$2) r',[crew,seen]).then(r=>r.rows[0].r);
+const savedWeeks=()=>db.query('select * from private.crew_week_results where crew_id=$1 order by week_start',[crew]).then(r=>r.rows);
+const removed=(await db.query("select to_regprocedure('public.weekly_recap(uuid,date)')::text rpc, to_regclass('private.crew_recap_views')::text views")).rows[0];
+assert.deepEqual(removed,{rpc:null,views:null});
 const link=action=>db.query('select manage_crew_share_link($1,$2) r',[crew,action]).then(r=>r.rows[0].r);
 assert.equal(await asUser(owner,streak),2);
-const frozen=await asUser(owner,()=>recap());
-assert.equal(frozen.check_ins,2);assert.equal(frozen.active_members,2);assert.equal(frozen.completed_pacts,1);assert.equal(frozen.seen,false);
-assert.ok(!JSON.stringify(frozen).includes('@'));assert.ok(!('members' in frozen));
+const frozen=await savedWeeks();
+assert.equal(frozen.at(-1).check_ins,2);assert.equal(frozen.at(-1).active_members,2);assert.equal(frozen.at(-1).completed_pacts,1);
 await db.query("update crew_pacts set days_per_week=7,frequency='daily',title='Read more' where id=$1",[pact]);
 assert.equal(await asUser(owner,streak),2,'raising targets cannot erase earned weeks');
-assert.deepEqual(await asUser(owner,()=>recap()),frozen,'recap is immutable');
-await asUser(owner,()=>recap(frozen.week_start));
-assert.equal((await asUser(owner,()=>recap())).seen,true);
-assert.equal((await asUser(member,()=>recap())).seen,false,'seen status is per member');
-await asUser(outsider,()=>assert.rejects(recap(),/membership required/));
-await asUser('',()=>assert.rejects(recap(),/permission denied/),'anon');
+assert.deepEqual(await savedWeeks(),frozen,'saved history is immutable');
 await asUser(owner,()=>assert.rejects(db.query('delete from private.crew_week_results'),/permission denied/));
 await asUser(owner,()=>assert.rejects(db.query('select private.finalize_all_crew_weeks()'),/permission denied/));
 await asUser(member,()=>assert.rejects(link('create'),/owner required/));
@@ -44,7 +41,6 @@ assert.equal((await db.query('select token_hash from private.crew_share_links'))
 const accepted=()=>db.query('select accept_crew_invite($1) crew',[first.token]);
 await asUser(joiner,accepted);
 assert.equal((await asUser(joiner,accepted)).rows[0].crew,crew,'same-crew retry is idempotent');
-assert.equal(await asUser(joiner,()=>recap()),null,'new members do not get recaps from before they joined');
 await asUser(owner,()=>assert.rejects(link('revoke'),/Invalid link action/));
 const second=await asUser(owner,()=>link('create'));
 assert.notEqual(second.token,first.token);
@@ -60,8 +56,7 @@ await asUser(outsider,()=>assert.rejects(db.query('select accept_crew_invite($1)
 await db.query('delete from auth.users where id=$1',[member]);
 await db.query('delete from crew_pacts where id=$1',[pact]);
 assert.equal(await asUser(owner,streak),2);
-const afterDelete=await asUser(owner,()=>recap());
-assert.equal(afterDelete.check_ins,2);assert.equal(afterDelete.active_members,2);
+assert.deepEqual(await savedWeeks(),frozen);
 // Cron and foreground calls are repeatable and do not overwrite history.
 await db.exec('select private.finalize_all_crew_weeks(); select private.finalize_all_crew_weeks();');
 assert.equal((await db.query('select count(*) n from private.crew_week_results where crew_id=$1',[crew])).rows[0].n,3);
@@ -73,5 +68,5 @@ assert.deepEqual(events.sort((a,b)=>a.event.localeCompare(b.event)),[{event:'sig
 await asUser(fresh,()=>assert.rejects(db.query('select * from private.product_events'),/permission denied/));
 await db.query('delete from auth.users where id=$1',[fresh]);assert.equal((await db.query('select * from private.product_events where user_id=$1',[fresh])).rows.length,0);
 await db.exec(await readFile(new URL('./product_metrics.sql',import.meta.url),'utf8'));
-console.log('Launch database checks passed: frozen history, crew timezone, recap privacy/authorization/seen states, idempotent cron, independent seven-day invites, acceptance retry, confirmation, and private funnel events.');
+console.log('Launch database checks passed: frozen history, crew timezone, recap removal, idempotent cron, independent seven-day invites, acceptance retry, confirmation, and private funnel events.');
 await db.close();

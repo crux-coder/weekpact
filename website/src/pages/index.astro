@@ -21,7 +21,6 @@ import '../styles/home.css';
         <div class="screen-switch" role="group" aria-label="Preview app screens">
           <button type="button" data-screen="home" aria-pressed="true">Your week</button>
           <button type="button" data-screen="crew" aria-pressed="false">Your crew</button>
-          <button type="button" data-screen="recap" aria-pressed="false">Your wins</button>
         </div>
         <p class="demo-caption">Real app screens · Example crew</p>
       </div>
@@ -48,7 +47,7 @@ import '../styles/home.css';
       const selected = button.dataset.screen ?? 'home';
       if (screen) {
         screen.src = `/screenshots/${selected}.png`;
-        screen.alt = selected === 'recap' ? 'Weekly recap with 18 shared check-ins, completed pacts, and a private share card.' : selected === 'crew' ? 'The expanded crew list with full names and motivating Nudge buttons.' : "The current WeekPact home screen: Early Birds crew, recent check-in, crew streak, and today's pacts.";
+        screen.alt = selected === 'crew' ? 'The expanded crew list with full names and motivating Nudge buttons.' : "The current WeekPact home screen: Early Birds crew, recent check-in, crew streak, and today's pacts.";
       }
     });
   });
