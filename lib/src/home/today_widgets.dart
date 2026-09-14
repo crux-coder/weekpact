@@ -247,7 +247,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
       height: height,
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: verticalPadding),
       decoration: BoxDecoration(
-        color: homePanel,
+        color: context.homePanel,
         borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
       ),
       child: Column(
@@ -265,7 +265,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                     child: Text(
                       'Today',
                       style: TextStyle(
-                        color: WeekPactColors.darkInk,
+                        color: context.ink,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -280,7 +280,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                       '${(_index + 1).toString().padLeft(2, '0')} / ${pacts.length.toString().padLeft(2, '0')}',
                       key: const ValueKey('pact-position'),
                       style: TextStyle(
-                        color: WeekPactColors.darkMuted,
+                        color: context.muted,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -464,8 +464,8 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: dot == _index
-                              ? WeekPactColors.darkInk
-                              : WeekPactColors.darkInk.withValues(alpha: .3),
+                              ? context.ink
+                              : context.ink.withValues(alpha: .3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -545,7 +545,9 @@ class _PactCompletionEffectState extends State<_PactCompletionEffect>
                         key: const ValueKey('pact-completion-effect'),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8DBD70).withValues(alpha: .09),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(
+                            WeekPactMetrics.cardRadius,
+                          ),
                           border: Border.all(
                             color: const Color(0xFF80AB64),
                             width: 2,
@@ -1125,8 +1127,10 @@ class TodayCrewCard extends StatelessWidget {
             margin: const EdgeInsets.only(top: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: homePanel,
-              borderRadius: BorderRadius.circular(12),
+              color: context.isDark
+                  ? const Color(0xFF483629)
+                  : const Color(0xFFF1D8BF),
+              borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
             ),
             child: Row(
               children: [
@@ -1134,12 +1138,16 @@ class TodayCrewCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: WeekPactColors.black,
+                    color: context.isDark
+                        ? const Color(0xFF34251C)
+                        : const Color(0xFFE8C4A2),
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.local_fire_department_rounded,
-                    color: Color(0xFFFF982B),
+                    color: context.isDark
+                        ? const Color(0xFFFF982B)
+                        : const Color(0xFFAD5719),
                     size: 24,
                   ),
                 ),
@@ -1156,8 +1164,8 @@ class TodayCrewCard extends StatelessWidget {
                           week.streakWeeks == 0
                               ? 'Week 1'
                               : '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
-                          style: const TextStyle(
-                            color: WeekPactColors.darkInk,
+                          style: TextStyle(
+                            color: context.ink,
                             fontSize: 13,
                             height: 1.1,
                             fontWeight: FontWeight.w700,
@@ -1168,8 +1176,10 @@ class TodayCrewCard extends StatelessWidget {
                           week.streakWeeks == 0
                               ? 'Start your first crew streak'
                               : 'Keep your crew streak going',
-                          style: const TextStyle(
-                            color: WeekPactColors.darkMuted,
+                          style: TextStyle(
+                            color: context.isDark
+                                ? const Color(0xFFE0C3A3)
+                                : const Color(0xFF6E5543),
                             fontSize: 11,
                             height: 1.1,
                           ),
@@ -1186,7 +1196,7 @@ class TodayCrewCard extends StatelessWidget {
                     child: TextButton(
                       onPressed: onOpen,
                       style: TextButton.styleFrom(
-                        foregroundColor: WeekPactColors.darkInk,
+                        foregroundColor: context.ink,
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
                       child: const FittedBox(
@@ -1245,6 +1255,7 @@ class CrewCheckInTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => HomeSurface(
     tint: done ? WeekPactColors.mintGreen : WeekPactColors.cream,
+    outlined: false,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1560,6 +1571,7 @@ class _TodaySkeletonState extends State<TodaySkeleton>
   Widget _crewTile(Color color) => Expanded(
     child: HomeSurface(
       tint: color,
+      outlined: false,
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

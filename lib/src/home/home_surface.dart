@@ -5,7 +5,11 @@ import '../widgets/app_components.dart';
 
 const homeInk = WeekPactColors.black;
 const homePaper = Color(0xFFECEDEC);
-const homePanel = Color(0xFF242724);
+
+extension HomePanelTheme on BuildContext {
+  Color get homePanel =>
+      isDark ? const Color(0xFF242724) : const Color(0xFFE4E8DD);
+}
 
 class HomeBackground extends StatelessWidget {
   const HomeBackground({super.key, required this.child});
@@ -23,17 +27,22 @@ class HomeSurface extends StatelessWidget {
     this.tint = const Color(0xFFE1EDD6),
     this.radius = WeekPactMetrics.cardRadius,
     this.padding = EdgeInsets.zero,
+    this.outlined = true,
   });
   final Widget child;
   final Color tint;
   final double radius;
   final EdgeInsetsGeometry padding;
+  final bool outlined;
   @override
   Widget build(BuildContext context) => AppSurface(
     fillColor: tint,
     resolveTone: false,
     borderRadius: radius,
-    outlineColor: homeInk.withValues(alpha: .10),
+    borderWidth: outlined ? WeekPactMetrics.border : 0,
+    outlineColor: outlined
+        ? homeInk.withValues(alpha: .10)
+        : Colors.transparent,
     builder: (context) => Padding(padding: padding, child: child),
   );
 }

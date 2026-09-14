@@ -59,7 +59,6 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
     final visible = widget.members.skip(start).take(_membersPerPage).toList();
     return AppSurface(
       borderWidth: 0,
-      borderRadius: 16,
       builder: (context) => Padding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(

@@ -385,7 +385,7 @@ class _WeekSummary extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF242724),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
             ),
             padding: const EdgeInsets.all(14),
             child: Row(

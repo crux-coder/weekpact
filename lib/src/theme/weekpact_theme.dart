@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// Shared stroke and depth values for the app's outlined surfaces.
 abstract final class WeekPactMetrics {
   static const border = 1.0;
-  static const cardRadius = 12.0;
+  static const cardRadius = 8.0;
   static const controlRadius = 8.0;
   static const pageInset = 12.0;
   static const sectionGap = 20.0;

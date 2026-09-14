@@ -239,7 +239,7 @@ class LatestActivityRow extends StatelessWidget {
       key: const ValueKey('activity-container'),
       height: height + (expandedHeight - height) * expansion,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
         boxShadow: [
           BoxShadow(
             color: homeInk.withValues(alpha: .12),
@@ -249,7 +249,7 @@ class LatestActivityRow extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
         child: ColoredBox(
           color: WeekPactColors.softYellow,
           child: Column(
