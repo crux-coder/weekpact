@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const { PGlite } = await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const [owner, member, other, outsider, crew, goal] = [1,2,3,4,10,20].map(id);
+const [owner, member, other, outsider, crew, pact] = [1,2,3,4,10,20].map(id);
 await db.exec(`
 create role anon; create role authenticated; create role service_role;
 create schema auth; create schema extensions;
@@ -25,8 +25,8 @@ if (process.env.MEMBERSHIP_SQL) await db.exec(await readFile(process.env.MEMBERS
 for (const [i, user] of [owner, member, other, outsider].entries()) await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())', [user,`user${i}@example.com`]);
 await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2)",[crew,owner]);
 for (const [user,email] of [[member,'user1@example.com'],[other,'user2@example.com']]) await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,$3,'member')",[crew,user,email]);
-await db.query("insert into crew_goals(id,crew_id,title,frequency,days_per_week,created_by) values($1,$2,'Read','weekly',3,$3)",[goal,crew,owner]);
-await db.query('insert into goal_check_ins(goal_id,user_id,completed_on) values($1,$2,current_date)',[goal,member]);
+await db.query("insert into crew_pacts(id,crew_id,title,frequency,days_per_week,created_by) values($1,$2,'Read','weekly',3,$3)",[pact,crew,owner]);
+await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,current_date)',[pact,member]);
 await db.query("insert into crew_invites(crew_id,email,token_hash,invited_by) values($1,'user1@example.com',repeat('a',64),$2)",[crew,owner]);
 let passed=0;
 async function asUser(user, run, role='authenticated') {
@@ -44,7 +44,7 @@ await asUser(member, async()=> {
   assert.equal((await db.query('select * from crews')).rows.length,0);
   await db.exec('reset role');
   assert.equal((await db.query('select * from crew_members where user_id=$1',[member])).rows.length,0);
-  assert.equal((await db.query('select * from goal_check_ins where user_id=$1',[member])).rows.length,1);
+  assert.equal((await db.query('select * from pact_check_ins where user_id=$1',[member])).rows.length,1);
   assert.equal((await db.query('select * from crew_invites')).rows.length,0);
   // The former member is free to create a crew.
   await db.exec('set local role authenticated');

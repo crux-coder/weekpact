@@ -24,7 +24,7 @@ Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
         user: const AuthUser(email: 'person@example.com'),
         authBackend: const MissingConfigurationAuthBackend(),
         crewBackend: const MissingCrewBackend(),
-        goalsBackend: backend.goals,
+        pactsBackend: backend.pacts,
         homeBackend: backend,
       ),
     ),
@@ -32,34 +32,34 @@ Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
 }
 
 void main() {
-  test('weekly progress caps each goal, excludes old days and ignores former members', () {
-    final goals = DashboardGoals().goals;
+  test('weekly progress caps each pact, excludes old days and ignores former members', () {
+    final pacts = DashboardPacts().pacts;
     final week = CrewWeek(
       today: '2026-09-13',
       weekStart: '2026-09-07',
       timezone: 'UTC',
-      goals: goals,
+      pacts: pacts,
       members: const [
         WeekMember('me', 'me@example.com'),
         WeekMember('other', 'other@example.com'),
       ],
       checkIns: [
         for (var day = 7; day <= 13; day++)
-          GoalCheckIn(
+          PactCheckIn(
             'read',
             'me',
             '2026-09-${day.toString().padLeft(2, '0')}',
           ),
-        const GoalCheckIn('move', 'me', '2026-09-06'),
-        const GoalCheckIn('move', 'me', '2026-09-13'),
-        const GoalCheckIn('move', 'me', '2026-09-13'),
-        const GoalCheckIn('move', 'former', '2026-09-13'),
+        const PactCheckIn('move', 'me', '2026-09-06'),
+        const PactCheckIn('move', 'me', '2026-09-13'),
+        const PactCheckIn('move', 'me', '2026-09-13'),
+        const PactCheckIn('move', 'former', '2026-09-13'),
       ],
     );
     expect(week.completed('me'), 4);
     expect(week.percent('me'), 40);
     expect(week.percentCrew, 20);
-    expect(week.goalDoneToday('move'), 1);
+    expect(week.pactDoneToday('move'), 1);
     expect(week.onTrack('me'), isFalse);
   });
 
@@ -77,7 +77,7 @@ void main() {
       await tester.pump();
       expect(find.text('WeekPact'), findsNothing);
       expect(find.text('CHECK IN'), findsNothing);
-      expect(find.byKey(const ValueKey('skeleton-goal-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('skeleton-pact-card')), findsOneWidget);
       final loadingCrew = tester.getRect(
         find.byKey(const ValueKey('skeleton-crew-board')),
       );
@@ -85,7 +85,7 @@ void main() {
       backend.loading = null;
       await tester.pumpUi();
       expect(find.text('Early Birds'), findsOneWidget);
-      expect(find.byKey(const ValueKey('skeleton-goal-card')), findsNothing);
+      expect(find.byKey(const ValueKey('skeleton-pact-card')), findsNothing);
       expect(
         tester.getRect(find.byKey(const ValueKey('crew-board'))),
         loadingCrew,
@@ -104,17 +104,17 @@ void main() {
       );
       await tester.pumpUi();
       expect(backend.selected, {'move', 'read'});
-      expect(find.text('Undo check-in'), findsWidgets);
+      expect(find.text('Checked in today'), findsWidgets);
       await tester.pumpWidget(const SizedBox());
       await pumpHome(tester, backend);
       await tester.pumpUi();
-      expect(find.text('Undo check-in'), findsWidgets);
+      expect(find.text('Checked in today'), findsWidgets);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );
 
-  testWidgets('load errors retry and goal edits refresh when returning home', (
+  testWidgets('load errors retry and pact edits refresh when returning home', (
     tester,
   ) async {
     final backend = DashboardBackend()..failLoad = true;
@@ -125,12 +125,12 @@ void main() {
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
     expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
+    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
     await tester.pumpUi();
-    backend.goals.goals = [];
+    backend.pacts.pacts = [];
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpUi();
-    expect(find.text('No goals yet.'), findsOneWidget);
+    expect(find.text('No pacts yet.'), findsOneWidget);
     expect(find.text('CHECK IN'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
@@ -168,7 +168,7 @@ void main() {
       MaterialApp(
         theme: WeekPactTheme.dark,
         home: CrewWeekPage(
-          crew: backend.goals.crews.first,
+          crew: backend.pacts.crews.first,
           backend: backend,
           userId: '',
         ),
@@ -208,18 +208,18 @@ void main() {
     await pumpHome(tester, backend);
     await tester.pumpUi();
     expect(calls, isEmpty);
-    final goal = find
+    final pact = find
         .byKey(const ValueKey('check-in-Move for 30 min'))
         .hitTestable();
     backend.failSave = true;
-    await tester.tap(goal);
+    await tester.tap(pact);
     await tester.pumpUi();
     expect(calls, isEmpty);
     backend.failSave = false;
-    await tester.tap(goal);
+    await tester.tap(pact);
     await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.lightImpact');
-    await tester.tap(goal);
+    await tester.tap(pact);
     await tester.pumpUi();
     expect(calls.length, 1);
     await tester.pumpWidget(const SizedBox());
@@ -229,7 +229,7 @@ void main() {
     tester,
   ) async {
     final backend = DashboardBackend();
-    backend.goals.crews = [];
+    backend.pacts.crews = [];
     await pumpHome(tester, backend);
     await tester.pumpUi();
     expect(find.text('GO TO CREWS'), findsOneWidget);

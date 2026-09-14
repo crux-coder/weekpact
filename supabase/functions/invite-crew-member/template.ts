@@ -18,7 +18,7 @@ export function renderCrewInvite(
   const link = escapeHtml(inviteUrl);
   return {
     text:
-      `You're invited to ${crewName} on WeekPact!\n\nGood habits. Great company. Join your crew and keep showing up together.\n\nView your invitation: ${inviteUrl}\n\nSign in or create an account with ${email}. Review the crew members and goals in WeekPact, then choose whether to accept or decline. You can also open the app directly and go to Crews → Invites. Opening the link does not accept the invitation. This invitation expires in 7 days.\n\nIf you weren't expecting this invitation, you can ignore this email.`,
+      `You're invited to ${crewName} on WeekPact!\n\nGood habits. Great company. Join your crew and keep showing up together.\n\nView your invitation: ${inviteUrl}\n\nSign in or create an account with ${email}. Review the crew members and pacts in WeekPact, then choose whether to accept or decline. You can also open the app directly and go to Crews → Invites. Opening the link does not accept the invitation. This invitation expires in 7 days.\n\nIf you weren't expecting this invitation, you can ignore this email.`,
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,7 +31,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
 </style>
 </head>
 <body style="margin:0;padding:0;width:100%;background-color:#F8F5EC;color:#090909;font-family:Arial,Helvetica,sans-serif;">
-<div style="display:none;font-size:1px;color:#F8F5EC;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">You’re invited to ${crew}. Review the crew and its goals in WeekPact.</div>
+<div style="display:none;font-size:1px;color:#F8F5EC;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">You’re invited to ${crew}. Review the crew and its pacts in WeekPact.</div>
 <table role="presentation" width="100%" bgcolor="#F8F5EC" style="background-color:#F8F5EC;background-image:linear-gradient(#eae7de 1px,transparent 1px),linear-gradient(90deg,#eae7de 1px,transparent 1px);background-size:28px 28px;">
 <tr><td class="outer" align="center" style="padding:44px 24px;">
 <!--[if mso]><table role="presentation" width="560"><tr><td><![endif]-->
@@ -53,7 +53,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
 <table role="presentation" width="100%"><tr><td align="center" bgcolor="#FF999B" style="background-color:#FF999B;border:1.5px solid #090909;border-radius:10px;box-shadow:2px 3px 0 #090909;mso-padding-alt:18px 24px;">
 <a href="${link}" style="display:block;padding:11px 20px;color:#090909;text-decoration:none;font-size:15px;line-height:20px;font-weight:800;letter-spacing:1px;border-radius:8px;">VIEW INVITATION &nbsp; &#8594;</a>
 </td></tr></table>
-<p style="margin:21px 0 0;text-align:center;font-size:12px;line-height:18px;color:#74716A;">Review the members and goals in WeekPact, then accept or decline. Opening this link does not join the crew. Valid for 7 days.</p>
+<p style="margin:21px 0 0;text-align:center;font-size:12px;line-height:18px;color:#74716A;">Review the members and pacts in WeekPact, then accept or decline. Opening this link does not join the crew. Valid for 7 days.</p>
 <table role="presentation" width="100%"><tr><td style="padding-top:28px;"><div style="border-top:1px solid #DDD9CE;font-size:1px;line-height:1px;">&nbsp;</div></td></tr></table>
 <p style="margin:20px 0 0;font-size:14px;line-height:22px;color:#55534D;">Already have WeekPact? Open the app and go to <strong style="color:#090909;">Crews → Invites</strong> to find this invitation.</p>
 <p style="margin:20px 0 7px;font-size:12px;line-height:19px;color:#74716A;">Button not working? Copy and paste this link:</p>

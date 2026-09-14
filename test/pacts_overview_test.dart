@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/goals/goals_overview.dart';
+import 'package:weekpact/src/pacts/pacts_overview.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
 
 void main() {
-  testWidgets('weekly rhythm sums goal targets, not completed check-ins', (
+  testWidgets('weekly rhythm sums pact targets, not completed check-ins', (
     tester,
   ) async {
-    final goals = DashboardGoals().goals;
+    final pacts = DashboardPacts().pacts;
     await tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
-        home: Scaffold(body: WeeklyRhythmCard(goals: goals)),
+        home: Scaffold(body: WeeklyRhythmCard(pacts: pacts)),
       ),
     );
     expect(
@@ -25,7 +25,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
-        home: Scaffold(body: WeeklyRhythmCard(goals: goals.take(1).toList())),
+        home: Scaffold(body: WeeklyRhythmCard(pacts: pacts.take(1).toList())),
       ),
     );
     expect(
@@ -37,7 +37,7 @@ void main() {
   });
 
   for (final settings in [(390.0, 1.0), (320.0, 2.0)]) {
-    testWidgets('goal cards stay square and editable at $settings', (
+    testWidgets('pact cards stay square and editable at $settings', (
       tester,
     ) async {
       tester.view.physicalSize = Size(settings.$1, 844);
@@ -53,9 +53,9 @@ void main() {
             child: Scaffold(
               body: SingleChildScrollView(
                 padding: const EdgeInsets.all(12),
-                child: GoalSquareGrid(
-                  goals: DashboardGoals().goals,
-                  onEdit: (goal) => edited = goal.id,
+                child: PactSquareGrid(
+                  pacts: DashboardPacts().pacts,
+                  onEdit: (pact) => edited = pact.id,
                 ),
               ),
             ),
@@ -64,10 +64,10 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       final first = tester.getRect(
-        find.byKey(const ValueKey('goal-management-move')),
+        find.byKey(const ValueKey('pact-management-move')),
       );
       final second = tester.getRect(
-        find.byKey(const ValueKey('goal-management-read')),
+        find.byKey(const ValueKey('pact-management-read')),
       );
       expect(first.width, first.height);
       expect(second.width, second.height);

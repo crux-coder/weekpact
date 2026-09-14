@@ -2,44 +2,44 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/goals/goals_backend.dart';
-import 'package:weekpact/src/goals/goals_page.dart';
-import 'package:weekpact/src/goals/goal_icons.dart';
+import 'package:weekpact/src/pacts/pacts_backend.dart';
+import 'package:weekpact/src/pacts/pacts_page.dart';
+import 'package:weekpact/src/pacts/pact_icons.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
-const ownerCrew = GoalCrew(
+const ownerCrew = PactCrew(
   id: 'a',
   name: 'Early Birds',
   timezone: 'Europe/Sarajevo',
   isOwner: true,
 );
-const memberCrew = GoalCrew(
+const memberCrew = PactCrew(
   id: 'b',
   name: 'Weekend Crew',
   timezone: 'UTC',
   isOwner: false,
 );
 
-class FakeGoals implements GoalsBackend {
-  List<GoalCrew> crews = [ownerCrew, memberCrew];
-  final goals = <CrewGoal>[];
-  Completer<List<GoalCrew>>? loading;
+class FakePacts implements PactsBackend {
+  List<PactCrew> crews = [ownerCrew, memberCrew];
+  final pacts = <CrewPact>[];
+  Completer<List<PactCrew>>? loading;
   bool failSave = false;
   @override
-  Future<CrewGoal> updateGoal({
-    required String goalId,
+  Future<CrewPact> updatePact({
+    required String pactId,
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
   }) async {
     if (failSave) throw Exception('offline');
-    final index = goals.indexWhere(
-      (goal) => goal.id == goalId && goal.crewId == crewId,
+    final index = pacts.indexWhere(
+      (pact) => pact.id == pactId && pact.crewId == crewId,
     );
-    return goals[index] = CrewGoal(
-      id: goalId,
+    return pacts[index] = CrewPact(
+      id: pactId,
       crewId: crewId,
       title: title,
       frequency: frequency,
@@ -49,38 +49,38 @@ class FakeGoals implements GoalsBackend {
   }
 
   @override
-  Future<List<GoalCrew>> fetchCrews() => loading?.future ?? Future.value(crews);
+  Future<List<PactCrew>> fetchCrews() => loading?.future ?? Future.value(crews);
   @override
-  Future<List<CrewGoal>> fetchGoals(String crewId) async =>
-      goals.where((goal) => goal.crewId == crewId).toList();
+  Future<List<CrewPact>> fetchPacts(String crewId) async =>
+      pacts.where((pact) => pact.crewId == crewId).toList();
   @override
-  Future<CrewGoal> addGoal({
+  Future<CrewPact> addPact({
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
   }) async {
     if (failSave) throw Exception('offline');
-    final goal = CrewGoal(
-      id: '${goals.length}',
+    final pact = CrewPact(
+      id: '${pacts.length}',
       crewId: crewId,
       title: title,
       frequency: frequency,
       daysPerWeek: daysPerWeek,
       iconKey: iconKey,
     );
-    goals.add(goal);
-    return goal;
+    pacts.add(pact);
+    return pact;
   }
 }
 
-Future<void> pumpGoals(WidgetTester tester, FakeGoals backend) async {
+Future<void> pumpPacts(WidgetTester tester, FakePacts backend) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.light,
       home: Scaffold(
-        body: GoalsPage(backend: backend, onOpenCrews: () {}),
+        body: PactsPage(backend: backend, onOpenCrews: () {}),
       ),
     ),
   );
@@ -88,9 +88,9 @@ Future<void> pumpGoals(WidgetTester tester, FakeGoals backend) async {
 
 void main() {
   test('unknown and legacy icons fall back to target', () {
-    expect(GoalIcon.find('unknown').key, 'target');
+    expect(PactIcon.find('unknown').key, 'target');
     expect(
-      CrewGoal.fromJson({
+      CrewPact.fromJson({
         'id': '1',
         'crew_id': 'a',
         'title': 'Read',
@@ -101,24 +101,24 @@ void main() {
     );
   });
   testWidgets(
-    'owner edits an existing goal and retries without losing changes',
+    'owner edits an existing pact and retries without losing changes',
     (tester) async {
-      final backend = FakeGoals();
-      backend.goals.add(
-        const CrewGoal(
+      final backend = FakePacts();
+      backend.pacts.add(
+        const CrewPact(
           id: 'g',
           crewId: 'a',
           title: 'Read',
-          frequency: GoalFrequency.weekly,
+          frequency: PactFrequency.weekly,
           daysPerWeek: 3,
           iconKey: 'book',
         ),
       );
-      await pumpGoals(tester, backend);
+      await pumpPacts(tester, backend);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit Read'));
       await tester.pumpAndSettle();
-      expect(find.text('EDIT GOAL'), findsOneWidget);
+      expect(find.text('EDIT PACT'), findsOneWidget);
       expect(find.byTooltip('Change icon: Reading'), findsOneWidget);
       expect(
         tester
@@ -137,31 +137,31 @@ void main() {
       await tester.tap(find.text('SAVE CHANGES'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Could not load or save'), findsOneWidget);
-      expect(backend.goals.single.title, 'Read');
+      expect(backend.pacts.single.title, 'Read');
       backend.failSave = false;
       await tester.ensureVisible(find.text('SAVE CHANGES'));
       await tester.tap(find.text('SAVE CHANGES'));
       await tester.pumpAndSettle();
-      expect(backend.goals.single.id, 'g');
-      expect(backend.goals.single.title, 'Read every day');
-      expect(backend.goals.single.daysPerWeek, 7);
-      expect(backend.goals.single.iconKey, 'book');
+      expect(backend.pacts.single.id, 'g');
+      expect(backend.pacts.single.title, 'Read every day');
+      expect(backend.pacts.single.daysPerWeek, 7);
+      expect(backend.pacts.single.iconKey, 'book');
       expect(find.text('Read every day'), findsOneWidget);
     },
   );
 
   testWidgets('members cannot see edit actions', (tester) async {
-    final backend = FakeGoals()..crews = [memberCrew];
-    backend.goals.add(
-      const CrewGoal(
+    final backend = FakePacts()..crews = [memberCrew];
+    backend.pacts.add(
+      const CrewPact(
         id: 'g',
         crewId: 'b',
         title: 'Read',
-        frequency: GoalFrequency.daily,
+        frequency: PactFrequency.daily,
         daysPerWeek: 7,
       ),
     );
-    await pumpGoals(tester, backend);
+    await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
     expect(find.text('Read'), findsOneWidget);
     expect(find.byTooltip('Edit Read'), findsNothing);
@@ -170,27 +170,27 @@ void main() {
   testWidgets('shows skeleton while loading and a crew-specific empty state', (
     tester,
   ) async {
-    final backend = FakeGoals()..loading = Completer<List<GoalCrew>>();
-    await pumpGoals(tester, backend);
-    expect(find.text('Goals'), findsOneWidget);
-    expect(find.text('Your goals'), findsOneWidget);
-    expect(find.text('ADD GOAL'), findsNothing);
+    final backend = FakePacts()..loading = Completer<List<PactCrew>>();
+    await pumpPacts(tester, backend);
+    expect(find.text('Pacts'), findsOneWidget);
+    expect(find.text('Your pacts'), findsOneWidget);
+    expect(find.text('ADD PACT'), findsNothing);
     backend.loading!.complete([ownerCrew]);
     await tester.pumpAndSettle();
     expect(find.text('Small steps start here.'), findsOneWidget);
-    expect(find.text('ADD GOAL'), findsOneWidget);
+    expect(find.text('ADD PACT'), findsOneWidget);
   });
 
-  testWidgets('owner saves daily and weekly goals to the selected crew', (
+  testWidgets('owner saves daily and weekly pacts to the selected crew', (
     tester,
   ) async {
-    final backend = FakeGoals();
-    await pumpGoals(tester, backend);
+    final backend = FakePacts();
+    await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('ADD GOAL'));
-    await tester.tap(find.text('ADD GOAL'));
+    await tester.ensureVisible(find.text('ADD PACT'));
+    await tester.tap(find.text('ADD PACT'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('SAVE GOAL'));
+    await tester.tap(find.text('SAVE PACT'));
     await tester.pumpAndSettle();
     expect(find.text('Use 2–100 characters'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField), 'Read 20 pages');
@@ -203,26 +203,26 @@ void main() {
     await tester.tap(find.text('Reading'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Change icon: Reading'), findsOneWidget);
-    await tester.ensureVisible(find.text('SAVE GOAL'));
-    await tester.tap(find.text('SAVE GOAL'));
+    await tester.ensureVisible(find.text('SAVE PACT'));
+    await tester.tap(find.text('SAVE PACT'));
     await tester.pumpAndSettle();
-    expect(backend.goals.single.iconKey, 'book');
-    expect(backend.goals.single.daysPerWeek, 7);
-    expect(backend.goals.single.frequency, GoalFrequency.daily);
-    expect(backend.goals.single.crewId, 'a');
+    expect(backend.pacts.single.iconKey, 'book');
+    expect(backend.pacts.single.daysPerWeek, 7);
+    expect(backend.pacts.single.frequency, PactFrequency.daily);
+    expect(backend.pacts.single.crewId, 'a');
     expect(find.text('Read 20 pages'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('ADD GOAL'));
-    await tester.tap(find.text('ADD GOAL'));
+    await tester.ensureVisible(find.text('ADD PACT'));
+    await tester.tap(find.text('ADD PACT'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField), 'Go for a run');
     await tester.tap(find.text('Days per week'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('SAVE GOAL'));
-    await tester.tap(find.text('SAVE GOAL'));
+    await tester.ensureVisible(find.text('SAVE PACT'));
+    await tester.tap(find.text('SAVE PACT'));
     await tester.pumpAndSettle();
-    expect(backend.goals.last.frequency, GoalFrequency.weekly);
-    expect(backend.goals.last.daysPerWeek, 3);
+    expect(backend.pacts.last.frequency, PactFrequency.weekly);
+    expect(backend.pacts.last.daysPerWeek, 3);
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -237,43 +237,43 @@ void main() {
     await tester.tap(find.text('Weekend Crew').last);
     await tester.pumpAndSettle();
     expect(find.text('Read 20 pages'), findsNothing);
-    expect(find.text('ADD GOAL'), findsNothing);
+    expect(find.text('ADD PACT'), findsNothing);
     expect(
-      find.text('Your crew owner hasn’t added any goals yet.'),
+      find.text('Your crew owner hasn’t added any pacts yet.'),
       findsOneWidget,
     );
   });
 
   testWidgets('failed save retains form and supports retry', (tester) async {
-    final backend = FakeGoals()..failSave = true;
-    await pumpGoals(tester, backend);
+    final backend = FakePacts()..failSave = true;
+    await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('ADD GOAL'));
-    await tester.tap(find.text('ADD GOAL'));
+    await tester.ensureVisible(find.text('ADD PACT'));
+    await tester.tap(find.text('ADD PACT'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField), 'Walk outside');
-    await tester.ensureVisible(find.text('SAVE GOAL'));
-    await tester.tap(find.text('SAVE GOAL'));
+    await tester.ensureVisible(find.text('SAVE PACT'));
+    await tester.tap(find.text('SAVE PACT'));
     await tester.pumpAndSettle();
     expect(find.text('Walk outside'), findsOneWidget);
     expect(
       find.text(
-        'Could not load or save goals. Check your connection and try again.',
+        'Could not load or save pacts. Check your connection and try again.',
       ),
       findsOneWidget,
     );
     backend.failSave = false;
-    await tester.ensureVisible(find.text('SAVE GOAL'));
-    await tester.tap(find.text('SAVE GOAL'));
+    await tester.ensureVisible(find.text('SAVE PACT'));
+    await tester.tap(find.text('SAVE PACT'));
     await tester.pumpAndSettle();
-    expect(backend.goals.length, 1);
-    expect(find.text('ADD A GOAL'), findsNothing);
+    expect(backend.pacts.length, 1);
+    expect(find.text('ADD A PACT'), findsNothing);
   });
 
   testWidgets('users without crews get a crews action', (tester) async {
-    await pumpGoals(tester, FakeGoals()..crews = []);
+    await pumpPacts(tester, FakePacts()..crews = []);
     await tester.pumpAndSettle();
     expect(find.text('GO TO CREWS'), findsOneWidget);
-    expect(find.text('ADD GOAL'), findsNothing);
+    expect(find.text('ADD PACT'), findsNothing);
   });
 }

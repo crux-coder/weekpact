@@ -21,7 +21,7 @@ class LargeCrewBackend extends DashboardBackend {
       today: week.today,
       weekStart: week.weekStart,
       timezone: week.timezone,
-      goals: week.goals,
+      pacts: week.pacts,
       members: [
         for (var i = 0; i < 20; i++) WeekMember('$i', 'member$i@example.com'),
       ],
@@ -31,7 +31,11 @@ class LargeCrewBackend extends DashboardBackend {
 }
 
 void main() {
-  for (final size in [const Size(390, 844), const Size(320, 568)]) {
+  for (final size in [
+    const Size(390, 844),
+    const Size(320, 568),
+    const Size(844, 390),
+  ]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
         'home stays fixed at $size with text scale $scale and a large crew',
@@ -45,15 +49,17 @@ void main() {
             MaterialApp(
               theme: WeekPactTheme.dark,
               builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(scale)),
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(scale),
+                  padding: const EdgeInsets.only(top: 24, bottom: 20),
+                ),
                 child: child!,
               ),
               home: HomePage(
                 user: const AuthUser(email: 'person@example.com'),
                 authBackend: const MissingConfigurationAuthBackend(),
                 crewBackend: const MissingCrewBackend(),
-                goalsBackend: backend.goals,
+                pactsBackend: backend.pacts,
                 homeBackend: backend,
               ),
             ),
@@ -72,19 +78,30 @@ void main() {
           expect(verticalScrolls, isEmpty);
           final board = find.byKey(const ValueKey('crew-board'));
           final position = tester.getTopLeft(board);
-          final activeGoal = tester.getRect(
+          final activePact = tester.getRect(
             find.byKey(const ValueKey('move')).hitTestable(),
           );
           final crewBounds = tester.getRect(board);
-          expect(activeGoal.left, closeTo(crewBounds.left, 1));
-          expect(activeGoal.right, closeTo(crewBounds.right, 1));
+          expect(activePact.center.dx, closeTo(crewBounds.center.dx, 1));
+          expect(activePact.left, greaterThan(crewBounds.left));
+          expect(activePact.right, lessThan(crewBounds.right));
           final titleBottom = tester
               .getBottomRight(find.byType(CrewTitleBanner))
               .dy;
           final crewTop = tester.getTopLeft(find.byType(TodayCrewCard)).dy;
+          final activity = tester.getRect(
+            find.byKey(const ValueKey('latest-activity')),
+          );
+          expect(activity.top, greaterThanOrEqualTo(titleBottom));
+          expect(activity.bottom, lessThanOrEqualTo(crewTop));
+          final todayTop = tester.getTopLeft(find.byType(TodayPactsCard)).dy;
+          expect(crewTop, greaterThanOrEqualTo(titleBottom));
+          expect(todayTop, greaterThanOrEqualTo(crewBounds.bottom));
           expect(
-            tester.getCenter(find.byType(Swiper)).dy,
-            closeTo((titleBottom + crewTop) / 2, 1),
+            tester.getBottomRight(find.byType(TodayPactsCard)).dy,
+            lessThanOrEqualTo(
+              tester.getTopLeft(find.byKey(const ValueKey('nav-home'))).dy,
+            ),
           );
           await tester.drag(board, const Offset(0, -180));
           await tester.pumpUi();
@@ -101,7 +118,7 @@ void main() {
           await tester.drag(find.byType(Swiper), Offset(-size.width * .7, 0));
           await tester.pumpUi();
           expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-          expect(find.text('Your goals'), findsNothing);
+          expect(find.text('Your pacts'), findsNothing);
           expect(find.text('1 of 2'), findsNothing);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox());

@@ -11,14 +11,14 @@ Implemented account flows:
 - Deletion verifies the current password server-side, removes the avatar through
   Storage, then hard-deletes the Auth account. A database trigger atomically
   transfers owned crews to their longest-standing remaining member (ties use
-  user ID), or deletes empty crews; deletes authored goals and their check-ins;
+  user ID), or deletes empty crews; deletes authored pacts and their check-ins;
   removes invitations addressed to the deleted email; and relies on foreign-key
   cascades for memberships, own check-ins, sent invites, sessions and push data.
-  Notification events referencing deleted goals are also removed. A restrictive
+  Notification events referencing deleted pacts are also removed. A restrictive
   Storage policy stops deleted accounts from uploading with unexpired JWTs.
-- Goals authored by a deleted user are removed even in crews they previously
-  left. This also deletes other members' check-ins on those goals, as explicitly
-  disclosed before deletion. Other goals and their members' check-ins remain.
+- Pacts authored by a deleted user are removed even in crews they previously
+  left. This also deletes other members' check-ins on those pacts, as explicitly
+  disclosed before deletion. Other pacts and their members' check-ins remain.
 - A failed Storage deletion leaves Auth intact. A later Auth failure can leave
   the avatar removed; retrying deletion is safe. Cross-service removal is not one
   transaction. Delivered email/push messages cannot be recalled from recipients.
@@ -71,16 +71,16 @@ node tool/create_review_account.mjs
 
 Choose a new email and a password of at least 12 characters. The script never
 changes an existing account, prints no credentials, and creates a fictional crew,
-two goals and a check-in. Setup failure attempts to roll back only the account
+two pacts and a check-in. Setup failure attempts to roll back only the account
 created by that invocation. Add the chosen login to App Store Connect Review
 Information, along with these suggested notes:
 
-> WeekPact uses accounts for persistent shared crews and goal progress. The demo
+> WeekPact uses accounts for persistent shared crews and pact progress. The demo
 > credentials have a confirmed email and a completed profile. Account settings
 > include password recovery, privacy/support links and permanent account deletion.
 > Photo and surname are optional. Notifications are optional. To test signup,
 > create another account and confirm its email. To test deletion without losing
-> the main demo login, use that newly created account. Goal creation is available
+> the main demo login, use that newly created account. Pact creation is available
 > to the crew owner.
 
 The provisioning script has not been run against a hosted project by this change.

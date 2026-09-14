@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../goals/goal_icons.dart';
-import '../goals/goals_backend.dart';
+import '../pacts/pact_icons.dart';
+import '../pacts/pacts_backend.dart';
 import '../home/home_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -15,7 +15,7 @@ class CrewWeekPage extends StatefulWidget {
     required this.backend,
     required this.userId,
   });
-  final GoalCrew crew;
+  final PactCrew crew;
   final HomeBackend backend;
   final String userId;
   @override
@@ -118,14 +118,14 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                 TextButton(onPressed: _refresh, child: const Text('TRY AGAIN')),
                 const SizedBox(height: 16),
               ],
-              if (week != null && week.goals.isEmpty)
+              if (week != null && week.pacts.isEmpty)
                 const Text(
-                  'No goals yet. Your crew’s weekly activity will appear here.',
+                  'No pacts yet. Your crew’s weekly activity will appear here.',
                   style: TextStyle(fontSize: 19),
                 ),
-              if (week != null && week.goals.isNotEmpty && members.isEmpty)
+              if (week != null && week.pacts.isNotEmpty && members.isEmpty)
                 const Text('No members to show.'),
-              if (week != null && week.goals.isNotEmpty)
+              if (week != null && week.pacts.isNotEmpty)
                 for (final member in members) ...[
                   AppSectionCard(
                     title: member.id == widget.userId ? 'YOU' : member.email,
@@ -145,15 +145,15 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                           const SizedBox(height: 18),
                           for (
                             var index = 0;
-                            index < week.goals.length;
+                            index < week.pacts.length;
                             index++
                           ) ...[
-                            _MemberGoalWeek(
+                            _MemberPactWeek(
                               week: week,
                               member: member,
-                              goal: week.goals[index],
+                              pact: week.pacts[index],
                             ),
-                            if (index < week.goals.length - 1) ...[
+                            if (index < week.pacts.length - 1) ...[
                               const SizedBox(height: 16),
                               Divider(color: context.border, height: 1),
                               const SizedBox(height: 16),
@@ -191,22 +191,22 @@ String _dateLabel(DateTime date) {
   return '${months[date.month - 1]} ${date.day}';
 }
 
-class _MemberGoalWeek extends StatelessWidget {
-  const _MemberGoalWeek({
+class _MemberPactWeek extends StatelessWidget {
+  const _MemberPactWeek({
     required this.week,
     required this.member,
-    required this.goal,
+    required this.pact,
   });
   final CrewWeek week;
   final WeekMember member;
-  final CrewGoal goal;
+  final CrewPact pact;
   @override
   Widget build(BuildContext context) {
     final dates = week.checkIns
-        .where((i) => i.userId == member.id && i.goalId == goal.id)
+        .where((i) => i.userId == member.id && i.pactId == pact.id)
         .map((i) => i.day)
         .toSet();
-    final completed = week.days(goal.id, member.id);
+    final completed = week.days(pact.id, member.id);
     const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     final start = DateTime.parse(week.weekStart);
     return Column(
@@ -215,14 +215,14 @@ class _MemberGoalWeek extends StatelessWidget {
         Row(
           children: [
             HugeIcon(
-              icon: GoalIcon.find(goal.iconKey).data,
+              icon: PactIcon.find(pact.iconKey).data,
               size: 26,
               color: context.ink,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                goal.title,
+                pact.title,
                 style: TextStyle(
                   color: context.ink,
                   fontSize: 18,
@@ -234,7 +234,7 @@ class _MemberGoalWeek extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '$completed / ${goal.daysPerWeek} days${completed >= goal.daysPerWeek ? ' · Target reached' : ''}',
+          '$completed / ${pact.daysPerWeek} days${completed >= pact.daysPerWeek ? ' · Target reached' : ''}',
           style: TextStyle(color: context.muted, fontSize: 14),
         ),
         const SizedBox(height: 12),
@@ -257,7 +257,7 @@ class _MemberGoalWeek extends StatelessWidget {
                 padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
                 child: Semantics(
                   label:
-                      '${member.email}, ${goal.title}, ${_dateLabel(day)}: $status',
+                      '${member.email}, ${pact.title}, ${_dateLabel(day)}: $status',
                   child: Tooltip(
                     message: '${_dateLabel(day)} · $status',
                     child: Column(

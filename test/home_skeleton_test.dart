@@ -32,7 +32,7 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
         expect(tester.takeException(), isNull);
         expect(
-          find.byKey(const ValueKey('skeleton-goal-card')),
+          find.byKey(const ValueKey('skeleton-pact-card')),
           findsOneWidget,
         );
         final fade = tester.widget<FadeTransition>(

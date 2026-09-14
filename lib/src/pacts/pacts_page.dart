@@ -5,30 +5,30 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
-import 'goals_backend.dart';
-import 'goal_icons.dart';
-import 'goals_overview.dart';
-import 'goal_icon_picker.dart';
+import 'pacts_backend.dart';
+import 'pact_icons.dart';
+import 'pacts_overview.dart';
+import 'pact_icon_picker.dart';
 
 import 'package:hugeicons/hugeicons.dart';
 
-class GoalsPage extends StatefulWidget {
-  const GoalsPage({
+class PactsPage extends StatefulWidget {
+  const PactsPage({
     super.key,
     required this.backend,
     required this.onOpenCrews,
   });
-  final GoalsBackend backend;
+  final PactsBackend backend;
   final VoidCallback onOpenCrews;
 
   @override
-  State<GoalsPage> createState() => _GoalsPageState();
+  State<PactsPage> createState() => _PactsPageState();
 }
 
-class _GoalsPageState extends State<GoalsPage> {
-  List<GoalCrew>? _crews;
-  GoalCrew? _selected;
-  List<CrewGoal>? _goals;
+class _PactsPageState extends State<PactsPage> {
+  List<PactCrew>? _crews;
+  PactCrew? _selected;
+  List<CrewPact>? _pacts;
   String? _error;
   int _request = 0;
 
@@ -49,13 +49,13 @@ class _GoalsPageState extends State<GoalsPage> {
           ? matches.first
           : (crews.isEmpty ? null : crews.first);
       setState(() {
-        if (_selected?.id != selected?.id) _goals = null;
+        if (_selected?.id != selected?.id) _pacts = null;
         _crews = crews;
         _selected = selected;
       });
       if (selected != null) {
-        final goals = await widget.backend.fetchGoals(selected.id);
-        if (mounted && request == _request) setState(() => _goals = goals);
+        final pacts = await widget.backend.fetchPacts(selected.id);
+        if (mounted && request == _request) setState(() => _pacts = pacts);
       }
     } catch (error) {
       if (mounted && request == _request) {
@@ -70,12 +70,12 @@ class _GoalsPageState extends State<GoalsPage> {
     final request = ++_request;
     setState(() {
       _selected = crew;
-      _goals = null;
+      _pacts = null;
       _error = null;
     });
     try {
-      final goals = await widget.backend.fetchGoals(id);
-      if (mounted && request == _request) setState(() => _goals = goals);
+      final pacts = await widget.backend.fetchPacts(id);
+      if (mounted && request == _request) setState(() => _pacts = pacts);
     } catch (error) {
       if (mounted && request == _request) {
         setState(() => _error = _errorMessage(error));
@@ -83,16 +83,16 @@ class _GoalsPageState extends State<GoalsPage> {
     }
   }
 
-  Future<void> _addGoal([CrewGoal? existing]) async {
+  Future<void> _addPact([CrewPact? existing]) async {
     final crew = _selected;
     if (crew == null || !crew.isOwner) return;
-    final goal = await showAppSheet<CrewGoal>(
+    final pact = await showAppSheet<CrewPact>(
       context: context,
       builder: (_) =>
-          _GoalDrawer(crew: crew, backend: widget.backend, goal: existing),
+          _PactDrawer(crew: crew, backend: widget.backend, pact: existing),
     );
-    if (!mounted || goal == null || _selected?.id != goal.crewId) return;
-    // Refresh from the server so an overlapping load cannot hide the new goal.
+    if (!mounted || pact == null || _selected?.id != pact.crewId) return;
+    // Refresh from the server so an overlapping load cannot hide the new pact.
     await _refresh();
   }
 
@@ -102,7 +102,7 @@ class _GoalsPageState extends State<GoalsPage> {
     return PageFrame(
       header: Row(
         children: [
-          const Expanded(child: PageHeading('Goals')),
+          const Expanded(child: PageHeading('Pacts')),
           if (crew != null) ...[
             const SizedBox(width: 12),
             Expanded(
@@ -141,7 +141,7 @@ class _GoalsPageState extends State<GoalsPage> {
       ),
       onRefresh: _refresh,
       loading: _crews == null && _error == null,
-      skeleton: const _GoalsSkeleton(),
+      skeleton: const _PactsSkeleton(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -176,13 +176,13 @@ class _GoalsPageState extends State<GoalsPage> {
               ),
             ),
           if (crew != null) ...[
-            if (_goals == null && _error == null)
-              const _GoalsSkeleton()
-            else if (_goals != null) ...[
-              WeeklyRhythmCard(goals: _goals!),
+            if (_pacts == null && _error == null)
+              const _PactsSkeleton()
+            else if (_pacts != null) ...[
+              WeeklyRhythmCard(pacts: _pacts!),
               const SizedBox(height: 22),
               Text(
-                'Your goals',
+                'Your pacts',
                 style: TextStyle(
                   color: context.ink,
                   fontSize: 25,
@@ -190,7 +190,7 @@ class _GoalsPageState extends State<GoalsPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              if (_goals!.isEmpty)
+              if (_pacts!.isEmpty)
                 AppSurface(
                   builder: (context) => Padding(
                     padding: const EdgeInsets.all(18),
@@ -207,24 +207,24 @@ class _GoalsPageState extends State<GoalsPage> {
                         const SizedBox(height: 8),
                         Text(
                           crew.isOwner
-                              ? 'Add your first shared goal. Choose every day or a few days each week.'
-                              : 'Your crew owner hasn’t added any goals yet.',
+                              ? 'Add your first shared pact. Choose every day or a few days each week.'
+                              : 'Your crew owner hasn’t added any pacts yet.',
                         ),
                       ],
                     ),
                   ),
                 )
               else
-                GoalSquareGrid(
-                  goals: _goals!,
-                  onEdit: crew.isOwner ? (goal) => _addGoal(goal) : null,
+                PactSquareGrid(
+                  pacts: _pacts!,
+                  onEdit: crew.isOwner ? (pact) => _addPact(pact) : null,
                 ),
               if (crew.isOwner) ...[
                 const SizedBox(height: 16),
                 AppButton(
-                  label: 'ADD GOAL',
+                  label: 'ADD PACT',
                   color: WeekPactColors.mintGreen,
-                  onPressed: _addGoal,
+                  onPressed: _addPact,
                 ),
               ],
             ],
@@ -246,11 +246,11 @@ class _GoalsPageState extends State<GoalsPage> {
   }
 }
 
-class _GoalsSkeleton extends StatelessWidget {
-  const _GoalsSkeleton();
+class _PactsSkeleton extends StatelessWidget {
+  const _PactsSkeleton();
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Loading goals',
+    label: 'Loading pacts',
     liveRegion: true,
     child: ExcludeSemantics(
       child: Column(
@@ -274,7 +274,7 @@ class _GoalsSkeleton extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           Text(
-            'Your goals',
+            'Your pacts',
             style: TextStyle(
               color: context.ink,
               fontSize: 25,
@@ -317,19 +317,19 @@ class _GoalsSkeleton extends StatelessWidget {
   );
 }
 
-class _GoalDrawer extends StatefulWidget {
-  const _GoalDrawer({required this.crew, required this.backend, this.goal});
-  final CrewGoal? goal;
-  final GoalCrew crew;
-  final GoalsBackend backend;
+class _PactDrawer extends StatefulWidget {
+  const _PactDrawer({required this.crew, required this.backend, this.pact});
+  final CrewPact? pact;
+  final PactCrew crew;
+  final PactsBackend backend;
   @override
-  State<_GoalDrawer> createState() => _GoalDrawerState();
+  State<_PactDrawer> createState() => _PactDrawerState();
 }
 
-class _GoalDrawerState extends State<_GoalDrawer> {
+class _PactDrawerState extends State<_PactDrawer> {
   final _title = TextEditingController();
   final _form = GlobalKey<FormState>();
-  GoalFrequency _frequency = GoalFrequency.daily;
+  PactFrequency _frequency = PactFrequency.daily;
   int _days = 3;
   String _iconKey = 'target';
   bool _saving = false;
@@ -337,12 +337,12 @@ class _GoalDrawerState extends State<_GoalDrawer> {
   @override
   void initState() {
     super.initState();
-    final goal = widget.goal;
-    if (goal != null) {
-      _title.text = goal.title;
-      _frequency = goal.frequency;
-      _days = goal.daysPerWeek;
-      _iconKey = goal.iconKey;
+    final pact = widget.pact;
+    if (pact != null) {
+      _title.text = pact.title;
+      _frequency = pact.frequency;
+      _days = pact.daysPerWeek;
+      _iconKey = pact.iconKey;
     }
   }
 
@@ -360,24 +360,24 @@ class _GoalDrawerState extends State<_GoalDrawer> {
       _error = null;
     });
     try {
-      final existing = widget.goal;
-      final goal = existing != null
-          ? await widget.backend.updateGoal(
-              goalId: existing.id,
+      final existing = widget.pact;
+      final pact = existing != null
+          ? await widget.backend.updatePact(
+              pactId: existing.id,
               crewId: widget.crew.id,
               title: _title.text.trim(),
               iconKey: _iconKey,
               frequency: _frequency,
-              daysPerWeek: _frequency == GoalFrequency.daily ? 7 : _days,
+              daysPerWeek: _frequency == PactFrequency.daily ? 7 : _days,
             )
-          : await widget.backend.addGoal(
+          : await widget.backend.addPact(
               crewId: widget.crew.id,
               title: _title.text.trim(),
               iconKey: _iconKey,
               frequency: _frequency,
-              daysPerWeek: _frequency == GoalFrequency.daily ? 7 : _days,
+              daysPerWeek: _frequency == PactFrequency.daily ? 7 : _days,
             );
-      if (mounted) Navigator.pop(context, goal);
+      if (mounted) Navigator.pop(context, pact);
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -401,7 +401,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.goal == null ? 'ADD A GOAL' : 'EDIT GOAL',
+                    widget.pact == null ? 'ADD A PACT' : 'EDIT PACT',
                     style: TextStyle(
                       color: context.ink,
                       fontSize: 26,
@@ -410,7 +410,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Close goal',
+                  tooltip: 'Close pact',
                   onPressed: _saving ? null : () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
                 ),
@@ -418,7 +418,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'GOAL NAME',
+              'PACT NAME',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -436,7 +436,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
                       fillColor: context.yellow,
                       builder: (context) => IconButton(
                         tooltip:
-                            'Change icon: ${GoalIcon.find(_iconKey).label}',
+                            'Change icon: ${PactIcon.find(_iconKey).label}',
                         onPressed: _saving
                             ? null
                             : () async {
@@ -444,14 +444,14 @@ class _GoalDrawerState extends State<_GoalDrawer> {
                                 final selected = await showAppSheet<String>(
                                   context: context,
                                   builder: (_) =>
-                                      GoalIconPicker(selectedKey: _iconKey),
+                                      PactIconPicker(selectedKey: _iconKey),
                                 );
                                 if (mounted && selected != null) {
                                   setState(() => _iconKey = selected);
                                 }
                               },
                         icon: HugeIcon(
-                          icon: GoalIcon.find(_iconKey).data,
+                          icon: PactIcon.find(_iconKey).data,
                           color: context.ink,
                           size: 24,
                         ),
@@ -487,25 +487,25 @@ class _GoalDrawerState extends State<_GoalDrawer> {
               children: [
                 ChoiceChip(
                   label: const Text('Every day'),
-                  selected: _frequency == GoalFrequency.daily,
+                  selected: _frequency == PactFrequency.daily,
                   selectedColor: context.yellow,
                   onSelected: _saving
                       ? null
-                      : (_) => setState(() => _frequency = GoalFrequency.daily),
+                      : (_) => setState(() => _frequency = PactFrequency.daily),
                 ),
                 ChoiceChip(
                   label: const Text('Days per week'),
-                  selected: _frequency == GoalFrequency.weekly,
+                  selected: _frequency == PactFrequency.weekly,
                   selectedColor: context.mint,
                   onSelected: _saving
                       ? null
                       : (_) =>
-                            setState(() => _frequency = GoalFrequency.weekly),
+                            setState(() => _frequency = PactFrequency.weekly),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            if (_frequency == GoalFrequency.weekly)
+            if (_frequency == PactFrequency.weekly)
               DropdownButtonFormField<int>(
                 initialValue: _days,
                 decoration: const InputDecoration(
@@ -532,7 +532,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
               ),
             const SizedBox(height: 24),
             AppButton(
-              label: widget.goal == null ? 'SAVE GOAL' : 'SAVE CHANGES',
+              label: widget.pact == null ? 'SAVE PACT' : 'SAVE CHANGES',
 
               isLoading: _saving,
               onPressed: _save,
@@ -546,7 +546,7 @@ class _GoalDrawerState extends State<_GoalDrawer> {
 
 String _errorMessage(Object error) {
   if (error is PostgrestException && error.code == '42501') {
-    return 'Only the crew owner can manage goals.';
+    return 'Only the crew owner can manage pacts.';
   }
-  return 'Could not load or save goals. Check your connection and try again.';
+  return 'Could not load or save pacts. Check your connection and try again.';
 }

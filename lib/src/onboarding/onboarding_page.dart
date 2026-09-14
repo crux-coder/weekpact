@@ -255,7 +255,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     (
                       '02',
                       'Make a weekly pact',
-                      'Choose goals you can show up for.',
+                      'Choose pacts you can show up for.',
                       WeekPactColors.cream,
                     ),
                     (

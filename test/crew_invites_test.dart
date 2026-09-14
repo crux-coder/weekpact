@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
-import 'package:weekpact/src/goals/goals_backend.dart';
+import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
@@ -32,12 +32,12 @@ ReceivedCrewInvite invitation() => ReceivedCrewInvite(
       joinedAt: DateTime(2026),
     ),
   ],
-  goals: const [
-    CrewGoal(
-      id: 'goal-1',
+  pacts: const [
+    CrewPact(
+      id: 'pact-1',
       crewId: 'crew-1',
       title: 'Morning walk',
-      frequency: GoalFrequency.weekly,
+      frequency: PactFrequency.weekly,
       daysPerWeek: 3,
     ),
   ],
@@ -109,8 +109,8 @@ void main() {
       (tester) async {
         final crews = InboxBackend();
         if (outcome == 'failure') crews.responseError = StateError('offline');
-        final goals = JoinedCrewGoals(crews);
-        final home = DashboardBackend(goals: goals);
+        final pacts = JoinedCrewPacts(crews);
+        final home = DashboardBackend(pacts: pacts);
         await tester.pumpWidget(
           MaterialApp(
             theme: WeekPactTheme.light,
@@ -123,7 +123,7 @@ void main() {
               user: const AuthUser(email: 'member@example.com'),
               authBackend: const MissingConfigurationAuthBackend(),
               crewBackend: crews,
-              goalsBackend: goals,
+              pactsBackend: pacts,
               homeBackend: home,
             ),
           ),
@@ -316,16 +316,16 @@ void main() {
   });
 }
 
-class JoinedCrewGoals extends DashboardGoals {
-  JoinedCrewGoals(this.backend);
+class JoinedCrewPacts extends DashboardPacts {
+  JoinedCrewPacts(this.backend);
   final InboxBackend backend;
   @override
-  Future<List<GoalCrew>> fetchCrews() async {
+  Future<List<PactCrew>> fetchCrews() async {
     final crew = backend.crew;
     return crew == null
         ? []
         : [
-            GoalCrew(
+            PactCrew(
               id: crew.id,
               name: crew.name,
               timezone: crew.timezone,

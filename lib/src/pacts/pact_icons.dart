@@ -1,77 +1,77 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-class GoalIcon {
-  const GoalIcon(this.key, this.label, this.data, this.keywords);
+class PactIcon {
+  const PactIcon(this.key, this.label, this.data, this.keywords);
   final String key;
   final String label;
   final List<List<dynamic>> data;
   final String keywords;
 
-  static const all = <GoalIcon>[
-    GoalIcon('target', 'Target', HugeIconsStrokeRounded.target01, 'goal focus'),
-    GoalIcon(
+  static const all = <PactIcon>[
+    PactIcon('target', 'Target', HugeIconsStrokeRounded.target01, 'pact focus'),
+    PactIcon(
       'book',
       'Reading',
       HugeIconsStrokeRounded.bookOpen01,
       'read study learn',
     ),
-    GoalIcon(
+    PactIcon(
       'strength',
       'Strength',
       HugeIconsStrokeRounded.dumbbell01,
       'gym workout exercise',
     ),
-    GoalIcon(
+    PactIcon(
       'walk',
       'Walking',
       HugeIconsStrokeRounded.walking,
       'steps outdoors',
     ),
-    GoalIcon(
+    PactIcon(
       'run',
       'Running',
       HugeIconsStrokeRounded.runningShoes,
       'jog cardio',
     ),
-    GoalIcon('cycle', 'Cycling', HugeIconsStrokeRounded.bicycle, 'bike cardio'),
-    GoalIcon('sleep', 'Sleep', HugeIconsStrokeRounded.sleeping, 'rest bedtime'),
-    GoalIcon(
+    PactIcon('cycle', 'Cycling', HugeIconsStrokeRounded.bicycle, 'bike cardio'),
+    PactIcon('sleep', 'Sleep', HugeIconsStrokeRounded.sleeping, 'rest bedtime'),
+    PactIcon(
       'yoga',
       'Yoga',
       HugeIconsStrokeRounded.yoga01,
       'stretch meditate mindfulness',
     ),
-    GoalIcon(
+    PactIcon(
       'food',
       'Nutrition',
       HugeIconsStrokeRounded.salad,
       'eat vegetables healthy cooking',
     ),
-    GoalIcon(
+    PactIcon(
       'music',
       'Music',
       HugeIconsStrokeRounded.musicNote01,
       'practice instrument',
     ),
-    GoalIcon(
+    PactIcon(
       'art',
       'Art',
       HugeIconsStrokeRounded.paintBrush01,
       'draw paint creative',
     ),
-    GoalIcon(
+    PactIcon(
       'code',
       'Coding',
       HugeIconsStrokeRounded.sourceCode,
       'program learn computer',
     ),
-    GoalIcon(
+    PactIcon(
       'plant',
       'Gardening',
       HugeIconsStrokeRounded.plant01,
       'nature grow plants',
     ),
-    GoalIcon(
+    PactIcon(
       'savings',
       'Savings',
       HugeIconsStrokeRounded.moneySavingJar,
@@ -79,6 +79,6 @@ class GoalIcon {
     ),
   ];
 
-  static GoalIcon find(String key) =>
+  static PactIcon find(String key) =>
       all.firstWhere((icon) => icon.key == key, orElse: () => all.first);
 }

@@ -4,22 +4,22 @@ import 'package:hugeicons/hugeicons.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/app_components.dart';
-import 'goal_icons.dart';
+import 'pact_icons.dart';
 
-class GoalIconPicker extends StatefulWidget {
-  const GoalIconPicker({super.key, required this.selectedKey});
+class PactIconPicker extends StatefulWidget {
+  const PactIconPicker({super.key, required this.selectedKey});
   final String selectedKey;
 
   @override
-  State<GoalIconPicker> createState() => _GoalIconPickerState();
+  State<PactIconPicker> createState() => _PactIconPickerState();
 }
 
-class _GoalIconPickerState extends State<GoalIconPicker> {
+class _PactIconPickerState extends State<PactIconPicker> {
   String _query = '';
 
   @override
   Widget build(BuildContext context) {
-    final icons = GoalIcon.all
+    final icons = PactIcon.all
         .where(
           (icon) =>
               '${icon.label} ${icon.keywords}'.toLowerCase().contains(_query),

@@ -1,9 +1,9 @@
 # WeekPact
 
-WeekPact is a Flutter crew-goal app with Supabase authentication, crew
+WeekPact is a Flutter crew-pact app with Supabase authentication, crew
 membership, owner-managed email invitations, and deep-link invite acceptance.
 
-Crew goal check-ins notify other crew members through Firebase Messaging. Device
+Crew pact check-ins notify other crew members through Firebase Messaging. Device
 opt-in is available under Account → Notifications; delivery uses a reusable event
 queue, templates, and a Supabase worker with retries.
 Follow [the Firebase and Apple setup guide](docs/notifications.md) to connect your
@@ -22,16 +22,31 @@ project and test delivery. Run `npm run firebase:configure` after installing the
   authenticated Edge Function; no AWS or Supabase secret key is shipped in
   the Flutter app.
 
-## Crew goals
+## Pact terminology migration
 
-The Goals page lists your crews and stores recurring goals under the selected
-crew. Owners can add and edit goals, including their Hugeicons icon; all crew members can read them. Choose **Every day**
+Recurring commitments are **pacts**. The app, RPC payloads, notifications, and
+current database schema use that term; goals are reserved for a future feature.
+The rename migration updates existing tables in place to `crew_pacts` and
+`pact_check_ins`, with `pact_id` references and the `save_pact_check_ins` RPC.
+Record IDs, history, ownership, and user-entered titles are preserved.
+Previously applied migration files retain their original names and definitions.
+
+Apply the rename together with the updated app and notification worker, then
+restart the app. Older builds use the previous API names and must be updated.
+During rollout, let the worker accept both event formats before applying the
+migration; queued event IDs and delivery records are retained. Deploy the final
+worker after the database cutover.
+
+## Crew pacts
+
+The Pacts page lists your crews and stores recurring pacts under the selected
+crew. Owners can add and edit pacts, including their Hugeicons icon; all crew members can read them. Choose **Every day**
 (seven days per week) or **Days per week** (one to seven distinct days). Schedules
-repeat Monday through Sunday in the crew timezone. The Home screen loads the current crew, goals, members, and saved check-ins.
-Members can select or unselect their own goals for today, once per goal per day.
+repeat Monday through Sunday in the crew timezone. The Home screen loads the current crew, pacts, members, and saved check-ins.
+Members can select or unselect their own pacts for today, once per pact per day.
 The server determines today and the current week using the crew timezone.
 
-Weekly percentages sum completed member-days, capped at each goal’s weekly
+Weekly percentages sum completed member-days, capped at each pact’s weekly
 target. “On track” means the member can still reach every target with the days
 remaining this week (including today if not yet checked in). Editing a target
 recalculates current-week progress without deleting existing check-ins.
@@ -39,27 +54,27 @@ recalculates current-week progress without deleting existing check-ins.
 Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets
-every goal target. The current week only joins the streak once completed and
-does not break it while in progress. Streaks use current members and goal
-targets, so changing targets recalculates history; members/goals are excluded
+every pact target. The current week only joins the streak once completed and
+does not break it while in progress. Streaks use current members and pact
+targets, so changing targets recalculates history; members/pacts are excluded
 from weeks before they joined/were created.
 
-Apply the goal table and its access policies before using the page:
+Apply the pact table and its access policies before using the page:
 
 ```sh
 supabase db push
 ```
 
-Restart the Flutter app after updating this code so the Goals backend is wired
+Restart the Flutter app after updating this code so the Pacts backend is wired
 into the application. The crew selector supports a list, but the existing
 one-crew-per-user database constraint remains until multi-crew membership is added.
 
-Goal widgets are covered by `flutter test`. Database permission and constraint
+Pact widgets are covered by `flutter test`. Database permission and constraint
 tests can also run against PGlite without touching a Supabase project:
 
 ```sh
-npm install --prefix /tmp/weekpact-goals-sql @electric-sql/pglite@0.5.8
-PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_goals_database.mjs
+npm install --prefix /tmp/weekpact-pacts-sql @electric-sql/pglite@0.5.8
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_pacts_database.mjs
 ```
 
 ## 1. Local prerequisites
@@ -212,7 +227,7 @@ for deployment and native association setup.
 
 The **Crews** page has **Your crew** and **Invites** tabs. Signed-in users with a
 confirmed email see active invitations sent to that email, including invitations
-sent before they registered. Open a crew to preview its members and goal schedules,
+sent before they registered. Open a crew to preview its members and pact schedules,
 then accept or decline. No email link or hosted page is needed for this flow.
 
 The inbox refreshes when opened, when returning to Crews or resuming the app, and
@@ -221,12 +236,12 @@ Declining invalidates the email link; the owner can send a new invitation later.
 The existing one-crew-per-user rule still applies.
 
 Apply `20260910091518_add_received_crew_invites.sql` and rebuild the mobile app.
-The preview RPC exposes only crew membership and goal definitions to the verified
+The preview RPC exposes only crew membership and pact definitions to the verified
 recipient; normal member-only table access and check-in privacy stay intact.
 Email delivery and token-based acceptance continue to work as before.
 
 ```sh
-PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invites_database.mjs
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invites_database.mjs
 ```
 
 ### Leaving and managing membership
@@ -241,7 +256,7 @@ Apply `20260910104118_add_crew_membership_actions.sql` and rebuild the mobile ap
 Membership permissions are checked by the database, including owner transfer.
 
 ```sh
-PGLITE_MODULE=/tmp/weekpact-goals-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_membership_database.mjs
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_membership_database.mjs
 ```
 
 ### iOS

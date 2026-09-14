@@ -1,0 +1,94 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:weekpact/src/home/home_backend.dart';
+
+void main() {
+  for (final hasToday in [true, false]) {
+    test(
+      'activity uses the crew date and returns ${hasToday ? 'today’s latest check-in' : 'no previous-day fallback'}',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final requests = <Uri>[];
+        server.listen((request) async {
+          requests.add(request.uri);
+          request.response.headers.contentType = ContentType.json;
+          if (request.uri.path.endsWith('/rpc/crew_week_snapshot')) {
+            request.response.write(
+              jsonEncode({
+                'today': '2026-09-14',
+                'week_start': '2026-09-14',
+                'timezone': 'Pacific/Auckland',
+                'pacts': [
+                  {
+                    'id': 'pact',
+                    'crew_id': 'crew',
+                    'title': 'Hangboard',
+                    'frequency': 'weekly',
+                    'days_per_week': 5,
+                  },
+                ],
+                'members': [
+                  {
+                    'user_id': 'member',
+                    'email': 'm@example.com',
+                    'display_name': 'Mirnes',
+                  },
+                ],
+                'check_ins': [
+                  {
+                    'pact_id': 'pact',
+                    'user_id': 'member',
+                    'completed_on': '2026-09-13',
+                  },
+                ],
+              }),
+            );
+          } else {
+            request.response.write(
+              jsonEncode([
+                if (hasToday)
+                  {
+                    'pact_id': 'pact',
+                    'user_id': 'member',
+                    'created_at': '2026-09-13T18:30:00+02:00',
+                  },
+              ]),
+            );
+          }
+          await request.response.close();
+        });
+        final client = SupabaseClient(
+          'http://127.0.0.1:${server.port}',
+          'test-key',
+        );
+        addTearDown(() async {
+          await client.dispose();
+          await server.close(force: true);
+        });
+        final week = await SupabaseHomeBackend(client).fetchWeek('crew');
+        final query = requests
+            .singleWhere((uri) => uri.path.endsWith('/pact_check_ins'))
+            .queryParameters;
+        expect(query['select'], 'pact_id,user_id,created_at');
+        expect(query['pact_id'], 'in.("pact")');
+        expect(query['user_id'], 'in.("member")');
+        expect(query['order'], startsWith('created_at.desc'));
+        expect(query['limit'], '1');
+        expect(query['completed_on'], 'eq.2026-09-14');
+        expect(week.checkIns.single.day, '2026-09-13');
+        // Today's check-in in the crew timezone can have yesterday's UTC timestamp.
+        if (hasToday) {
+          expect(
+            week.latestActivity?.createdAt,
+            DateTime.utc(2026, 9, 13, 16, 30),
+          );
+        } else {
+          expect(week.latestActivity, isNull);
+        }
+      },
+    );
+  }
+}

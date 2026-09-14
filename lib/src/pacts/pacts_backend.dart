@@ -1,9 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum GoalFrequency { daily, weekly }
+enum PactFrequency { daily, weekly }
 
-class GoalCrew {
-  const GoalCrew({
+class PactCrew {
+  const PactCrew({
     required this.id,
     required this.name,
     required this.timezone,
@@ -15,8 +15,8 @@ class GoalCrew {
   final bool isOwner;
 }
 
-class CrewGoal {
-  const CrewGoal({
+class CrewPact {
+  const CrewPact({
     required this.id,
     required this.crewId,
     required this.title,
@@ -27,52 +27,52 @@ class CrewGoal {
   final String id;
   final String crewId;
   final String title;
-  final GoalFrequency frequency;
+  final PactFrequency frequency;
   final int daysPerWeek;
   final String iconKey;
 
-  String get schedule => frequency == GoalFrequency.daily
+  String get schedule => frequency == PactFrequency.daily
       ? 'Every day · 7 days / week'
       : '$daysPerWeek ${daysPerWeek == 1 ? 'day' : 'days'} / week';
 
-  factory CrewGoal.fromJson(Map<String, dynamic> row) => CrewGoal(
+  factory CrewPact.fromJson(Map<String, dynamic> row) => CrewPact(
     id: row['id'] as String,
     crewId: row['crew_id'] as String,
     title: row['title'] as String,
     iconKey: row['icon_key'] as String? ?? 'target',
-    frequency: GoalFrequency.values.byName(row['frequency'] as String),
+    frequency: PactFrequency.values.byName(row['frequency'] as String),
     daysPerWeek: row['days_per_week'] as int,
   );
 }
 
-abstract interface class GoalsBackend {
-  Future<CrewGoal> updateGoal({
-    required String goalId,
+abstract interface class PactsBackend {
+  Future<CrewPact> updatePact({
+    required String pactId,
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
   });
-  Future<List<GoalCrew>> fetchCrews();
-  Future<List<CrewGoal>> fetchGoals(String crewId);
-  Future<CrewGoal> addGoal({
+  Future<List<PactCrew>> fetchCrews();
+  Future<List<CrewPact>> fetchPacts(String crewId);
+  Future<CrewPact> addPact({
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
   });
 }
 
-class SupabaseGoalsBackend implements GoalsBackend {
-  const SupabaseGoalsBackend(this._client);
+class SupabasePactsBackend implements PactsBackend {
+  const SupabasePactsBackend(this._client);
   final SupabaseClient _client;
 
   @override
-  Future<List<GoalCrew>> fetchCrews() async {
+  Future<List<PactCrew>> fetchCrews() async {
     final user = _client.auth.currentUser;
-    if (user == null) throw StateError('Sign in to view your goals.');
+    if (user == null) throw StateError('Sign in to view your pacts.');
     final rows = await _client
         .from('crew_members')
         .select('role,crews!inner(id,name,timezone)')
@@ -81,7 +81,7 @@ class SupabaseGoalsBackend implements GoalsBackend {
     return rows
         .map((row) {
           final crew = row['crews'] as Map<String, dynamic>;
-          return GoalCrew(
+          return PactCrew(
             id: crew['id'] as String,
             name: crew['name'] as String,
             timezone: crew['timezone'] as String,
@@ -92,36 +92,36 @@ class SupabaseGoalsBackend implements GoalsBackend {
   }
 
   @override
-  Future<List<CrewGoal>> fetchGoals(String crewId) async {
+  Future<List<CrewPact>> fetchPacts(String crewId) async {
     final rows = await _client
-        .from('crew_goals')
+        .from('crew_pacts')
         .select()
         .eq('crew_id', crewId)
         .order('created_at');
-    return rows.map(CrewGoal.fromJson).toList(growable: false);
+    return rows.map(CrewPact.fromJson).toList(growable: false);
   }
 
   @override
-  Future<CrewGoal> addGoal({
+  Future<CrewPact> addPact({
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.length < 2 || cleanTitle.length > 100) {
-      throw ArgumentError('Use 2–100 characters for the goal.');
+      throw ArgumentError('Use 2–100 characters for the pact.');
     }
     if (daysPerWeek < 1 ||
         daysPerWeek > 7 ||
-        (frequency == GoalFrequency.daily && daysPerWeek != 7)) {
+        (frequency == PactFrequency.daily && daysPerWeek != 7)) {
       throw ArgumentError('Choose a valid weekly target.');
     }
     final user = _client.auth.currentUser;
-    if (user == null) throw StateError('Sign in to add a goal.');
+    if (user == null) throw StateError('Sign in to add a pact.');
     final row = await _client
-        .from('crew_goals')
+        .from('crew_pacts')
         .insert({
           'crew_id': crewId,
           'title': cleanTitle,
@@ -132,15 +132,15 @@ class SupabaseGoalsBackend implements GoalsBackend {
         })
         .select()
         .single();
-    return CrewGoal.fromJson(row);
+    return CrewPact.fromJson(row);
   }
 
   @override
-  Future<CrewGoal> updateGoal({
-    required String goalId,
+  Future<CrewPact> updatePact({
+    required String pactId,
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
   }) async {
@@ -149,48 +149,48 @@ class SupabaseGoalsBackend implements GoalsBackend {
         cleanTitle.length > 100 ||
         daysPerWeek < 1 ||
         daysPerWeek > 7 ||
-        (frequency == GoalFrequency.daily && daysPerWeek != 7)) {
-      throw ArgumentError('Choose a valid goal name and weekly target.');
+        (frequency == PactFrequency.daily && daysPerWeek != 7)) {
+      throw ArgumentError('Choose a valid pact name and weekly target.');
     }
     if (_client.auth.currentUser == null) {
-      throw StateError('Sign in to edit a goal.');
+      throw StateError('Sign in to edit a pact.');
     }
     final row = await _client
-        .from('crew_goals')
+        .from('crew_pacts')
         .update({
           'title': cleanTitle,
           'frequency': frequency.name,
           'days_per_week': daysPerWeek,
           'icon_key': iconKey,
         })
-        .eq('id', goalId)
+        .eq('id', pactId)
         .eq('crew_id', crewId)
         .select()
         .single();
-    return CrewGoal.fromJson(row);
+    return CrewPact.fromJson(row);
   }
 }
 
-class MissingGoalsBackend implements GoalsBackend {
-  const MissingGoalsBackend();
+class MissingPactsBackend implements PactsBackend {
+  const MissingPactsBackend();
   @override
-  Future<List<GoalCrew>> fetchCrews() async => [];
+  Future<List<PactCrew>> fetchCrews() async => [];
   @override
-  Future<List<CrewGoal>> fetchGoals(String crewId) async => [];
+  Future<List<CrewPact>> fetchPacts(String crewId) async => [];
   @override
-  Future<CrewGoal> addGoal({
+  Future<CrewPact> addPact({
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
-  Future<CrewGoal> updateGoal({
-    required String goalId,
+  Future<CrewPact> updatePact({
+    required String pactId,
     required String crewId,
     required String title,
-    required GoalFrequency frequency,
+    required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
   }) => Future.error(StateError('Supabase is not configured.'));

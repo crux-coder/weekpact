@@ -4,12 +4,12 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
-import 'goal_icons.dart';
-import 'goals_backend.dart';
+import 'pact_icons.dart';
+import 'pacts_backend.dart';
 
 class WeeklyRhythmCard extends StatelessWidget {
-  const WeeklyRhythmCard({super.key, required this.goals});
-  final List<CrewGoal> goals;
+  const WeeklyRhythmCard({super.key, required this.pacts});
+  final List<CrewPact> pacts;
 
   @override
   Widget build(BuildContext context) => AppSurface(
@@ -34,7 +34,7 @@ class WeeklyRhythmCard extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        '${goals.fold<int>(0, (total, goal) => total + goal.daysPerWeek)}',
+                        '${pacts.fold<int>(0, (total, pact) => total + pact.daysPerWeek)}',
                         key: const ValueKey('weekly-rhythm-target'),
                         style: const TextStyle(
                           fontSize: 64,
@@ -94,7 +94,7 @@ class WeeklyRhythmCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Your weekly target across ${goals.length} ${goals.length == 1 ? 'goal' : 'goals'}.',
+            'Your weekly target across ${pacts.length} ${pacts.length == 1 ? 'pact' : 'pacts'}.',
             style: TextStyle(color: context.muted, fontSize: 13),
           ),
         ],
@@ -103,10 +103,10 @@ class WeeklyRhythmCard extends StatelessWidget {
   );
 }
 
-class GoalSquareGrid extends StatelessWidget {
-  const GoalSquareGrid({super.key, required this.goals, this.onEdit});
-  final List<CrewGoal> goals;
-  final ValueChanged<CrewGoal>? onEdit;
+class PactSquareGrid extends StatelessWidget {
+  const PactSquareGrid({super.key, required this.pacts, this.onEdit});
+  final List<CrewPact> pacts;
+  final ValueChanged<CrewPact>? onEdit;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -121,13 +121,13 @@ class GoalSquareGrid extends StatelessWidget {
         spacing: 12,
         runSpacing: 12,
         children: [
-          for (final goal in goals)
+          for (final pact in pacts)
             SizedBox.square(
               dimension: side,
-              child: GoalManagementCard(
-                key: ValueKey('goal-management-${goal.id}'),
-                goal: goal,
-                onEdit: onEdit == null ? null : () => onEdit!(goal),
+              child: PactManagementCard(
+                key: ValueKey('pact-management-${pact.id}'),
+                pact: pact,
+                onEdit: onEdit == null ? null : () => onEdit!(pact),
               ),
             ),
         ],
@@ -136,9 +136,9 @@ class GoalSquareGrid extends StatelessWidget {
   );
 }
 
-class GoalManagementCard extends StatelessWidget {
-  const GoalManagementCard({super.key, required this.goal, this.onEdit});
-  final CrewGoal goal;
+class PactManagementCard extends StatelessWidget {
+  const PactManagementCard({super.key, required this.pact, this.onEdit});
+  final CrewPact pact;
   final VoidCallback? onEdit;
 
   @override
@@ -155,13 +155,13 @@ class GoalManagementCard extends StatelessWidget {
                 height: 40,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: goal.frequency == GoalFrequency.daily
+                  color: pact.frequency == PactFrequency.daily
                       ? WeekPactColors.softYellow
                       : WeekPactColors.mintGreen,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: HugeIcon(
-                  icon: GoalIcon.find(goal.iconKey).data,
+                  icon: PactIcon.find(pact.iconKey).data,
                   color: context.ink,
                   size: 24,
                 ),
@@ -172,7 +172,7 @@ class GoalManagementCard extends StatelessWidget {
                   width: 40,
                   height: 40,
                   child: IconButton(
-                    tooltip: 'Edit ${goal.title}',
+                    tooltip: 'Edit ${pact.title}',
                     onPressed: onEdit,
                     padding: EdgeInsets.zero,
                     icon: HugeIcon(
@@ -189,9 +189,9 @@ class GoalManagementCard extends StatelessWidget {
             child: Align(
               alignment: Alignment.topLeft,
               child: Tooltip(
-                message: goal.title,
+                message: pact.title,
                 child: Text(
-                  goal.title,
+                  pact.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -207,7 +207,7 @@ class GoalManagementCard extends StatelessWidget {
           Divider(height: 1, thickness: 1, color: context.border),
           const SizedBox(height: 8),
           Semantics(
-            label: goal.schedule,
+            label: pact.schedule,
             child: ExcludeSemantics(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -217,7 +217,7 @@ class GoalManagementCard extends StatelessWidget {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      '${goal.daysPerWeek}',
+                      '${pact.daysPerWeek}',
                       style: const TextStyle(
                         fontSize: 32,
                         height: 1,

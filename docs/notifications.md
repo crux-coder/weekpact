@@ -15,15 +15,15 @@ opens the app normally. Both background taps and cold-start taps are captured.
 The top-level background handler is registered and retained in release builds;
 data-only messages currently have no business action.
 
-## Crew goal notifications
+## Crew pact notifications
 
-A successful daily check-in queues `goal_completed` for every other current crew
+A successful daily check-in queues `pact_completed` for every other current crew
 member with an opted-in registered device and an active login session. The sender
-is excluded. Weekly goals also emit on each day's check-in, not only when their
-weekly target is reached. One goal/user/crew-date combination emits at most once,
+is excluded. Weekly pacts also emit on each day's check-in, not only when their
+weekly target is reached. One pact/user/crew-date combination emits at most once,
 even after unchecking and rechecking. Historical check-ins are not backfilled.
 
-Example: **A goal checked off!** — “Ada completed Read.”
+Example: **A pact checked off!** — “Ada completed Read.”
 
 Each type uses the same internal `private.enqueue_crew_notification` API, durable
 outbox, per-device delivery records, worker, and FCM transport. Templates live in
@@ -31,7 +31,7 @@ outbox, per-device delivery records, worker, and FCM transport. Templates live i
 its template and a trusted database event producer that supplies a stable event
 key, crew, actor and payload. Do not let clients supply arbitrary recipients or
 notification text. Payloads include version, type, notification ID, crew ID and
-an optional goal ID. Tapping currently opens the app normally.
+an optional pact ID. Tapping currently opens the app normally.
 
 The outbox commits atomically with the check-in. A transactional `pg_net` wake-up
 requests immediate delivery; `pg_cron` retries due work every minute. Workers claim
@@ -64,7 +64,7 @@ Private keys are never written to the repo or printed. This deployment is alread
 complete for the linked WeekPact Supabase project.
 
 For testing, both users must run the updated mobile build and enable notifications.
-Keep the receiving app in the background and check off a goal that has not already
+Keep the receiving app in the background and check off a pact that has not already
 emitted an event today. No new Firebase or Apple configuration is needed.
 
 ## 1. Create the Firebase project and configure the app

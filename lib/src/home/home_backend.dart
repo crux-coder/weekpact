@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../goals/goals_backend.dart';
+import '../pacts/pacts_backend.dart';
 import 'avatar_url_cache.dart';
 
 class WeekMember {
@@ -41,11 +41,29 @@ class WeekMember {
   final String email;
 }
 
-class GoalCheckIn {
-  const GoalCheckIn(this.goalId, this.userId, this.day);
-  final String goalId;
+class PactCheckIn {
+  const PactCheckIn(this.pactId, this.userId, this.day);
+  final String pactId;
   final String userId;
   final String day;
+}
+
+class CrewActivity {
+  const CrewActivity({
+    required this.pactId,
+    required this.userId,
+    required this.createdAt,
+  });
+
+  final String pactId;
+  final String userId;
+  final DateTime createdAt;
+
+  factory CrewActivity.fromJson(Map<String, dynamic> row) => CrewActivity(
+    pactId: row['pact_id'] as String,
+    userId: row['user_id'] as String,
+    createdAt: DateTime.parse(row['created_at'] as String),
+  );
 }
 
 class CrewWeek {
@@ -53,26 +71,28 @@ class CrewWeek {
     required this.today,
     required this.weekStart,
     required this.timezone,
-    required this.goals,
+    required this.pacts,
     required this.members,
     required this.checkIns,
     this.streakWeeks = 0,
+    this.latestActivity,
   });
+  final CrewActivity? latestActivity;
   final int streakWeeks;
   final String today;
   final String weekStart;
   final String timezone;
-  final List<CrewGoal> goals;
+  final List<CrewPact> pacts;
   final List<WeekMember> members;
-  final List<GoalCheckIn> checkIns;
+  final List<PactCheckIn> checkIns;
 
   factory CrewWeek.fromJson(Map<String, dynamic> row) => CrewWeek(
     streakWeeks: row['streak_weeks'] as int? ?? 0,
     today: row['today'] as String,
     weekStart: row['week_start'] as String,
     timezone: row['timezone'] as String,
-    goals: (row['goals'] as List)
-        .map((g) => CrewGoal.fromJson(Map<String, dynamic>.from(g)))
+    pacts: (row['pacts'] as List)
+        .map((g) => CrewPact.fromJson(Map<String, dynamic>.from(g)))
         .toList(),
     members: (row['members'] as List)
         .map(
@@ -86,8 +106,8 @@ class CrewWeek {
         .toList(),
     checkIns: (row['check_ins'] as List)
         .map(
-          (i) => GoalCheckIn(
-            i['goal_id'] as String,
+          (i) => PactCheckIn(
+            i['pact_id'] as String,
             i['user_id'] as String,
             i['completed_on'] as String,
           ),
@@ -95,10 +115,10 @@ class CrewWeek {
         .toList(),
   );
 
-  int days(String goalId, String userId) => checkIns
+  int days(String pactId, String userId) => checkIns
       .where(
         (i) =>
-            i.goalId == goalId &&
+            i.pactId == pactId &&
             i.userId == userId &&
             i.day.compareTo(weekStart) >= 0 &&
             i.day.compareTo(today) <= 0,
@@ -108,10 +128,10 @@ class CrewWeek {
       .length;
   Set<String> checkedToday(String userId) => checkIns
       .where((i) => i.userId == userId && i.day == today)
-      .map((i) => i.goalId)
+      .map((i) => i.pactId)
       .toSet();
-  int get target => goals.fold(0, (sum, g) => sum + g.daysPerWeek);
-  int completed(String userId) => goals.fold(
+  int get target => pacts.fold(0, (sum, g) => sum + g.daysPerWeek);
+  int completed(String userId) => pacts.fold(
     0,
     (sum, g) => sum + math.min(g.daysPerWeek, days(g.id, userId)),
   );
@@ -123,15 +143,15 @@ class CrewWeek {
                 members.fold(0, (sum, m) => sum + completed(m.id)) /
                 (target * members.length))
             .round();
-  int goalCompleted(CrewGoal goal) => members.fold(
+  int pactCompleted(CrewPact pact) => members.fold(
     0,
-    (sum, m) => sum + math.min(goal.daysPerWeek, days(goal.id, m.id)),
+    (sum, m) => sum + math.min(pact.daysPerWeek, days(pact.id, m.id)),
   );
-  int goalDoneToday(String goalId) =>
-      members.where((m) => checkedToday(m.id).contains(goalId)).length;
+  int pactDoneToday(String pactId) =>
+      members.where((m) => checkedToday(m.id).contains(pactId)).length;
   bool onTrack(String userId) {
     final daysLeft = 7 - DateTime.parse(today).weekday;
-    return goals.every(
+    return pacts.every(
       (g) =>
           days(g.id, userId) +
               daysLeft +
@@ -146,7 +166,7 @@ abstract interface class HomeBackend {
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
-    required Set<String> goalIds,
+    required Set<String> pactIds,
   });
 }
 
@@ -163,6 +183,24 @@ class SupabaseHomeBackend implements HomeBackend {
       ),
     );
     final week = CrewWeek.fromJson(row);
+    // The snapshot supplies today in the crew timezone. Keep activity on that
+    // same date; insertion time only determines which check-in is most recent.
+    final activity = week.pacts.isEmpty || week.members.isEmpty
+        ? null
+        : await client
+              .from('pact_check_ins')
+              .select('pact_id,user_id,created_at')
+              .inFilter('pact_id', week.pacts.map((pact) => pact.id).toList())
+              .inFilter(
+                'user_id',
+                week.members.map((member) => member.id).toList(),
+              )
+              .eq('completed_on', week.today)
+              .order('created_at', ascending: false)
+              .order('pact_id')
+              .order('user_id')
+              .limit(1)
+              .maybeSingle();
     final paths = week.members
         .where((m) => m.avatarPath == '${m.id}/avatar.png')
         .map((m) => m.avatarPath!)
@@ -184,12 +222,13 @@ class SupabaseHomeBackend implements HomeBackend {
       today: week.today,
       weekStart: week.weekStart,
       timezone: week.timezone,
-      goals: week.goals,
+      pacts: week.pacts,
       members: week.members
           .map((m) => m.withAvatar(urls[m.avatarPath]))
           .toList(),
       checkIns: week.checkIns,
       streakWeeks: week.streakWeeks,
+      latestActivity: activity == null ? null : CrewActivity.fromJson(activity),
     );
   }
 
@@ -197,14 +236,14 @@ class SupabaseHomeBackend implements HomeBackend {
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
-    required Set<String> goalIds,
+    required Set<String> pactIds,
   }) async {
     await client.rpc(
-      'save_goal_check_ins',
+      'save_pact_check_ins',
       params: {
         'target_crew_id': crewId,
         'expected_today': today,
-        'selected_goal_ids': goalIds.toList(),
+        'selected_pact_ids': pactIds.toList(),
       },
     );
   }
@@ -219,6 +258,6 @@ class MissingHomeBackend implements HomeBackend {
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
-    required Set<String> goalIds,
+    required Set<String> pactIds,
   }) => Future.error(StateError('Supabase is not configured.'));
 }

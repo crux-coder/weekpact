@@ -43,18 +43,18 @@ void main() {
             builder: (context) {
               themed = context;
               return AppSectionCard(
-                title: 'Weekly goals',
+                title: 'Weekly pacts',
                 builder: (context) => Column(
                   children: [
                     const Text('Small steps start here.'),
                     AppTextField(
-                      label: 'GOAL NAME',
+                      label: 'PACT NAME',
                       hint: 'Read',
                       controller: controller,
                       validator: (_) => null,
                     ),
                     AppButton(
-                      label: 'ADD GOAL',
+                      label: 'ADD PACT',
                       color: WeekPactColors.softCoral,
                       onPressed: () {},
                     ),

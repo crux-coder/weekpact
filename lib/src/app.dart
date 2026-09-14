@@ -10,7 +10,7 @@ import 'notifications/notification_scope.dart';
 
 import 'package:flutter/material.dart';
 
-import 'goals/goals_backend.dart';
+import 'pacts/pacts_backend.dart';
 
 import 'auth/auth_backend.dart';
 import 'auth/auth_gate.dart';
@@ -27,7 +27,7 @@ class WeekPactApp extends StatefulWidget {
     this.initialThemeMode = ThemeMode.system,
     this.onThemeModeChanged,
     this.crewBackend = const MissingCrewBackend(),
-    this.goalsBackend = const MissingGoalsBackend(),
+    this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
     this.inviteLinkSource = const NoopInviteLinkSource(),
   });
@@ -37,7 +37,7 @@ class WeekPactApp extends StatefulWidget {
   final AuthBackend authBackend;
   final NotificationService? notifications;
   final CrewBackend crewBackend;
-  final GoalsBackend goalsBackend;
+  final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
   final InviteLinkSource inviteLinkSource;
 
@@ -126,7 +126,7 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
         home: AuthGate(
           authBackend: widget.authBackend,
           crewBackend: widget.crewBackend,
-          goalsBackend: widget.goalsBackend,
+          pactsBackend: widget.pactsBackend,
           homeBackend: widget.homeBackend,
           inviteLinkSource: widget.inviteLinkSource,
         ),

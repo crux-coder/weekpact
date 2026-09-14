@@ -11,7 +11,7 @@ import 'src/app.dart';
 import 'src/notifications/messaging_client.dart';
 import 'src/notifications/notification_service.dart';
 import 'src/notifications/push_registration.dart';
-import 'src/goals/goals_backend.dart';
+import 'src/pacts/pacts_backend.dart';
 import 'src/auth/auth_backend.dart';
 import 'src/crew/crew_backend.dart';
 import 'src/invites/invite_links.dart';
@@ -26,7 +26,7 @@ Future<void> main() async {
 
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
-  final GoalsBackend goalsBackend;
+  final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
   if (_supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty) {
     await Supabase.initialize(
@@ -35,12 +35,12 @@ Future<void> main() async {
     );
     authBackend = SupabaseAuthBackend(Supabase.instance.client);
     crewBackend = SupabaseCrewBackend(Supabase.instance.client);
-    goalsBackend = SupabaseGoalsBackend(Supabase.instance.client);
+    pactsBackend = SupabasePactsBackend(Supabase.instance.client);
     homeBackend = SupabaseHomeBackend(Supabase.instance.client);
   } else {
     authBackend = const MissingConfigurationAuthBackend();
     crewBackend = const MissingCrewBackend();
-    goalsBackend = const MissingGoalsBackend();
+    pactsBackend = const MissingPactsBackend();
     homeBackend = const MissingHomeBackend();
   }
 
@@ -74,7 +74,7 @@ Future<void> main() async {
       initialThemeMode: themePreference.mode,
       onThemeModeChanged: themePreference.save,
       crewBackend: crewBackend,
-      goalsBackend: goalsBackend,
+      pactsBackend: pactsBackend,
       homeBackend: homeBackend,
       inviteLinkSource: AppLinksInviteLinkSource(),
     ),

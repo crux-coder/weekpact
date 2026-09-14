@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../goals/goals_backend.dart';
+import '../pacts/pacts_backend.dart';
 
 import '../crew/crew_backend.dart';
 import '../home/home_page.dart';
@@ -20,14 +20,14 @@ class AuthGate extends StatefulWidget {
     super.key,
     required this.authBackend,
     required this.crewBackend,
-    this.goalsBackend = const MissingGoalsBackend(),
+    this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
     required this.inviteLinkSource,
   });
 
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
-  final GoalsBackend goalsBackend;
+  final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
   final InviteLinkSource inviteLinkSource;
 
@@ -124,7 +124,7 @@ class _AuthGateState extends State<AuthGate> {
               user: profile,
               authBackend: widget.authBackend,
               crewBackend: widget.crewBackend,
-              goalsBackend: widget.goalsBackend,
+              pactsBackend: widget.pactsBackend,
               homeBackend: widget.homeBackend,
             );
           },

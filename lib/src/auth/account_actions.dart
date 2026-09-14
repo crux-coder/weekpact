@@ -196,7 +196,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'This permanently removes your profile, photo, check-ins, invitations and notification registrations. Goals you created, including everyone’s check-ins on those goals, are removed too.\n\nIf you own a crew, its longest-standing remaining member becomes owner. A crew with no remaining members is deleted. This cannot be undone.',
+            'This permanently removes your profile, photo, check-ins, invitations and notification registrations. Pacts you created, including everyone’s check-ins on those pacts, are removed too.\n\nIf you own a crew, its longest-standing remaining member becomes owner. A crew with no remaining members is deleted. This cannot be undone.',
           ),
           const SizedBox(height: 16),
           TextField(

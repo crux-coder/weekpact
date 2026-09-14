@@ -28,7 +28,7 @@ for (const [user, email, confirmed] of [[owner,'owner@example.com',true],[recipi
   await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,case when $3 then now() else null end)', [user,email,confirmed]);
 }
 await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2),($3,'Other Crew',$4)", [crew,owner,otherCrew,otherOwner]);
-await db.query("insert into crew_goals(crew_id,title,frequency,days_per_week,created_by) values($1,'Morning walk','weekly',3,$2)", [crew,owner]);
+await db.query("insert into crew_pacts(crew_id,title,frequency,days_per_week,created_by) values($1,'Morning walk','weekly',3,$2)", [crew,owner]);
 await db.query("insert into crew_invites(id,crew_id,email,token_hash,invited_by) values($1,$2,'member@example.com',encode(extensions.digest($3,'sha256'),'hex'),$4),($5,$6,'outsider@example.com',repeat('b',64),$7)", [invite,crew,rawToken,owner,otherInvite,otherCrew,otherOwner]);
 await db.query("insert into crew_invites(id,crew_id,email,token_hash,invited_by,created_at,expires_at) values($1,$2,'member@example.com',repeat('c',64),$3,now()-interval '8 days',now()-interval '1 day')", [expired,otherCrew,otherOwner]);
 const inbox = async () => (await db.query('select public.received_crew_invites() as data')).rows[0].data;
@@ -49,11 +49,11 @@ await asUser(recipient, async () => {
   assert.equal(rows[0].id,invite);
   assert.equal(rows[0].name,'Early Birds');
   assert.equal(rows[0].members[0].email,'owner@example.com');
-  assert.equal(rows[0].goals[0].title,'Morning walk');
-  assert.equal(rows[0].goals[0].days_per_week,3);
+  assert.equal(rows[0].pacts[0].title,'Morning walk');
+  assert.equal(rows[0].pacts[0].days_per_week,3);
   assert.ok(!JSON.stringify(rows).includes('token_hash'));
   // Preview access does not grant normal member data access.
-  for (const table of ['crews','crew_members','crew_goals','crew_invites']) {
+  for (const table of ['crews','crew_members','crew_pacts','crew_invites']) {
     assert.equal((await db.query(`select * from ${table}`)).rows.length,0);
   }
 });

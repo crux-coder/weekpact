@@ -11,9 +11,9 @@ const text = (value: unknown, fallback: string, max: number) =>
 
 // Add new notification types here; queueing and transport remain unchanged.
 const templates: Record<string, Renderer> = {
-  goal_completed: (payload) => ({
-    title: "A goal checked off!",
-    body: `${text(payload.actor_name, "A crew member", 60)} completed ${text(payload.goal_title, "a goal", 120)}.`,
+  pact_completed: (payload) => ({
+    title: "A pact checked off!",
+    body: `${text(payload.actor_name, "A crew member", 60)} completed ${text(payload.pact_title, "a pact", 120)}.`,
   }),
 };
 
@@ -23,6 +23,6 @@ export function renderNotification(event: NotificationEvent): PushContent {
   return { ...renderer(event.payload), data: {
     version: "1", type: event.event_type, notification_id: event.event_id,
     crew_id: event.crew_id,
-    ...(typeof event.payload.goal_id === "string" ? { goal_id: event.payload.goal_id } : {}),
+    ...(typeof event.payload.pact_id === "string" ? { pact_id: event.payload.pact_id } : {}),
   } };
 }

@@ -14,6 +14,9 @@ import 'package:weekpact/src/theme/theme_preference.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 
 import 'support/home_fakes.dart';
+
+import 'package:weekpact/src/pacts/pacts_backend.dart';
+
 import 'support/pump_ui.dart';
 import 'widget_test.dart' show FakeAuthBackend, FakeCrewBackend;
 
@@ -29,6 +32,16 @@ void main() {
       final auth = FakeAuthBackend();
       addTearDown(auth.dispose);
       final backend = DashboardBackend();
+      backend.pacts.pacts.add(
+        const CrewPact(
+          id: 'stretch',
+          crewId: 'crew',
+          title: 'Stretch',
+          frequency: PactFrequency.weekly,
+          daysPerWeek: 3,
+          iconKey: 'yoga',
+        ),
+      );
       const capture = ValueKey('design-capture');
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
         final font = FontLoader('RobotoCondensed')
@@ -88,30 +101,51 @@ void main() {
                       ),
                     ],
                   ),
-                goalsBackend: backend.goals,
+                pactsBackend: backend.pacts,
                 homeBackend: backend,
               ),
             ),
           ),
         ),
       );
-      for (final tab in ['home', 'goals', 'crews', 'account']) {
+      for (final tab in ['home', 'pacts', 'crews', 'account']) {
         await tester.tap(find.byKey(ValueKey('nav-$tab')));
         await tester.pumpUi();
         expect(tester.takeException(), isNull);
         if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
-          final boundary = tester.renderObject<RenderRepaintBoundary>(
-            find.byKey(capture),
-          );
-          await tester.runAsync(() async {
-            final image = await boundary.toImage();
-            final bytes = await image.toByteData(
-              format: ui.ImageByteFormat.png,
+          for (final preview
+              in tab == 'home'
+                  ? ['home', 'home-middle', 'home-last', 'home-empty']
+                  : [tab]) {
+            if (preview == 'home-empty') {
+              backend.selected.clear();
+              await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+              await tester.pumpUi();
+              await tester.tap(find.byKey(const ValueKey('nav-home')));
+              await tester.pumpUi();
+              expect(tester.takeException(), isNull);
+            } else if (preview != tab) {
+              await tester.drag(
+                find.byKey(const ValueKey('pact-stack')),
+                const Offset(-320, 0),
+              );
+              await tester.pumpUi();
+              expect(tester.takeException(), isNull);
+            }
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(capture),
             );
-            await File('/tmp/weekpact-${dark ? 'dark' : 'light'}-$tab.png')
-                .writeAsBytes(bytes!.buffer.asUint8List());
-            image.dispose();
-          });
+            await tester.runAsync(() async {
+              final image = await boundary.toImage();
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              await File(
+                '/tmp/weekpact-${dark ? 'dark' : 'light'}-$preview.png',
+              ).writeAsBytes(bytes!.buffer.asUint8List());
+              image.dispose();
+            });
+          }
         }
       }
       await tester.pumpWidget(const SizedBox());

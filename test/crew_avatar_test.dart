@@ -43,15 +43,15 @@ void main() {
         today: original.today,
         weekStart: original.weekStart,
         timezone: 'UTC',
-        goals: original.goals,
+        pacts: original.pacts,
         members: const [
           WeekMember('a', 'a@example.com', displayName: 'Jane Doe'),
           WeekMember('b', 'b@example.com', displayName: 'Sam Lee'),
           WeekMember('c', 'c@example.com', displayName: 'Alex Park'),
         ],
         checkIns: [
-          GoalCheckIn('read', 'a', original.today),
-          GoalCheckIn('read', 'b', original.today),
+          PactCheckIn('read', 'a', original.today),
+          PactCheckIn('read', 'b', original.today),
         ],
       );
       await tester.pumpWidget(

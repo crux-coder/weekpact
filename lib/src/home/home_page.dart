@@ -11,8 +11,8 @@ import 'home_backend.dart';
 
 import 'package:flutter/material.dart';
 
-import '../goals/goals_backend.dart';
-import '../goals/goals_page.dart';
+import '../pacts/pacts_backend.dart';
+import '../pacts/pacts_page.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
@@ -22,6 +22,7 @@ import '../crew/crew_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import 'today_widgets.dart';
+import 'latest_activity_row.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -29,14 +30,14 @@ class HomePage extends StatefulWidget {
     required this.user,
     required this.authBackend,
     required this.crewBackend,
-    this.goalsBackend = const MissingGoalsBackend(),
+    this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
   });
 
   final AuthUser user;
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
-  final GoalsBackend goalsBackend;
+  final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
 
   @override
@@ -51,7 +52,7 @@ class _HomePageState extends State<HomePage> {
       color: WeekPactColors.softYellow,
     ),
     AppNavigationItem(
-      label: 'Goals',
+      label: 'Pacts',
       icon: HugeIconsStrokeRounded.target02,
       color: WeekPactColors.mintGreen,
     ),
@@ -116,14 +117,14 @@ class _HomePageState extends State<HomePage> {
         children: [
           _HomeDestination(
             backend: widget.homeBackend,
-            goalsBackend: widget.goalsBackend,
+            pactsBackend: widget.pactsBackend,
             userId: widget.user.id,
             active: _selectedIndex == 0,
             onOpenCrews: () => _selectDestination(2),
-            onOpenGoals: () => _selectDestination(1),
+            onOpenPacts: () => _selectDestination(1),
           ),
-          GoalsPage(
-            backend: widget.goalsBackend,
+          PactsPage(
+            backend: widget.pactsBackend,
             onOpenCrews: () => _selectDestination(2),
           ),
           CrewPage(
@@ -160,31 +161,31 @@ class _HomePageState extends State<HomePage> {
 class _HomeDestination extends StatefulWidget {
   const _HomeDestination({
     required this.backend,
-    required this.goalsBackend,
+    required this.pactsBackend,
     required this.userId,
     required this.active,
     required this.onOpenCrews,
-    required this.onOpenGoals,
+    required this.onOpenPacts,
   });
   final HomeBackend backend;
-  final GoalsBackend goalsBackend;
+  final PactsBackend pactsBackend;
   final String userId;
   final bool active;
   final VoidCallback onOpenCrews;
-  final VoidCallback onOpenGoals;
+  final VoidCallback onOpenPacts;
   @override
   State<_HomeDestination> createState() => _HomeDestinationState();
 }
 
 class _HomeDestinationState extends State<_HomeDestination>
     with WidgetsBindingObserver {
-  List<GoalCrew>? _crews;
-  GoalCrew? _crew;
+  List<PactCrew>? _crews;
+  PactCrew? _crew;
   CrewWeek? _week;
   String? _error;
   int _request = 0;
   Timer? _timer;
-  String? _savingGoal;
+  String? _savingPact;
   String? _saveError;
 
   @override
@@ -193,7 +194,7 @@ class _HomeDestinationState extends State<_HomeDestination>
     WidgetsBinding.instance.addObserver(this);
     _refresh();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (widget.active && _savingGoal == null) _refresh();
+      if (widget.active && _savingPact == null) _refresh();
     });
   }
 
@@ -214,16 +215,16 @@ class _HomeDestinationState extends State<_HomeDestination>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed &&
         widget.active &&
-        _savingGoal == null) {
+        _savingPact == null) {
       _refresh();
     }
   }
 
   Future<void> _refresh({String? crewId}) async {
-    if (_savingGoal != null) return;
+    if (_savingPact != null) return;
     final request = ++_request;
     try {
-      final crews = await widget.goalsBackend.fetchCrews();
+      final crews = await widget.pactsBackend.fetchCrews();
       if (!mounted || request != _request) return;
       final matches = crews.where((c) => c.id == (crewId ?? _crew?.id));
       final crew = matches.isNotEmpty ? matches.first : crews.firstOrNull;
@@ -244,25 +245,25 @@ class _HomeDestinationState extends State<_HomeDestination>
     }
   }
 
-  Future<void> _toggleGoal(String goalId) async {
+  Future<void> _togglePact(String pactId) async {
     final crew = _crew;
     final week = _week;
-    if (_savingGoal != null || crew == null || week == null) return;
+    if (_savingPact != null || crew == null || week == null) return;
     ++_request; // Discard older reads while saving this selection.
     final selected = week.checkedToday(widget.userId);
-    if (!selected.add(goalId)) selected.remove(goalId);
+    if (!selected.add(pactId)) selected.remove(pactId);
     setState(() {
-      _savingGoal = goalId;
+      _savingPact = pactId;
       _saveError = null;
     });
     try {
       await widget.backend.saveCheckIns(
         crewId: crew.id,
         today: week.today,
-        goalIds: selected,
+        pactIds: selected,
       );
       if (!mounted) return;
-      if (selected.contains(goalId)) {
+      if (selected.contains(pactId)) {
         // Haptics are best-effort and must never turn a saved check-in into an error.
         unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
       }
@@ -272,24 +273,43 @@ class _HomeDestinationState extends State<_HomeDestination>
           streakWeeks: week.streakWeeks,
           weekStart: week.weekStart,
           timezone: week.timezone,
-          goals: week.goals,
+          pacts: week.pacts,
           members: week.members,
+          latestActivity:
+              week.latestActivity?.userId == widget.userId &&
+                  week.latestActivity?.pactId == pactId &&
+                  !selected.contains(pactId)
+              ? null
+              : week.latestActivity,
           checkIns: [
             ...week.checkIns.where(
               (i) => i.userId != widget.userId || i.day != week.today,
             ),
-            ...selected.map((id) => GoalCheckIn(id, widget.userId, week.today)),
+            ...selected.map((id) => PactCheckIn(id, widget.userId, week.today)),
           ],
         );
       });
     } catch (_) {
       if (mounted) {
-        setState(() => _saveError = 'Could not save. Tap the goal to retry.');
+        setState(() => _saveError = 'Could not save. Tap the pact to retry.');
       }
     } finally {
-      if (mounted) setState(() => _savingGoal = null);
+      if (mounted) setState(() => _savingPact = null);
     }
     if (mounted && _saveError == null) await _refresh();
+  }
+
+  Future<void> _openCrewWeek() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CrewWeekPage(
+          crew: _crew!,
+          backend: widget.backend,
+          userId: widget.userId,
+        ),
+      ),
+    );
+    if (mounted) await _refresh();
   }
 
   @override
@@ -306,126 +326,141 @@ class _HomeDestinationState extends State<_HomeDestination>
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (loading) return const TodaySkeleton();
-                if (_error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: context.ink),
-                        ),
-                        TextButton(
-                          onPressed: _refresh,
-                          child: const Text('TRY AGAIN'),
-                        ),
-                      ],
+                // Preserve a complete, non-scrolling composition even when
+                // safe areas or landscape leave less than its minimum height.
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight.clamp(
+                      404 +
+                          LatestActivityRow.height +
+                          (_saveError == null ? 0 : 40),
+                      double.infinity,
                     ),
-                  );
-                }
-                if (_crews != null && _crews!.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Your week starts with a crew.',
-                          style: TextStyle(
-                            color: context.ink,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        AppButton(
-                          label: 'GO TO CREWS',
-
-                          onPressed: widget.onOpenCrews,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                if (week == null) return const SizedBox.shrink();
-                const crewHeight = 180.0;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    CrewTitleBanner(
-                      name: _crew!.name,
-                      completed: week.completed(widget.userId),
-                      target: week.target,
-                    ),
-                    const SizedBox(height: 12),
-                    if (_saveError != null)
-                      SizedBox(
-                        height: 40,
-                        child: Text(
-                          _saveError!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xFFFFB4A9),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      child: week.goals.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'No goals yet.',
-                                    style: TextStyle(
-                                      color: context.ink,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  AppButton(
-                                    label: 'VIEW GOALS',
-
-                                    onPressed: widget.onOpenGoals,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : LayoutBuilder(
-                              builder: (context, space) => TodayGoalsCard(
-                                horizontalBleed: 12,
-                                height: space.maxHeight,
-                                week: week,
-                                userId: widget.userId,
-                                savingGoal: _savingGoal,
-                                onToggle: _toggleGoal,
-                              ),
+                    child: Builder(
+                      builder: (context) {
+                        if (loading) return const TodaySkeleton();
+                        if (_error != null) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: context.ink),
+                                ),
+                                TextButton(
+                                  onPressed: _refresh,
+                                  child: const Text('TRY AGAIN'),
+                                ),
+                              ],
                             ),
-                    ),
-                    const SizedBox(height: 12),
-                    TodayCrewCard(
-                      height: crewHeight,
-                      crewName: _crew!.name,
-                      week: week,
-                      userId: widget.userId,
-                      onOpen: () async {
-                        await Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => CrewWeekPage(
-                              crew: _crew!,
-                              backend: widget.backend,
+                          );
+                        }
+                        if (_crews != null && _crews!.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Your week starts with a crew.',
+                                  style: TextStyle(
+                                    color: context.ink,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                AppButton(
+                                  label: 'GO TO CREWS',
+
+                                  onPressed: widget.onOpenCrews,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (week == null) return const SizedBox.shrink();
+                        const crewHeight = 180.0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            CrewTitleBanner(
+                              name: _crew!.name,
+                              completed: week.completed(widget.userId),
+                              target: week.target,
+                            ),
+                            const SizedBox(height: 12),
+                            LatestActivityRow(
+                              week: week,
                               userId: widget.userId,
+                              onOpen: _openCrewWeek,
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            TodayCrewCard(
+                              height: crewHeight,
+                              crewName: _crew!.name,
+                              week: week,
+                              userId: widget.userId,
+                              onOpen: _openCrewWeek,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_saveError != null)
+                              SizedBox(
+                                height: 40,
+                                child: Text(
+                                  _saveError!,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: const Color(0xFFFFB4A9),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            Expanded(
+                              child: week.pacts.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'No pacts yet.',
+                                            style: TextStyle(
+                                              color: context.ink,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          AppButton(
+                                            label: 'VIEW PACTS',
+
+                                            onPressed: widget.onOpenPacts,
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : LayoutBuilder(
+                                      builder: (context, space) =>
+                                          TodayPactsCard(
+                                            horizontalBleed: 12,
+                                            height: space.maxHeight,
+                                            week: week,
+                                            userId: widget.userId,
+                                            savingPact: _savingPact,
+                                            onToggle: _togglePact,
+                                          ),
+                                    ),
+                            ),
+                          ],
                         );
-                        if (mounted) await _refresh();
                       },
                     ),
-                  ],
+                  ),
                 );
               },
             ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'home_surface.dart';
+import 'latest_activity_row.dart';
 import '../theme/weekpact_theme.dart';
 
 import 'package:card_swiper/card_swiper.dart';
@@ -12,8 +13,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../goals/goal_icons.dart';
-import '../goals/goals_backend.dart';
+import '../pacts/pact_icons.dart';
+import '../pacts/pacts_backend.dart';
 import '../widgets/page_frame.dart';
 import 'home_backend.dart';
 
@@ -168,49 +169,49 @@ class CrewTitleBanner extends StatelessWidget {
   );
 }
 
-class TodayGoalsCard extends StatefulWidget {
-  const TodayGoalsCard({
+class TodayPactsCard extends StatefulWidget {
+  const TodayPactsCard({
     super.key,
     required this.week,
     this.height,
     this.horizontalBleed = 0,
     required this.userId,
-    required this.savingGoal,
+    required this.savingPact,
     required this.onToggle,
   });
   final double? height;
   final double horizontalBleed;
   final CrewWeek week;
   final String userId;
-  final String? savingGoal;
+  final String? savingPact;
   final ValueChanged<String>? onToggle;
   @override
-  State<TodayGoalsCard> createState() => _TodayGoalsCardState();
+  State<TodayPactsCard> createState() => _TodayPactsCardState();
 }
 
-class _TodayGoalsCardState extends State<TodayGoalsCard> {
+class _TodayPactsCardState extends State<TodayPactsCard> {
   final _controller = SwiperController();
   int _index = 0;
-  List<CrewGoal> get _goals => widget.week.goals;
+  List<CrewPact> get _pacts => widget.week.pacts;
 
   @override
-  void didUpdateWidget(covariant TodayGoalsCard oldWidget) {
+  void didUpdateWidget(covariant TodayPactsCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_goals.isEmpty) {
+    if (_pacts.isEmpty) {
       _index = 0;
       return;
     }
-    final previousId = _index < oldWidget.week.goals.length
-        ? oldWidget.week.goals[_index].id
+    final previousId = _index < oldWidget.week.pacts.length
+        ? oldWidget.week.pacts[_index].id
         : null;
-    final retainedIndex = _goals.indexWhere((goal) => goal.id == previousId);
+    final retainedIndex = _pacts.indexWhere((pact) => pact.id == previousId);
     final nextIndex = retainedIndex >= 0
         ? retainedIndex
-        : math.min(_index, _goals.length - 1);
+        : math.min(_index, _pacts.length - 1);
     if (nextIndex != _index) {
       _index = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _goals.isNotEmpty) {
+        if (mounted && _pacts.isNotEmpty) {
           _controller.move(_index, animation: false);
         }
       });
@@ -232,13 +233,13 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final goals = _goals;
-    if (goals.isEmpty) return const SizedBox.shrink();
+    final pacts = _pacts;
+    if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final height = widget.height ?? (370 + math.max(0.0, scale - 1) * 200);
     final cardHeight = math.max(80.0, height - 48);
-    final visibleDots = math.min(5, goals.length);
-    final start = math.max(0, math.min(_index - 2, goals.length - visibleDots));
+    final visibleDots = math.min(5, pacts.length);
+    final start = math.max(0, math.min(_index - 2, pacts.length - visibleDots));
     return SizedBox(
       height: height,
       child: Column(
@@ -268,8 +269,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerRight,
                     child: Text(
-                      '${(_index + 1).toString().padLeft(2, '0')} / ${goals.length.toString().padLeft(2, '0')}',
-                      key: const ValueKey('goal-position'),
+                      '${(_index + 1).toString().padLeft(2, '0')} / ${pacts.length.toString().padLeft(2, '0')}',
+                      key: const ValueKey('pact-position'),
                       style: TextStyle(
                         color: context.muted,
                         fontSize: 16,
@@ -284,102 +285,154 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
           SizedBox(
             height: cardHeight,
             child: LayoutBuilder(
-              builder: (context, space) => OverflowBox(
-                minWidth: space.maxWidth + widget.horizontalBleed * 2,
-                maxWidth: space.maxWidth + widget.horizontalBleed * 2,
-                // Reserve paint space for the stacked cards during transitions.
-                minHeight: cardHeight + 48,
-                maxHeight: cardHeight + 48,
-                child: Swiper(
-                  key: const ValueKey('goal-stack'),
-                  controller: _controller,
-                  itemCount: goals.length,
-                  layout: SwiperLayout.STACK,
-                  itemWidth: space.maxWidth,
-                  itemHeight: cardHeight - 20,
-                  axisDirection: AxisDirection.right,
-                  scrollDirection: Axis.horizontal,
-                  loop: goals.length > 1,
-                  autoplay: false,
-                  duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
-                  onIndexChanged: (index) {
-                    if (index == _index) return;
-                    setState(() => _index = index);
-                    unawaited(
-                      HapticFeedback.selectionClick().catchError((Object _) {}),
-                    );
-                  },
-                  itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 0,
-                      vertical: 2,
-                    ),
-                    child: Builder(
-                      builder: (context) {
-                        // Follow the stack's interpolated transforms, rather
-                        // than snapping offsets when the selected index changes.
-                        var stackScale = 1.0;
-                        var stackX = 0.0;
-                        var transforms = 0;
-                        context.visitAncestorElements((element) {
-                          final ancestor = element.widget;
-                          if (ancestor is Transform) {
-                            if (transforms == 0) {
-                              stackScale = ancestor.transform.storage[0];
-                            } else {
-                              stackX = ancestor.transform.storage[12];
+              builder: (context, space) {
+                final previewCount = math.min(2, pacts.length - 1);
+                final peek = math.min(32.0, space.maxWidth * .085);
+                // Leave equal room on both sides so the active card stays centered.
+                final reserve = previewCount * peek;
+                final width = space.maxWidth - reserve * 2;
+                final viewportWidth =
+                    space.maxWidth + widget.horizontalBleed * 2;
+                final previousTravel = (viewportWidth + width) / 2 - peek * .65;
+                return OverflowBox(
+                  minWidth: space.maxWidth + widget.horizontalBleed * 2,
+                  maxWidth: space.maxWidth + widget.horizontalBleed * 2,
+                  // Reserve paint space for the stacked cards during transitions.
+                  minHeight: cardHeight + 48,
+                  maxHeight: cardHeight + 48,
+                  child: Swiper(
+                    key: const ValueKey('pact-stack'),
+                    controller: _controller,
+                    itemCount: pacts.length,
+                    layout: SwiperLayout.STACK,
+                    itemWidth: width,
+                    itemHeight: cardHeight - 20,
+                    axisDirection: AxisDirection.right,
+                    scrollDirection: Axis.horizontal,
+                    loop: false,
+                    autoplay: false,
+                    duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
+                    onIndexChanged: (index) {
+                      if (index == _index) return;
+                      setState(() => _index = index);
+                      unawaited(
+                        HapticFeedback.selectionClick().catchError(
+                          (Object _) {},
+                        ),
+                      );
+                    },
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 0,
+                        vertical: 2,
+                      ),
+                      child: Builder(
+                        builder: (context) {
+                          // Follow the stack's interpolated transforms, rather
+                          // than snapping offsets when the selected index changes.
+                          var stackScale = 1.0;
+                          var stackX = 0.0;
+                          var transforms = 0;
+                          context.visitAncestorElements((element) {
+                            final ancestor = element.widget;
+                            if (ancestor is Transform) {
+                              if (transforms == 0) {
+                                stackScale = ancestor.transform.storage[0];
+                              } else {
+                                stackX = ancestor.transform.storage[12];
+                              }
+                              transforms++;
                             }
-                            transforms++;
-                          }
-                          return transforms < 2;
-                        });
-                        final depth = (1 - stackScale) / .1;
-                        return Transform.translate(
-                          key: ValueKey('goal-slide-stack-$index'),
-                          offset: stackScale >= 1
-                              ? Offset.zero
-                              : Offset(
-                                  -(space.maxWidth * (1 - stackScale) / 2 +
-                                          stackX) /
-                                      stackScale,
-                                  ((cardHeight - 20) * (1 - stackScale) / 2 +
-                                          depth * 7) /
-                                      stackScale,
+                            return transforms < 2;
+                          });
+                          final depth = ((1 - stackScale) / .1).clamp(0.0, 3.0);
+                          // The swiper scales around the right edge. Cancel its
+                          // native offset so each rear card exposes one strip.
+                          return Transform.translate(
+                            key: ValueKey('pact-slide-stack-$index'),
+                            offset: stackScale >= 1
+                                // Stop the outgoing card with a narrow strip
+                                // still visible at the left edge of the viewport.
+                                ? Offset(
+                                    stackX *
+                                        (previousTravel / viewportWidth - 1),
+                                    0,
+                                  )
+                                : Offset(
+                                    (depth * peek - stackX) / stackScale,
+                                    (depth * 6 -
+                                            (cardHeight - 20) *
+                                                (1 - stackScale) /
+                                                2) /
+                                        stackScale,
+                                  ),
+                            child: IgnorePointer(
+                              ignoring: stackX < -.01,
+                              child: ExcludeSemantics(
+                                excluding: stackX < -.01,
+                                child: Opacity(
+                                  opacity: (previewCount + 1 - depth).clamp(
+                                    0.0,
+                                    1.0,
+                                  ),
+                                  child: SizedBox.expand(
+                                    child: _PactCompletionEffect(
+                                      key: ValueKey(
+                                        'completion-${pacts[index].id}',
+                                      ),
+                                      completed: widget.week
+                                          .checkedToday(widget.userId)
+                                          .contains(pacts[index].id),
+                                      child: _PactCard(
+                                        depth: depth,
+                                        contentOpacity:
+                                            1 -
+                                            .8 *
+                                                (-stackX / viewportWidth).clamp(
+                                                  0.0,
+                                                  1.0,
+                                                ),
+                                        previewWidth: peek,
+                                        stackScale: stackScale,
+                                        key: ValueKey(pacts[index].id),
+                                        pact: pacts[index],
+                                        week: widget.week,
+                                        userId: widget.userId,
+                                        color:
+                                            [
+                                              WeekPactColors.cream,
+                                              WeekPactColors.softYellow,
+                                              const Color(0xFFF9DCDD),
+                                            ][widget.week.pacts.indexOf(
+                                                  pacts[index],
+                                                ) %
+                                                3],
+                                        busy:
+                                            widget.savingPact ==
+                                            pacts[index].id,
+                                        onToggle:
+                                            widget.savingPact != null ||
+                                                widget.onToggle == null
+                                            ? null
+                                            : () => widget.onToggle!(
+                                                pacts[index].id,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                          child: SizedBox.expand(
-                            child: _GoalCompletionEffect(
-                              key: ValueKey('completion-${goals[index].id}'),
-                              completed: widget.week
-                                  .checkedToday(widget.userId)
-                                  .contains(goals[index].id),
-                              child: _GoalCard(
-                                key: ValueKey(goals[index].id),
-                                goal: goals[index],
-                                week: widget.week,
-                                userId: widget.userId,
-                                color: [
-                                  WeekPactColors.cream,
-                                  WeekPactColors.softYellow,
-                                  const Color(0xFFE0EED4),
-                                ][widget.week.goals.indexOf(goals[index]) % 3],
-                                busy: widget.savingGoal == goals[index].id,
-                                onToggle:
-                                    widget.savingGoal != null ||
-                                        widget.onToggle == null
-                                    ? null
-                                    : () => widget.onToggle!(goals[index].id),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-          if (goals.length > 1) ...[
+          if (pacts.length > 1) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -387,7 +440,7 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
                   Semantics(
                     selected: dot == _index,
                     child: IconButton(
-                      tooltip: 'Goal ${dot + 1} of ${goals.length}',
+                      tooltip: 'Pact ${dot + 1} of ${pacts.length}',
                       onPressed: () => _goTo(dot),
                       style: IconButton.styleFrom(
                         minimumSize: Size.zero,
@@ -420,8 +473,8 @@ class _TodayGoalsCardState extends State<TodayGoalsCard> {
 }
 
 /// Celebrates a confirmed state change, never the tap or an initial load.
-class _GoalCompletionEffect extends StatefulWidget {
-  const _GoalCompletionEffect({
+class _PactCompletionEffect extends StatefulWidget {
+  const _PactCompletionEffect({
     super.key,
     required this.completed,
     required this.child,
@@ -429,17 +482,17 @@ class _GoalCompletionEffect extends StatefulWidget {
   final bool completed;
   final Widget child;
   @override
-  State<_GoalCompletionEffect> createState() => _GoalCompletionEffectState();
+  State<_PactCompletionEffect> createState() => _PactCompletionEffectState();
 }
 
-class _GoalCompletionEffectState extends State<_GoalCompletionEffect>
+class _PactCompletionEffectState extends State<_PactCompletionEffect>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animation = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 650),
   );
   @override
-  void didUpdateWidget(covariant _GoalCompletionEffect oldWidget) {
+  void didUpdateWidget(covariant _PactCompletionEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.completed) _animation.stop();
     if (widget.completed &&
@@ -481,7 +534,7 @@ class _GoalCompletionEffectState extends State<_GoalCompletionEffect>
                     child: Opacity(
                       opacity: pulse,
                       child: Container(
-                        key: const ValueKey('goal-completion-effect'),
+                        key: const ValueKey('pact-completion-effect'),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8DBD70).withValues(alpha: .09),
                           borderRadius: BorderRadius.circular(12),
@@ -528,17 +581,25 @@ class _GoalCompletionEffectState extends State<_GoalCompletionEffect>
   );
 }
 
-class _GoalCard extends StatelessWidget {
-  const _GoalCard({
+class _PactCard extends StatelessWidget {
+  const _PactCard({
     super.key,
-    required this.goal,
+    required this.pact,
     required this.week,
     required this.userId,
     required this.color,
     required this.busy,
     required this.onToggle,
+    this.depth = 0,
+    this.contentOpacity = 1,
+    this.previewWidth = 40,
+    this.stackScale = 1,
   });
-  final CrewGoal goal;
+  final double depth;
+  final double contentOpacity;
+  final double previewWidth;
+  final double stackScale;
+  final CrewPact pact;
   final CrewWeek week;
   final String userId;
   final Color color;
@@ -546,9 +607,9 @@ class _GoalCard extends StatelessWidget {
   final VoidCallback? onToggle;
   @override
   Widget build(BuildContext context) {
-    final checked = week.checkedToday(userId).contains(goal.id);
+    final checked = week.checkedToday(userId).contains(pact.id);
     final start = DateTime.parse(week.weekStart);
-    final completed = week.days(goal.id, userId);
+    final completed = week.days(pact.id, userId);
     return HomeSurface(
       tint: color,
       padding: const EdgeInsets.all(12),
@@ -558,11 +619,17 @@ class _GoalCard extends StatelessWidget {
               362 +
               math.max(0.0, MediaQuery.textScalerOf(context).scale(1) - 1) *
                   340;
-          return FittedBox(
+          final shrink =
+              constraints.maxHeight /
+              math.max(minimumHeight, constraints.maxHeight);
+          final reveal = (1 - depth).clamp(0.0, 1.0);
+          final content = FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
             child: SizedBox(
-              width: constraints.maxWidth,
+              // Compensate for height scaling so the calendar, dashes, and
+              // action still span the entire inner width of the active card.
+              width: constraints.maxWidth / shrink,
               height: math.max(minimumHeight, constraints.maxHeight),
               child: DefaultTextStyle.merge(
                 style: const TextStyle(color: _ink),
@@ -574,9 +641,9 @@ class _GoalCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Tooltip(
-                            message: goal.title,
+                            message: pact.title,
                             child: Text(
-                              goal.title,
+                              pact.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -587,19 +654,7 @@ class _GoalCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: _panel(const Color(0xFFE1E5DC), 12),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: GoalIcon.find(goal.iconKey).data,
-                              color: _ink,
-                              size: 30,
-                            ),
-                          ),
-                        ),
+                        const SizedBox(width: 72, height: 60),
                       ],
                     ),
                     Expanded(
@@ -629,7 +684,7 @@ class _GoalCard extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '/ ${goal.daysPerWeek}',
+                                        '/ ${pact.daysPerWeek}',
                                         style: const TextStyle(
                                           fontSize: 54,
                                           height: 1,
@@ -651,16 +706,17 @@ class _GoalCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             Semantics(
-                              label: 'Weekly goal progress',
-                              value: '$completed of ${goal.daysPerWeek} days',
+                              key: ValueKey('pact-progress-${pact.id}'),
+                              label: 'Weekly pact progress',
+                              value: '$completed of ${pact.daysPerWeek} days',
                               child: Row(
                                 children: List.generate(
-                                  goal.daysPerWeek,
+                                  pact.daysPerWeek,
                                   (i) => Expanded(
                                     child: Container(
                                       height: 10,
                                       margin: EdgeInsets.only(
-                                        right: i == goal.daysPerWeek - 1
+                                        right: i == pact.daysPerWeek - 1
                                             ? 0
                                             : 5,
                                       ),
@@ -686,7 +742,7 @@ class _GoalCard extends StatelessWidget {
                             '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
                         final done = week.checkIns.any(
                           (c) =>
-                              c.goalId == goal.id &&
+                              c.pactId == pact.id &&
                               c.userId == userId &&
                               c.day == day,
                         );
@@ -734,7 +790,7 @@ class _GoalCard extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   Text(
                                     '${date.day}',
-                                    key: ValueKey('goal-date-${goal.id}-$day'),
+                                    key: ValueKey('pact-date-${pact.id}-$day'),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: current
@@ -776,52 +832,198 @@ class _GoalCard extends StatelessWidget {
                       }),
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        key: ValueKey('check-in-${goal.title}'),
-                        onPressed: onToggle,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _ink,
-                          foregroundColor: homePaper,
-                          minimumSize: const Size(0, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    if (checked)
+                      _CompletedCheckIn(
+                        pactTitle: pact.title,
+                        busy: busy,
+                        onUndo: onToggle,
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: ValueKey('check-in-${pact.title}'),
+                          onPressed: onToggle,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _ink,
+                            foregroundColor: homePaper,
+                            minimumSize: const Size(0, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        icon: busy
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Icon(
-                                checked
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                size: 22,
-                              ),
-                        label: Text(
-                          checked ? 'Undo check-in' : 'Mark done',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
+                          icon: busy
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Icon(Icons.radio_button_unchecked, size: 22),
+                          label: Text(
+                            'Mark done',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
+            ),
+          );
+          final fullIconSize = 60 * shrink;
+          // Keep preview icons inside the exposed strip, then grow them around
+          // the same top-right anchor as their card becomes active.
+          final previewSize = math.min(
+            fullIconSize * .6,
+            math.max(8.0, previewWidth - 16),
+          );
+          final renderedIconSize = depth <= 1
+              ? fullIconSize + (previewSize - fullIconSize) * depth
+              : previewSize * (1 - .25 * (depth - 1)).clamp(.5, 1.0);
+          final iconSize = renderedIconSize / stackScale;
+          // Fade foreground content with the gesture while retaining the card tint.
+          return Opacity(
+            key: ValueKey('pact-content-opacity-${pact.id}'),
+            opacity: contentOpacity,
+            child: Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.none,
+              children: [
+                ExcludeSemantics(
+                  excluding: reveal < 1,
+                  child: IgnorePointer(
+                    ignoring: reveal < 1,
+                    child: Opacity(opacity: reveal, child: content),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      key: ValueKey('pact-icon-${pact.id}'),
+                      width: iconSize,
+                      height: iconSize,
+                      decoration: _panel(
+                        color == WeekPactColors.cream
+                            ? WeekPactColors.mintGreen
+                            : Color.lerp(color, _ink, .06)!,
+                        10 * shrink,
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: PactIcon.find(pact.iconKey).data,
+                          color: _ink,
+                          size: iconSize * .6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },
       ),
     );
   }
+}
+
+class _CompletedCheckIn extends StatelessWidget {
+  const _CompletedCheckIn({
+    required this.pactTitle,
+    required this.busy,
+    required this.onUndo,
+  });
+
+  final String pactTitle;
+  final bool busy;
+  final VoidCallback? onUndo;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 48,
+    decoration: BoxDecoration(
+      color: WeekPactColors.mintGreen,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    padding: const EdgeInsets.only(left: 10, right: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF4C8050),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Semantics(
+                    liveRegion: true,
+                    child: const Text(
+                      'Checked in today',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Container(width: 1, height: 24, color: _ink.withValues(alpha: .10)),
+        SizedBox(
+          width: 56,
+          height: 48,
+          child: Tooltip(
+            message: 'Undo check-in',
+            child: TextButton(
+              key: ValueKey('check-in-$pactTitle'),
+              onPressed: busy ? null : onUndo,
+              style: TextButton.styleFrom(
+                foregroundColor: _ink,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: busy
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF4C8050),
+                      ),
+                    )
+                  : const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Undo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class TodayCrewCard extends StatelessWidget {
@@ -874,88 +1076,122 @@ class TodayCrewCard extends StatelessWidget {
                       minimum,
                       available - minimum,
                     );
-                    return CustomPaint(
-                      foregroundPainter: _CrewConnectionPainter(checkedWidth),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            key: const ValueKey('checked-tile'),
-                            width: checkedWidth,
-                            child: _groupTile(
-                              context,
-                              title: 'Checked in · ${checked.length}',
-                              members: checked,
-                              done: true,
-                            ),
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          key: const ValueKey('checked-tile'),
+                          width: checkedWidth,
+                          child: _groupTile(
+                            context,
+                            title: 'Checked in · ${checked.length}',
+                            members: checked,
+                            done: true,
                           ),
-                          const SizedBox(width: 6),
-                          SizedBox(
-                            key: const ValueKey('pending-tile'),
-                            width: available - checkedWidth,
-                            child: _groupTile(
-                              context,
-                              title: 'Not yet · ${pending.length}',
-                              members: pending,
-                              done: false,
-                            ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          key: const ValueKey('pending-tile'),
+                          width: available - checkedWidth,
+                          child: _groupTile(
+                            context,
+                            title: 'Not yet · ${pending.length}',
+                            members: pending,
+                            done: false,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   },
                 );
               },
             ),
           ),
-          SizedBox(
-            height: 42,
+          Container(
+            key: const ValueKey('crew-streak'),
+            height: 62,
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF242724),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.local_fire_department,
-                  color: Color(0xFFFF982B),
-                  size: 22,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: WeekPactColors.black,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Color(0xFFFF982B),
+                    size: 24,
+                  ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 10),
                 Expanded(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
-                      style: TextStyle(color: context.ink, fontSize: 13),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          week.streakWeeks == 0
+                              ? 'Week 1'
+                              : '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
+                          style: const TextStyle(
+                            color: WeekPactColors.darkInk,
+                            fontSize: 13,
+                            height: 1.1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          week.streakWeeks == 0
+                              ? 'Start your first crew streak'
+                              : 'Keep your crew streak going',
+                          style: const TextStyle(
+                            color: WeekPactColors.darkMuted,
+                            fontSize: 11,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Tooltip(
-                      message: 'View week',
-                      child: TextButton(
-                        onPressed: onOpen,
-                        style: TextButton.styleFrom(
-                          foregroundColor: context.ink,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Open crew',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 92,
+                  child: Tooltip(
+                    message: 'View week',
+                    child: TextButton(
+                      onPressed: onOpen,
+                      style: TextButton.styleFrom(
+                        foregroundColor: WeekPactColors.darkInk,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Open crew',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                               ),
-                              SizedBox(width: 5),
-                              Icon(Icons.north_east, size: 16),
-                            ],
-                          ),
+                            ),
+                            SizedBox(width: 5),
+                            Icon(Icons.north_east, size: 16),
+                          ],
                         ),
                       ),
                     ),
@@ -1004,12 +1240,31 @@ class TodayCrewCard extends StatelessWidget {
               key: ValueKey(done ? 'checked-members' : 'pending-members'),
               child: members.isEmpty
                   ? Center(
-                      child: Text(
-                        done ? 'No check-ins yet' : 'All checked in',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF646B60),
-                          fontSize: 12,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (done) ...[
+                                const Icon(
+                                  Icons.hourglass_empty_rounded,
+                                  color: Color(0xFF748368),
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                              Text(
+                                done ? 'No one yet' : 'All checked in',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF646B60),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     )
@@ -1049,7 +1304,7 @@ class TodayCrewCard extends StatelessWidget {
           48.0,
           math.max(1.0, math.min(space.maxWidth - 16, space.maxHeight - 18)),
         );
-        final step = size * .72;
+        final step = size + 10;
         final capacity = math.max(
           1,
           ((space.maxWidth - 16 - size) / math.max(1, step)).floor() + 1,
@@ -1123,7 +1378,6 @@ class TodayCrewCard extends StatelessWidget {
     double size,
   ) {
     final ink = _ink;
-    final statusColor = done ? WeekPactColors.success : WeekPactColors.warning;
     final fallback = Center(
       child: Text(
         member.initials,
@@ -1147,11 +1401,9 @@ class TodayCrewCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Container(
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: homePaper,
-                        border: Border.all(color: statusColor, width: 1),
                       ),
                       child: ClipOval(
                         child: member.avatarUrl == null
@@ -1280,6 +1532,51 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                 ),
               ),
               const SizedBox(height: 12),
+              HomeSurface(
+                key: const ValueKey('skeleton-latest-activity'),
+                tint: WeekPactColors.cream,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: SizedBox(
+                  height: LatestActivityRow.height,
+                  child: Row(
+                    children: [
+                      const Expanded(child: SkeletonBar(height: 12)),
+                      const SizedBox(width: 16),
+                      const SkeletonBar(width: 40, height: 10),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                key: const ValueKey('skeleton-crew-board'),
+                height: 180,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _crewTile(WeekPactColors.mintGreen),
+                          const SizedBox(width: 6),
+                          _crewTile(WeekPactColors.cream),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 42,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          SkeletonBar(width: 95, height: 12),
+                          SkeletonBar(width: 70, height: 12),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Expanded(
                 child: Column(
                   children: [
@@ -1300,18 +1597,35 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                           clipBehavior: Clip.none,
                           children: [
                             Positioned(
-                              left: 10,
-                              right: 10,
-                              bottom: -7,
-                              height: 24,
+                              left: 42,
+                              right: 0,
+                              top: 6,
+                              bottom: 6,
                               child: HomeSurface(
                                 tint: WeekPactColors.softYellow,
-                                child: SizedBox(),
+                                child: Align(
+                                  alignment: Alignment.topRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      0,
+                                      28,
+                                      8,
+                                      0,
+                                    ),
+                                    child: SkeletonBar(
+                                      width: 24,
+                                      height: 24,
+                                      radius: 7,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             Positioned.fill(
+                              left: 32,
+                              right: 32,
                               child: HomeSurface(
-                                key: const ValueKey('skeleton-goal-card'),
+                                key: const ValueKey('skeleton-pact-card'),
                                 tint: WeekPactColors.cream,
                                 padding: const EdgeInsets.all(12),
                                 child: LayoutBuilder(
@@ -1421,87 +1735,10 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                key: const ValueKey('skeleton-crew-board'),
-                height: 180,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _crewTile(WeekPactColors.mintGreen),
-                          const SizedBox(width: 6),
-                          _crewTile(WeekPactColors.cream),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: 42,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SkeletonBar(width: 95, height: 12),
-                          SkeletonBar(width: 70, height: 12),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
       ),
     ),
   );
-}
-
-/// Joins the facing edges without changing either tile's layout or hit targets.
-class _CrewConnectionPainter extends CustomPainter {
-  const _CrewConnectionPainter(this.split);
-  final double split;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.height < 48) return;
-    final left = split - 1;
-    final right = split + 7;
-    final middle = split + 3;
-    const top = 18.0;
-    final bottom = size.height - top;
-    final upper = Path()
-      ..moveTo(left, top)
-      ..cubicTo(left, top + 12, right, top + 12, right, top);
-    final lower = Path()
-      ..moveTo(right, bottom)
-      ..cubicTo(right, bottom - 12, left, bottom - 12, left, bottom);
-    final bridge = Path()
-      ..addPath(upper, Offset.zero)
-      ..lineTo(right, bottom)
-      ..cubicTo(right, bottom - 12, left, bottom - 12, left, bottom)
-      ..close();
-    canvas.save();
-    canvas.clipPath(bridge);
-    canvas.drawRect(
-      Rect.fromLTRB(left, top, middle, bottom),
-      Paint()..color = WeekPactColors.mintGreen,
-    );
-    canvas.drawRect(
-      Rect.fromLTRB(middle, top, right, bottom),
-      Paint()..color = WeekPactColors.cream,
-    );
-    canvas.restore();
-    final outline = Paint()
-      ..color = homeInk.withValues(alpha: .10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawPath(upper, outline);
-    canvas.drawPath(lower, outline);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CrewConnectionPainter oldDelegate) =>
-      split != oldDelegate.split;
 }

@@ -8,7 +8,7 @@ The app uses flat, outlined surfaces, condensed typography, compact spacing, and
 - `lib/src/widgets/app_components.dart`: `AppSurface`, `AppSectionCard`, `AppButton`, `AppTextField`, and `AppBottomNavigationBar`. Section cards integrate their title/selector and optional actions within the same unbroken fill, without a colored header strip.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
 - `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement.
-- `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale goal and crew surfaces in both themes.
+- `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces in both themes.
 
 ## Theme behavior
 
@@ -20,11 +20,11 @@ Use a 12px card radius, 8px control radius, 1px outlines, 12px page insets, and 
 
 ## Verification
 
-`flutter test` covers authentication, onboarding, goals, crews, invitations, account/theme switching, carousel behavior, avatar caching, and responsive home layouts. `test/design_preview_test.dart` visits all main destinations in both themes. Run it with `--dart-define=CAPTURE_DESIGN=true` to save eight rendered previews under `/tmp/weekpact-{light,dark}-{home,goals,crews,account}.png`.
+`flutter test` covers authentication, onboarding, pacts, crews, invitations, account/theme switching, carousel behavior, avatar caching, and responsive home layouts. `test/design_preview_test.dart` visits all main destinations in both themes. Run it with `--dart-define=CAPTURE_DESIGN=true` to save eight rendered previews under `/tmp/weekpact-{light,dark}-{home,pacts,crews,account}.png`.
 
-## Goals overview
+## Pacts overview
 
-`lib/src/goals/goals_overview.dart` owns the weekly rhythm summary and square management cards. `WeeklyRhythmCard` sums scheduled days per week (not completions). `GoalSquareGrid` uses two columns when space and text size permit and one column otherwise, keeping cards square. Editing remains owner-only.
+`lib/src/pacts/pacts_overview.dart` owns the weekly rhythm summary and square management cards. `WeeklyRhythmCard` sums scheduled days per week (not completions). `PactSquareGrid` uses two columns when space and text size permit and one column otherwise, keeping cards square. Editing remains owner-only.
 
 ### Crews: people first
 

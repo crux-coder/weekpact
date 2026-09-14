@@ -21,12 +21,12 @@ const user = await api('/auth/v1/admin/users', 'POST', {
 });
 try {
   const [crew] = await api('/rest/v1/crews', 'POST', { name: 'Review Crew', timezone: 'UTC', owner_id: user.id });
-  const goals = await api('/rest/v1/crew_goals', 'POST', [
+  const pacts = await api('/rest/v1/crew_pacts', 'POST', [
     { crew_id: crew.id, created_by: user.id, title: 'Take a short walk', frequency: 'daily', days_per_week: 7, icon_key: 'run' },
     { crew_id: crew.id, created_by: user.id, title: 'Read a chapter', frequency: 'weekly', days_per_week: 3, icon_key: 'book' },
   ]);
-  await api('/rest/v1/goal_check_ins', 'POST', { goal_id: goals[0].id, user_id: user.id, completed_on: new Date().toISOString().slice(0,10) });
-  console.log('Dedicated review account created, email confirmed, with a sample crew, goals and check-in. Add your chosen credentials to App Store Connect Review Information.');
+  await api('/rest/v1/pact_check_ins', 'POST', { pact_id: pacts[0].id, user_id: user.id, completed_on: new Date().toISOString().slice(0,10) });
+  console.log('Dedicated review account created, email confirmed, with a sample crew, pacts and check-in. Add your chosen credentials to App Store Connect Review Information.');
 } catch (error) {
   // This invocation created the account, so rollback cannot delete an existing user.
   try { await api(`/auth/v1/admin/users/${user.id}`, 'DELETE'); }

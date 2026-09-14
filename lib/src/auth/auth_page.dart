@@ -158,7 +158,7 @@ class _AuthPageState extends State<AuthPage> {
                     WelcomeCard(
                       title: _isLogin ? 'Welcome back.' : 'Make it official.',
                       subtitle: _isLogin
-                          ? 'Your people. Your goals. A fresh start today.'
+                          ? 'Your people. Your pacts. A fresh start today.'
                           : 'Build better habits with your people.',
                       color: _isLogin
                           ? WeekPactColors.mintGreen

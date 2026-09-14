@@ -31,7 +31,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
         onThemeModeChanged: (mode) async {
           saved.add(mode);
@@ -113,7 +113,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -137,7 +137,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -158,7 +158,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -201,7 +201,7 @@ void main() {
       WeekPactApp(
         authBackend: auth,
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         inviteLinkSource: FakeInviteLinkSource(
           Uri.parse('weekpact://invite?invite=crew-token'),
         ),
@@ -232,7 +232,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -265,7 +265,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -279,11 +279,11 @@ void main() {
 
     expect(find.text('Early Birds'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
+    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
     await tester.pumpUi();
 
-    expect(find.text('Goals'), findsWidgets);
-    expect(find.text('Your goals'), findsOneWidget);
+    expect(find.text('Pacts'), findsWidgets);
+    expect(find.text('Your pacts'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
@@ -308,7 +308,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -336,14 +336,14 @@ void main() {
     );
   });
 
-  testWidgets('shows daily goals and checks in directly', (tester) async {
+  testWidgets('shows daily pacts and checks in directly', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -355,14 +355,14 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.text('Your goals'), findsNothing);
+    expect(find.text('Your pacts'), findsNothing);
     expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
     expect(find.text('Mark done').hitTestable(), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
     await tester.pumpUi();
-    expect(find.text('Undo check-in'), findsWidgets);
+    expect(find.text('Checked in today'), findsWidgets);
     await tester.tap(
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
@@ -377,7 +377,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -390,7 +390,7 @@ void main() {
     await tester.pumpUi();
 
     final initialHomeX = tester.getTopLeft(find.text('Early Birds')).dx;
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
+    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -400,7 +400,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('Goals'), findsWidgets);
+    expect(find.text('Pacts'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (
@@ -412,7 +412,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -456,7 +456,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -488,7 +488,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -511,7 +511,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
     );
@@ -532,7 +532,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
         crewBackend: crews,
       ),
@@ -590,7 +590,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
-        goalsBackend: DashboardGoals(),
+        pactsBackend: DashboardPacts(),
         authBackend: auth,
         crewBackend: crews,
         inviteLinkSource: links,

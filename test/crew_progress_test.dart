@@ -18,14 +18,14 @@ void main() {
           today: original.today,
           weekStart: original.weekStart,
           timezone: 'UTC',
-          goals: original.goals,
+          pacts: original.pacts,
           members: original.members,
           checkIns: [
             for (final member in original.members.take(count)) ...[
-              GoalCheckIn('move', member.id, original.today),
-              GoalCheckIn('read', member.id, original.today),
+              PactCheckIn('move', member.id, original.today),
+              PactCheckIn('read', member.id, original.today),
             ],
-            GoalCheckIn('read', 'former-member', original.today),
+            PactCheckIn('read', 'former-member', original.today),
           ],
         );
         await tester.pumpWidget(

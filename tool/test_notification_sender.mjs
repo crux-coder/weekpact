@@ -4,9 +4,9 @@ import {renderNotification} from '../supabase/functions/dispatch-notifications/t
 const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
 const exported=await crypto.subtle.exportKey('pkcs8',keys.privateKey);
 const account={project_id:'week-pact',client_email:'test@week-pact.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\n'+Buffer.from(exported).toString('base64')+'\n-----END PRIVATE KEY-----'};
-const event={event_id:'event-123',event_type:'goal_completed',crew_id:'crew-123',payload:{actor_name:'Ada',goal_title:'Read',goal_id:'goal-123'}};
+const event={event_id:'event-123',event_type:'pact_completed',crew_id:'crew-123',payload:{actor_name:'Ada',pact_title:'Read',pact_id:'pact-123'}};
 const content=renderNotification(event);
-assert.equal(content.body,'Ada completed Read.');assert.equal(content.data.type,'goal_completed');
+assert.equal(content.body,'Ada completed Read.');assert.equal(content.data.type,'pact_completed');
 assert.throws(()=>renderNotification({...event,event_type:'unknown'}));
 let oauthCalls=0;let status=200;let code;
 const send=createFcmSender(account,async(url,options)=>{

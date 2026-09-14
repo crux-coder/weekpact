@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../goals/goals_backend.dart';
+import '../pacts/pacts_backend.dart';
 
 class CrewMember {
   const CrewMember({
@@ -64,7 +64,7 @@ class ReceivedCrewInvite {
     required this.timezone,
     required this.expiresAt,
     required this.members,
-    required this.goals,
+    required this.pacts,
   });
 
   final String id;
@@ -73,7 +73,7 @@ class ReceivedCrewInvite {
   final String timezone;
   final DateTime expiresAt;
   final List<CrewMember> members;
-  final List<CrewGoal> goals;
+  final List<CrewPact> pacts;
 
   factory ReceivedCrewInvite.fromJson(Map<String, dynamic> row) =>
       ReceivedCrewInvite(
@@ -92,8 +92,8 @@ class ReceivedCrewInvite {
               ),
             )
             .toList(growable: false),
-        goals: (row['goals'] as List)
-            .map((g) => CrewGoal.fromJson(Map<String, dynamic>.from(g as Map)))
+        pacts: (row['pacts'] as List)
+            .map((g) => CrewPact.fromJson(Map<String, dynamic>.from(g as Map)))
             .toList(growable: false),
       );
 }

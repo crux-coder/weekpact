@@ -19,7 +19,7 @@ class ProfileDashboard extends DashboardBackend {
       today: week.today,
       weekStart: week.weekStart,
       timezone: week.timezone,
-      goals: week.goals,
+      pacts: week.pacts,
       checkIns: week.checkIns,
       members: const [
         WeekMember(
@@ -64,7 +64,7 @@ void main() {
             user: const AuthUser(email: 'owner@example.com'),
             authBackend: auth,
             crewBackend: crews,
-            goalsBackend: home.goals,
+            pactsBackend: home.pacts,
             homeBackend: home,
           ),
         ),

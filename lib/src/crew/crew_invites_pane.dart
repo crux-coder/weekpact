@@ -189,7 +189,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${invite.members.length} ${invite.members.length == 1 ? 'member' : 'members'} · ${invite.goals.length} ${invite.goals.length == 1 ? 'goal' : 'goals'}',
+                        '${invite.members.length} ${invite.members.length == 1 ? 'member' : 'members'} · ${invite.pacts.length} ${invite.pacts.length == 1 ? 'pact' : 'pacts'}',
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -278,27 +278,27 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         ),
       const SizedBox(height: 20),
       const Text(
-        'GOALS',
+        'PACTS',
         style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .7),
       ),
       const SizedBox(height: 10),
-      if (invite.goals.isEmpty)
-        const Text('This crew hasn’t added any goals yet.'),
-      for (final goal in invite.goals)
+      if (invite.pacts.isEmpty)
+        const Text('This crew hasn’t added any pacts yet.'),
+      for (final pact in invite.pacts)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                goal.title,
+                pact.title,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(goal.schedule, style: TextStyle(color: context.muted)),
+              Text(pact.schedule, style: TextStyle(color: context.muted)),
             ],
           ),
         ),
