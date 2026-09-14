@@ -17,6 +17,7 @@ import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
 import '../widgets/page_frame.dart';
 import 'home_backend.dart';
+import 'crew_member_list.dart';
 
 const _ink = homeInk;
 BoxDecoration _panel(
@@ -25,6 +26,7 @@ BoxDecoration _panel(
 ]) => BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius));
 
 class CrewTitleBanner extends StatelessWidget {
+  static const height = 60.0;
   const CrewTitleBanner({
     super.key,
     required this.name,
@@ -36,7 +38,7 @@ class CrewTitleBanner extends StatelessWidget {
   final int target;
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 60,
+    height: height,
     child: LayoutBuilder(
       builder: (context, constraints) => OverflowBox(
         minWidth: constraints.maxWidth + 24,
@@ -1034,12 +1036,15 @@ class TodayCrewCard extends StatelessWidget {
     required this.onOpen,
     this.crewName = '',
     this.height = 180,
+    this.showGroups = true,
   });
   final CrewWeek week;
   final String userId;
   final String crewName;
   final VoidCallback onOpen;
   final double height;
+  final bool showGroups;
+  static const groupHeight = 106.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1057,6 +1062,7 @@ class TodayCrewCard extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(
               builder: (context, space) {
+                if (!showGroups) return const SizedBox.shrink();
                 final available = math.max(0.0, space.maxWidth - 6);
                 final total = checked.length + pending.length;
                 final minimum = math.min(96.0, available / 2);
@@ -1082,9 +1088,9 @@ class TodayCrewCard extends StatelessWidget {
                         SizedBox(
                           key: const ValueKey('checked-tile'),
                           width: checkedWidth,
-                          child: _groupTile(
-                            context,
-                            title: 'Checked in · ${checked.length}',
+                          child: CrewCheckInTile(
+                            userId: userId,
+                            onOpen: onOpen,
                             members: checked,
                             done: true,
                           ),
@@ -1093,9 +1099,9 @@ class TodayCrewCard extends StatelessWidget {
                         SizedBox(
                           key: const ValueKey('pending-tile'),
                           width: available - checkedWidth,
-                          child: _groupTile(
-                            context,
-                            title: 'Not yet · ${pending.length}',
+                          child: CrewCheckInTile(
+                            userId: userId,
+                            onOpen: onOpen,
                             members: pending,
                             done: false,
                           ),
@@ -1204,76 +1210,138 @@ class TodayCrewCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _groupTile(
-    BuildContext context, {
-    required String title,
-    required List<WeekMember> members,
-    required bool done,
-  }) => HomeSurface(
+class CrewCheckInTile extends StatelessWidget {
+  const CrewCheckInTile({
+    super.key,
+    required this.members,
+    required this.done,
+    required this.userId,
+    required this.onOpen,
+    this.expansion = 0,
+    this.showDetails = false,
+    this.expandedHeight = TodayCrewCard.groupHeight,
+    this.backend,
+    this.crewId,
+  });
+  final List<WeekMember> members;
+  final bool done;
+  final String userId;
+  final VoidCallback onOpen;
+  final double expansion;
+  final bool showDetails;
+  final double expandedHeight;
+  final HomeBackend? backend;
+  final String? crewId;
+  String get title => '${done ? 'Checked in' : 'Not yet'} · ${members.length}';
+
+  @override
+  Widget build(BuildContext context) => HomeSurface(
     tint: done ? WeekPactColors.mintGreen : WeekPactColors.cream,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: SizedBox(
-            height: 22,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+        Semantics(
+          button: true,
+          hint: showDetails ? 'Collapse members' : 'Show all members',
+          child: InkWell(
+            onTap: onOpen,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              child: SizedBox(
+                height: 22,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: _ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: SizedBox(
-              key: ValueKey(done ? 'checked-members' : 'pending-members'),
-              child: members.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (done) ...[
-                                const Icon(
-                                  Icons.hourglass_empty_rounded,
-                                  color: Color(0xFF748368),
-                                  size: 26,
+          child: showDetails
+              ? ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: expandedHeight - 38,
+                    maxHeight: expandedHeight - 38,
+                    child: Opacity(
+                      opacity: expansion,
+                      child: _memberList(context),
+                    ),
+                  ),
+                )
+              : GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onOpen,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: SizedBox(
+                      key: ValueKey(
+                        done ? 'checked-members' : 'pending-members',
+                      ),
+                      child: members.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
                                 ),
-                                const SizedBox(height: 4),
-                              ],
-                              Text(
-                                done ? 'No one yet' : 'All checked in',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF646B60),
-                                  fontSize: 12,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (done) ...[
+                                        const Icon(
+                                          Icons.hourglass_empty_rounded,
+                                          color: Color(0xFF748368),
+                                          size: 26,
+                                        ),
+                                        const SizedBox(height: 4),
+                                      ],
+                                      Text(
+                                        done ? 'No one yet' : 'All checked in',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Color(0xFF646B60),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  : _members(context, members, done),
-            ),
-          ),
+                            )
+                          : _members(context, members, done),
+                    ),
+                  ),
+                ),
         ),
       ],
     ),
+  );
+
+  Widget _memberList(BuildContext context) => CrewMemberList(
+    members: members,
+    done: done,
+    userId: userId,
+    backend: backend,
+    crewId: crewId,
   );
 
   Widget _members(

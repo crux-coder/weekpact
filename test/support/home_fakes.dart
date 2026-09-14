@@ -45,6 +45,20 @@ class DashboardBackend implements HomeBackend {
   int fetches = 0;
   Completer<CrewWeek>? loading;
   @override
+  Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async =>
+      {};
+  @override
+  Future<CrewNudgeState> sendNudge({
+    required String crewId,
+    required String recipientId,
+  }) async => const CrewNudgeState(CrewNudgeStatus.unavailable);
+  @override
+  Future<List<CrewActivity>> fetchActivity(
+    String crewId, {
+    CrewActivity? before,
+    int limit = 20,
+  }) async => [];
+  @override
   Future<CrewWeek> fetchWeek(String crewId) async {
     fetches++;
     if (failLoad) throw StateError('offline');

@@ -8,6 +8,13 @@ const event={event_id:'event-123',event_type:'pact_completed',crew_id:'crew-123'
 const content=renderNotification(event);
 assert.equal(content.body,'Ada completed Read.');assert.equal(content.data.type,'pact_completed');
 assert.throws(()=>renderNotification({...event,event_type:'unknown'}));
+const nudge = renderNotification({...event,event_type:'crew_nudge',payload:{actor_name:'Jasmin',recipient_id:'recipient'}});
+assert.equal(nudge.title,'A little encouragement');
+assert.equal(nudge.body,"Jasmin is cheering you on. A small step on one pact today counts. You've got this!");
+assert.equal(nudge.data.type,'crew_nudge');
+assert.equal(nudge.data.crew_id,event.crew_id);
+assert.equal(nudge.data.pact_id,undefined);
+assert.ok(renderNotification({...event,event_type:'crew_nudge',payload:{}}).body.startsWith('A crew member is cheering you on.'));
 let oauthCalls=0;let status=200;let code;
 const send=createFcmSender(account,async(url,options)=>{
  if(url.includes('oauth2')) {

@@ -24,6 +24,8 @@
 	<string>????</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a profile photo for your WeekPact account.</string>
+	<key>FirebaseCrashlyticsCollectionEnabled</key>
+	<false/>
 	<key>FirebaseMessagingAutoInitEnabled</key>
 	<false/>
 	<key>UIBackgroundModes</key>

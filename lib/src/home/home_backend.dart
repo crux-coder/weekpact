@@ -1,3 +1,5 @@
+import '../recaps/weekly_recap.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -53,16 +55,44 @@ class CrewActivity {
     required this.pactId,
     required this.userId,
     required this.createdAt,
+    this.completedOn,
+    this.pactTitle,
   });
 
   final String pactId;
   final String userId;
   final DateTime createdAt;
+  final String? completedOn;
+  final String? pactTitle;
 
   factory CrewActivity.fromJson(Map<String, dynamic> row) => CrewActivity(
     pactId: row['pact_id'] as String,
     userId: row['user_id'] as String,
     createdAt: DateTime.parse(row['created_at'] as String),
+    completedOn: row['completed_on'] as String?,
+    pactTitle: (row['crew_pacts'] as Map?)?['title'] as String?,
+  );
+}
+
+enum CrewNudgeStatus { ready, sent, cooldown, checkedIn, unavailable }
+
+class CrewNudgeState {
+  const CrewNudgeState(this.status, {this.nextAllowedAt});
+  final CrewNudgeStatus status;
+  final DateTime? nextAllowedAt;
+
+  factory CrewNudgeState.fromJson(Map<String, dynamic> row) => CrewNudgeState(
+    switch (row['status']) {
+      'ready' => CrewNudgeStatus.ready,
+      'sent' => CrewNudgeStatus.sent,
+      'cooldown' => CrewNudgeStatus.cooldown,
+      'checked_in' => CrewNudgeStatus.checkedIn,
+      'unavailable' => CrewNudgeStatus.unavailable,
+      _ => throw const FormatException('Unknown nudge status'),
+    },
+    nextAllowedAt: row['next_allowed_at'] == null
+        ? null
+        : DateTime.parse(row['next_allowed_at'] as String),
   );
 }
 
@@ -162,7 +192,17 @@ class CrewWeek {
 }
 
 abstract interface class HomeBackend {
+  Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId);
+  Future<CrewNudgeState> sendNudge({
+    required String crewId,
+    required String recipientId,
+  });
   Future<CrewWeek> fetchWeek(String crewId);
+  Future<List<CrewActivity>> fetchActivity(
+    String crewId, {
+    CrewActivity? before,
+    int limit = 20,
+  });
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
@@ -170,10 +210,71 @@ abstract interface class HomeBackend {
   });
 }
 
-class SupabaseHomeBackend implements HomeBackend {
+class SupabaseHomeBackend implements HomeBackend, RecapBackend {
+  @override
+  Future<WeeklyRecap?> fetchRecap(String crewId, {String? markSeen}) =>
+      SupabaseRecapBackend(client).fetchRecap(crewId, markSeen: markSeen);
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
   final SupabaseClient client;
+  @override
+  Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async {
+    final rows = await client.rpc(
+      'crew_nudge_status',
+      params: {'target_crew_id': crewId},
+    );
+    return {
+      for (final row in rows as List)
+        row['recipient_id'] as String: CrewNudgeState.fromJson(
+          Map<String, dynamic>.from(row),
+        ),
+    };
+  }
+
+  @override
+  Future<CrewNudgeState> sendNudge({
+    required String crewId,
+    required String recipientId,
+  }) async => CrewNudgeState.fromJson(
+    Map<String, dynamic>.from(
+      await client.rpc(
+        'send_crew_nudge',
+        params: {'target_crew_id': crewId, 'target_user_id': recipientId},
+      ),
+    ),
+  );
+  @override
+  Future<List<CrewActivity>> fetchActivity(
+    String crewId, {
+    CrewActivity? before,
+    int limit = 20,
+  }) async {
+    var query = client
+        .from('pact_check_ins')
+        .select(
+          'pact_id,user_id,completed_on,created_at,crew_pacts!inner(title,crew_id)',
+        )
+        .eq('crew_pacts.crew_id', crewId);
+    if (before != null) {
+      final timestamp = before.createdAt.toUtc().toIso8601String();
+      // Include the complete primary key to preserve check-ins with equal
+      // timestamps, including several pacts saved in the same transaction.
+      query = query.or(
+        'created_at.lt.$timestamp,'
+        'and(created_at.eq.$timestamp,pact_id.lt.${before.pactId}),'
+        'and(created_at.eq.$timestamp,pact_id.eq.${before.pactId},user_id.lt.${before.userId}),'
+        'and(created_at.eq.$timestamp,pact_id.eq.${before.pactId},user_id.eq.${before.userId},completed_on.lt.${before.completedOn})',
+      );
+    }
+    final rows = await query
+        .order('created_at', ascending: false)
+        .order('pact_id', ascending: false)
+        .order('user_id', ascending: false)
+        .order('completed_on', ascending: false)
+        .limit(limit);
+    return rows.map(CrewActivity.fromJson).toList();
+  }
+
   @override
   Future<CrewWeek> fetchWeek(String crewId) async {
     final row = Map<String, dynamic>.from(
@@ -251,6 +352,20 @@ class SupabaseHomeBackend implements HomeBackend {
 
 class MissingHomeBackend implements HomeBackend {
   const MissingHomeBackend();
+  @override
+  Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<CrewNudgeState> sendNudge({
+    required String crewId,
+    required String recipientId,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<CrewActivity>> fetchActivity(
+    String crewId, {
+    CrewActivity? before,
+    int limit = 20,
+  }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewWeek> fetchWeek(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));

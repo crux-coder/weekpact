@@ -235,7 +235,7 @@ void main() {
     backend.pacts.crews = [];
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    expect(find.text('GO TO CREWS'), findsOneWidget);
+    expect(find.text('START YOUR CREW'), findsOneWidget);
     expect(find.text('CREW THIS WEEK'), findsNothing);
     expect(backend.fetches, 0);
     await tester.pumpWidget(const SizedBox());

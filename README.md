@@ -55,9 +55,9 @@ Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets
 every pact target. The current week only joins the streak once completed and
-does not break it while in progress. Streaks use current members and pact
-targets, so changing targets recalculates history; members/pacts are excluded
-from weeks before they joined/were created.
+does not break it while in progress. Completed weeks use saved aggregate results, so target edits and membership
+changes cannot erase earned history. The current week stays live; members/pacts
+are excluded from weeks before they joined/were created.
 
 Apply the pact table and its access policies before using the page:
 
@@ -357,6 +357,33 @@ that archive from Xcode; the script verifies it is fresh before opening it.
 
 ## Checks
 
+### Crew nudges
+
+Open **Not yet** on Home to send a motivating push notification with **Nudge**.
+Only other members who have not checked in on the current crew date are eligible.
+Each sender can nudge the same recipient once every **24 hours**, including after
+changing crews. The database owns the cooldown; reopening the list or using another
+device does not reset it. The **Nudged** tooltip shows when another nudge is allowed.
+
+Nudges use the existing notification outbox and target only the selected member's
+active registered devices. If no eligible device is registered, the action is
+unavailable and no cooldown is consumed. Queued nudges are cancelled when the crew
+day changes, the recipient checks in, membership changes, or device sessions expire.
+The notification reads: “Jasmin is cheering you on. A small step on one pact today
+counts. You've got this!” (using the sender's display name).
+
+For a new environment, deploy the updated `dispatch-notifications` function
+before applying `20260914133722_add_crew_nudges.sql`; the existing notification
+credentials and dispatcher schedule are reused.
+
+```sh
+node tool/test_notification_sender.mjs
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_nudges_database.mjs
+flutter test test/crew_nudge_test.dart test/crew_nudge_backend_test.dart
+```
+
+### General checks
+
 ```sh
 deno test --config supabase/functions/invite-crew-member/deno.json --allow-env supabase/functions/invite-crew-member/ses_test.ts
 deno check --config supabase/functions/invite-crew-member/deno.json supabase/functions/invite-crew-member/index.ts
@@ -387,3 +414,10 @@ Account deletion, password recovery, confirmation resend, and privacy/support pa
 are implemented. See [the account deployment and review guide](docs/app-review-accounts.md)
 for the required migration/function deployment, reviewer-account provisioning,
 and device verification steps.
+
+## Launch features
+
+Guided crew setup, native share invitations, immutable weekly results, scheduled
+recaps, first-party product metrics, and optional Crashlytics are described in
+[the launch feature guide](docs/launch-features.md). That guide includes migration
+order, screenshot generation, metric queries, and release verification.

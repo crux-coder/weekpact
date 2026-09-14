@@ -13,7 +13,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="referrer" content="no-referrer" />
-    <meta name="theme-color" content="#F8F5EC" />
+    <meta name="theme-color" content={home ? "#191B19" : "#F7F3E9"} />
     {privatePage && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/app-icon.png" type="image/png" />
@@ -34,7 +34,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <header class="site-header container">
       <a class="wordmark" href="/" aria-label="WeekPact home">WeekPact<span>.</span></a>
       <nav aria-label="Main navigation">
-        {home ? <><a href="#how-it-works">How it works</a><a href="/invite/">Have an invite?</a></> : <a href="/">Back to home</a>}
+        {home ? <><a href="#how-it-works">How it works</a><a class="nav-cta" href="/open/">Open WeekPact ↗</a></> : <a href="/">Back to home</a>}
       </nav>
     </header>
     <slot />

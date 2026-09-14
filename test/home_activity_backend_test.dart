@@ -6,6 +6,63 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 
 void main() {
+  test('history is crew-scoped across dates and paginates tied timestamps', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requests = <Uri>[];
+    server.listen((request) async {
+      requests.add(request.uri);
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(
+        jsonEncode([
+          {
+            'pact_id': '00000000-0000-0000-0000-000000000002',
+            'user_id': '00000000-0000-0000-0000-000000000003',
+            'completed_on': '2026-08-01',
+            'created_at': '2026-08-01T12:00:00.123456Z',
+            'crew_pacts': {'title': 'Older pact', 'crew_id': 'crew'},
+          },
+        ]),
+      );
+      await request.response.close();
+    });
+    final client = SupabaseClient(
+      'http://127.0.0.1:${server.port}',
+      'test-key',
+    );
+    addTearDown(() async {
+      await client.dispose();
+      await server.close(force: true);
+    });
+    final backend = SupabaseHomeBackend(client);
+    final first = await backend.fetchActivity('crew', limit: 1);
+    expect(first.single.pactTitle, 'Older pact');
+    expect(first.single.completedOn, '2026-08-01');
+    await backend.fetchActivity('crew', before: first.single, limit: 1);
+    for (final request in requests) {
+      final query = request.queryParameters;
+      expect(request.path, endsWith('/pact_check_ins'));
+      expect(query['crew_pacts.crew_id'], 'eq.crew');
+      expect(query['select'], contains('crew_pacts!inner(title,crew_id)'));
+      expect(query['completed_on'], isNull);
+      expect(query['offset'], isNull);
+      expect(query['limit'], '1');
+      expect(
+        query['order'],
+        'created_at.desc.nullslast,pact_id.desc.nullslast,user_id.desc.nullslast,completed_on.desc.nullslast',
+      );
+    }
+    expect(requests.first.queryParameters['or'], isNull);
+    final cursor = first.single;
+    const timestamp = '2026-08-01T12:00:00.123456Z';
+    expect(
+      requests.last.queryParameters['or'],
+      '(created_at.lt.$timestamp,'
+      'and(created_at.eq.$timestamp,pact_id.lt.${cursor.pactId}),'
+      'and(created_at.eq.$timestamp,pact_id.eq.${cursor.pactId},user_id.lt.${cursor.userId}),'
+      'and(created_at.eq.$timestamp,pact_id.eq.${cursor.pactId},user_id.eq.${cursor.userId},completed_on.lt.2026-08-01))',
+    );
+  });
+
   for (final hasToday in [true, false]) {
     test(
       'activity uses the crew date and returns ${hasToday ? 'today’s latest check-in' : 'no previous-day fallback'}',

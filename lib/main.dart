@@ -1,3 +1,4 @@
+import 'src/telemetry/telemetry.dart';
 import 'src/home/home_backend.dart';
 
 import 'package:flutter/material.dart';
@@ -24,6 +25,9 @@ const _supabasePublishableKey = String.fromEnvironment(
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final preferences = await SharedPreferences.getInstance();
+  await CrashReporting.instance.initialize(preferences);
+
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
@@ -44,7 +48,6 @@ Future<void> main() async {
     homeBackend = const MissingHomeBackend();
   }
 
-  final preferences = await SharedPreferences.getInstance();
   final themePreference = ThemePreferenceStore(preferences);
   final notifications = NotificationService(
     createClient: FirebaseMessagingClient.create,
@@ -56,6 +59,7 @@ Future<void> main() async {
     },
   );
   if (authBackend is SupabaseAuthBackend) {
+    ProductAnalytics(Supabase.instance.client).start();
     final registration = PushRegistration(
       authBackend,
       notifications,

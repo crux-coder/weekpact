@@ -31,9 +31,9 @@ class FirebaseMessagingClient implements MessagingClient {
         'Push notifications are configured for iOS and Android.',
       );
     }
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    }
     FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
     final messaging = FirebaseMessaging.instance;
     await messaging.setForegroundNotificationPresentationOptions(

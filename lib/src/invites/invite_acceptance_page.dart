@@ -100,7 +100,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                           ),
                           const SizedBox(height: 14),
                           Text(
-                            'This invitation was sent to ${widget.email}. Accept it to join the crew and start the next weekly loop together.',
+                            'You’re signed in as ${widget.email}. Accept this invitation to join the crew and start your week together.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: context.ink,
@@ -159,6 +159,8 @@ String _friendlyError(Object error) {
   for (final known in [
     'Invite is invalid or has already been used',
     'Invite has expired',
+    'This invite link has expired',
+    'Confirm your email before joining',
     'Sign in with the email address that received this invite',
     'You already belong to a crew',
   ]) {

@@ -113,6 +113,9 @@ await db.query("update crew_pacts set frequency='weekly', days_per_week=1, creat
 await db.query("update crew_members set joined_at=now()-interval '28 days' where crew_id=$1", [crew]);
 await db.query('delete from pact_check_ins where pact_id=$1', [pactId]);
 await db.query("insert into pact_check_ins(pact_id,user_id,completed_on) select $1,m.user_id,date_trunc('week',now() at time zone 'UTC')::date - w.days from crew_members m cross join (values(7),(14)) w(days) where m.crew_id=$2", [pactId,crew]);
+// This admin fixture backdates rows. Rebuild its empty snapshots once before
+// testing immutable history; clients cannot delete or rebuild these records.
+await db.query('delete from private.crew_week_results where crew_id=$1', [crew]);
 const streak = async () => (await db.query('select public.crew_weekly_streak($1) as weeks', [crew])).rows[0].weeks;
 await asUser(owner, async () => assert.equal(await streak(), 2));
 await asUser(member, async () => {
@@ -128,10 +131,10 @@ await asUser(member, async () => {
   assert.equal(await streak(), 2);
 });
 await db.query("delete from pact_check_ins where pact_id=$1 and user_id=$2 and completed_on=date_trunc('week',now() at time zone 'UTC')::date-7", [pactId,member]);
-await asUser(owner, async () => assert.equal(await streak(), 0));
+await asUser(owner, async () => assert.equal(await streak(), 2));
 await asUser(member, async () => {
   await save([pactId]);
-  assert.equal(await streak(), 1);
+  assert.equal(await streak(), 3);
 });
 console.log(`${passed} PostgreSQL permission and validation scenarios passed; RLS enabled.`);
 await db.close();

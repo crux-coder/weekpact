@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'dart:math' as math;
+
 import '../theme/weekpact_theme.dart';
 import 'home_backend.dart';
 import 'home_surface.dart';
@@ -13,6 +15,9 @@ class LatestActivityRow extends StatelessWidget {
     required this.userId,
     this.now,
     this.onOpen,
+    this.expansion = 0,
+    this.expandedHeight = height,
+    this.history,
   });
 
   static const height = 64.0;
@@ -20,6 +25,9 @@ class LatestActivityRow extends StatelessWidget {
   final String userId;
   final DateTime? now;
   final VoidCallback? onOpen;
+  final double expansion;
+  final double expandedHeight;
+  final Widget? history;
 
   @override
   Widget build(BuildContext context) {
@@ -43,192 +51,222 @@ class LatestActivityRow extends StatelessWidget {
     final detail = hasActivity ? '${pact.title} · $age' : null;
     final fullMessage =
         'Latest activity: $message${detail == null ? '' : ' · $detail'}';
-    final open = hasActivity ? onOpen : null;
-    return SizedBox(
+    final open = onOpen;
+    final header = SizedBox(
       key: const ValueKey('latest-activity'),
       height: height,
       child: Semantics(
         label: fullMessage,
+        hint: open == null
+            ? null
+            : expansion > 0
+            ? 'Collapse activity history'
+            : 'Expand activity history',
         button: open != null,
         onTap: open,
         child: Tooltip(
           message: fullMessage,
           child: ExcludeSemantics(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: homeInk.withValues(alpha: .12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
+            child: Material(
+              color: WeekPactColors.softYellow,
+              child: Ink(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFEBAF), WeekPactColors.softYellow],
                   ),
-                ],
-              ),
-              child: Material(
-                color: WeekPactColors.softYellow,
-                borderRadius: BorderRadius.circular(16),
-                clipBehavior: Clip.antiAlias,
-                child: Ink(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFFFEBAF), WeekPactColors.softYellow],
+                ),
+                child: InkWell(
+                  onTap: open,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ),
-                  child: InkWell(
-                    onTap: open,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: LayoutBuilder(
-                        builder: (context, space) => Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF6E4B12)
-                                        .withValues(alpha: .24),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                    child: LayoutBuilder(
+                      builder: (context, space) => Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6E4B12)
+                                      .withValues(alpha: .24),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              key: const ValueKey('activity-avatar'),
+                              child: !hasActivity
+                                  ? const ColoredBox(
+                                      color: Color(0xFFFFF3CF),
+                                      child: Icon(
+                                        Icons.wb_sunny_rounded,
+                                        color: Color(0xFFB67B25),
+                                        size: 24,
+                                      ),
+                                    )
+                                  : member.avatarUrl == null
+                                  ? _initials(member)
+                                  : Image.network(
+                                      member.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                      errorBuilder: (_, _, _) =>
+                                          _initials(member),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, space) => FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width: space.maxWidth,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        message,
+                                        maxLines: hasActivity ? 1 : 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: homeInk,
+                                          fontSize: 14,
+                                          height: 1.2,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      if (detail != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          detail,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFF665633),
+                                            fontSize: 12,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (hasActivity &&
+                              space.maxWidth >= 340 &&
+                              MediaQuery.textScalerOf(context).scale(1) <=
+                                  1.3) ...[
+                            const SizedBox(width: 8),
+                            const SizedBox(
+                              width: 48,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.local_fire_department_rounded,
+                                    size: 24,
+                                    color: Color(0xFFE67D45),
+                                    shadows: [
+                                      Shadow(
+                                        color: Color(0xFF82502B),
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 3),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'Keep it up!',
+                                      textScaler: TextScaler.noScaling,
+                                      style: TextStyle(
+                                        color: homeInk,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipOval(
-                                key: const ValueKey('activity-avatar'),
-                                child: !hasActivity
-                                    ? const ColoredBox(
-                                        color: Color(0xFFFFF3CF),
-                                        child: Icon(
-                                          Icons.wb_sunny_rounded,
-                                          color: Color(0xFFB67B25),
-                                          size: 24,
-                                        ),
-                                      )
-                                    : member.avatarUrl == null
-                                    ? _initials(member)
-                                    : Image.network(
-                                        member.avatarUrl!,
-                                        fit: BoxFit.cover,
-                                        gaplessPlayback: true,
-                                        errorBuilder: (_, _, _) =>
-                                            _initials(member),
-                                      ),
-                              ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, space) => FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: SizedBox(
-                                    width: space.maxWidth,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          message,
-                                          maxLines: hasActivity ? 1 : 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: homeInk,
-                                            fontSize: 14,
-                                            height: 1.2,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        if (detail != null) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            detail,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Color(0xFF665633),
-                                              fontSize: 12,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                          ],
+                          if (open != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .28),
+                                shape: BoxShape.circle,
                               ),
-                            ),
-                            if (hasActivity &&
-                                space.maxWidth >= 340 &&
-                                MediaQuery.textScalerOf(context).scale(1) <=
-                                    1.3) ...[
-                              const SizedBox(width: 8),
-                              const SizedBox(
-                                width: 48,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.local_fire_department_rounded,
-                                      size: 24,
-                                      color: Color(0xFFE67D45),
-                                      shadows: [
-                                        Shadow(
-                                          color: Color(0xFF82502B),
-                                          offset: Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 3),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        'Keep it up!',
-                                        textScaler: TextScaler.noScaling,
-                                        style: TextStyle(
-                                          color: homeInk,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            if (open != null) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .28),
-                                  shape: BoxShape.circle,
-                                ),
+                              child: Transform.rotate(
+                                angle: -math.pi / 2 * expansion,
                                 child: const Icon(
                                   Icons.chevron_right_rounded,
                                   color: homeInk,
                                   size: 22,
                                 ),
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+    return Container(
+      key: const ValueKey('activity-container'),
+      height: height + (expandedHeight - height) * expansion,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: homeInk.withValues(alpha: .12),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: ColoredBox(
+          color: WeekPactColors.softYellow,
+          child: Column(
+            children: [
+              header,
+              if (history != null)
+                Expanded(
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      minHeight: expandedHeight - height,
+                      maxHeight: expandedHeight - height,
+                      child: Opacity(opacity: expansion, child: history),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

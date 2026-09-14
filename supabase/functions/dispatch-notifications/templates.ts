@@ -11,6 +11,10 @@ const text = (value: unknown, fallback: string, max: number) =>
 
 // Add new notification types here; queueing and transport remain unchanged.
 const templates: Record<string, Renderer> = {
+  crew_nudge: (payload) => ({
+    title: "A little encouragement",
+    body: `${text(payload.actor_name, "A crew member", 60)} is cheering you on. A small step on one pact today counts. You've got this!`,
+  }),
   pact_completed: (payload) => ({
     title: "A pact checked off!",
     body: `${text(payload.actor_name, "A crew member", 60)} completed ${text(payload.pact_title, "a pact", 120)}.`,

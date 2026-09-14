@@ -1,3 +1,5 @@
+import 'crew_sharing.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pacts/pacts_backend.dart';
@@ -122,7 +124,18 @@ abstract interface class CrewBackend {
   Future<CrewDetails> acceptInvite(String token);
 }
 
-class SupabaseCrewBackend implements CrewBackend {
+class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
+  @override
+  Future<CrewShareLink?> manageShareLink(String crewId, String action) async {
+    final row = await _client.rpc(
+      'manage_crew_share_link',
+      params: {'p_crew': crewId, 'p_action': action},
+    );
+    return row == null
+        ? null
+        : CrewShareLink.fromJson(Map<String, dynamic>.from(row as Map));
+  }
+
   const SupabaseCrewBackend(this._client);
 
   final SupabaseClient _client;
@@ -195,6 +208,11 @@ class SupabaseCrewBackend implements CrewBackend {
     required String timezone,
   }) async {
     final userId = _requireUserId();
+    final existing = await fetchCrew();
+    if (existing != null) {
+      if (existing.ownerId == userId) return existing;
+      throw StateError('You already belong to a crew.');
+    }
     await _client.from('crews').insert({
       'name': name.trim(),
       'timezone': timezone,

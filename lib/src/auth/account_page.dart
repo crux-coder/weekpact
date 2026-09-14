@@ -1,3 +1,4 @@
+import '../telemetry/diagnostics_control.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -107,6 +108,8 @@ class _AccountPageState extends State<AccountPage> {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          const DiagnosticsControl(),
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {

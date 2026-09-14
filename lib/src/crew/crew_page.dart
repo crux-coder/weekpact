@@ -1,3 +1,5 @@
+import 'crew_sharing.dart';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -25,6 +27,7 @@ class CrewPage extends StatefulWidget {
     this.active = true,
     this.onInviteAccepted,
     this.onCrewLeft,
+    this.onCrewCreated,
   });
 
   final HomeBackend? profileBackend;
@@ -33,6 +36,7 @@ class CrewPage extends StatefulWidget {
   final String currentUserEmail;
   final VoidCallback? onInviteAccepted;
   final VoidCallback? onCrewLeft;
+  final ValueChanged<CrewDetails>? onCrewCreated;
 
   @override
   State<CrewPage> createState() => _CrewPageState();
@@ -127,7 +131,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         name: _crewNameController.text,
         timezone: _appTimezone,
       );
-      if (mounted) setState(() => _crew = crew);
+      if (mounted) {
+        setState(() => _crew = crew);
+        widget.onCrewCreated?.call(crew);
+      }
     } catch (error) {
       if (mounted) setState(() => _error = _messageFor(error));
     } finally {
@@ -424,9 +431,28 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_crew != null)
-            _buildCrewState(context, _crew!)
-          else if (_hasLoaded)
+          if (_crew != null) ...[
+            _buildCrewState(context, _crew!),
+            if (_crew!.isOwner && widget.onCrewCreated != null)
+              TextButton.icon(
+                onPressed: () => widget.onCrewCreated!(_crew!),
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Setup guide'),
+              ),
+            if (_crew!.isOwner && widget.backend is CrewSharingBackend) ...[
+              const SizedBox(height: 16),
+              AppSurface(
+                builder: (context) => Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: CrewShareControls(
+                    key: ValueKey(_crew!.id),
+                    backend: widget.backend as CrewSharingBackend,
+                    crewId: _crew!.id,
+                  ),
+                ),
+              ),
+            ],
+          ] else if (_hasLoaded)
             AppSurfaceTheme(builder: (context) => _buildCreateState(context)),
           if (_error != null) ...[
             const SizedBox(height: 18),

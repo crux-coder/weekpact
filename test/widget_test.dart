@@ -551,6 +551,12 @@ void main() {
     await tester.tap(find.text('CREATE CREW'));
     await tester.pumpUi();
 
+    if (find.text('Finish later').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Finish later'));
+      await tester.pumpUi();
+      await tester.tap(find.byKey(const ValueKey('nav-crews')));
+      await tester.pumpUi();
+    }
     expect(find.text('You · Owner'), findsOneWidget);
     expect(find.text('Pending invites'), findsNothing);
     expect(find.text('INVITE SOMEONE'), findsOneWidget);

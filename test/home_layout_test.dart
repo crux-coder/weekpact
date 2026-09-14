@@ -103,7 +103,10 @@ void main() {
               tester.getTopLeft(find.byKey(const ValueKey('nav-home'))).dy,
             ),
           );
-          await tester.drag(board, const Offset(0, -180));
+          await tester.drag(
+            find.byKey(const ValueKey('pending-tile')),
+            const Offset(0, -180),
+          );
           await tester.pumpUi();
           expect(tester.getTopLeft(board), position);
           expect(

@@ -17,7 +17,9 @@ class PactsPage extends StatefulWidget {
     super.key,
     required this.backend,
     required this.onOpenCrews,
+    this.active = true,
   });
+  final bool active;
   final PactsBackend backend;
   final VoidCallback onOpenCrews;
 
@@ -36,6 +38,12 @@ class _PactsPageState extends State<PactsPage> {
   void initState() {
     super.initState();
     _refresh();
+  }
+
+  @override
+  void didUpdateWidget(covariant PactsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _refresh();
   }
 
   Future<void> _refresh() async {
@@ -89,7 +97,7 @@ class _PactsPageState extends State<PactsPage> {
     final pact = await showAppSheet<CrewPact>(
       context: context,
       builder: (_) =>
-          _PactDrawer(crew: crew, backend: widget.backend, pact: existing),
+          PactEditor(crew: crew, backend: widget.backend, pact: existing),
     );
     if (!mounted || pact == null || _selected?.id != pact.crewId) return;
     // Refresh from the server so an overlapping load cannot hide the new pact.
@@ -317,16 +325,21 @@ class _PactsSkeleton extends StatelessWidget {
   );
 }
 
-class _PactDrawer extends StatefulWidget {
-  const _PactDrawer({required this.crew, required this.backend, this.pact});
+class PactEditor extends StatefulWidget {
+  const PactEditor({
+    super.key,
+    required this.crew,
+    required this.backend,
+    this.pact,
+  });
   final CrewPact? pact;
   final PactCrew crew;
   final PactsBackend backend;
   @override
-  State<_PactDrawer> createState() => _PactDrawerState();
+  State<PactEditor> createState() => PactEditorState();
 }
 
-class _PactDrawerState extends State<_PactDrawer> {
+class PactEditorState extends State<PactEditor> {
   final _title = TextEditingController();
   final _form = GlobalKey<FormState>();
   PactFrequency _frequency = PactFrequency.daily;
@@ -416,6 +429,31 @@ class _PactDrawerState extends State<_PactDrawer> {
                 ),
               ],
             ),
+            if (widget.pact == null) ...[
+              const SizedBox(height: 16),
+              const Text('Start small. Make it yours.'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final starter in [
+                    ('Move for 30 min', 'run', 3),
+                    ('Read 20 pages', 'book', 4),
+                    ('A little fresh air', 'target', 5),
+                  ])
+                    ActionChip(
+                      label: Text(starter.$1),
+                      onPressed: _saving
+                          ? null
+                          : () => setState(() {
+                              _title.text = starter.$1;
+                              _iconKey = starter.$2;
+                              _frequency = PactFrequency.weekly;
+                              _days = starter.$3;
+                            }),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             const Text(
               'PACT NAME',
