@@ -53,7 +53,7 @@ class _HomePageState extends State<HomePage> {
     ),
     AppNavigationItem(
       label: 'Pacts',
-      icon: HugeIconsStrokeRounded.target02,
+      icon: HugeIconsStrokeRounded.agreement02,
       color: WeekPactColors.mintGreen,
     ),
     AppNavigationItem(
