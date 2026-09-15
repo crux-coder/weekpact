@@ -99,7 +99,7 @@ class _PactIconPickerState extends State<PactIconPicker> {
                             padding: const EdgeInsets.all(4),
                             foregroundColor: context.ink,
                             backgroundColor: selected
-                                ? context.mint
+                                ? WeekPactColors.coolGrey
                                 : context.surface,
                             side: BorderSide(
                               color: context.border,

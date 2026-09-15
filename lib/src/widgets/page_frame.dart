@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/weekpact_theme.dart';
 import 'viewport_scroll_view.dart';
@@ -39,7 +42,10 @@ class PageFrame extends StatelessWidget {
     );
     if (onRefresh != null) {
       content = RefreshIndicator(
-        onRefresh: onRefresh!,
+        onRefresh: () {
+          unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
+          return onRefresh!();
+        },
         color: context.ink,
         backgroundColor: context.surface,
         child: content,
@@ -71,7 +77,7 @@ class PageHeading extends StatelessWidget {
   const PageHeading(
     this.title, {
     super.key,
-    this.dotColor = WeekPactColors.mintGreen,
+    this.dotColor = WeekPactColors.coolGrey,
   });
   final String title;
   final Color dotColor;

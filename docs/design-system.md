@@ -38,12 +38,16 @@ inbox. Membership confirmation and owner permissions remain in `CrewPage`.
 
 ### Account: profile hub
 
-`AccountPage` uses a sage profile card above square Appearance and Notifications
-tiles, followed by one panel of account actions. `AccountPreferenceTile` keeps
-spacing and hierarchy consistent; larger text or narrow screens use one column.
-`AppearanceChoices` is a compact Light/Dark/Device selector. Existing actions retain
-confirmation and error handling; notification setup details open when needed.
-`ProfileEditor` owns the name-editing form and lifecycle in a bottom sheet.
+`AccountPage` uses the profile-first layout: a sand card with a centered avatar,
+name, email, and pill-shaped Edit profile button. Notifications and optional crash
+report sharing occupy two rows in one offwhite panel. Support and Privacy policy
+are adjacent shortcut tiles, followed by a full-width Log out row and a separate,
+subdued Delete account action. Reset password is omitted from Account; recovery
+remains available through the sign-in flow. The page scrolls on smaller screens
+and with larger text. Existing actions retain confirmation and error handling;
+notification setup details open when needed. `ProfileEditor` owns the name-editing
+form and lifecycle in a bottom sheet. `ProfileAvatar` supports a larger size and
+initials while retaining the existing photo loader.
 
 ### Login, registration, and onboarding
 

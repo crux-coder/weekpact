@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -6,7 +8,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';
 import '../theme/weekpact_theme.dart';
-import 'check_in_camera.dart';
+import 'inline_check_in_camera.dart';
 import 'check_in_photo_frame.dart';
 import 'home_backend.dart';
 
@@ -27,14 +29,7 @@ Future<bool> showPhotoCheckIn({
         context: context,
         builder: (_) => PhotoCheckInSheet(
           pactTitle: pactTitle,
-          capturePhoto:
-              capturePhoto ??
-              () => CheckInCamera.capture(
-                userId: userId,
-                crewId: crewId,
-                pactId: pactId,
-                today: today,
-              ),
+          capturePhoto: capturePhoto,
           save: (bytes) => backend.saveCheckIns(
             crewId: crewId,
             today: today,
@@ -50,38 +45,31 @@ class PhotoCheckInSheet extends StatefulWidget {
   const PhotoCheckInSheet({
     super.key,
     required this.pactTitle,
-    required this.capturePhoto,
+    this.capturePhoto,
     required this.save,
   });
   final String pactTitle;
-  final CheckInPhotoCapture capturePhoto;
+  final CheckInPhotoCapture? capturePhoto;
   final Future<void> Function(Uint8List) save;
   @override
   State<PhotoCheckInSheet> createState() => _PhotoCheckInSheetState();
 }
 
 class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
+  VoidCallback? _cameraAction;
   Uint8List? _photo;
   bool _capturing = false;
   bool _saving = false;
   String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _capture();
-    });
-  }
-
   Future<void> _capture() async {
-    if (_capturing || _saving) return;
+    if (_capturing || _saving || _photo != null) return;
     setState(() {
       _capturing = true;
       _error = null;
     });
     try {
-      final photo = await widget.capturePhoto();
+      final photo = await widget.capturePhoto!();
       if (mounted && photo != null && photo.isNotEmpty) {
         setState(() => _photo = photo);
       }
@@ -167,43 +155,56 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Center(
-            child: SizedBox(
-              width: (MediaQuery.sizeOf(context).height * .4).clamp(
-                120.0,
-                320.0,
-              ),
-              child: CheckInPhotoFrame(
-                child: ColoredBox(
-                  color: const Color(0xFFE5E9E2),
-                  child: _photo == null
-                      ? Center(
-                          child: _capturing
-                              ? const CircularProgressIndicator()
-                              : const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.camera01,
-                                  size: 40,
-                                  color: Color(0xFF687262),
-                                ),
-                        )
-                      : Image.memory(
-                          _photo!,
-                          fit: BoxFit.cover,
-                          semanticLabel: 'Your check-in photo',
-                        ),
+          if (widget.capturePhoto == null && _photo == null)
+            InlineCheckInCamera(
+              onActionChanged: (action) =>
+                  setState(() => _cameraAction = action),
+              onCaptured: (photo) => setState(() => _photo = photo),
+              onBusyChanged: (busy) => setState(() => _capturing = busy),
+            )
+          else ...[
+            Center(
+              child: SizedBox(
+                width: (MediaQuery.sizeOf(context).height * .4).clamp(
+                  120.0,
+                  320.0,
+                ),
+                child: CheckInPhotoFrame(
+                  child: ColoredBox(
+                    color: WeekPactColors.neutralInset,
+                    child: _photo == null
+                        ? Center(
+                            child: _capturing
+                                ? const CircularProgressIndicator()
+                                : const HugeIcon(
+                                    icon: HugeIconsStrokeRounded.camera01,
+                                    size: 40,
+                                    color: WeekPactColors.mutedLight,
+                                  ),
+                          )
+                        : Image.memory(
+                            _photo!,
+                            fit: BoxFit.cover,
+                            semanticLabel: 'Your check-in photo',
+                          ),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _capturing || _saving ? null : _capture,
-            icon: const HugeIcon(
-              icon: HugeIconsStrokeRounded.camera01,
-              size: 20,
+          ],
+          if (_photo != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _saving
+                  ? null
+                  : () => setState(() {
+                      _photo = null;
+                      _cameraAction = null;
+                      _error = null;
+                    }),
+              child: const Text('RETAKE PHOTO'),
             ),
-            label: Text(_photo == null ? 'OPEN CAMERA' : 'RETAKE PHOTO'),
-          ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 8),
             Semantics(
@@ -219,16 +220,86 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
             ),
           ],
           const SizedBox(height: 12),
-          AppButton(
-            key: const ValueKey('submit-photo-check-in'),
-            label: 'CHECK IN',
-            color: _photo == null ? const Color(0xFFE0E3DE) : null,
-            foregroundColor: _photo == null ? const Color(0xFF73796F) : null,
-            isLoading: _saving,
-            onPressed: _photo == null || _capturing ? null : _save,
+          _RotatingCheckInAction(
+            hasPhoto: _photo != null,
+            isLoading: _capturing || _saving,
+            onPressed: _capturing || _saving
+                ? null
+                : _photo != null
+                ? _save
+                : widget.capturePhoto != null
+                ? _capture
+                : _cameraAction,
           ),
         ],
       ),
     ),
+  );
+}
+
+/// One CTA flips from the shutter action to confirmation without accepting taps
+/// on the new action until its label has finished turning into view.
+class _RotatingCheckInAction extends StatefulWidget {
+  const _RotatingCheckInAction({
+    required this.hasPhoto,
+    required this.isLoading,
+    required this.onPressed,
+  });
+  final bool hasPhoto;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+  @override
+  State<_RotatingCheckInAction> createState() => _RotatingCheckInActionState();
+}
+
+class _RotatingCheckInActionState extends State<_RotatingCheckInAction>
+    with SingleTickerProviderStateMixin {
+  late final _rotation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+    value: 1,
+  );
+  bool _previousHasPhoto = false;
+  @override
+  void didUpdateWidget(covariant _RotatingCheckInAction oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hasPhoto != widget.hasPhoto) {
+      _previousHasPhoto = oldWidget.hasPhoto;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _rotation.value = 1;
+      } else {
+        _rotation.forward(from: 0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _rotation,
+    builder: (context, _) {
+      final progress = Curves.easeInOut.transform(_rotation.value);
+      final hasPhoto = progress < .5 ? _previousHasPhoto : widget.hasPhoto;
+      final angle = progress < .5
+          ? -math.pi * progress
+          : math.pi * (1 - progress);
+      return Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, .001)
+          ..rotateX(angle),
+        child: AppButton(
+          key: ValueKey(hasPhoto ? 'submit-photo-check-in' : 'take-picture'),
+          label: hasPhoto ? 'CHECK IN' : 'TAKE PICTURE',
+          isLoading: widget.isLoading,
+          onPressed: _rotation.isCompleted ? widget.onPressed : null,
+        ),
+      );
+    },
   );
 }

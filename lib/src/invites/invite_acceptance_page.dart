@@ -58,7 +58,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
     body: PageFrame(
       header: const PageHeading(
         'Invitation',
-        dotColor: WeekPactColors.mintGreen,
+        dotColor: WeekPactColors.coolGrey,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -89,7 +89,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                       height: 56,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: WeekPactColors.mintGreen,
+                        color: WeekPactColors.coolGrey,
                         borderRadius: BorderRadius.circular(
                           WeekPactMetrics.cardRadius,
                         ),

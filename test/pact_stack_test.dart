@@ -12,6 +12,64 @@ import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'support/home_fakes.dart';
 
 void main() {
+  for (final reducedMotion in [false, true]) {
+    testWidgets(
+      'single card releases edge pull with reduced motion $reducedMotion',
+      (tester) async {
+        final backend = DashboardBackend();
+        backend.pacts.pacts = [backend.pacts.pacts.first];
+        final week = await backend.fetchWeek('crew');
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: reducedMotion),
+              child: Scaffold(
+                body: TodayPactsCard(
+                  week: week,
+                  userId: '',
+                  savingPact: null,
+                  onToggle: (_) {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpUi();
+        final card = find.byKey(ValueKey(week.pacts.single.id));
+        final restingX = tester.getCenter(card).dx;
+        for (final dx in [-140.0, 140.0]) {
+          final pull = await tester.startGesture(tester.getCenter(card));
+          await pull.moveBy(Offset(dx, 0));
+          await tester.pump();
+          expect(
+            (tester.getCenter(card).dx - restingX) * dx.sign,
+            greaterThan(10),
+          );
+          await pull.cancel();
+          await tester.pump();
+          if (reducedMotion) {
+            expect(tester.getCenter(card).dx, closeTo(restingX, 1));
+          } else {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(
+              (tester.getCenter(card).dx - restingX).abs(),
+              greaterThan(1),
+            );
+          }
+          await tester.pumpUi();
+          expect(tester.getCenter(card).dx, closeTo(restingX, 1));
+        }
+        final vertical = await tester.startGesture(tester.getCenter(card));
+        await vertical.moveBy(const Offset(10, 140));
+        await tester.pump();
+        expect(tester.getCenter(card).dx, closeTo(restingX, 1));
+        await vertical.up();
+        await tester.pumpUi();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('cards stay centered and stop at both ends', (tester) async {
     final backend = DashboardBackend();
     backend.pacts.pacts.add(
@@ -89,9 +147,28 @@ void main() {
     }
 
     expectSelected(0);
+    Future<void> expectEdgeBounce(int index, double dx) async {
+      final card = find.byKey(ValueKey(week.pacts[index].id)).hitTestable();
+      final restingX = tester.getCenter(card).dx;
+      final pull = await tester.startGesture(tester.getCenter(card));
+      await pull.moveBy(Offset(dx.sign * 24, 0));
+      await tester.pump();
+      await pull.moveBy(Offset(dx, 0));
+      await tester.pump();
+      final movement = (tester.getCenter(card).dx - restingX) * dx.sign;
+      expect(movement, greaterThan(10));
+      expect(movement, lessThan(dx.abs()));
+      await pull.up();
+      await tester.pumpUi();
+      expect(tester.getCenter(card).dx, closeTo(restingX, 1));
+      expectSelected(index);
+    }
+
+    await expectEdgeBounce(0, 140);
     await swipe(650, 0);
     await swipe(-650, 1);
     await swipe(-650, 2);
+    await expectEdgeBounce(2, -140);
     await swipe(-650, 2);
     await swipe(-650, 2);
     expect(
@@ -469,7 +546,7 @@ void main() {
             .width,
         greaterThan(previewIcon.width),
       );
-      expect(haptics, ['HapticFeedbackType.selectionClick']);
+      expect(haptics, ['HapticFeedbackType.mediumImpact']);
       await tester.tap(find.byTooltip('Pact 2 of 2'));
       await tester.pumpUi();
       expect(haptics, hasLength(1));

@@ -1,5 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:weekpact/src/crew/crew_selection_store.dart';
+import 'package:weekpact/src/crew/crew_switcher.dart';
+import 'package:weekpact/src/crew/crew_page_layout.dart';
+import 'package:weekpact/src/widgets/page_frame.dart';
+import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
@@ -13,6 +21,7 @@ import 'support/pump_ui.dart';
 import 'widget_test.dart' show FakeCrewBackend;
 
 class MultipleCrews extends FakeCrewBackend {
+  Completer<List<PactCrew>>? loading;
   final entries = <CrewDetails>[];
   final fetched = <String>[];
   MultipleCrews() {
@@ -29,15 +38,17 @@ class MultipleCrews extends FakeCrewBackend {
     pendingInvites: [],
   );
   @override
-  Future<List<PactCrew>> fetchCrews() async => [
-    for (final c in entries)
-      PactCrew(
-        id: c.id,
-        name: c.name,
-        timezone: c.timezone,
-        isOwner: c.isOwner,
-      ),
-  ];
+  Future<List<PactCrew>> fetchCrews() async => loading != null
+      ? await loading!.future
+      : [
+          for (final c in entries)
+            PactCrew(
+              id: c.id,
+              name: c.name,
+              timezone: c.timezone,
+              isOwner: c.isOwner,
+            ),
+        ];
   @override
   Future<CrewDetails?> fetchCrew({String? crewId}) async {
     final selected =
@@ -58,6 +69,9 @@ class MultipleCrews extends FakeCrewBackend {
 }
 
 class CrewPacts extends DashboardPacts {
+  Completer<List<PactCrew>>? loading;
+  @override
+  Future<List<PactCrew>> fetchCrews() => loading?.future ?? super.fetchCrews();
   final requested = <String>[];
   @override
   Future<List<CrewPact>> fetchPacts(String crewId) async {
@@ -77,6 +91,66 @@ class CrewHome extends DashboardBackend {
 }
 
 void main() {
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'Pacts and Crews share exact loading geometry at text scale $scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final crews = MultipleCrews()..loading = Completer<List<PactCrew>>();
+        final pacts = CrewPacts()..loading = Completer<List<PactCrew>>();
+        Future<void> render(Widget page) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: WeekPactTheme.dark,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(body: page),
+            ),
+          );
+          await tester.pump();
+        }
+
+        await render(
+          PactsPage(
+            backend: pacts,
+            userId: '',
+            loadWeek: DashboardBackend(pacts: pacts).fetchWeek,
+            onOpenCrews: () {},
+          ),
+        );
+        final skeletonBounds = tester.getRect(find.byType(CrewPageSkeleton));
+        final indicatorBounds = tester.getRect(
+          find.byType(LinearProgressIndicator),
+        );
+        List<Rect> placeholderBounds() => [
+          for (final element in find.byType(SkeletonBar).evaluate())
+            (element.findRenderObject()! as RenderBox).localToGlobal(
+                  Offset.zero,
+                ) &
+                (element.findRenderObject()! as RenderBox).size,
+        ];
+        final placeholders = placeholderBounds();
+        await render(
+          CrewPage(backend: crews, currentUserEmail: 'owner@example.com'),
+        );
+        expect(tester.getRect(find.byType(CrewPageSkeleton)), skeletonBounds);
+        expect(
+          tester.getRect(find.byType(LinearProgressIndicator)),
+          indicatorBounds,
+        );
+        expect(placeholderBounds(), placeholders);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets(
     'create another crew preserves the previous crews and selects the new one',
     (tester) async {
@@ -127,10 +201,14 @@ void main() {
     final crews = MultipleCrews();
     final pacts = CrewPacts()..crews = await crews.fetchCrews();
     final home = CrewHome(pacts);
-    await tester.pumpWidget(
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final store = CrewSelectionStore(preferences);
+    Future<void> launch() => tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
         home: HomePage(
+          crewSelectionStore: store,
           user: const AuthUser(email: 'owner@example.com'),
           authBackend: const MissingConfigurationAuthBackend(),
           crewBackend: crews,
@@ -139,18 +217,40 @@ void main() {
         ),
       ),
     );
+    await launch();
     await tester.pumpUi();
     await tester.tap(find.byTooltip('Switch crew'));
     await tester.pumpUi();
     await tester.tap(find.text('Night Owls').last);
     await tester.pumpUi();
     expect(home.requested.last, 'second');
+    expect(store.read('owner@example.com'), 'second');
+    await tester.pumpWidget(const SizedBox());
+    home.requested.clear();
+    await launch();
+    await tester.pumpUi();
+    expect(home.requested, ['second']);
+    await tester.drag(
+      find.byKey(const ValueKey('home-refresh-viewport')),
+      const Offset(0, 500),
+    );
+    await tester.pumpUi();
+    expect(home.requested.last, 'second');
+    final beforePacts = home.requested.length;
     await tester.tap(find.text('Pacts').last);
     await tester.pumpUi();
-    expect(pacts.requested.last, 'second');
+    expect(home.requested.length, greaterThan(beforePacts));
+    expect(home.requested.last, 'second');
+    final pactsSelectorBounds = tester.getRect(
+      find.byType(CrewSwitcher).hitTestable(),
+    );
     await tester.tap(find.text('Crews').last);
     await tester.pumpUi();
     expect(crews.fetched.last, 'second');
+    expect(
+      tester.getRect(find.byType(CrewSwitcher).hitTestable()),
+      pactsSelectorBounds,
+    );
     await tester.tap(find.byTooltip('Switch crew'));
     await tester.pumpUi();
     await tester.tap(find.text('Early Birds').last);
@@ -158,6 +258,54 @@ void main() {
     await tester.tap(find.text('Home').last);
     await tester.pumpUi();
     expect(home.requested.last, 'crew');
+    expect(store.read('owner@example.com'), 'crew');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saved crews are per account and unavailable crews fall back', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'selected_crew:account-a': 'second',
+    });
+    final preferences = await SharedPreferences.getInstance();
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    final home = CrewHome(pacts);
+    Future<void> launch(String accountId, {String? initialCrewId}) async {
+      await tester.pumpWidget(const SizedBox());
+      home.requested.clear();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomePage(
+            user: AuthUser(id: accountId, email: '$accountId@example.com'),
+            initialCrewId: initialCrewId,
+            crewSelectionStore: CrewSelectionStore(preferences),
+            authBackend: const MissingConfigurationAuthBackend(),
+            crewBackend: crews,
+            pactsBackend: pacts,
+            homeBackend: home,
+          ),
+        ),
+      );
+      await tester.pumpUi();
+    }
+
+    await launch('account-a');
+    expect(home.requested, ['second']);
+    await launch('account-b');
+    expect(home.requested, ['crew']);
+    await launch('account-a');
+    expect(home.requested, ['second']);
+    // Accepting an invitation explicitly selects that crew and remembers it.
+    await launch('account-b', initialCrewId: 'second');
+    await launch('account-b');
+    expect(home.requested, ['second']);
+    pacts.crews = [pacts.crews.first];
+    await launch('account-a');
+    expect(home.requested, ['crew']);
+    expect(preferences.getString('selected_crew:account-a'), 'crew');
+    expect(preferences.getString('selected_crew:account-b'), 'second');
     expect(tester.takeException(), isNull);
   });
 }

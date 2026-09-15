@@ -243,8 +243,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       : 'A few small steps. Better together.',
                   eyebrow: _details ? 'STEP 2 OF 2' : 'STEP 1 OF 2',
                   color: _details
-                      ? WeekPactColors.mintGreen
-                      : WeekPactColors.softYellow,
+                      ? WeekPactColors.coolGrey
+                      : WeekPactColors.stone,
                 ),
                 const SizedBox(height: 8),
                 if (!_details) ...[
@@ -253,7 +253,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       '01',
                       'Find your crew',
                       'Invite your people or join a crew.',
-                      WeekPactColors.mintGreen,
+                      WeekPactColors.coolGrey,
                     ),
                     (
                       '02',

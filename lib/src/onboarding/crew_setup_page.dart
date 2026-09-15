@@ -234,7 +234,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                   ),
                   const SizedBox(height: 24),
                   AppSurface(
-                    fillColor: WeekPactColors.mintGreen,
+                    fillColor: WeekPactColors.stone,
                     builder: (context) => Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(

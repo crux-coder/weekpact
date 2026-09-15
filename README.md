@@ -434,10 +434,10 @@ and `flutter test test/multiple_crews_test.dart` for the focused regression chec
 
 ### Photo check-ins
 
-New check-ins open a camera drawer with a rounded square preview, retake action, and explicit
-submission. Capture is camera-only on supported iOS/Android devices. Images are
-center-cropped to 1024 × 1024 PNG and re-encoded without EXIF metadata. Android can
-recover an interrupted capture when the same user reopens the same pact/day.
+New check-ins open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after
+capture. Retake returns to the live preview. The camera stops when
+the app backgrounds or the preview closes. Microphone access is disabled. Images
+are center-cropped to 1024 × 1024 PNG and re-encoded without EXIF metadata.
 
 Apply `20260915114621_require_check_in_photos.sql`, then redeploy
 `dispatch-notifications` and `delete-account`. Rebuild iOS for the camera usage

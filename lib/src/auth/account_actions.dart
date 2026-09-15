@@ -1,5 +1,9 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
+
+import '../theme/weekpact_theme.dart';
+import '../widgets/app_components.dart';
 
 import '../widgets/app_sheet.dart';
 import '../widgets/settings_row.dart';
@@ -20,8 +24,13 @@ const supportUrl = String.fromEnvironment(
 );
 
 class PublicAccountLinks extends StatelessWidget {
-  const PublicAccountLinks({super.key, this.asRows = false});
+  const PublicAccountLinks({
+    super.key,
+    this.asRows = false,
+    this.asTiles = false,
+  });
   final bool asRows;
+  final bool asTiles;
 
   Future<void> _open(BuildContext context, String url) async {
     try {
@@ -44,7 +53,34 @@ class PublicAccountLinks extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => asRows
+  Widget build(BuildContext context) => asTiles
+      ? IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _tile(
+                  context,
+                  'Support',
+                  supportUrl,
+                  HugeIconsStrokeRounded.customerService,
+                  WeekPactColors.coolGrey,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _tile(
+                  context,
+                  'Privacy policy',
+                  privacyUrl,
+                  HugeIconsStrokeRounded.file02,
+                  WeekPactColors.cream,
+                ),
+              ),
+            ],
+          ),
+        )
+      : asRows
       ? Column(
           children: [
             SettingsRow(
@@ -73,6 +109,34 @@ class PublicAccountLinks extends StatelessWidget {
             ),
           ],
         );
+
+  Widget _tile(
+    BuildContext context,
+    String title,
+    String url,
+    List<List<dynamic>> icon,
+    Color color,
+  ) => AppSurface(
+    fillColor: color,
+    builder: (context) => InkWell(
+      onTap: () => _open(context, url),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            HugeIcon(icon: icon, size: 28, color: context.ink),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class AccountActions extends StatefulWidget {
@@ -80,12 +144,14 @@ class AccountActions extends StatefulWidget {
     super.key,
     required this.backend,
     this.showPasswordReset = true,
+    this.showPublicLinks = true,
     this.enabled = true,
     this.asRows = false,
   });
   final bool asRows;
   final AuthBackend backend;
   final bool showPasswordReset;
+  final bool showPublicLinks;
   final bool enabled;
   @override
   State<AccountActions> createState() => _AccountActionsState();
@@ -156,7 +222,7 @@ class _AccountActionsState extends State<AccountActions> {
                 ),
           child: const Text('Reset password'),
         ),
-      PublicAccountLinks(asRows: widget.asRows),
+      if (widget.showPublicLinks) PublicAccountLinks(asRows: widget.asRows),
       TextButton(
         onPressed: _busy || !widget.enabled ? null : _delete,
         style: TextButton.styleFrom(

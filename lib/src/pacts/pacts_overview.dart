@@ -3,104 +3,111 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
+import '../home/home_backend.dart';
 import '../widgets/app_components.dart';
 import 'pact_icons.dart';
 import 'pacts_backend.dart';
 
-class WeeklyRhythmCard extends StatelessWidget {
-  const WeeklyRhythmCard({super.key, required this.pacts});
-  final List<CrewPact> pacts;
+class YourWeekCard extends StatelessWidget {
+  const YourWeekCard({super.key, required this.week, required this.userId});
+
+  final CrewWeek week;
+  final String userId;
 
   @override
-  Widget build(BuildContext context) => AppSurface(
-    fillColor: WeekPactColors.softYellow,
-    builder: (context) => Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your weekly rhythm',
-            style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${pacts.fold<int>(0, (total, pact) => total + pact.daysPerWeek)}',
-                        key: const ValueKey('weekly-rhythm-target'),
-                        style: const TextStyle(
-                          fontSize: 64,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const Text(
-                      'planned check-ins',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+  Widget build(BuildContext context) {
+    final completed = week.completed(userId);
+    final target = week.target;
+    final remaining = target - completed;
+    final today = DateTime.parse('${week.today}T00:00:00Z');
+    final start = DateTime.parse('${week.weekStart}T00:00:00Z');
+    final daysLeft = (7 - today.difference(start).inDays).clamp(1, 7);
+    return AppSurface(
+      fillColor: WeekPactColors.stone,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Your week so far',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            if (target == 0)
+              Text(
+                'Add a pact to start your week.',
+                style: TextStyle(color: context.muted),
+              )
+            else ...[
+              Text(
+                '$completed of $target check-ins done',
+                key: const ValueKey('weekly-progress-total'),
+                style: const TextStyle(
+                  fontSize: 28,
+                  height: 1.15,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(width: 20),
-              // A week motif, not a completion chart or a prescribed daily schedule.
-              Expanded(
-                child: ExcludeSemantics(
+              const SizedBox(height: 14),
+              LinearProgressIndicator(
+                value: completed / target,
+                minHeight: 10,
+                borderRadius: BorderRadius.circular(6),
+                color: context.ink,
+                backgroundColor: context.ink.withValues(alpha: .12),
+                semanticsLabel: 'Your weekly check-ins: $completed of $target completed',
+              ),
+              const SizedBox(height: 10),
+              Text(
+                remaining == 0
+                    ? 'All weekly targets met. Nice work!'
+                    : '$remaining left · ${daysLeft == 1 ? 'Today is the last day' : '$daysLeft days remaining, including today'}',
+                style: TextStyle(color: context.muted, fontSize: 14),
+              ),
+              const SizedBox(height: 18),
+              Divider(height: 1, color: context.border),
+              const SizedBox(height: 6),
+              for (final pact in week.pacts)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
-                      for (final day in ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: Column(
-                              children: [
-                                Container(
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: WeekPactColors.black,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                FittedBox(
-                                  child: Text(
-                                    day,
-                                    style: TextStyle(
-                                      color: context.muted,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                      HugeIcon(
+                        icon: PactIcon.find(pact.iconKey).data,
+                        color: context.ink,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          pact.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${week.days(pact.id, userId).clamp(0, pact.daysPerWeek)} / ${pact.daysPerWeek}',
+                        key: ValueKey('weekly-progress-${pact.id}'),
+                        semanticsLabel:
+                            '${pact.title}: ${week.days(pact.id, userId).clamp(0, pact.daysPerWeek)} of ${pact.daysPerWeek} check-ins',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
             ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Your weekly target across ${pacts.length} ${pacts.length == 1 ? 'pact' : 'pacts'}.',
-            style: TextStyle(color: context.muted, fontSize: 13),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class PactSquareGrid extends StatelessWidget {
@@ -156,8 +163,8 @@ class PactManagementCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: pact.frequency == PactFrequency.daily
-                      ? WeekPactColors.softYellow
-                      : WeekPactColors.mintGreen,
+                      ? WeekPactColors.stone
+                      : WeekPactColors.coolGrey,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: HugeIcon(

@@ -1,50 +1,9 @@
-import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// A camera-only capture, cropped to the same square frame shown before submission.
+/// Prepares camera photos for the square check-in frame.
 class CheckInCamera {
-  static const _pendingKey = 'pending-check-in-camera';
-
-  static Future<Uint8List?> capture({
-    required String userId,
-    required String crewId,
-    required String pactId,
-    required String today,
-  }) async {
-    final picker = ImagePicker();
-    final prefs = await SharedPreferences.getInstance();
-    final target = jsonEncode([userId, crewId, pactId, today]);
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      final pending = prefs.getString(_pendingKey);
-      final recovered = await picker.retrieveLostData();
-      if (pending == target && recovered.files?.isNotEmpty == true) {
-        await prefs.remove(_pendingKey);
-        return prepare(await recovered.files!.first.readAsBytes());
-      }
-    }
-    await prefs.setString(_pendingKey, target);
-    try {
-      final photo = await picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1440,
-        maxHeight: 1920,
-        imageQuality: 85,
-        requestFullMetadata: false,
-      );
-      if (photo == null) return null;
-      if (await photo.length() > 20 * 1024 * 1024) {
-        throw StateError('The photo is too large. Please retake it.');
-      }
-      return await prepare(await photo.readAsBytes());
-    } finally {
-      await prefs.remove(_pendingKey);
-    }
-  }
-
   /// Decoding and re-encoding strips EXIF, including location, before upload.
   static Future<Uint8List> prepare(Uint8List bytes) async {
     if (bytes.length > 20 * 1024 * 1024) {

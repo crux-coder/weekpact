@@ -1,3 +1,5 @@
+import '../home/home_backend.dart';
+import '../crew/crew_page_layout.dart';
 import '../crew/crew_switcher.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -19,6 +21,8 @@ class PactsPage extends StatefulWidget {
   const PactsPage({
     super.key,
     required this.backend,
+    required this.loadWeek,
+    required this.userId,
     required this.onOpenCrews,
     this.active = true,
     this.selectedCrewId,
@@ -28,23 +32,40 @@ class PactsPage extends StatefulWidget {
   final ValueChanged<String>? onCrewSelected;
   final bool active;
   final PactsBackend backend;
+  final Future<CrewWeek> Function(String crewId) loadWeek;
+  final String userId;
   final VoidCallback onOpenCrews;
 
   @override
   State<PactsPage> createState() => _PactsPageState();
 }
 
-class _PactsPageState extends State<PactsPage> {
+class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
+  CrewWeek? _week;
   List<PactCrew>? _crews;
   PactCrew? _selected;
   List<CrewPact>? _pacts;
   String? _error;
   int _request = 0;
+  bool _loading = false;
+  bool _hasLoaded = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.active) _refresh();
   }
 
   @override
@@ -52,6 +73,7 @@ class _PactsPageState extends State<PactsPage> {
     super.didUpdateWidget(oldWidget);
     if (widget.active &&
         (!oldWidget.active ||
+            widget.userId != oldWidget.userId ||
             widget.selectedCrewId != oldWidget.selectedCrewId)) {
       _refresh();
     }
@@ -59,7 +81,10 @@ class _PactsPageState extends State<PactsPage> {
 
   Future<void> _refresh() async {
     final request = ++_request;
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _loading = true;
+    });
     try {
       final crews = await widget.backend.fetchCrews();
       if (!mounted || request != _request) return;
@@ -75,13 +100,21 @@ class _PactsPageState extends State<PactsPage> {
         _selected = selected;
       });
       if (selected != null) {
-        final pacts = await widget.backend.fetchPacts(selected.id);
-        if (mounted && request == _request) setState(() => _pacts = pacts);
+        final week = await widget.loadWeek(selected.id);
+        if (mounted && request == _request) {
+          setState(() {
+            _week = week;
+            _pacts = week.pacts;
+          });
+        }
       }
+      if (mounted && request == _request) _hasLoaded = true;
     } catch (error) {
       if (mounted && request == _request) {
         setState(() => _error = _errorMessage(error));
       }
+    } finally {
+      if (mounted && request == _request) setState(() => _loading = false);
     }
   }
 
@@ -94,14 +127,22 @@ class _PactsPageState extends State<PactsPage> {
       _selected = crew;
       _pacts = null;
       _error = null;
+      _loading = true;
     });
     try {
-      final pacts = await widget.backend.fetchPacts(id);
-      if (mounted && request == _request) setState(() => _pacts = pacts);
+      final week = await widget.loadWeek(id);
+      if (mounted && request == _request) {
+        setState(() {
+          _week = week;
+          _pacts = week.pacts;
+        });
+      }
     } catch (error) {
       if (mounted && request == _request) {
         setState(() => _error = _errorMessage(error));
       }
+    } finally {
+      if (mounted && request == _request) setState(() => _loading = false);
     }
   }
 
@@ -122,30 +163,24 @@ class _PactsPageState extends State<PactsPage> {
   Widget build(BuildContext context) {
     final crew = _selected;
     return PageFrame(
-      header: Row(
-        children: [
-          const Expanded(
-            child: PageHeading('Pacts', dotColor: WeekPactColors.softYellow),
-          ),
-          if (crew != null) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: CrewSwitcher(
-                crews: _crews!,
-                selectedId: crew.id,
-                onSelected: _select,
-              ),
-            ),
-          ],
-        ],
+      header: const CrewPageHeading(
+        title: 'Pacts',
+        dotColor: WeekPactColors.stone,
       ),
       onRefresh: _refresh,
-      loading: _crews == null && _error == null,
-      skeleton: const _PactsSkeleton(),
+      loading: !_hasLoaded && _loading,
+      skeleton: const CrewPageSkeleton(label: 'Loading pacts'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (crew != null) ...[
+            CrewSwitcher(
+              crews: _crews!,
+              selectedId: crew.id,
+              onSelected: _loading ? null : _select,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_crews != null && _crews!.isEmpty)
             AppSectionCard(
               title: 'A shared start',
@@ -177,10 +212,13 @@ class _PactsPageState extends State<PactsPage> {
               ),
             ),
           if (crew != null) ...[
-            if (_pacts == null && _error == null)
-              const _PactsSkeleton()
+            if (_loading || (_pacts == null && _error == null))
+              const CrewPageSkeleton(
+                showSelector: false,
+                label: 'Loading pacts',
+              )
             else if (_pacts != null) ...[
-              WeeklyRhythmCard(pacts: _pacts!),
+              YourWeekCard(week: _week!, userId: widget.userId),
               const SizedBox(height: 22),
               Text(
                 'Your pacts',
@@ -224,7 +262,7 @@ class _PactsPageState extends State<PactsPage> {
                 const SizedBox(height: 16),
                 AppButton(
                   label: 'ADD PACT',
-                  color: WeekPactColors.mintGreen,
+                  color: WeekPactColors.coolGrey,
                   onPressed: _addPact,
                 ),
               ],
@@ -245,77 +283,6 @@ class _PactsPageState extends State<PactsPage> {
       ),
     );
   }
-}
-
-class _PactsSkeleton extends StatelessWidget {
-  const _PactsSkeleton();
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Loading pacts',
-    liveRegion: true,
-    child: ExcludeSemantics(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppSurface(
-            fillColor: WeekPactColors.softYellow,
-            builder: (context) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SkeletonBar(width: 160, height: 20),
-                  SizedBox(height: 20),
-                  SkeletonBar(width: 90, height: 64),
-                  SizedBox(height: 14),
-                  SkeletonBar(height: 14),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 22),
-          Text(
-            'Your pacts',
-            style: TextStyle(
-              color: context.ink,
-              fontSize: 25,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              for (var i = 0; i < 2; i++) ...[
-                if (i > 0) const SizedBox(width: 12),
-                Expanded(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: AppSurface(
-                      builder: (context) => Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Align(
-                              alignment: Alignment.topLeft,
-                              child: SkeletonBar(width: 36, height: 36),
-                            ),
-                            Spacer(),
-                            SkeletonBar(height: 18),
-                            SizedBox(height: 8),
-                            SkeletonBar(height: 12),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class PactEditor extends StatefulWidget {
@@ -527,7 +494,7 @@ class PactEditorState extends State<PactEditor> {
                 ChoiceChip(
                   label: const Text('Days per week'),
                   selected: _frequency == PactFrequency.weekly,
-                  selectedColor: context.mint,
+                  selectedColor: WeekPactColors.coolGrey,
                   onSelected: _saving
                       ? null
                       : (_) =>

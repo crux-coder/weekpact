@@ -19,6 +19,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/edge_bounce.dart';
 import 'home_backend.dart';
 import 'crew_member_list.dart';
 
@@ -313,127 +314,134 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                   // Reserve paint space for the stacked cards during transitions.
                   minHeight: cardHeight + 48,
                   maxHeight: cardHeight + 48,
-                  child: Swiper(
-                    key: const ValueKey('pact-stack'),
-                    controller: _controller,
-                    itemCount: pacts.length,
-                    layout: SwiperLayout.STACK,
-                    itemWidth: width,
-                    itemHeight: cardHeight - 20,
-                    axisDirection: AxisDirection.right,
-                    scrollDirection: Axis.horizontal,
-                    loop: false,
-                    autoplay: false,
-                    duration: MediaQuery.disableAnimationsOf(context) ? 0 : 280,
-                    onIndexChanged: (index) {
-                      if (index == _index) return;
-                      setState(() => _index = index);
-                      unawaited(
-                        HapticFeedback.selectionClick().catchError(
-                          (Object _) {},
+                  child: EdgeBounce(
+                    atStart: _index == 0,
+                    atEnd: _index == pacts.length - 1,
+                    child: Swiper(
+                      key: const ValueKey('pact-stack'),
+                      controller: _controller,
+                      itemCount: pacts.length,
+                      layout: SwiperLayout.STACK,
+                      itemWidth: width,
+                      itemHeight: cardHeight - 20,
+                      axisDirection: AxisDirection.right,
+                      scrollDirection: Axis.horizontal,
+                      loop: false,
+                      autoplay: false,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? 0
+                          : 280,
+                      onIndexChanged: (index) {
+                        if (index == _index) return;
+                        setState(() => _index = index);
+                        unawaited(
+                          HapticFeedback.mediumImpact().catchError(
+                            (Object _) {},
+                          ),
+                        );
+                      },
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 2,
                         ),
-                      );
-                    },
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 0,
-                        vertical: 2,
-                      ),
-                      child: Builder(
-                        builder: (context) {
-                          // Follow the stack's interpolated transforms, rather
-                          // than snapping offsets when the selected index changes.
-                          var stackScale = 1.0;
-                          var stackX = 0.0;
-                          var transforms = 0;
-                          context.visitAncestorElements((element) {
-                            final ancestor = element.widget;
-                            if (ancestor is Transform) {
-                              if (transforms == 0) {
-                                stackScale = ancestor.transform.storage[0];
-                              } else {
-                                stackX = ancestor.transform.storage[12];
+                        child: Builder(
+                          builder: (context) {
+                            // Follow the stack's interpolated transforms, rather
+                            // than snapping offsets when the selected index changes.
+                            var stackScale = 1.0;
+                            var stackX = 0.0;
+                            var transforms = 0;
+                            context.visitAncestorElements((element) {
+                              final ancestor = element.widget;
+                              if (ancestor is Transform) {
+                                if (transforms == 0) {
+                                  stackScale = ancestor.transform.storage[0];
+                                } else {
+                                  stackX = ancestor.transform.storage[12];
+                                }
+                                transforms++;
                               }
-                              transforms++;
-                            }
-                            return transforms < 2;
-                          });
-                          final depth = ((1 - stackScale) / .1).clamp(0.0, 3.0);
-                          // The swiper scales around the right edge. Cancel its
-                          // native offset so each rear card exposes one strip.
-                          return Transform.translate(
-                            key: ValueKey('pact-slide-stack-$index'),
-                            offset: stackScale >= 1
-                                // Stop the outgoing card with a narrow strip
-                                // still visible at the left edge of the viewport.
-                                ? Offset(
-                                    stackX *
-                                        (previousTravel / viewportWidth - 1),
-                                    0,
-                                  )
-                                : Offset(
-                                    (depth * peek - stackX) / stackScale,
-                                    (depth * 6 -
-                                            (cardHeight - 20) *
-                                                (1 - stackScale) /
-                                                2) /
-                                        stackScale,
-                                  ),
-                            child: IgnorePointer(
-                              ignoring: stackX < -.01,
-                              child: ExcludeSemantics(
-                                excluding: stackX < -.01,
-                                child: Opacity(
-                                  opacity: (previewCount + 1 - depth).clamp(
-                                    0.0,
-                                    1.0,
-                                  ),
-                                  child: SizedBox.expand(
-                                    child: _PactCompletionEffect(
-                                      key: ValueKey(
-                                        'completion-${pacts[index].id}',
-                                      ),
-                                      completed: widget.week
-                                          .checkedToday(widget.userId)
-                                          .contains(pacts[index].id),
-                                      child: _PactCard(
-                                        depth: depth,
-                                        contentOpacity:
-                                            1 -
-                                            .8 *
-                                                (-stackX / viewportWidth).clamp(
-                                                  0.0,
-                                                  1.0,
+                              return transforms < 2;
+                            });
+                            final depth = ((1 - stackScale) / .1).clamp(
+                              0.0,
+                              3.0,
+                            );
+                            // The swiper scales around the right edge. Cancel its
+                            // native offset so each rear card exposes one strip.
+                            return Transform.translate(
+                              key: ValueKey('pact-slide-stack-$index'),
+                              offset: stackScale >= 1
+                                  // Stop the outgoing card with a narrow strip
+                                  // still visible at the left edge of the viewport.
+                                  ? Offset(
+                                      stackX *
+                                          (previousTravel / viewportWidth - 1),
+                                      0,
+                                    )
+                                  : Offset(
+                                      (depth * peek - stackX) / stackScale,
+                                      (depth * 6 -
+                                              (cardHeight - 20) *
+                                                  (1 - stackScale) /
+                                                  2) /
+                                          stackScale,
+                                    ),
+                              child: IgnorePointer(
+                                ignoring: stackX < -.01,
+                                child: ExcludeSemantics(
+                                  excluding: stackX < -.01,
+                                  child: Opacity(
+                                    opacity: (previewCount + 1 - depth).clamp(
+                                      0.0,
+                                      1.0,
+                                    ),
+                                    child: SizedBox.expand(
+                                      child: _PactCompletionEffect(
+                                        key: ValueKey(
+                                          'completion-${pacts[index].id}',
+                                        ),
+                                        completed: widget.week
+                                            .checkedToday(widget.userId)
+                                            .contains(pacts[index].id),
+                                        child: _PactCard(
+                                          depth: depth,
+                                          contentOpacity:
+                                              1 -
+                                              .8 *
+                                                  (-stackX / viewportWidth)
+                                                      .clamp(0.0, 1.0),
+                                          previewWidth: peek,
+                                          stackScale: stackScale,
+                                          key: ValueKey(pacts[index].id),
+                                          pact: pacts[index],
+                                          week: widget.week,
+                                          userId: widget.userId,
+                                          color:
+                                              WeekPactColors.pactPalette[index %
+                                                  WeekPactColors
+                                                      .pactPalette
+                                                      .length],
+                                          busy:
+                                              widget.savingPact ==
+                                              pacts[index].id,
+                                          onToggle:
+                                              widget.savingPact != null ||
+                                                  widget.onToggle == null
+                                              ? null
+                                              : () => widget.onToggle!(
+                                                  pacts[index].id,
                                                 ),
-                                        previewWidth: peek,
-                                        stackScale: stackScale,
-                                        key: ValueKey(pacts[index].id),
-                                        pact: pacts[index],
-                                        week: widget.week,
-                                        userId: widget.userId,
-                                        color:
-                                            WeekPactColors.pactPalette[index %
-                                                WeekPactColors
-                                                    .pactPalette
-                                                    .length],
-                                        busy:
-                                            widget.savingPact ==
-                                            pacts[index].id,
-                                        onToggle:
-                                            widget.savingPact != null ||
-                                                widget.onToggle == null
-                                            ? null
-                                            : () => widget.onToggle!(
-                                                pacts[index].id,
-                                              ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),

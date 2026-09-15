@@ -20,6 +20,7 @@ Future<void> openDrawer(
   required CheckInPhotoCapture capture,
   required Future<void> Function(Uint8List) save,
   double textScale = 1,
+  bool takePicture = true,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -48,6 +49,7 @@ Future<void> openDrawer(
   );
   await tester.tap(find.text('Open'));
   await tester.pumpUi();
+  if (takePicture) await takeTestPhoto(tester);
 }
 
 class PhotoBackend extends DashboardBackend {
@@ -62,6 +64,42 @@ class PhotoBackend extends DashboardBackend {
 }
 
 void main() {
+  testWidgets('one main CTA captures first, flips, then explicitly checks in', (
+    tester,
+  ) async {
+    var captures = 0;
+    var saves = 0;
+    await openDrawer(
+      tester,
+      takePicture: false,
+      capture: () async {
+        captures++;
+        return testCheckInPhoto;
+      },
+      save: (_) async {
+        saves++;
+      },
+    );
+    expect(captures, 0);
+    expect(find.byType(AppButton), findsOneWidget);
+    expect(find.text('TAKE PICTURE'), findsOneWidget);
+    expect(find.text('CHECK IN'), findsNothing);
+    expect(find.text('RETAKE PHOTO'), findsNothing);
+    expect(find.byTooltip('Switch camera'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('take-picture')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(captures, 1);
+    expect(saves, 0);
+    expect(tester.widget<AppButton>(find.byType(AppButton)).onPressed, isNull);
+    await tester.pumpUi();
+    expect(find.text('TAKE PICTURE'), findsNothing);
+    expect(find.text('CHECK IN'), findsOneWidget);
+    expect(find.byType(AppButton), findsOneWidget);
+    await submitTestPhoto(tester);
+    expect(saves, 1);
+  });
+
   testWidgets('cancelled camera cannot submit and can be reopened', (
     tester,
   ) async {
@@ -80,13 +118,11 @@ void main() {
     expect(captures, 1);
     expect(
       tester
-          .widget<AppButton>(
-            find.byKey(const ValueKey('submit-photo-check-in')),
-          )
+          .widget<AppButton>(find.byKey(const ValueKey('take-picture')))
           .onPressed,
-      isNull,
+      isNotNull,
     );
-    await tester.tap(find.text('OPEN CAMERA'));
+    await takeTestPhoto(tester);
     await tester.pumpUi();
     expect(captures, 2);
     expect(saves, 0);
@@ -107,17 +143,17 @@ void main() {
       find.textContaining('Allow camera access in Settings'),
       findsOneWidget,
     );
-    expect(find.text('OPEN CAMERA'), findsOneWidget);
+    expect(find.text('TAKE PICTURE'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets(
-    'capture is previewed, retake cancellation preserves it, save retries without recapture',
+    'retake returns to capture and saving retries without another picture',
     (tester) async {
       var captures = 0;
       final saved = <Uint8List>[];
       await openDrawer(
         tester,
-        capture: () async => ++captures == 1 ? testCheckInPhoto : null,
+        capture: () async => ++captures == 2 ? null : testCheckInPhoto,
         save: (bytes) async {
           saved.add(bytes);
           if (saved.length == 1) throw StateError('offline');
@@ -131,12 +167,16 @@ void main() {
       expect(find.byType(Image), findsOneWidget);
       await tester.tap(find.text('RETAKE PHOTO'));
       await tester.pumpUi();
+      expect(find.byType(Image), findsNothing);
+      await takeTestPhoto(tester);
+      expect(find.text('CHECK IN'), findsNothing);
+      await takeTestPhoto(tester);
       expect(find.byType(Image), findsOneWidget);
       await submitTestPhoto(tester);
       expect(find.textContaining('Your picture is still here'), findsOneWidget);
       await submitTestPhoto(tester);
       expect(saved, [testCheckInPhoto, testCheckInPhoto]);
-      expect(captures, 2);
+      expect(captures, 3);
       expect(find.byType(PhotoCheckInSheet), findsNothing);
     },
   );

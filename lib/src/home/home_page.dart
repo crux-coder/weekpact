@@ -1,5 +1,6 @@
 import 'photo_check_in_sheet.dart';
 import '../crew/crew_switcher.dart';
+import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
@@ -35,6 +36,7 @@ class HomePage extends StatefulWidget {
     required this.authBackend,
     required this.crewBackend,
     this.initialCrewId,
+    this.crewSelectionStore,
     this.captureCheckInPhoto,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
@@ -44,6 +46,7 @@ class HomePage extends StatefulWidget {
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
   final String? initialCrewId;
+  final CrewSelectionStore? crewSelectionStore;
   final CheckInPhotoCapture? captureCheckInPhoto;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
@@ -57,7 +60,7 @@ class _HomePageState extends State<HomePage> {
     AppNavigationItem(
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
-      color: WeekPactColors.softYellow,
+      color: WeekPactColors.stone,
     ),
     AppNavigationItem(
       label: 'Pacts',
@@ -67,7 +70,7 @@ class _HomePageState extends State<HomePage> {
     AppNavigationItem(
       label: 'Crews',
       icon: HugeIconsStrokeRounded.userGroup,
-      color: WeekPactColors.softYellow,
+      color: WeekPactColors.stone,
     ),
     AppNavigationItem(
       label: 'Account',
@@ -80,8 +83,27 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   int _homeRevision = 0;
   String? _selectedCrewId;
+  String get _accountId => widget.user.id.isNotEmpty
+      ? widget.user.id
+      : widget.user.email.toLowerCase();
+
   void _selectCrew(String id) {
-    if (_selectedCrewId != id) setState(() => _selectedCrewId = id);
+    if (_selectedCrewId == id) return;
+    setState(() => _selectedCrewId = id);
+    unawaited(_rememberCrew(id));
+  }
+
+  Future<void> _rememberCrew(String id) async {
+    try {
+      await widget.crewSelectionStore?.save(_accountId, id);
+    } catch (_) {
+      if (!mounted || _selectedCrewId != id) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not remember your crew for next time.'),
+        ),
+      );
+    }
   }
 
   bool _signingOut = false;
@@ -89,7 +111,11 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _selectedCrewId = widget.initialCrewId;
+    _selectedCrewId =
+        widget.initialCrewId ?? widget.crewSelectionStore?.read(_accountId);
+    if (widget.initialCrewId != null) {
+      unawaited(_rememberCrew(widget.initialCrewId!));
+    }
     _pageController = PageController();
   }
 
@@ -167,6 +193,8 @@ class _HomePageState extends State<HomePage> {
           PactsPage(
             active: _selectedIndex == 1,
             backend: widget.pactsBackend,
+            loadWeek: widget.homeBackend.fetchWeek,
+            userId: widget.user.id,
             selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
             onOpenCrews: () => _selectDestination(2),
@@ -266,7 +294,8 @@ class _HomeDestinationState extends State<_HomeDestination>
     super.didUpdateWidget(oldWidget);
     if (widget.active &&
         (!oldWidget.active ||
-            widget.selectedCrewId != oldWidget.selectedCrewId)) {
+            (widget.selectedCrewId != oldWidget.selectedCrewId &&
+                widget.selectedCrewId != _crew?.id))) {
       _refresh();
     }
   }
@@ -296,6 +325,9 @@ class _HomeDestinationState extends State<_HomeDestination>
         _crew = crew;
         _error = null;
       });
+      if (crew != null && crew.id != widget.selectedCrewId) {
+        widget.onCrewSelected?.call(crew.id);
+      }
       final week = crew == null
           ? null
           : await widget.backend.fetchWeek(crew.id);
@@ -344,7 +376,7 @@ class _HomeDestinationState extends State<_HomeDestination>
       if (!mounted) return;
       if (selected.contains(pactId)) {
         // Haptics are best-effort and must never turn a saved check-in into an error.
-        unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
+        unawaited(HapticFeedback.heavyImpact().catchError((Object _) {}));
       }
       setState(() {
         _week = CrewWeek(
@@ -400,185 +432,228 @@ class _HomeDestinationState extends State<_HomeDestination>
         _error == null && (_crews == null || (_crew != null && week == null));
     return SafeArea(
       bottom: false,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Preserve a complete, non-scrolling composition even when
-                // safe areas or landscape leave less than its minimum height.
-                return FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight.clamp(
-                      294 +
-                          CrewTitleBanner.height +
-                          LatestActivityRow.height +
-                          (_saveError == null ? 0 : 40),
-                      double.infinity,
-                    ),
-                    child: Builder(
-                      builder: (context) {
-                        if (loading) return const TodaySkeleton();
-                        if (_error != null) {
-                          return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _error!,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: context.ink),
-                                ),
-                                TextButton(
-                                  onPressed: _refresh,
-                                  child: const Text('TRY AGAIN'),
-                                ),
-                              ],
+      child: RefreshIndicator(
+        onRefresh: () {
+          unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
+          return _refresh();
+        },
+        color: WeekPactColors.black,
+        backgroundColor: WeekPactColors.cream,
+        child: CustomScrollView(
+          key: const ValueKey('home-refresh-viewport'),
+          physics: MediaQuery.disableAnimationsOf(context)
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                )
+              : const _HomeRefreshPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: true,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Preserve a complete, non-scrolling composition even when
+                        // safe areas or landscape leave less than its minimum height.
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            height: constraints.maxHeight.clamp(
+                              294 +
+                                  CrewTitleBanner.height +
+                                  LatestActivityRow.height +
+                                  (_saveError == null ? 0 : 40),
+                              double.infinity,
                             ),
-                          );
-                        }
-                        if (_crews != null && _crews!.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Your week starts with a crew.',
-                                  style: TextStyle(
-                                    color: context.ink,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                AppButton(
-                                  label: 'START YOUR CREW',
-                                  onPressed: widget.onStartCrew,
-                                ),
-                                TextButton(
-                                  onPressed: widget.onOpenCrews,
-                                  child: const Text(
-                                    'Already invited? View invitations',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        if (week == null) return const SizedBox.shrink();
-                        const crewHeight =
-                            TodayCrewCard.groupHeight +
-                            TodayCrewCard.headingHeight;
-                        return ExpandableHomePanels(
-                          showCrewCheckIns: true,
-                          key: ValueKey(_crew!.id),
-                          backend: widget.backend,
-                          crewId: _crew!.id,
-                          week: week,
-                          userId: widget.userId,
-                          active: widget.active,
-                          top: CrewTitleBanner.height + 12,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              CrewTitleBanner(
-                                selector: (_crews?.length ?? 0) > 0
-                                    ? CrewSwitcher(
-                                        compact: true,
-                                        crews: _crews!,
-                                        selectedId: _crew!.id,
-                                        onSelected: _savingPact != null
-                                            ? null
-                                            : (id) {
-                                                widget.onCrewSelected?.call(id);
-                                                _refresh(crewId: id);
-                                              },
-                                      )
-                                    : null,
-                                name: _crew!.name,
-                                onOpen: _openCrewWeek,
-                                streakWeeks: week.streakWeeks,
-                              ),
-                              const SizedBox(height: 12),
-                              const SizedBox(height: LatestActivityRow.height),
-                              const SizedBox(height: 12),
-                              TodayCrewCard(
-                                showGroups: false,
-                                height: crewHeight,
-                                crewName: _crew!.name,
-                                week: week,
-                                userId: widget.userId,
-                                onOpen: _openCrewWeek,
-                              ),
-                              const SizedBox(height: 12),
-                              if (_saveError != null)
-                                SizedBox(
-                                  height: 40,
-                                  child: Text(
-                                    _saveError!,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: const Color(0xFFFFB4A9),
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              Expanded(
-                                child: week.pacts.isEmpty
-                                    ? Center(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              'No pacts yet.',
-                                              style: TextStyle(
-                                                color: context.ink,
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            AppButton(
-                                              label: _crew!.isOwner
-                                                  ? 'SET UP YOUR FIRST PACT'
-                                                  : 'VIEW PACTS',
-                                              onPressed: _crew!.isOwner
-                                                  ? widget.onStartCrew
-                                                  : widget.onOpenPacts,
-                                            ),
-                                          ],
+                            child: Builder(
+                              builder: (context) {
+                                if (loading) return const TodaySkeleton();
+                                if (_error != null) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _error!,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: context.ink),
                                         ),
-                                      )
-                                    : LayoutBuilder(
-                                        builder: (context, space) =>
-                                            TodayPactsCard(
-                                              height: space.maxHeight,
-                                              horizontalBleed: 12,
-                                              week: week,
-                                              userId: widget.userId,
-                                              savingPact: _savingPact,
-                                              onToggle: _togglePact,
-                                            ),
+                                        TextButton(
+                                          onPressed: _refresh,
+                                          child: const Text('TRY AGAIN'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                if (_crews != null && _crews!.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Your week starts with a crew.',
+                                          style: TextStyle(
+                                            color: context.ink,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        AppButton(
+                                          label: 'START YOUR CREW',
+                                          onPressed: widget.onStartCrew,
+                                        ),
+                                        TextButton(
+                                          onPressed: widget.onOpenCrews,
+                                          child: const Text(
+                                            'Already invited? View invitations',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                if (week == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                const crewHeight =
+                                    TodayCrewCard.groupHeight +
+                                    TodayCrewCard.headingHeight;
+                                return ExpandableHomePanels(
+                                  showCrewCheckIns: true,
+                                  key: ValueKey(_crew!.id),
+                                  backend: widget.backend,
+                                  crewId: _crew!.id,
+                                  week: week,
+                                  userId: widget.userId,
+                                  active: widget.active,
+                                  top: CrewTitleBanner.height + 12,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      CrewTitleBanner(
+                                        selector: (_crews?.length ?? 0) > 0
+                                            ? CrewSwitcher(
+                                                compact: true,
+                                                crews: _crews!,
+                                                selectedId: _crew!.id,
+                                                onSelected: _savingPact != null
+                                                    ? null
+                                                    : (id) {
+                                                        widget.onCrewSelected
+                                                            ?.call(id);
+                                                        _refresh(crewId: id);
+                                                      },
+                                              )
+                                            : null,
+                                        name: _crew!.name,
+                                        onOpen: _openCrewWeek,
+                                        streakWeeks: week.streakWeeks,
                                       ),
-                              ),
-                            ],
+                                      const SizedBox(height: 12),
+                                      const SizedBox(
+                                        height: LatestActivityRow.height,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TodayCrewCard(
+                                        showGroups: false,
+                                        height: crewHeight,
+                                        crewName: _crew!.name,
+                                        week: week,
+                                        userId: widget.userId,
+                                        onOpen: _openCrewWeek,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (_saveError != null)
+                                        SizedBox(
+                                          height: 40,
+                                          child: Text(
+                                            _saveError!,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: const Color(0xFFFFB4A9),
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: week.pacts.isEmpty
+                                            ? Center(
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'No pacts yet.',
+                                                      style: TextStyle(
+                                                        color: context.ink,
+                                                        fontSize: 24,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    AppButton(
+                                                      label: _crew!.isOwner
+                                                          ? 'SET UP YOUR FIRST PACT'
+                                                          : 'VIEW PACTS',
+                                                      onPressed: _crew!.isOwner
+                                                          ? widget.onStartCrew
+                                                          : widget.onOpenPacts,
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            : LayoutBuilder(
+                                                builder: (context, space) =>
+                                                    TodayPactsCard(
+                                                      height: space.maxHeight,
+                                                      horizontalBleed: 12,
+                                                      week: week,
+                                                      userId: widget.userId,
+                                                      savingPact: _savingPact,
+                                                      onToggle: _togglePact,
+                                                    ),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         );
                       },
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _HomeRefreshPhysics extends BouncingScrollPhysics {
+  const _HomeRefreshPhysics({super.parent});
+
+  @override
+  _HomeRefreshPhysics applyTo(ScrollPhysics? ancestor) =>
+      _HomeRefreshPhysics(parent: buildParent(ancestor));
+
+  @override
+  SpringDescription get spring =>
+      SpringDescription.withDampingRatio(mass: 1, stiffness: 220, ratio: .75);
 }

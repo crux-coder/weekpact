@@ -170,7 +170,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
     ],
     for (final invite in _invites) ...[
       Material(
-        color: const Color(0xFFE7EAE4),
+        color: WeekPactColors.stone,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -271,7 +271,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: context.mint,
+                backgroundColor: WeekPactColors.coolGrey,
                 foregroundColor: context.ink,
                 child: Text(
                   member.email.isEmpty

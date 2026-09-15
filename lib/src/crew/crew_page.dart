@@ -1,3 +1,4 @@
+import 'crew_page_layout.dart';
 import '../pacts/pacts_backend.dart';
 import 'crew_switcher.dart';
 import 'crew_sharing.dart';
@@ -441,9 +442,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return PageFrame(
-      header: Row(
-        children: [
-          const Expanded(child: PageHeading('Crews')),
+      header: CrewPageHeading(
+        title: 'Crews',
+        actions: [
           if (_crew != null)
             IconButton(
               tooltip: _showCreate ? 'Cancel new crew' : 'Create another crew',
@@ -464,14 +465,14 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               isLabelVisible:
                   _receivedInviteCount > 0 ||
                   (_crew?.pendingInvites.isNotEmpty ?? false),
-              backgroundColor: WeekPactColors.softYellow,
+              backgroundColor: WeekPactColors.stone,
               child: const HugeIcon(icon: HugeIconsStrokeRounded.inbox),
             ),
           ),
         ],
       ),
       loading: !_hasLoaded && _loading,
-      skeleton: const _CrewSkeleton(),
+      skeleton: const CrewPageSkeleton(),
       onRefresh: _refresh,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -493,7 +494,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             const SizedBox(height: 12),
           ],
           if (_loading && !_showCreate && _crew != null)
-            const _CrewSkeleton(showSelector: false)
+            const CrewPageSkeleton(showSelector: false)
           else if (_crew != null && !_showCreate) ...[
             _buildCrewState(context, _crew!),
           ] else if (_hasLoaded)
@@ -560,7 +561,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: context.mint,
+                      color: WeekPactColors.stone,
                       border: Border.all(
                         color: context.border,
                         width: WeekPactMetrics.border,
@@ -650,10 +651,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 color:
                     crew.members[i].email.toLowerCase() ==
                         widget.currentUserEmail.toLowerCase()
-                    ? WeekPactColors.mintGreen
-                    : (i.isEven
-                          ? WeekPactColors.softYellow
-                          : WeekPactColors.cream),
+                    ? WeekPactColors.coolGrey
+                    : (i.isEven ? WeekPactColors.stone : WeekPactColors.cream),
                 onRemove:
                     crew.isOwner &&
                         !crew.members[i].isOwner &&
@@ -727,75 +726,6 @@ class _InviteDrawer extends StatelessWidget {
 }
 
 /// Reserves the same square tiles as the loaded people grid.
-class _CrewSkeleton extends StatelessWidget {
-  const _CrewSkeleton({this.showSelector = true});
-
-  final bool showSelector;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Loading crews',
-    liveRegion: true,
-    child: ExcludeSemantics(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (showSelector) ...[
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: SkeletonBar(width: 84, height: 12),
-            ),
-            const SizedBox(height: 8),
-            const SkeletonBar(height: 44),
-            const SizedBox(height: 12),
-          ],
-          LinearProgressIndicator(
-            minHeight: 2,
-            color: WeekPactColors.mintGreen,
-            backgroundColor: context.ink.withValues(alpha: .06),
-            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-          ),
-          const SizedBox(height: 16),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: SkeletonBar(width: 120, height: 16),
-          ),
-          const SizedBox(height: 12),
-          CrewPeopleGrid(
-            children: [
-              for (var i = 0; i < 4; i++)
-                AppSurface(
-                  fillColor: i == 0
-                      ? WeekPactColors.mintGreen
-                      : WeekPactColors.cream,
-                  builder: (_) => const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: SkeletonBar(height: 100, radius: 100),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        SkeletonBar(height: 15),
-                        SizedBox(height: 8),
-                        SkeletonBar(width: 60, height: 10),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 class _InviteRow extends StatelessWidget {
   const _InviteRow({required this.invite, required this.onRevoke});
   final CrewInvite invite;

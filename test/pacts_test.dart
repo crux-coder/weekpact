@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/pacts/pact_icons.dart';
@@ -80,7 +81,19 @@ Future<void> pumpPacts(WidgetTester tester, FakePacts backend) async {
     MaterialApp(
       theme: WeekPactTheme.light,
       home: Scaffold(
-        body: PactsPage(backend: backend, onOpenCrews: () {}),
+        body: PactsPage(
+          backend: backend,
+          userId: 'me',
+          loadWeek: (id) async => CrewWeek(
+            today: '2026-09-15',
+            weekStart: '2026-09-14',
+            timezone: 'UTC',
+            pacts: await backend.fetchPacts(id),
+            members: [],
+            checkIns: [],
+          ),
+          onOpenCrews: () {},
+        ),
       ),
     ),
   );
@@ -146,7 +159,7 @@ void main() {
       expect(backend.pacts.single.title, 'Read every day');
       expect(backend.pacts.single.daysPerWeek, 7);
       expect(backend.pacts.single.iconKey, 'book');
-      expect(find.text('Read every day'), findsOneWidget);
+      expect(find.text('Read every day'), findsNWidgets(2));
     },
   );
 
@@ -163,7 +176,7 @@ void main() {
     );
     await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
-    expect(find.text('Read'), findsOneWidget);
+    expect(find.text('Read'), findsNWidgets(2));
     expect(find.byTooltip('Edit Read'), findsNothing);
   });
 
@@ -173,7 +186,7 @@ void main() {
     final backend = FakePacts()..loading = Completer<List<PactCrew>>();
     await pumpPacts(tester, backend);
     expect(find.text('Pacts'), findsOneWidget);
-    expect(find.text('Your pacts'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('ADD PACT'), findsNothing);
     backend.loading!.complete([ownerCrew]);
     await tester.pumpAndSettle();
@@ -210,7 +223,7 @@ void main() {
     expect(backend.pacts.single.daysPerWeek, 7);
     expect(backend.pacts.single.frequency, PactFrequency.daily);
     expect(backend.pacts.single.crewId, 'a');
-    expect(find.text('Read 20 pages'), findsOneWidget);
+    expect(find.text('Read 20 pages'), findsNWidgets(2));
 
     await tester.ensureVisible(find.text('ADD PACT'));
     await tester.tap(find.text('ADD PACT'));

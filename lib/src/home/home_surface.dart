@@ -8,7 +8,7 @@ const homePaper = Color(0xFFECEDEC);
 
 extension HomePanelTheme on BuildContext {
   Color get homePanel =>
-      isDark ? const Color(0xFF242724) : const Color(0xFFE4E8DD);
+      isDark ? WeekPactColors.activitySurface : WeekPactColors.stone;
 }
 
 class HomeBackground extends StatelessWidget {
@@ -24,7 +24,7 @@ class HomeSurface extends StatelessWidget {
   const HomeSurface({
     super.key,
     required this.child,
-    this.tint = const Color(0xFFE1EDD6),
+    this.tint = WeekPactColors.stone,
     this.radius = WeekPactMetrics.cardRadius,
     this.padding = EdgeInsets.zero,
     this.outlined = true,

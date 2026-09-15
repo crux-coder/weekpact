@@ -122,7 +122,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: context.mint,
+                            color: WeekPactColors.neutralInset,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(

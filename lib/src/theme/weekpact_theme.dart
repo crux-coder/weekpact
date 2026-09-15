@@ -42,27 +42,30 @@ abstract final class WeekPactColors {
   static const darkMint = Color(0xFF304531);
   static const darkCoral = Color(0xFF523732);
   static const darkPink = Color(0xFF483743);
-  static const darkAccent = Color(0xFFD0E5BA);
+  static const darkAccent = coolGrey;
   static const darkError = Color(0xFFFFA8AE);
   static const softYellow = Color(0xFFF4D88F);
-  static const mintGreen = Color(0xFFD0E5BA);
+  static const mintGreen = Color(0xFFC2D8AC);
   static const bubblegumPink = Color(0xFFEAC7D4);
-  static const pinkInk = Color(0xFF47623B);
+  static const pinkInk = Color(0xFF505550);
   static const softCoral = Color(0xFFF0C6B6);
+  static const stone = Color(0xFFDCD0BB);
+  static const coolGrey = Color(0xFFB9CBD0);
+  static const neutralInset = Color(0xFFDDDFD7);
   static const activitySurface = Color(0xFF292A29);
   static const pactPalette = <Color>[
-    Color(0xFFE4E1DA), // Stone.
-    Color(0xFFCDD2D3), // Cool grey.
-    Color(0xFFD8D3CF), // Warm grey.
-    Color(0xFFD2D5D0), // Silver sage.
-    Color(0xFFD5D1D9), // Ash.
-    Color(0xFFDDD8CC), // Oat.
-    Color(0xFFCFD5D5), // Mist.
-    Color(0xFFD9D6D1), // Pebble.
-    Color(0xFFD0D2D8), // Slate.
-    Color(0xFFDCD9D3), // Linen.
+    stone,
+    coolGrey,
+    Color(0xFFD3C3B9), // Warm grey.
+    Color(0xFFC4CEBF), // Silver sage.
+    Color(0xFFCCC2D4), // Ash.
+    Color(0xFFD8CBAF), // Oat.
+    Color(0xFFBFCFCA), // Mist.
+    Color(0xFFD0C6BA), // Pebble.
+    Color(0xFFC0C8D5), // Slate.
+    Color(0xFFD8CDBF), // Linen.
   ];
-  static const mutedLight = Color(0xFF686D63);
+  static const mutedLight = Color(0xFF51564F);
   static const error = Color(0xFFC94F59);
 }
 
@@ -71,14 +74,14 @@ abstract final class WeekPactTheme {
     brightness: Brightness.light,
     background: WeekPactColors.lightCanvas,
     foreground: WeekPactColors.black,
-    primary: WeekPactColors.softYellow,
+    primary: WeekPactColors.coolGrey,
   );
 
   static ThemeData get dark => _build(
     brightness: Brightness.dark,
     background: WeekPactColors.darkCanvas,
     foreground: WeekPactColors.darkInk,
-    primary: WeekPactColors.softYellow,
+    primary: WeekPactColors.coolGrey,
   );
 
   static ThemeData _build({
@@ -113,8 +116,11 @@ abstract final class WeekPactTheme {
           ).copyWith(
             onSurface: WeekPactColors.black,
             onSurfaceVariant: WeekPactColors.mutedLight,
-            primary: dark ? const Color(0xFFF1D68A) : WeekPactColors.pinkInk,
-            onPrimary: WeekPactColors.black,
+            primary: dark ? WeekPactColors.darkInk : WeekPactColors.black,
+            onPrimary: dark ? WeekPactColors.black : WeekPactColors.cream,
+            secondary: dark ? WeekPactColors.coolGrey : WeekPactColors.pinkInk,
+            secondaryContainer: WeekPactColors.coolGrey,
+            onSecondaryContainer: WeekPactColors.black,
             outline: outline,
             error: dark ? WeekPactColors.darkError : WeekPactColors.error,
             surfaceTint: Colors.transparent,
@@ -167,7 +173,7 @@ abstract final class WeekPactTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: dark ? WeekPactColors.mintGreen : WeekPactColors.pinkInk,
+        color: dark ? WeekPactColors.coolGrey : WeekPactColors.pinkInk,
       ),
       iconTheme: IconThemeData(color: foreground),
       dividerColor: outline,
@@ -231,9 +237,9 @@ extension WeekPactThemeX on BuildContext {
   Color get surface => WeekPactColors.cream;
   Color get border => WeekPactColors.black.withValues(alpha: .10);
   Color get shadow => border;
-  Color get yellow => WeekPactColors.softYellow;
+  Color get yellow => WeekPactColors.stone;
   Color get mint => WeekPactColors.mintGreen;
-  Color get coral => WeekPactColors.mintGreen;
+  Color get coral => WeekPactColors.coolGrey;
   Color get pink => WeekPactColors.cream;
   Color get primary => yellow;
   Color get accent =>
@@ -246,9 +252,14 @@ extension WeekPactThemeX on BuildContext {
 
   /// Resolve fixed accent colors carried by navigation and other view models.
   Color tone(Color color) {
-    if (color == WeekPactColors.softCoral ||
-        color == WeekPactColors.bubblegumPink) {
-      return WeekPactColors.mintGreen;
+    if (color == WeekPactColors.softYellow ||
+        color == WeekPactColors.softCoral) {
+      return WeekPactColors.stone;
+    }
+    if (color == WeekPactColors.bubblegumPink ||
+        color == WeekPactColors.lavender ||
+        color == WeekPactColors.sky) {
+      return WeekPactColors.coolGrey;
     }
     return color;
   }

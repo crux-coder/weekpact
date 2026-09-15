@@ -4,6 +4,8 @@ import 'src/home/home_backend.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/crew/crew_selection_store.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
@@ -70,6 +72,7 @@ Future<void> main() async {
 
   runApp(
     WeekPactApp(
+      crewSelectionStore: CrewSelectionStore(preferences),
       authBackend: authBackend,
       notifications: notifications,
       crewBackend: crewBackend,

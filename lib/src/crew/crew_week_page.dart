@@ -1,9 +1,11 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
@@ -75,11 +77,17 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     }
   }
 
-  void _showPact(int index) => _pages.animateToPage(
-    index,
-    duration: const Duration(milliseconds: 250),
-    curve: Curves.easeOutCubic,
-  );
+  void _showPact(int index) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pages.jumpToPage(index);
+      return;
+    }
+    _pages.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutBack,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +133,8 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                 IconButton(
                                   tooltip: 'Back to home',
                                   onPressed: () => Navigator.pop(context),
-                                  icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft02,
+                                  icon: const HugeIcon(
+                                    icon: HugeIconsStrokeRounded.arrowLeft02,
                                   ),
                                 ),
                               ],
@@ -212,6 +221,12 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                           'crew-pact-carousel',
                                         ),
                                         controller: _pages,
+                                        physics:
+                                            MediaQuery.disableAnimationsOf(
+                                              context,
+                                            )
+                                            ? const ClampingScrollPhysics()
+                                            : const _CarouselSpringPhysics(),
                                         itemCount: week.pacts.length,
                                         onPageChanged: (index) =>
                                             setState(() => _index = index),
@@ -328,6 +343,18 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
   }
 }
 
+class _CarouselSpringPhysics extends BouncingScrollPhysics {
+  const _CarouselSpringPhysics({super.parent});
+
+  @override
+  _CarouselSpringPhysics applyTo(ScrollPhysics? ancestor) =>
+      _CarouselSpringPhysics(parent: buildParent(ancestor));
+
+  @override
+  SpringDescription get spring =>
+      SpringDescription.withDampingRatio(mass: 1, stiffness: 220, ratio: 0.75);
+}
+
 /// Allows the refresh gesture while keeping the content exactly one viewport.
 class _CrewRefreshViewport extends StatelessWidget {
   const _CrewRefreshViewport({required this.onRefresh, required this.child});
@@ -337,9 +364,12 @@ class _CrewRefreshViewport extends StatelessWidget {
   @override
   Widget build(BuildContext context) => WeekPactBackground(
     child: RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: () {
+        unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
+        return onRefresh();
+      },
       color: WeekPactColors.black,
-      backgroundColor: WeekPactColors.mintGreen,
+      backgroundColor: WeekPactColors.cream,
       child: CustomScrollView(
         key: const ValueKey('crew-refresh-viewport'),
         physics: const AlwaysScrollableScrollPhysics(
@@ -362,7 +392,9 @@ class _WeekSummary extends StatelessWidget {
       children: [
         Expanded(
           child: AppSurface(
-            fillColor: WeekPactColors.mintGreen,
+            fillColor: week.percentCrew >= 100
+                ? WeekPactColors.mintGreen
+                : WeekPactColors.stone,
             builder: (_) => Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -390,7 +422,7 @@ class _WeekSummary extends StatelessWidget {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF242724),
+              color: WeekPactColors.activitySurface,
               borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
             ),
             padding: const EdgeInsets.all(14),
@@ -398,7 +430,7 @@ class _WeekSummary extends StatelessWidget {
               children: [
                 const HugeIcon(
                   icon: HugeIconsStrokeRounded.fire,
-                  color: Color(0xFFFFA134),
+                  color: WeekPactColors.darkMuted,
                   size: 30,
                 ),
                 const SizedBox(width: 8),
@@ -449,7 +481,7 @@ class _TodaySummary extends StatelessWidget {
         .where((member) => week.checkedToday(member.id).isNotEmpty)
         .length;
     return AppSurface(
-      fillColor: WeekPactColors.softYellow,
+      fillColor: WeekPactColors.stone,
       builder: (_) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(

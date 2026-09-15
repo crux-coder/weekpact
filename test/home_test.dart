@@ -34,6 +34,120 @@ Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
 }
 
 void main() {
+  testWidgets('pulling home moves the whole page and springs back', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = DashboardBackend();
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    final heading = find.text('Early Birds');
+    final card = find.byKey(const ValueKey('move'));
+    final navigation = find.byKey(const ValueKey('nav-home'));
+    final headingY = tester.getTopLeft(heading).dy;
+    final cardY = tester.getTopLeft(card).dy;
+    final navigationY = tester.getTopLeft(navigation).dy;
+    final fetches = backend.fetches;
+    final pull = await tester.startGesture(tester.getCenter(card));
+    await pull.moveBy(const Offset(0, 24));
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await pull.moveBy(const Offset(0, 20));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final displacement = tester.getTopLeft(heading).dy - headingY;
+    expect(displacement, greaterThan(10));
+    expect(displacement, lessThan(104));
+    expect(tester.getTopLeft(card).dy - cardY, closeTo(displacement, 1));
+    expect(tester.getTopLeft(navigation).dy, navigationY);
+    await pull.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 32));
+    final returningDisplacement = tester.getTopLeft(heading).dy - headingY;
+    expect(returningDisplacement, greaterThan(0));
+    expect(returningDisplacement, lessThan(displacement));
+    await tester.pumpUi();
+    expect(tester.getTopLeft(heading).dy, closeTo(headingY, 1));
+    expect(tester.getTopLeft(card).dy, closeTo(cardY, 1));
+    expect(backend.fetches, fetches);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pulling home refreshes data and recovers from refresh errors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = DashboardBackend();
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    final initialFetches = backend.fetches;
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(0, 50),
+    );
+    await tester.pumpUi();
+    expect(backend.fetches, initialFetches);
+    await tester.timedDrag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(-300, 0),
+      const Duration(milliseconds: 300),
+    );
+    await tester.pumpUi();
+    expect(backend.fetches, initialFetches);
+    expect(find.byKey(const ValueKey('read')).hitTestable(), findsOneWidget);
+    final selectedCardCenter = tester.getCenter(
+      find.byKey(const ValueKey('read')),
+    );
+    final updatedWeek = await backend.fetchWeek('crew');
+    backend.loading = Completer<CrewWeek>();
+    final beforePull = backend.fetches;
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(0, 400),
+    );
+    await tester.pumpUi();
+    expect(backend.fetches, beforePull + 1);
+    expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+    expect(find.byKey(const ValueKey('read')).hitTestable(), findsOneWidget);
+    backend.loading!.complete(updatedWeek);
+    backend.loading = null;
+    await tester.pumpUi();
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('read'))),
+      selectedCardCenter,
+    );
+    backend.failLoad = true;
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(0, 400),
+    );
+    await tester.pumpUi();
+    expect(find.text('TRY AGAIN'), findsOneWidget);
+    backend.failLoad = false;
+    backend.pacts.pacts = [];
+    await tester.drag(
+      find.byKey(const ValueKey('home-refresh-viewport')),
+      const Offset(0, 400),
+    );
+    await tester.pumpUi();
+    expect(find.text('No pacts yet.'), findsOneWidget);
+    final beforeEmptyRefresh = backend.fetches;
+    await tester.drag(
+      find.byKey(const ValueKey('home-refresh-viewport')),
+      const Offset(0, 400),
+    );
+    await tester.pumpUi();
+    expect(backend.fetches, beforeEmptyRefresh + 1);
+    expect(tester.takeException(), isNull);
+  });
+
   test('weekly progress caps each pact, excludes old days and ignores former members', () {
     final pacts = DashboardPacts().pacts;
     final week = CrewWeek(
@@ -223,7 +337,7 @@ void main() {
     backend.failSave = false;
     await submitTestPhoto(tester);
     await tester.pumpUi();
-    expect(calls.single.arguments, 'HapticFeedbackType.lightImpact');
+    expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
     await tester.tap(pact);
     await tester.pumpUi();
     expect(calls.length, 1);

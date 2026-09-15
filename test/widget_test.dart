@@ -241,8 +241,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
 
-    await tester.ensureVisible(find.text('LOG OUT'));
-    await tester.tap(find.text('LOG OUT'));
+    await tester.ensureVisible(find.text('Log out'));
+    await tester.tap(find.text('Log out'));
     await tester.pumpUi();
 
     expect(find.text('Welcome back.'), findsOneWidget);
@@ -286,7 +286,7 @@ void main() {
     await tester.pumpUi();
 
     expect(find.text('Account'), findsWidgets);
-    expect(find.text('LOG OUT'), findsOneWidget);
+    expect(find.text('Log out'), findsOneWidget);
   });
 
   testWidgets(

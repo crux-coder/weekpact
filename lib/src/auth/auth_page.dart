@@ -161,8 +161,8 @@ class _AuthPageState extends State<AuthPage> {
                           ? 'Your people. Your pacts. A fresh start today.'
                           : 'Build better habits with your people.',
                       color: _isLogin
-                          ? WeekPactColors.mintGreen
-                          : WeekPactColors.softYellow,
+                          ? WeekPactColors.coolGrey
+                          : WeekPactColors.stone,
                       eyebrow: _isLogin
                           ? 'SHOW UP TOGETHER'
                           : 'YOUR NEXT CHAPTER',
@@ -170,7 +170,7 @@ class _AuthPageState extends State<AuthPage> {
                     const SizedBox(height: 8),
                     if (widget.pendingInviteToken != null) ...[
                       AppSurface(
-                        fillColor: WeekPactColors.softYellow,
+                        fillColor: WeekPactColors.stone,
                         builder: (context) => const Padding(
                           padding: EdgeInsets.all(14),
                           child: Text(
@@ -274,8 +274,8 @@ class _AuthPageState extends State<AuthPage> {
                     const SizedBox(height: 8),
                     AppSurface(
                       fillColor: _isLogin
-                          ? WeekPactColors.softYellow
-                          : WeekPactColors.mintGreen,
+                          ? WeekPactColors.stone
+                          : WeekPactColors.coolGrey,
                       builder: (context) => TextButton(
                         onPressed: _submitting ? null : _switchMode,
                         style: TextButton.styleFrom(

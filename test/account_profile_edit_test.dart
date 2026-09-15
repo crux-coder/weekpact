@@ -37,7 +37,9 @@ void main() {
     await tester.tap(find.text('SAVE'));
     await tester.pumpUi();
     expect(find.text('Jasmin Test'), findsOneWidget);
-    expect(find.text('Edit profile'), findsNothing);
+    expect(find.byTooltip('Close profile'), findsNothing);
+    expect(find.text('Edit profile'), findsOneWidget);
+    expect(find.text('Reset password'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

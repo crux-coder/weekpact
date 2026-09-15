@@ -1,39 +1,111 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/pacts/pacts_overview.dart';
+import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
 
 void main() {
-  testWidgets('weekly rhythm sums pact targets, not completed check-ins', (
+  CrewWeek sample({String today = '2026-09-16', bool empty = false}) =>
+      CrewWeek(
+        today: today,
+        weekStart: '2026-09-14',
+        timezone: 'Pacific/Auckland',
+        pacts: empty ? [] : DashboardPacts().pacts,
+        members: [],
+        checkIns: [
+          const PactCheckIn('move', 'me', '2026-09-14'),
+          const PactCheckIn('move', 'me', '2026-09-14'), // Duplicate day.
+          const PactCheckIn('move', 'other', '2026-09-15'),
+          const PactCheckIn('move', 'me', '2026-09-13'), // Previous week.
+          const PactCheckIn('move', 'me', '2026-09-21'), // Future week.
+          for (final day in ['14', '15', '16', '17'])
+            PactCheckIn('read', 'me', '2026-09-$day'),
+        ],
+      );
+
+  Future<void> render(WidgetTester tester, CrewWeek week) => tester.pumpWidget(
+    MaterialApp(
+      theme: WeekPactTheme.dark,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: YourWeekCard(week: week, userId: 'me'),
+        ),
+      ),
+    ),
+  );
+
+  testWidgets('weekly progress uses personal distinct days capped per target', (
     tester,
   ) async {
-    final pacts = DashboardPacts().pacts;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: Scaffold(body: WeeklyRhythmCard(pacts: pacts)),
-      ),
+    await render(tester, sample(today: '2026-09-17'));
+    expect(find.text('Your week so far'), findsOneWidget);
+    expect(find.text('4 of 10 check-ins done'), findsOneWidget);
+    expect(find.text('1 / 7'), findsOneWidget);
+    expect(find.text('3 / 3'), findsOneWidget);
+    expect(
+      find.text('6 left · 4 days remaining, including today'),
+      findsOneWidget,
     );
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('weekly-rhythm-target')))
-          .data,
-      '10',
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      .4,
     );
+  });
+
+  testWidgets('week uses supplied crew date and handles empty pacts', (
+    tester,
+  ) async {
+    await render(tester, sample(today: '2026-09-20'));
+    expect(find.text('6 left · Today is the last day'), findsOneWidget);
+    await render(tester, sample(empty: true));
+    expect(find.text('Add a pact to start your week.'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
+  testWidgets('completed week celebrates targets and handles large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final week = sample(today: '2026-09-20');
     await tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
-        home: Scaffold(body: WeeklyRhythmCard(pacts: pacts.take(1).toList())),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: YourWeekCard(
+              userId: 'me',
+              week: CrewWeek(
+                today: week.today,
+                weekStart: week.weekStart,
+                timezone: week.timezone,
+                pacts: week.pacts,
+                members: [],
+                checkIns: [
+                  for (final pact in week.pacts)
+                    for (var day = 14; day <= 20; day++)
+                      PactCheckIn(pact.id, 'me', '2026-09-$day'),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
-    expect(
-      tester
-          .widget<Text>(find.byKey(const ValueKey('weekly-rhythm-target')))
-          .data,
-      '7',
-    );
+    expect(find.text('10 of 10 check-ins done'), findsOneWidget);
+    expect(find.text('All weekly targets met. Nice work!'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   for (final settings in [(390.0, 1.0), (320.0, 2.0)]) {

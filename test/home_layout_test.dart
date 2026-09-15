@@ -69,13 +69,15 @@ void main() {
           expect(find.text('WeekPact'), findsNothing);
           expect(find.byType(Swiper), findsOneWidget);
           final verticalScrolls = tester
-              .widgetList<Scrollable>(find.byType(Scrollable))
+              .stateList<ScrollableState>(find.byType(Scrollable))
               .where(
                 (s) =>
-                    s.axisDirection == AxisDirection.down ||
-                    s.axisDirection == AxisDirection.up,
+                    s.widget.axisDirection == AxisDirection.down ||
+                    s.widget.axisDirection == AxisDirection.up,
               );
-          expect(verticalScrolls, isEmpty);
+          expect(verticalScrolls, hasLength(1));
+          expect(verticalScrolls.single.position.maxScrollExtent, 0);
+          expect(verticalScrolls.single.position.minScrollExtent, 0);
           final board = find.byKey(const ValueKey('crew-board'));
           final position = tester.getTopLeft(board);
           final activePact = tester.getRect(
@@ -118,7 +120,11 @@ void main() {
           expect(find.byKey(const ValueKey('crew-streak')), findsNothing);
           final before = find.text('Early Birds');
           expect(before, findsOneWidget);
-          await tester.drag(find.byType(Swiper), Offset(-size.width * .7, 0));
+          await tester.timedDrag(
+            find.byType(Swiper),
+            Offset(-size.width * .7, 0),
+            const Duration(milliseconds: 300),
+          );
           await tester.pumpUi();
           expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
           expect(find.text('Your pacts'), findsNothing);

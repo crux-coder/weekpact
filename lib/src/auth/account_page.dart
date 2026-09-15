@@ -47,103 +47,124 @@ class _AccountPageState extends State<AccountPage> {
   Widget build(BuildContext context) {
     final user = _edited ?? widget.user;
     final name = '${user.firstName} ${user.lastName}'.trim();
+    final initials = [user.firstName, user.lastName]
+        .where((part) => part.trim().isNotEmpty)
+        .map((part) => part.trim().characters.first.toUpperCase())
+        .join();
     return PageFrame(
-      header: const PageHeading('Account', dotColor: WeekPactColors.lavender),
+      header: const PageHeading('Account', dotColor: WeekPactColors.coolGrey),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSurface(
-            fillColor: WeekPactColors.mintGreen,
+            key: const ValueKey('account-profile'),
+            fillColor: WeekPactColors.stone,
             builder: (context) => Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      tooltip: 'Edit profile',
+                  ProfileAvatar(
+                    backend: widget.backend,
+                    size: 88,
+                    initials: initials,
+                    backgroundColor: WeekPactColors.mintGreen,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    name.isEmpty ? 'Your profile' : name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.email,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: context.muted, fontSize: 15),
+                  ),
+                  const SizedBox(height: 14),
+                  Tooltip(
+                    message: 'Edit profile',
+                    child: FilledButton.icon(
                       onPressed: widget.signingOut ? null : _edit,
-                      icon: HugeIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: WeekPactColors.black,
+                        foregroundColor: WeekPactColors.cream,
+                        minimumSize: const Size(168, 44),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: const HugeIcon(
                         icon: HugeIconsStrokeRounded.pencilEdit02,
-                        color: context.ink,
-                        size: 22,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Edit profile',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      ProfileAvatar(backend: widget.backend),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name.isEmpty ? 'Your profile' : name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              user.email,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: context.muted,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const DiagnosticsControl(),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: MediaQuery.textScalerOf(context).scale(180),
-            child: AccountPreferenceTile(
-              color: WeekPactColors.cream,
-              icon: HugeIconsStrokeRounded.notification02,
-              title: 'Notifications',
-              subtitle: 'Stay in the loop',
-              control: const _NotificationControl(),
+          AppSurface(
+            key: const ValueKey('account-preferences'),
+            builder: (_) => Column(
+              children: [
+                _NotificationControl(enabled: !widget.signingOut),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(height: 1),
+                ),
+                DiagnosticsControl(enabled: !widget.signingOut),
+              ],
             ),
           ),
           const SizedBox(height: 8),
+          const PublicAccountLinks(asTiles: true),
+          const SizedBox(height: 12),
           AppSurface(
-            builder: (context) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              child: AccountActions(
-                backend: widget.backend,
-                enabled: !widget.signingOut,
-                asRows: true,
+            builder: (context) => ListTile(
+              onTap: widget.signingOut ? null : widget.onSignOut,
+              enabled: !widget.signingOut,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 2,
+              ),
+              leading: HugeIcon(
+                icon: HugeIconsStrokeRounded.logout01,
+                color: context.ink,
+                size: 24,
+              ),
+              title: Text(
+                widget.signingOut ? 'Logging out…' : 'Log out',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              trailing: HugeIcon(
+                icon: HugeIconsStrokeRounded.arrowRight01,
+                color: context.ink,
+                size: 20,
               ),
             ),
           ),
           const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: widget.signingOut ? null : widget.onSignOut,
-            style: TextButton.styleFrom(
-              foregroundColor: context.muted,
-              minimumSize: const Size.fromHeight(48),
-            ),
-            icon: const HugeIcon(
-              icon: HugeIconsStrokeRounded.logout01,
-              size: 22,
-            ),
-            label: Text(widget.signingOut ? 'Logging out…' : 'LOG OUT'),
+          Divider(height: 1, color: context.border.withValues(alpha: .3)),
+          const SizedBox(height: 4),
+          AccountActions(
+            backend: widget.backend,
+            enabled: !widget.signingOut,
+            showPasswordReset: false,
+            showPublicLinks: false,
+            asRows: true,
           ),
         ],
       ),
@@ -151,88 +172,46 @@ class _AccountPageState extends State<AccountPage> {
   }
 }
 
-class AccountPreferenceTile extends StatelessWidget {
-  const AccountPreferenceTile({
-    super.key,
-    required this.color,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.control,
-  });
-  final Color color;
-  final List<List<dynamic>> icon;
-  final String title;
-  final String subtitle;
-  final Widget control;
-
-  @override
-  Widget build(BuildContext context) => AppSurface(
-    fillColor: color,
-    builder: (context) => Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HugeIcon(icon: icon, size: 29),
-          const SizedBox(height: 10),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 13, color: context.muted)),
-          const Spacer(),
-          control,
-        ],
-      ),
-    ),
-  );
-}
-
 class _NotificationControl extends StatelessWidget {
-  const _NotificationControl();
+  const _NotificationControl({required this.enabled});
+  final bool enabled;
   @override
   Widget build(BuildContext context) {
     final service = NotificationScope.maybeOf(context);
-    return Row(
-      children: [
-        Switch(
-          activeTrackColor: WeekPactColors.mintGreen,
-          activeThumbColor: WeekPactColors.black,
-          value: service?.enabled ?? false,
-          onChanged: service == null || service.busy
-              ? null
-              : (enabled) async {
-                  if (enabled) {
-                    await service.enable();
-                  } else {
-                    await service.disable();
-                  }
-                  if (context.mounted &&
-                      (service.error != null ||
-                          service.registrationError != null ||
-                          !service.available ||
-                          (enabled && !service.allowed))) {
-                    await showAppSheet<void>(
-                      context: context,
-                      builder: (_) => AppSheet(
-                        builder: (_) => const NotificationSettingsCard(),
-                      ),
-                    );
-                  }
-                },
-        ),
-        const SizedBox(width: 4),
-        Text(
-          service?.enabled == true ? 'On' : 'Off',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ],
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      secondary: const HugeIcon(
+        icon: HugeIconsStrokeRounded.notification02,
+        size: 26,
+      ),
+      title: const Text(
+        'Notifications',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
+      activeTrackColor: WeekPactColors.coolGrey,
+      activeThumbColor: WeekPactColors.black,
+      value: service?.enabled ?? false,
+      onChanged: !enabled || service == null || service.busy
+          ? null
+          : (enabled) async {
+              if (enabled) {
+                await service.enable();
+              } else {
+                await service.disable();
+              }
+              if (context.mounted &&
+                  (service.error != null ||
+                      service.registrationError != null ||
+                      !service.available ||
+                      (enabled && !service.allowed))) {
+                await showAppSheet<void>(
+                  context: context,
+                  builder: (_) => AppSheet(
+                    builder: (_) => const NotificationSettingsCard(),
+                  ),
+                );
+              }
+            },
     );
   }
 }
