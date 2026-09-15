@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../pacts/pacts_backend.dart';
@@ -29,7 +31,6 @@ class _CrewSwitcherState extends State<CrewSwitcher> {
   final _portal = OverlayPortalController();
   final _link = LayerLink();
   static const _background = Color(0xFF242424);
-  static const _ink = Color(0xFFF4F4F4);
   bool _open = false;
 
   void _close() {
@@ -74,36 +75,49 @@ class _CrewSwitcherState extends State<CrewSwitcher> {
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: SizedBox(
-            height: widget.compact ? 44 : 60,
+            height: 60,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: widget.compact ? 3 : 8,
+                horizontal: widget.compact ? 10 : 4,
+                vertical: 8,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.compact) ...[
+                    const CrewControlLabel('YOUR CREW'),
+                    const SizedBox(height: 4),
+                  ],
                   Expanded(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        selected?.name ?? 'Your crew',
-                        style: const TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w700,
-                          color: _ink,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              selected?.name ?? 'Your crew',
+                              style: TextStyle(
+                                fontSize: 25,
+                                fontWeight: FontWeight.w700,
+                                color: context.ink,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        if (widget.crews.length > 1) ...[
+                          const SizedBox(width: 8),
+                          AppIcon(
+                            icon: widget.compact
+                                ? HugeIconsStrokeRounded.arrowDown01
+                                : HugeIconsStrokeRounded.unfoldMore,
+                            color: context.ink,
+                            size: 20,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (widget.crews.length > 1) ...[
-                    const SizedBox(width: 8),
-                    HugeIcon(
-                      icon: HugeIconsStrokeRounded.unfoldMore,
-                      color: _ink,
-                      size: 20,
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -131,7 +145,7 @@ class _CrewSwitcherState extends State<CrewSwitcher> {
               CompositedTransformFollower(
                 link: _link,
                 showWhenUnlinked: false,
-                offset: Offset(0, (widget.compact ? 44 : 60) + 22),
+                offset: Offset(0, widget.compact ? 66 : 82),
                 child: SizedBox(
                   width: constraints.maxWidth,
                   child: TapRegion(
@@ -184,7 +198,7 @@ class _CrewSwitcherState extends State<CrewSwitcher> {
                                         title: Text(
                                           crew.name,
                                           style: const TextStyle(
-                                            color: _ink,
+                                            color: WeekPactColors.darkInk,
                                             fontSize: 17,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -207,33 +221,34 @@ class _CrewSwitcherState extends State<CrewSwitcher> {
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const CrewControlLabel('YOUR CREW'),
-              const SizedBox(height: 4),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: context.canvas,
-                  borderRadius: BorderRadius.circular(
-                    WeekPactMetrics.cardRadius,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x40000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
+          child: widget.compact
+              ? CrewHeaderSurface(child: _header())
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const CrewControlLabel('YOUR CREW'),
+                    const SizedBox(height: 4),
+                    DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: context.canvas,
+                        shape: const ContinuousRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(20)),
+                        ),
+                        shadows: const [
+                          BoxShadow(
+                            color: Color(0x40000000),
+                            offset: WeekPactMetrics.raisedOffset,
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: _header(),
+                      ),
                     ),
                   ],
                 ),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: _header(),
-                ),
-              ),
-            ],
-          ),
         ),
       );
     },
@@ -263,4 +278,39 @@ class CrewControlLabel extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Compact Home header surface, with labels and controls inside its raised face.
+class CrewHeaderSurface extends StatelessWidget {
+  const CrewHeaderSurface({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final face = context.isDark
+        ? const Color(0xFF101210)
+        : Color.lerp(context.canvas, context.ink, .07)!;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: const ContinuousRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(28)),
+        ),
+        shadows: [
+          BoxShadow(
+            color: Color.lerp(face, context.ink, .22)!,
+            offset: WeekPactMetrics.raisedOffset,
+          ),
+        ],
+      ),
+      child: Material(
+        color: face,
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+          side: BorderSide(color: Color.lerp(face, context.ink, .12)!),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
 }

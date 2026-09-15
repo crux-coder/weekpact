@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -254,7 +256,7 @@ class _InlineCheckInCameraState extends State<InlineCheckInCamera>
                           ? const CircularProgressIndicator(
                               semanticsLabel: 'Starting camera',
                             )
-                          : const HugeIcon(
+                          : const AppIcon(
                               icon: HugeIconsStrokeRounded.camera01,
                               size: 40,
                               color: WeekPactColors.mutedLight,

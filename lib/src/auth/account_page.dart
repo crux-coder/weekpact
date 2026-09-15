@@ -1,7 +1,9 @@
 import '../telemetry/diagnostics_control.dart';
 
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'auth_backend.dart';
@@ -93,9 +95,9 @@ class _AccountPageState extends State<AccountPage> {
                         backgroundColor: WeekPactColors.black,
                         foregroundColor: WeekPactColors.cream,
                         minimumSize: const Size(168, 44),
-                        shape: const StadiumBorder(),
+                        shape: WeekPactMetrics.buttonShape,
                       ),
-                      icon: const HugeIcon(
+                      icon: const AppIcon(
                         icon: HugeIconsStrokeRounded.pencilEdit02,
                         size: 20,
                       ),
@@ -137,7 +139,7 @@ class _AccountPageState extends State<AccountPage> {
                 horizontal: 18,
                 vertical: 2,
               ),
-              leading: HugeIcon(
+              leading: AppIcon(
                 icon: HugeIconsStrokeRounded.logout01,
                 color: context.ink,
                 size: 24,
@@ -149,7 +151,7 @@ class _AccountPageState extends State<AccountPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              trailing: HugeIcon(
+              trailing: AppIcon(
                 icon: HugeIconsStrokeRounded.arrowRight01,
                 color: context.ink,
                 size: 20,
@@ -180,7 +182,7 @@ class _NotificationControl extends StatelessWidget {
     final service = NotificationScope.maybeOf(context);
     return SwitchListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      secondary: const HugeIcon(
+      secondary: const AppIcon(
         icon: HugeIconsStrokeRounded.notification02,
         size: 26,
       ),

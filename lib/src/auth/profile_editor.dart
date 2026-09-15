@@ -1,4 +1,5 @@
-import 'package:hugeicons/hugeicons.dart';
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 
@@ -71,7 +72,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                 ),
                 IconButton(
                   onPressed: _saving ? null : () => Navigator.pop(context),
-                  icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
                   tooltip: 'Close profile',
                 ),
               ],

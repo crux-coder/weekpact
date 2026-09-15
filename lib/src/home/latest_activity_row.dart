@@ -1,3 +1,5 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -6,7 +8,8 @@ import 'dart:math' as math;
 
 import '../theme/weekpact_theme.dart';
 import 'home_backend.dart';
-import 'home_surface.dart';
+
+const _activityIconFace = Color(0xFF262626);
 
 /// Compact activity summary with a borderless member photo. The tooltip and
 /// semantics retain the full copy when a long name or pact is truncated.
@@ -33,7 +36,6 @@ class LatestActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const background = WeekPactColors.activitySurface;
     final activity = week.latestActivity;
     final member = week.members
         .where((m) => m.id == activity?.userId)
@@ -71,7 +73,7 @@ class LatestActivityRow extends StatelessWidget {
           message: fullMessage,
           child: ExcludeSemantics(
             child: Material(
-              color: background,
+              color: Colors.transparent,
               child: Ink(
                 child: InkWell(
                   onTap: open,
@@ -83,24 +85,13 @@ class LatestActivityRow extends StatelessWidget {
                     child: LayoutBuilder(
                       builder: (context, space) => Row(
                         children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: homeInk.withValues(alpha: .12),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
+                          _ActivityIcon(
+                            size: 32,
+                            child: AvatarClip(
                               key: const ValueKey('activity-avatar'),
                               child: !hasActivity
                                   ? const ColoredBox(
-                                      color: Color(0xFF3B3D3B),
+                                      color: _activityIconFace,
                                       child: Padding(
                                         padding: EdgeInsets.all(6),
                                         child: HugeIcon(
@@ -182,19 +173,16 @@ class LatestActivityRow extends StatelessWidget {
                           ),
                           if (open != null) ...[
                             const SizedBox(width: 8),
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: .06),
-                                shape: BoxShape.circle,
-                              ),
+                            _ActivityIcon(
+                              size: 28,
+                              raised: true,
+                              pressed: expansion.clamp(0.0, 1.0),
                               child: Transform.rotate(
-                                angle: -math.pi / 2 * expansion,
+                                angle: -math.pi * expansion,
                                 child: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.arrowRight01,
+                                  icon: HugeIconsStrokeRounded.arrowDown01,
                                   color: WeekPactColors.darkInk,
-                                  size: 22,
+                                  size: 19,
                                 ),
                               ),
                             ),
@@ -213,28 +201,44 @@ class LatestActivityRow extends StatelessWidget {
     return Container(
       key: const ValueKey('activity-container'),
       height: height + (expandedHeight - height) * expansion,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+      decoration: const ShapeDecoration(
+        shape: WeekPactMetrics.pactCardShape,
+        shadows: [
+          BoxShadow(
+            color: Color(0xFF404040),
+            offset: WeekPactMetrics.raisedOffset,
+          ),
+        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
-        child: ColoredBox(
-          color: background,
-          child: Column(
-            children: [
-              header,
-              if (history != null)
-                Expanded(
-                  child: ClipRect(
-                    child: OverflowBox(
-                      alignment: Alignment.topCenter,
-                      minHeight: expandedHeight - height,
-                      maxHeight: expandedHeight - height,
-                      child: Opacity(opacity: expansion, child: history),
+      child: ClipPath(
+        clipper: const ShapeBorderClipper(shape: WeekPactMetrics.pactCardShape),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: WeekPactColors.activitySurface,
+          ),
+          child: DecoratedBox(
+            position: DecorationPosition.foreground,
+            decoration: ShapeDecoration(
+              shape: WeekPactMetrics.pactCardShape.copyWith(
+                side: BorderSide(color: Colors.white.withValues(alpha: .09)),
+              ),
+            ),
+            child: Column(
+              children: [
+                header,
+                if (history != null)
+                  Expanded(
+                    child: ClipRect(
+                      child: OverflowBox(
+                        alignment: Alignment.topCenter,
+                        minHeight: expandedHeight - height,
+                        maxHeight: expandedHeight - height,
+                        child: Opacity(opacity: expansion, child: history),
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -242,7 +246,7 @@ class LatestActivityRow extends StatelessWidget {
   }
 
   Widget _initials(WeekMember? member) => ColoredBox(
-    color: const Color(0xFF3B3D3B),
+    color: _activityIconFace,
     child: Center(
       child: Text(
         member?.initials ?? '?',
@@ -265,4 +269,56 @@ class LatestActivityRow extends StatelessWidget {
     if (elapsed.inDays < 1) return '${elapsed.inHours}h ago';
     return '${elapsed.inDays}d ago';
   }
+}
+
+class _ActivityIcon extends StatelessWidget {
+  const _ActivityIcon({
+    required this.size,
+    required this.child,
+    this.raised = false,
+    this.pressed = 0,
+  });
+  final bool raised;
+  final double pressed;
+  final double size;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: raised
+        ? Transform.translate(
+            offset: Offset(
+              0,
+              raised ? WeekPactMetrics.controlDepth * pressed : 0,
+            ),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: raised
+                    ? Color.lerp(
+                        const Color(0xFF3A3A3A),
+                        _activityIconFace,
+                        pressed,
+                      )
+                    : _activityIconFace,
+                shape: WeekPactMetrics.buttonShape.copyWith(
+                  side: const BorderSide(color: Color(0xFF606060)),
+                ),
+                shadows: raised
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF5A5A5A),
+                          offset: Offset(
+                            0,
+                            WeekPactMetrics.controlDepth * (1 - pressed),
+                          ),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Center(child: child),
+            ),
+          )
+        : child,
+  );
 }

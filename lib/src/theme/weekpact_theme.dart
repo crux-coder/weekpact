@@ -1,12 +1,21 @@
+import '../widgets/squircle_button_border.dart';
 import 'package:hugeicons/hugeicons.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 
 /// Shared stroke and depth values for the app's outlined surfaces.
 abstract final class WeekPactMetrics {
   static const border = 1.0;
+  static const controlDepth = 2.0;
+  static const cardDepth = 3.0;
+  static const pactCardShape = ContinuousRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(40)),
+  );
+  static const raisedOffset = Offset(0, controlDepth);
   static const cardRadius = 8.0;
   static const controlRadius = 8.0;
+  static const buttonShape = SquircleButtonBorder();
   static const pageInset = 12.0;
   static const sectionGap = 20.0;
   static const fineBorder = 1.0;
@@ -167,10 +176,17 @@ abstract final class WeekPactTheme {
           backgroundColor: foreground,
           foregroundColor: background,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-          ),
+          shape: WeekPactMetrics.buttonShape,
         ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(shape: WeekPactMetrics.buttonShape),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(shape: WeekPactMetrics.buttonShape),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(shape: WeekPactMetrics.buttonShape),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: dark ? WeekPactColors.coolGrey : WeekPactColors.pinkInk,

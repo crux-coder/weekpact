@@ -1,6 +1,7 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_sheet.dart';
@@ -41,7 +42,7 @@ class _PactIconPickerState extends State<PactIconPicker> {
               IconButton(
                 tooltip: 'Close icon picker',
                 onPressed: () => Navigator.pop(context),
-                icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+                icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
               ),
             ],
           ),
@@ -52,7 +53,7 @@ class _PactIconPickerState extends State<PactIconPicker> {
               decoration: InputDecoration(
                 hintText: 'Search icons',
                 hintStyle: TextStyle(color: context.muted),
-                prefixIcon: HugeIcon(
+                prefixIcon: AppIcon(
                   icon: HugeIconsStrokeRounded.search01,
                   color: context.muted,
                 ),
@@ -107,15 +108,13 @@ class _PactIconPickerState extends State<PactIconPicker> {
                                   ? WeekPactMetrics.selectedBorder
                                   : WeekPactMetrics.border,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: WeekPactMetrics.buttonShape,
                           ),
                           onPressed: () => Navigator.pop(context, icon.key),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              HugeIcon(
+                              AppIcon(
                                 icon: icon.data,
                                 color: context.ink,
                                 size: 28,

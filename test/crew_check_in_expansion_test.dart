@@ -166,14 +166,14 @@ void main() {
         tester.getSize(checked).width,
         tester.getSize(find.byKey(const ValueKey('crew-board'))).width,
       );
-      expect(find.text('EVERYONE SHOWED UP · 14'), findsOneWidget);
+      expect(find.text('14/14'), findsOneWidget);
       await tester.tap(checked);
       await tester.pumpUi();
       expect(
         find.byKey(const ValueKey('checked-members-list')),
         findsOneWidget,
       );
-      await tester.tap(find.bySemanticsLabel('Checked in today · 14'));
+      await tester.tap(find.byTooltip('Collapse members'));
       await tester.pumpUi();
       expect(find.byKey(const ValueKey('checked-members-list')), findsNothing);
       expect(tester.takeException(), isNull);

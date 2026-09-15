@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../widgets/app_components.dart';
@@ -140,7 +142,7 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
                 onPressed: _saving || _capturing
                     ? null
                     : () => Navigator.pop(context, false),
-                icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+                icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
               ),
             ],
           ),
@@ -176,7 +178,7 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
                         ? Center(
                             child: _capturing
                                 ? const CircularProgressIndicator()
-                                : const HugeIcon(
+                                : const AppIcon(
                                     icon: HugeIconsStrokeRounded.camera01,
                                     size: 40,
                                     color: WeekPactColors.mutedLight,

@@ -70,7 +70,7 @@ void main() {
     );
   }
 
-  testWidgets('cards stay centered and stop at both ends', (tester) async {
+  testWidgets('cards sit slightly left and stop at both ends', (tester) async {
     final backend = DashboardBackend();
     backend.pacts.pacts.add(
       const CrewPact(
@@ -110,7 +110,7 @@ void main() {
             .opacity,
         1,
       );
-      expect(card.center.dx, closeTo(stack.center.dx, 1));
+      expect(card.center.dx, closeTo(stack.center.dx - 12, 1));
       expect(card.left, greaterThan(stack.left));
       expect(card.right, lessThan(stack.right));
       if (index > 0) {
@@ -572,7 +572,7 @@ void main() {
             CrewPact(
               id: '$i',
               crewId: 'crew',
-              title: 'Pact $i',
+              title: 'Pact $i: Take a long evening walk and stretch after work',
               frequency: PactFrequency.daily,
               daysPerWeek: 7,
               iconKey: 'run',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:hugeicons/hugeicons.dart';
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -23,10 +24,7 @@ class _DiagnosticsControlState extends State<DiagnosticsControl> {
           'Optional device diagnostics, without your name or pact content.',
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        secondary: const HugeIcon(
-          icon: HugeIconsStrokeRounded.file02,
-          size: 26,
-        ),
+        secondary: const AppIcon(icon: HugeIconsStrokeRounded.file02, size: 26),
         title: const Text(
           'Share crash reports',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),

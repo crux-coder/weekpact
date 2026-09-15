@@ -1,5 +1,6 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -133,7 +134,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                 IconButton(
                                   tooltip: 'Back to home',
                                   onPressed: () => Navigator.pop(context),
-                                  icon: const HugeIcon(
+                                  icon: const AppIcon(
                                     icon: HugeIconsStrokeRounded.arrowLeft02,
                                   ),
                                 ),
@@ -259,7 +260,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                         onPressed: _index == 0
                                             ? null
                                             : () => _showPact(_index - 1),
-                                        icon: const HugeIcon(
+                                        icon: const AppIcon(
                                           icon: HugeIconsStrokeRounded
                                               .arrowLeft01,
                                           size: 20,
@@ -315,7 +316,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                             _index == week.pacts.length - 1
                                             ? null
                                             : () => _showPact(_index + 1),
-                                        icon: const HugeIcon(
+                                        icon: const AppIcon(
                                           icon: HugeIconsStrokeRounded
                                               .arrowRight01,
                                           size: 20,
@@ -428,7 +429,7 @@ class _WeekSummary extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                const HugeIcon(
+                const AppIcon(
                   icon: HugeIconsStrokeRounded.fire,
                   color: WeekPactColors.darkMuted,
                   size: 30,
@@ -486,7 +487,7 @@ class _TodaySummary extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            const HugeIcon(icon: HugeIconsStrokeRounded.userGroup, size: 30),
+            const AppIcon(icon: HugeIconsStrokeRounded.userGroup, size: 30),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

@@ -1,4 +1,9 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 
@@ -77,7 +82,7 @@ class CrewPersonCard extends StatelessWidget {
                   child: Center(
                     child: AspectRatio(
                       aspectRatio: 1,
-                      child: ClipOval(
+                      child: AvatarClip(
                         child: member.avatarUrl?.trim().isNotEmpty != true
                             ? _initial(context)
                             : Image.network(
@@ -125,7 +130,7 @@ class CrewPersonCard extends StatelessWidget {
             child: IconButton(
               tooltip: 'Remove $_name',
               onPressed: onRemove,
-              icon: const HugeIcon(
+              icon: const AppIcon(
                 icon: HugeIconsStrokeRounded.moreHorizontal,
                 size: 22,
               ),
@@ -143,27 +148,28 @@ class CrewInviteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DashedBorder(
     color: WeekPactColors.cream.withValues(alpha: .8),
-    radius: WeekPactMetrics.cardRadius,
-    child: Material(
-      color: WeekPactColors.black,
-      borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+    radius: 18,
+    child: AppSurface(
+      fillColor: WeekPactColors.black,
+      resolveTone: false,
+      builder: (_) => InkWell(
         onTap: onPressed,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
                 decoration: const BoxDecoration(
                   color: WeekPactColors.cream,
                   shape: BoxShape.circle,
                 ),
-                child: const HugeIcon(
-                  icon: HugeIconsStrokeRounded.add01,
-                  size: 32,
-                  color: WeekPactColors.black,
+                child: const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: HugeIcon(
+                    icon: HugeIconsStrokeRounded.add01,
+                    size: 32,
+                    color: WeekPactColors.black,
+                  ),
                 ),
               ),
               const SizedBox(height: 14),

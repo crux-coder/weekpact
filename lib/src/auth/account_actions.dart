@@ -1,5 +1,7 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -126,7 +128,7 @@ class PublicAccountLinks extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            HugeIcon(icon: icon, size: 28, color: context.ink),
+            AppIcon(icon: icon, size: 28, color: context.ink),
             const SizedBox(height: 12),
             Text(
               title,

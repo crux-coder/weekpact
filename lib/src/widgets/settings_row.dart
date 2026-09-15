@@ -1,5 +1,7 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import 'app_icon.dart';
+
 import 'package:flutter/material.dart';
 
 class SettingsRow extends StatelessWidget {
@@ -16,12 +18,12 @@ class SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
-    leading: HugeIcon(icon: icon, size: 23),
+    leading: AppIcon(icon: icon, size: 23),
     title: Text(
       label,
       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
     ),
-    trailing: const HugeIcon(
+    trailing: const AppIcon(
       icon: HugeIconsStrokeRounded.arrowRight01,
       size: 21,
     ),

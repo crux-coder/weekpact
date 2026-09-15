@@ -1,3 +1,6 @@
+import '../theme/weekpact_theme.dart';
+import '../widgets/avatar_shape.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -234,7 +237,7 @@ class _CrewMemberListState extends State<CrewMemberList>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipOval(
+          AvatarClip(
             child: SizedBox.square(
               dimension: 36,
               child: ColoredBox(
@@ -328,7 +331,7 @@ class _CrewMemberListState extends State<CrewMemberList>
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
-            shape: const StadiumBorder(),
+            shape: WeekPactMetrics.buttonShape,
           ),
           child: Text(label),
         ),

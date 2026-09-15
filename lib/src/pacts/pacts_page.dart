@@ -15,7 +15,7 @@ import 'pact_icons.dart';
 import 'pacts_overview.dart';
 import 'pact_icon_picker.dart';
 
-import 'package:hugeicons/hugeicons.dart';
+import '../widgets/app_icon.dart';
 
 class PactsPage extends StatefulWidget {
   const PactsPage({
@@ -385,7 +385,7 @@ class PactEditorState extends State<PactEditor> {
                 IconButton(
                   tooltip: 'Close pact',
                   onPressed: _saving ? null : () => Navigator.pop(context),
-                  icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
                 ),
               ],
             ),
@@ -448,7 +448,7 @@ class PactEditorState extends State<PactEditor> {
                                   setState(() => _iconKey = selected);
                                 }
                               },
-                        icon: HugeIcon(
+                        icon: AppIcon(
                           icon: PactIcon.find(_iconKey).data,
                           color: context.ink,
                           size: 24,
@@ -505,7 +505,7 @@ class PactEditorState extends State<PactEditor> {
             const SizedBox(height: 16),
             if (_frequency == PactFrequency.weekly)
               DropdownButtonFormField<int>(
-                icon: const HugeIcon(
+                icon: const AppIcon(
                   icon: HugeIconsStrokeRounded.arrowDown01,
                   size: 20,
                 ),

@@ -338,9 +338,12 @@ void main() {
     await submitTestPhoto(tester);
     await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
-    await tester.tap(pact);
+    // Undo responds at the section edge, away from its text.
+    final undoBounds = tester.getRect(pact);
+    await tester.tapAt(undoBounds.centerRight - const Offset(2, 0));
     await tester.pumpUi();
     expect(calls.length, 1);
+    expect(backend.selected, isNot(contains('move')));
     await tester.pumpWidget(const SizedBox());
   });
 

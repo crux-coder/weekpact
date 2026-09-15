@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/raised_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../widgets/app_sheet.dart';
@@ -43,7 +45,7 @@ class _CheckInPhotoViewerState extends State<CheckInPhotoViewer> {
             IconButton(
               tooltip: 'Close check-in photo',
               onPressed: () => Navigator.pop(context),
-              icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+              icon: const RaisedIcon(icon: HugeIconsStrokeRounded.cancel01),
             ),
           ],
         ),

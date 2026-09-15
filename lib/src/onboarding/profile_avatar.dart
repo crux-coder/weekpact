@@ -1,3 +1,5 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -38,10 +40,12 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
             ),
           ),
         )
-      : HugeIcon(
-          icon: HugeIconsStrokeRounded.user,
-          color: context.ink,
-          size: widget.size / 2,
+      : Center(
+          child: HugeIcon(
+            icon: HugeIconsStrokeRounded.user,
+            color: context.ink,
+            size: widget.size / 2,
+          ),
         );
   @override
   Widget build(BuildContext context) => FutureBuilder<Uint8List?>(
@@ -49,15 +53,16 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     builder: (context, snapshot) => Container(
       width: widget.size,
       height: widget.size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: widget.backgroundColor ?? context.yellow,
-        border: Border.all(
-          color: context.border,
-          width: WeekPactMetrics.border,
+      decoration: ShapeDecoration(
+        shape: AvatarShape(
+          side: BorderSide(
+            color: context.border,
+            width: WeekPactMetrics.border,
+          ),
         ),
+        color: widget.backgroundColor ?? context.yellow,
       ),
-      child: ClipOval(
+      child: AvatarClip(
         child: snapshot.data != null
             ? Image.memory(
                 snapshot.data!,

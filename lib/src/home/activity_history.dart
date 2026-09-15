@@ -1,4 +1,6 @@
-import 'package:hugeicons/hugeicons.dart';
+import '../widgets/avatar_shape.dart';
+import '../widgets/raised_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../widgets/app_sheet.dart';
@@ -246,10 +248,10 @@ class _ActivityHistoryState extends State<ActivityHistory> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
+          FlatAvatar(
             radius: 18,
             backgroundColor: const Color(0xFFE1E5DC),
-            child: ClipOval(
+            child: AvatarClip(
               child: member?.avatarUrl == null
                   ? Text(
                       member?.initials ?? '?',
@@ -303,7 +305,7 @@ class _ActivityHistoryState extends State<ActivityHistory> {
                         title: title,
                       ),
                     ),
-                    icon: const HugeIcon(
+                    icon: const RaisedIcon(
                       icon: HugeIconsStrokeRounded.image01,
                       size: 18,
                     ),

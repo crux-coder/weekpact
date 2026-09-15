@@ -1,5 +1,9 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -155,7 +159,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
     ],
     if (_invites.isEmpty && _error == null && widget.showEmptyState) ...[
       const SizedBox(height: 12),
-      HugeIcon(
+      AppIcon(
         icon: HugeIconsStrokeRounded.mail01,
         size: 32,
         color: context.muted,
@@ -171,7 +175,9 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
     for (final invite in _invites) ...[
       Material(
         color: WeekPactColors.stone,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: const ContinuousRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _openPreview(invite),
@@ -208,7 +214,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                     ],
                   ),
                 ),
-                const HugeIcon(icon: HugeIconsStrokeRounded.arrowRight01),
+                const AppIcon(icon: HugeIconsStrokeRounded.arrowRight01),
               ],
             ),
           ),
@@ -230,7 +236,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                   _selected = null;
                   _error = null;
                 }),
-          icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft02),
+          icon: const AppIcon(icon: HugeIconsStrokeRounded.arrowLeft02),
           label: const Text('ALL INVITES'),
         ),
       ),
@@ -270,7 +276,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
-              CircleAvatar(
+              FlatAvatar(
                 backgroundColor: WeekPactColors.coolGrey,
                 foregroundColor: context.ink,
                 child: Text(

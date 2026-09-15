@@ -1,3 +1,5 @@
+import '../widgets/raised_icon.dart';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -6,6 +8,7 @@ import '../theme/weekpact_theme.dart';
 import '../home/home_backend.dart';
 import '../widgets/app_components.dart';
 import 'pact_icons.dart';
+import '../widgets/app_icon.dart';
 import 'pacts_backend.dart';
 
 class YourWeekCard extends StatelessWidget {
@@ -56,7 +59,8 @@ class YourWeekCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 color: context.ink,
                 backgroundColor: context.ink.withValues(alpha: .12),
-                semanticsLabel: 'Your weekly check-ins: $completed of $target completed',
+                semanticsLabel:
+                    'Your weekly check-ins: $completed of $target completed',
               ),
               const SizedBox(height: 10),
               Text(
@@ -73,7 +77,7 @@ class YourWeekCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
-                      HugeIcon(
+                      AppIcon(
                         icon: PactIcon.find(pact.iconKey).data,
                         color: context.ink,
                         size: 22,
@@ -150,6 +154,7 @@ class PactManagementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppSurface(
+    shape: WeekPactMetrics.pactCardShape,
     builder: (context) => Padding(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -160,17 +165,19 @@ class PactManagementCard extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: pact.frequency == PactFrequency.daily
+                decoration: pactIconDecoration(
+                  pact.frequency == PactFrequency.daily
                       ? WeekPactColors.stone
                       : WeekPactColors.coolGrey,
-                  borderRadius: BorderRadius.circular(8),
+                  radius: 8,
                 ),
-                child: HugeIcon(
-                  icon: PactIcon.find(pact.iconKey).data,
-                  color: context.ink,
-                  size: 24,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: HugeIcon(
+                    icon: PactIcon.find(pact.iconKey).data,
+                    color: context.ink,
+                    size: 24,
+                  ),
                 ),
               ),
               const Spacer(),
@@ -182,7 +189,7 @@ class PactManagementCard extends StatelessWidget {
                     tooltip: 'Edit ${pact.title}',
                     onPressed: onEdit,
                     padding: EdgeInsets.zero,
-                    icon: HugeIcon(
+                    icon: AppIcon(
                       icon: HugeIconsStrokeRounded.pencilEdit02,
                       color: context.ink,
                       size: 20,

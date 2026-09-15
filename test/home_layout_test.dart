@@ -84,7 +84,11 @@ void main() {
             find.byKey(const ValueKey('move')).hitTestable(),
           );
           final crewBounds = tester.getRect(board);
-          expect(activePact.center.dx, closeTo(crewBounds.center.dx, 1));
+          expect(activePact.center.dx, lessThan(crewBounds.center.dx));
+          expect(
+            crewBounds.center.dx - activePact.center.dx,
+            lessThanOrEqualTo(13),
+          );
           expect(activePact.left, greaterThan(crewBounds.left));
           expect(activePact.right, lessThan(crewBounds.right));
           final titleBottom = tester

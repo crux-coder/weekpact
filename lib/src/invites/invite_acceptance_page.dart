@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
@@ -94,7 +96,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                           WeekPactMetrics.cardRadius,
                         ),
                       ),
-                      child: HugeIcon(
+                      child: AppIcon(
                         icon: HugeIconsStrokeRounded.userGroup,
                         size: 32,
                         color: context.ink,

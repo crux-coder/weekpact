@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import 'app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -10,10 +12,12 @@ class AppSurface extends StatelessWidget {
     required this.builder,
     this.fillColor,
     this.borderWidth = WeekPactMetrics.border,
-    this.borderRadius = WeekPactMetrics.cardRadius,
+    this.borderRadius = 18,
     this.cornerRadius,
+    this.shape,
     this.outlineColor,
     this.resolveTone = true,
+    this.raised = true,
   });
 
   final WidgetBuilder builder;
@@ -21,20 +25,34 @@ class AppSurface extends StatelessWidget {
   final double borderWidth;
   final double borderRadius;
   final BorderRadius? cornerRadius;
+  final OutlinedBorder? shape;
   final Color? outlineColor;
   final bool resolveTone;
+  final bool raised;
 
   @override
   Widget build(BuildContext context) {
     final radius = cornerRadius ?? BorderRadius.circular(borderRadius);
-    return Material(
-      color: resolveTone
-          ? context.tone(fillColor ?? context.surface)
-          : fillColor ?? context.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
+    final surfaceShape =
+        shape ??
+        (raised
+            ? ContinuousRectangleBorder(borderRadius: radius * (40 / 18))
+            : RoundedRectangleBorder(borderRadius: radius));
+    final face = resolveTone
+        ? context.tone(fillColor ?? context.surface)
+        : fillColor ?? context.surface;
+    final dark = face.computeLuminance() < .18;
+    final material = Material(
+      color: face,
+      shape: surfaceShape.copyWith(
         side: BorderSide(
-          color: outlineColor ?? WeekPactColors.black.withValues(alpha: .10),
+          color:
+              outlineColor ??
+              Color.lerp(
+                face,
+                dark ? Colors.white : Colors.black,
+                dark ? .12 : .28,
+              )!,
           width: borderWidth,
         ),
       ),
@@ -42,10 +60,27 @@ class AppSurface extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: AppSurfaceTheme(builder: builder),
     );
+    if (!raised) return material;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: surfaceShape,
+        shadows: [
+          BoxShadow(
+            color: Color.lerp(
+              face,
+              dark ? Colors.white : Colors.black,
+              dark ? .12 : .24,
+            )!,
+            offset: WeekPactMetrics.raisedOffset,
+          ),
+        ],
+      ),
+      child: material,
+    );
   }
 }
 
-/// A flat section surface with an integrated heading and optional actions.
+/// A raised section surface with an integrated heading and optional actions.
 class AppSectionCard extends StatelessWidget {
   const AppSectionCard({
     super.key,
@@ -128,6 +163,8 @@ class AppButton extends StatelessWidget {
 
     return AppSurface(
       fillColor: effectiveColor,
+      shape: WeekPactMetrics.buttonShape,
+      borderRadius: WeekPactMetrics.controlRadius,
       builder: (context) => Container(
         width: double.infinity,
         constraints: BoxConstraints(minHeight: height),
@@ -139,11 +176,7 @@ class AppButton extends StatelessWidget {
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             foregroundColor: effectiveForeground,
             disabledForegroundColor: effectiveForeground,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                WeekPactMetrics.controlRadius,
-              ),
-            ),
+            shape: WeekPactMetrics.buttonShape,
             textStyle: const TextStyle(
               fontFamily: 'RobotoCondensed',
               fontSize: 15,
@@ -164,7 +197,7 @@ class AppButton extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (icon != null) ...[
-                      HugeIcon(
+                      AppIcon(
                         icon: icon!,
                         color: effectiveForeground,
                         size: 18,
@@ -225,6 +258,7 @@ class AppBottomNavigationBar extends StatelessWidget {
               : const Duration(milliseconds: 280),
           curve: Curves.easeInOutCubic,
           builder: (context, position, _) => Stack(
+            clipBehavior: Clip.none,
             children: [
               if (items.isNotEmpty)
                 PositionedDirectional(
@@ -235,9 +269,28 @@ class AppBottomNavigationBar extends StatelessWidget {
                   child: IgnorePointer(
                     child: DecoratedBox(
                       key: const ValueKey('nav-sliding-highlight'),
-                      decoration: BoxDecoration(
+                      decoration: ShapeDecoration(
                         color: context.ink,
-                        borderRadius: BorderRadius.circular(10),
+                        shape: ContinuousRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          side: BorderSide(
+                            color: Color.lerp(
+                              context.ink,
+                              context.canvas,
+                              .28,
+                            )!,
+                          ),
+                        ),
+                        shadows: [
+                          BoxShadow(
+                            color: Color.lerp(
+                              context.ink,
+                              context.canvas,
+                              .24,
+                            )!,
+                            offset: WeekPactMetrics.raisedOffset,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -270,7 +323,7 @@ class AppBottomNavigationBar extends StatelessWidget {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    HugeIcon(
+                                    AppIcon(
                                       icon: items[i].icon,
                                       color: Color.lerp(
                                         context.ink,
@@ -365,6 +418,8 @@ class AppTextField extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         AppSurface(
+          raised: false,
+          borderRadius: WeekPactMetrics.controlRadius,
           builder: (context) => TextFormField(
             controller: controller,
             validator: validator,
@@ -400,7 +455,7 @@ class AppTextField extends StatelessWidget {
                   : IconButton(
                       onPressed: onToggleObscure,
                       tooltip: obscureText ? 'Show password' : 'Hide password',
-                      icon: HugeIcon(
+                      icon: AppIcon(
                         icon: obscureText
                             ? HugeIconsStrokeRounded.view
                             : HugeIconsStrokeRounded.viewOff,

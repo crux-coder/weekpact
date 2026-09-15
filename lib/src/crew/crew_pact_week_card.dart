@@ -1,3 +1,6 @@
+import '../widgets/avatar_shape.dart';
+import '../widgets/raised_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'dart:math' as math;
@@ -60,7 +63,8 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
     final start = page * _membersPerPage;
     final visible = widget.members.skip(start).take(_membersPerPage).toList();
     return AppSurface(
-      borderWidth: 0,
+      shape: WeekPactMetrics.pactCardShape,
+      borderWidth: 1,
       builder: (context) => Padding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
@@ -121,9 +125,9 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                         Container(
                           width: 64,
                           height: 64,
-                          decoration: BoxDecoration(
-                            color: WeekPactColors.neutralInset,
-                            borderRadius: BorderRadius.circular(12),
+                          decoration: pactIconDecoration(
+                            WeekPactColors.neutralInset,
+                            radius: 12,
                           ),
                           child: Center(
                             child: HugeIcon(
@@ -254,7 +258,8 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                     : () => setState(
                                         () => _memberPage = page - 1,
                                       ),
-                                icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft01,
+                                icon: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.arrowLeft01,
                                 ),
                               ),
                               IconButton(
@@ -264,7 +269,8 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                     : () => setState(
                                         () => _memberPage = page + 1,
                                       ),
-                                icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowRight01,
+                                icon: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.arrowRight01,
                                 ),
                               ),
                             ],
@@ -442,8 +448,8 @@ class _MemberDays extends StatelessWidget {
                       width: 42,
                       height: 42,
                       clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                      decoration: ShapeDecoration(
+                        shape: const AvatarShape(),
                         color: context.ink.withValues(alpha: .06),
                       ),
                       child: member.avatarUrl?.trim().isNotEmpty == true

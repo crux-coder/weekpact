@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/today_widgets.dart';
@@ -23,7 +27,10 @@ void main() {
               child: Scaffold(
                 body: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: SizedBox(height: 440, child: TodaySkeleton()),
+                  child: RepaintBoundary(
+                    key: ValueKey('skeleton-capture'),
+                    child: SizedBox(height: 440, child: TodaySkeleton()),
+                  ),
                 ),
               ),
             ),
@@ -43,6 +50,27 @@ void main() {
         );
         expect(fade.opacity.value, 1);
         expect(fade.opacity.isAnimating, isFalse);
+        final card = tester.getRect(
+          find.byKey(const ValueKey('skeleton-pact-card')),
+        );
+        final board = tester.getRect(
+          find.byKey(const ValueKey('skeleton-crew-board')),
+        );
+        expect(card.center.dx, closeTo(board.center.dx - 12, 1));
+        if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
+          final boundary = tester.renderObject<RenderRepaintBoundary>(
+            find.byKey(const ValueKey('skeleton-capture')),
+          );
+          await tester.runAsync(() async {
+            final image = await boundary.toImage();
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.png,
+            );
+            await File('/tmp/weekpact-skeleton-${dark ? 'dark' : 'light'}.png')
+                .writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
       },
     );
   }

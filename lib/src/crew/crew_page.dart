@@ -4,7 +4,9 @@ import 'crew_switcher.dart';
 import 'crew_sharing.dart';
 
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+
+import '../widgets/app_icon.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -215,7 +217,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 const Text('Choose the new owner:'),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  icon: const HugeIcon(
+                  icon: const AppIcon(
                     icon: HugeIconsStrokeRounded.arrowDown01,
                     size: 20,
                   ),
@@ -380,7 +382,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   IconButton(
                     tooltip: 'Close invites',
                     onPressed: () => Navigator.pop(context),
-                    icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+                    icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
                   ),
                 ],
               ),
@@ -451,7 +453,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               onPressed: _creating || _changingMembership
                   ? null
                   : () => setState(() => _showCreate = !_showCreate),
-              icon: HugeIcon(
+              icon: AppIcon(
                 icon: _showCreate
                     ? HugeIconsStrokeRounded.cancel01
                     : HugeIconsStrokeRounded.add01,
@@ -466,7 +468,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   _receivedInviteCount > 0 ||
                   (_crew?.pendingInvites.isNotEmpty ?? false),
               backgroundColor: WeekPactColors.stone,
-              child: const HugeIcon(icon: HugeIconsStrokeRounded.inbox),
+              child: const AppIcon(icon: HugeIconsStrokeRounded.inbox),
             ),
           ),
         ],
@@ -570,7 +572,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     ),
                     child: Row(
                       children: [
-                        HugeIcon(
+                        AppIcon(
                           icon: HugeIconsStrokeRounded.globe02,
                           color: context.ink,
                           size: 22,
@@ -665,7 +667,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         const SizedBox(height: 16),
         TextButton.icon(
           onPressed: _changingMembership ? null : () => _changeMembership(),
-          icon: const HugeIcon(icon: HugeIconsStrokeRounded.logout01, size: 20),
+          icon: const AppIcon(icon: HugeIconsStrokeRounded.logout01, size: 20),
           label: const Text('LEAVE CREW'),
           style: TextButton.styleFrom(
             foregroundColor: context.ink,
@@ -704,7 +706,7 @@ class _InviteDrawer extends StatelessWidget {
             IconButton(
               tooltip: 'Close invite',
               onPressed: () => Navigator.pop(context),
-              icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+              icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
             ),
           ],
         ),

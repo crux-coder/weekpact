@@ -1,3 +1,5 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -55,7 +57,7 @@ class CrewPageSkeleton extends StatelessWidget {
               child: SkeletonBar(width: 84, height: 12),
             ),
             const SizedBox(height: 4),
-            const SkeletonBar(height: 60),
+            const SkeletonBar(height: 60, shape: WeekPactMetrics.pactCardShape),
             const SizedBox(height: 12),
           ],
           LinearProgressIndicator(
@@ -85,7 +87,10 @@ class CrewPageSkeleton extends StatelessWidget {
                           child: Center(
                             child: AspectRatio(
                               aspectRatio: 1,
-                              child: SkeletonBar(height: 100, radius: 100),
+                              child: SkeletonBar(
+                                height: 100,
+                                shape: AvatarShape(),
+                              ),
                             ),
                           ),
                         ),

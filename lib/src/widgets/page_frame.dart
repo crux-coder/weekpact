@@ -111,18 +111,24 @@ class SkeletonBar extends StatelessWidget {
     this.width,
     required this.height,
     this.radius = 5,
+    this.shape,
+    this.color,
   });
   final double? width;
   final double height;
   final double radius;
+  final ShapeBorder? shape;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Container(
     width: width,
     height: height,
-    decoration: BoxDecoration(
-      color: context.ink.withValues(alpha: .14),
-      borderRadius: BorderRadius.circular(radius),
+    decoration: ShapeDecoration(
+      color: color ?? context.ink.withValues(alpha: .14),
+      shape:
+          shape ??
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
     ),
   );
 }

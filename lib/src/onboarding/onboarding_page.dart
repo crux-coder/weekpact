@@ -1,3 +1,5 @@
+import '../widgets/avatar_shape.dart';
+
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -308,21 +310,24 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                       child: Container(
                                         width: 112,
                                         height: 112,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: context.yellow,
-                                          border: Border.all(
-                                            color: context.border,
-                                            width: WeekPactMetrics.border,
+                                        decoration: ShapeDecoration(
+                                          shape: AvatarShape(
+                                            side: BorderSide(
+                                              color: context.border,
+                                              width: WeekPactMetrics.border,
+                                            ),
                                           ),
+                                          color: context.yellow,
                                         ),
-                                        child: ClipOval(
+                                        child: AvatarClip(
                                           child: _avatar == null
-                                              ? HugeIcon(
-                                                  icon: HugeIconsStrokeRounded
-                                                      .cameraAdd01,
-                                                  size: 36,
-                                                  color: context.ink,
+                                              ? Center(
+                                                  child: HugeIcon(
+                                                    icon: HugeIconsStrokeRounded
+                                                        .cameraAdd01,
+                                                    size: 36,
+                                                    color: context.ink,
+                                                  ),
                                                 )
                                               : Image.memory(
                                                   _avatar!,
