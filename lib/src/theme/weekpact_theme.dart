@@ -1,3 +1,5 @@
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 
 /// Shared stroke and depth values for the app's outlined surfaces.
@@ -47,6 +49,19 @@ abstract final class WeekPactColors {
   static const bubblegumPink = Color(0xFFEAC7D4);
   static const pinkInk = Color(0xFF47623B);
   static const softCoral = Color(0xFFF0C6B6);
+  static const activitySurface = Color(0xFF292A29);
+  static const pactPalette = <Color>[
+    Color(0xFFE4E1DA), // Stone.
+    Color(0xFFCDD2D3), // Cool grey.
+    Color(0xFFD8D3CF), // Warm grey.
+    Color(0xFFD2D5D0), // Silver sage.
+    Color(0xFFD5D1D9), // Ash.
+    Color(0xFFDDD8CC), // Oat.
+    Color(0xFFCFD5D5), // Mist.
+    Color(0xFFD9D6D1), // Pebble.
+    Color(0xFFD0D2D8), // Slate.
+    Color(0xFFDCD9D3), // Linen.
+  ];
   static const mutedLight = Color(0xFF686D63);
   static const error = Color(0xFFC94F59);
 }
@@ -107,6 +122,16 @@ abstract final class WeekPactTheme {
     );
 
     return base.copyWith(
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (context) =>
+            const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft02),
+        closeButtonIconBuilder: (context) =>
+            const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
+        drawerButtonIconBuilder: (context) =>
+            const HugeIcon(icon: HugeIconsStrokeRounded.menu01),
+        endDrawerButtonIconBuilder: (context) =>
+            const HugeIcon(icon: HugeIconsStrokeRounded.menu01),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: background,
         foregroundColor: foreground,

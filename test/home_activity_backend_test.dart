@@ -111,6 +111,7 @@ void main() {
                     'pact_id': 'pact',
                     'user_id': 'member',
                     'created_at': '2026-09-13T18:30:00+02:00',
+                    'photo_path': 'member/crew/pact/photo.png',
                   },
               ]),
             );
@@ -129,7 +130,7 @@ void main() {
         final query = requests
             .singleWhere((uri) => uri.path.endsWith('/pact_check_ins'))
             .queryParameters;
-        expect(query['select'], 'pact_id,user_id,created_at');
+        expect(query['select'], 'pact_id,user_id,created_at,photo_path');
         expect(query['pact_id'], 'in.("pact")');
         expect(query['user_id'], 'in.("member")');
         expect(query['order'], startsWith('created_at.desc'));
@@ -138,6 +139,7 @@ void main() {
         expect(week.checkIns.single.day, '2026-09-13');
         // Today's check-in in the crew timezone can have yesterday's UTC timestamp.
         if (hasToday) {
+          expect(week.latestActivity?.photoPath, 'member/crew/pact/photo.png');
           expect(
             week.latestActivity?.createdAt,
             DateTime.utc(2026, 9, 13, 16, 30),

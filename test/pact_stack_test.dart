@@ -41,7 +41,7 @@ void main() {
     void expectSelected(int index) {
       final pact = week.pacts[index];
       expect(find.text(pact.title).hitTestable(), findsOneWidget);
-      expect(find.text('0${index + 1} / 03'), findsOneWidget);
+      expect(find.text('3 pacts'), findsOneWidget);
       final card = tester.getRect(find.byKey(ValueKey(pact.id)).hitTestable());
       final stack = tester.getRect(find.byKey(const ValueKey('pact-stack')));
       expect(
@@ -163,11 +163,12 @@ void main() {
       final button = tester.getRect(
         find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
       );
+      expect(button.left, closeTo(card.left + 18, 1));
+      expect(button.right, closeTo(card.right - 18, 1));
       final dashes = tester.getRect(
         find.byKey(const ValueKey('pact-progress-move')).hitTestable(),
       );
-      expect(button.left, closeTo(card.left + 12, 1));
-      expect(button.right, closeTo(card.right - 12, 1));
+      expect(dashes.left, closeTo(button.left, 1));
       expect(dashes.width, closeTo(button.width, 1));
       final fullIcon = tester
           .getRect(nearestCopy(tester, const ValueKey('pact-icon-move')))
@@ -380,7 +381,7 @@ void main() {
       );
       await tester.pumpUi();
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
-      expect(find.text('Mark done').hitTestable(), findsOneWidget);
+      expect(find.text('Check in').hitTestable(), findsOneWidget);
       await tester.drag(
         find.byKey(const ValueKey('pact-stack')),
         const Offset(650, 0),

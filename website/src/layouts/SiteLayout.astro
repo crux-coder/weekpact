@@ -1,8 +1,8 @@
 ---
 import '../styles/global.css';
 import { readSiteConfig } from '../lib/config.mjs';
-interface Props { title: string; description: string; privatePage?: boolean; home?: boolean; }
-const { title, description, privatePage = false, home = false } = Astro.props;
+interface Props { title: string; description: string; privatePage?: boolean; home?: boolean; dark?: boolean; }
+const { title, description, privatePage = false, home = false, dark = false } = Astro.props;
 const config = readSiteConfig();
 const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
 ---
@@ -13,7 +13,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="referrer" content="no-referrer" />
-    <meta name="theme-color" content={home ? "#191B19" : "#F7F3E9"} />
+    <meta name="theme-color" content={home || dark ? "#191B19" : "#F7F3E9"} />
     {privatePage && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/app-icon.png" type="image/png" />
@@ -29,7 +29,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta name="twitter:card" content="summary" />
     <title>{title}</title>
   </head>
-  <body>
+  <body class:list={{'handoff-theme': dark}}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header container">
       <a class="wordmark" href="/" aria-label="WeekPact home">WeekPact<span>.</span></a>

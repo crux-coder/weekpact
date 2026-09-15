@@ -37,22 +37,34 @@ void main() {
           ),
         );
         await tester.pumpUi();
-        expect(find.text('Checked in · $count'), findsOneWidget);
-        expect(find.text('Not yet · ${2 - count}'), findsOneWidget);
-        final leftWidth = tester
-            .getSize(find.byKey(const ValueKey('checked-tile')))
+        expect(
+          find.bySemanticsLabel('Checked in today · $count'),
+          count == 0 ? findsNothing : findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel('Not yet today · ${2 - count}'),
+          count == 2 ? findsNothing : findsOneWidget,
+        );
+        final checkedTile = find.byKey(const ValueKey('checked-tile'));
+        final pendingTile = find.byKey(const ValueKey('pending-tile'));
+        final boardWidth = tester
+            .getSize(find.byKey(const ValueKey('crew-board')))
             .width;
-        final rightWidth = tester
-            .getSize(find.byKey(const ValueKey('pending-tile')))
-            .width;
-        if (count == 1) {
-          expect(leftWidth, closeTo(rightWidth, .01));
-        } else if (count == 0) {
-          expect(leftWidth, lessThan(rightWidth));
-          expect(leftWidth, greaterThanOrEqualTo(96));
+        if (count == 0) {
+          expect(checkedTile, findsNothing);
+          expect(tester.getSize(pendingTile).width, boardWidth);
+          expect(find.text('LET’S GET STARTED · 2'), findsOneWidget);
+        } else if (count == 2) {
+          expect(pendingTile, findsNothing);
+          expect(tester.getSize(checkedTile).width, boardWidth);
+          expect(find.text('EVERYONE SHOWED UP · 2'), findsOneWidget);
         } else {
-          expect(leftWidth, greaterThan(rightWidth));
-          expect(rightWidth, greaterThanOrEqualTo(96));
+          expect(
+            tester.getSize(checkedTile).width,
+            closeTo(tester.getSize(pendingTile).width, .01),
+          );
+          expect(find.text('NOT YET · 1'), findsOneWidget);
+          expect(find.text('CHECKED IN · 1'), findsOneWidget);
         }
         final checkedGroup = find.byKey(const ValueKey('checked-members'));
         final pendingGroup = find.byKey(const ValueKey('pending-members'));

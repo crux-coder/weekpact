@@ -1,7 +1,14 @@
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
+import '../widgets/app_sheet.dart';
+import 'check_in_photo_viewer.dart';
+
 import 'package:flutter/material.dart';
 
 import 'home_backend.dart';
 import 'home_surface.dart';
+import '../theme/weekpact_theme.dart';
 
 class ActivityHistory extends StatefulWidget {
   const ActivityHistory({
@@ -82,7 +89,7 @@ class _ActivityHistoryState extends State<ActivityHistory> {
   @override
   Widget build(BuildContext context) => Material(
     key: const ValueKey('activity-history'),
-    color: const Color(0xFFEAF0E2),
+    color: WeekPactColors.cream,
     textStyle: Theme.of(context).textTheme.bodyMedium!
         .copyWith(color: homeInk, fontSize: 14),
     child: Column(
@@ -98,7 +105,7 @@ class _ActivityHistoryState extends State<ActivityHistory> {
                 fontSize: 10,
                 letterSpacing: 1.5,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF47623B),
+                color: Color(0xFF555B55),
               ),
             ),
           ),
@@ -137,7 +144,7 @@ class _ActivityHistoryState extends State<ActivityHistory> {
                             : const Text(
                                 'You’re all caught up',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Color(0xFF58634F)),
+                                style: TextStyle(color: Color(0xFF555B55)),
                               ),
                       );
                     }
@@ -184,7 +191,7 @@ class _ActivityHistoryState extends State<ActivityHistory> {
             Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF47623B),
+                color: Color(0xFF555B55),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -279,13 +286,33 @@ class _ActivityHistoryState extends State<ActivityHistory> {
                       time,
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF58634F),
+                        color: Color(0xFF555B55),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(title),
+                if (activity.photoPath != null)
+                  TextButton.icon(
+                    onPressed: () => showAppSheet<void>(
+                      context: context,
+                      builder: (_) => CheckInPhotoViewer(
+                        backend: widget.backend,
+                        path: activity.photoPath!,
+                        title: title,
+                      ),
+                    ),
+                    icon: const HugeIcon(
+                      icon: HugeIconsStrokeRounded.image01,
+                      size: 18,
+                    ),
+                    label: const Text('VIEW PHOTO'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: homeInk,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
               ],
             ),
           ),

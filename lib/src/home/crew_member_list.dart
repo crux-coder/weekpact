@@ -193,6 +193,8 @@ class _CrewMemberListState extends State<CrewMemberList>
         member.initials,
         style: const TextStyle(
           color: homeInk,
+          fontFamily: 'Roboto',
+          fontFamilyFallback: ['Arial'],
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -213,6 +215,8 @@ class _CrewMemberListState extends State<CrewMemberList>
           name,
           style: const TextStyle(
             color: homeInk,
+            fontFamily: 'Roboto',
+            fontFamilyFallback: ['Arial'],
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -319,7 +323,8 @@ class _CrewMemberListState extends State<CrewMemberList>
             minimumSize: const Size(64, 36),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             textStyle: const TextStyle(
-              fontFamily: 'RobotoCondensed',
+              fontFamily: 'Roboto',
+              fontFamilyFallback: ['Arial'],
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),

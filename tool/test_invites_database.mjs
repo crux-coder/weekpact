@@ -90,9 +90,14 @@ await asUser(recipient, async () => {
   await db.query('select accept_crew_invite($1)',[rawToken]);
   assert.equal((await inbox()).length,0);
 });
-// Existing members cannot accept another crew; declining still works.
+// Existing members can join another crew through either email tokens or the inbox.
 await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,'member@example.com','member')",[otherCrew,recipient]);
-await asUser(recipient, async () => assert.rejects(respond(invite,true), /already belong to a crew/));
+for (const join of [() => respond(invite,true), () => db.query('select accept_crew_invite($1)',[rawToken])]) {
+  await asUser(recipient, async () => {
+    await join();
+    assert.deepEqual((await db.query('select crew_id from crew_members where user_id=$1 order by crew_id',[recipient])).rows.map(r=>r.crew_id),[crew,otherCrew]);
+  });
+}
 await asUser(recipient, async () => { await respond(invite,false); assert.equal((await inbox()).length,0); });
 // Owner revocation takes effect immediately, including already-open previews.
 await db.query('delete from crew_invites where id=$1',[invite]);

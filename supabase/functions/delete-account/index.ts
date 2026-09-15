@@ -39,6 +39,16 @@ Deno.serve(async (request) => {
         const { error } = await admin.storage.from("avatars").remove([`${id}/avatar.png`]);
         if (error) throw error;
       },
+      async removeCheckInPhotos(id) {
+        for (;;) {
+          const { data, error } = await admin.rpc("account_check_in_photo_paths", { target_user: id });
+          if (error) throw error;
+          const paths = (data as { path: string }[]).map(row => row.path);
+          if (!paths.length) return;
+          const { error: removeError } = await admin.storage.from("check-in-photos").remove(paths);
+          if (removeError) throw removeError;
+        }
+      },
       async removeUser(id) {
         const { error } = await admin.auth.admin.deleteUser(id, false);
         if (error) throw error;

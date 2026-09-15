@@ -1,4 +1,7 @@
+import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
+
+import 'package:weekpact/src/pacts/pacts_backend.dart';
 
 import 'package:weekpact/src/widgets/page_frame.dart';
 
@@ -21,12 +24,11 @@ import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
 void main() {
-  testWidgets('account switches between light, dark and device appearance', (
+  testWidgets('account has no appearance setting and always uses dark theme', (
     tester,
   ) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
-    final saved = <ThemeMode>[];
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await tester.pumpWidget(
@@ -34,9 +36,6 @@ void main() {
         homeBackend: DashboardBackend(),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
-        onThemeModeChanged: (mode) async {
-          saved.add(mode);
-        },
       ),
     );
     await tester.enterText(
@@ -48,25 +47,15 @@ void main() {
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
-    for (final entry in [
-      ('Light', ThemeMode.light, Brightness.light),
-      ('Dark', ThemeMode.dark, Brightness.dark),
-      ('Device', ThemeMode.system, Brightness.dark),
-    ]) {
-      await tester.ensureVisible(find.text(entry.$1));
-      await tester.tap(find.text(entry.$1));
-      await tester.pumpUi();
-      expect(
-        Theme.of(tester.element(find.text('Account').first)).brightness,
-        entry.$3,
-      );
-      expect(saved.last, entry.$2);
-    }
+    expect(find.text('Appearance'), findsNothing);
+    expect(find.text('Light'), findsNothing);
+    expect(find.text('Dark'), findsNothing);
+    expect(find.text('Device'), findsNothing);
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     await tester.pumpUi();
     expect(
       Theme.of(tester.element(find.text('Account').first)).brightness,
-      Brightness.light,
+      Brightness.dark,
     );
   });
 
@@ -222,7 +211,7 @@ void main() {
     expect(auth.lastEmailRedirectTo, 'weekpact://invite?invite=crew-token');
     auth.confirmEmail('new@example.com');
     await tester.pumpUi();
-    expect(find.text('JOIN THE CREW.'), findsOneWidget);
+    expect(find.text('Your crew is waiting.'), findsOneWidget);
     expect(auth.signInCalls, 0);
   });
 
@@ -246,8 +235,8 @@ void main() {
     await tester.pumpUi();
 
     expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.text('Checked in · 1'), findsOneWidget);
-    expect(find.text('Not yet · 1'), findsOneWidget);
+    expect(find.bySemanticsLabel('Checked in today · 1'), findsOneWidget);
+    expect(find.bySemanticsLabel('Not yet today · 1'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
@@ -300,42 +289,54 @@ void main() {
     expect(find.text('LOG OUT'), findsOneWidget);
   });
 
-  testWidgets('places the active navigation icon beside its label', (
-    tester,
-  ) async {
-    final auth = FakeAuthBackend();
-    addTearDown(auth.dispose);
+  testWidgets(
+    'shows every navigation label beneath an equally sized destination',
+    (tester) async {
+      final auth = FakeAuthBackend();
+      addTearDown(auth.dispose);
 
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-      ),
-    );
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'person@example.com',
-    );
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.tap(find.text('LOG IN'));
-    await tester.pumpUi();
+      await tester.pumpWidget(
+        WeekPactApp(
+          homeBackend: DashboardBackend(),
+          pactsBackend: DashboardPacts(),
+          authBackend: auth,
+        ),
+      );
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'person@example.com',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+      await tester.tap(find.text('LOG IN'));
+      await tester.pumpUi();
 
-    final homeButton = find.byKey(const ValueKey('nav-home'));
-    final homeIcon = find.descendant(
-      of: homeButton,
-      matching: find.byType(HugeIcon),
-    );
-    final homeLabel = find.descendant(
-      of: homeButton,
-      matching: find.text('Home'),
-    );
+      final homeButton = find.byKey(const ValueKey('nav-home'));
+      final homeIcon = find.descendant(
+        of: homeButton,
+        matching: find.byType(HugeIcon),
+      );
+      final homeLabel = find.descendant(
+        of: homeButton,
+        matching: find.text('Home'),
+      );
 
-    expect(
-      tester.getCenter(homeIcon).dy,
-      equals(tester.getCenter(homeLabel).dy),
-    );
-  });
+      expect(
+        tester.getCenter(homeIcon).dy,
+        lessThan(tester.getCenter(homeLabel).dy),
+      );
+      for (final label in ['Crews', 'Pacts', 'Account']) {
+        final destination = find.byKey(ValueKey('nav-${label.toLowerCase()}'));
+        expect(
+          tester.getSize(destination).width,
+          tester.getSize(homeButton).width,
+        );
+        expect(
+          find.descendant(of: destination, matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
+    },
+  );
 
   testWidgets('shows daily pacts and checks in directly', (tester) async {
     final auth = FakeAuthBackend();
@@ -344,6 +345,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(),
+        captureCheckInPhoto: captureTestCheckInPhoto,
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -358,17 +360,18 @@ void main() {
 
     expect(find.text('Your pacts'), findsNothing);
     expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
-    expect(find.text('Mark done').hitTestable(), findsOneWidget);
+    expect(find.text('Check in').hitTestable(), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
     await tester.pumpUi();
+    await submitTestPhoto(tester);
     expect(find.text('Checked in today'), findsWidgets);
     await tester.tap(
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
     await tester.pumpUi();
-    expect(find.text('Mark done').hitTestable(), findsOneWidget);
+    expect(find.text('Check in').hitTestable(), findsOneWidget);
   });
 
   testWidgets('slides horizontally between destinations', (tester) async {
@@ -439,8 +442,16 @@ void main() {
 
     expect(tester.getCenter(homeIcon).dy, equals(initialCrewsY));
 
+    final highlight = find.byKey(const ValueKey('nav-sliding-highlight'));
+    final startX = tester.getCenter(highlight).dx;
+    final endX = tester.getCenter(crewsButton).dx;
     await tester.tap(crewsButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 140));
+    expect(tester.getCenter(highlight).dx, greaterThan(startX));
+    expect(tester.getCenter(highlight).dx, lessThan(endX));
     await tester.pumpUi();
+    expect(tester.getCenter(highlight).dx, closeTo(endX, 1));
 
     expect(tester.getCenter(crewsIcon).dy, equals(initialCrewsY));
     expect(
@@ -497,11 +508,11 @@ void main() {
     expect(find.byType(WeekPactBackground), findsOneWidget);
     expect(
       Theme.of(tester.element(find.byType(Scaffold))).scaffoldBackgroundColor,
-      WeekPactColors.lightCanvas,
+      WeekPactColors.darkCanvas,
     );
   });
 
-  testWidgets('follows the device dark mode without a manual toggle', (
+  testWidgets('uses dark theme regardless of device appearance', (
     tester,
   ) async {
     final auth = FakeAuthBackend();
@@ -606,12 +617,12 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.text('JOIN THE CREW.'), findsOneWidget);
+    expect(find.text('Your crew is waiting.'), findsOneWidget);
     await tester.tap(find.text('ACCEPT INVITE'));
     await tester.pumpUi();
 
     expect(crews.acceptedTokens, ['secret-token']);
-    expect(find.text('JOIN THE CREW.'), findsNothing);
+    expect(find.text('Your crew is waiting.'), findsNothing);
     expect(find.text('Early Birds'), findsWidgets);
   });
 }
@@ -748,7 +759,19 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
   );
 
   @override
-  Future<CrewDetails?> fetchCrew() async => crew;
+  Future<List<PactCrew>> fetchCrews() async => crew == null
+      ? []
+      : [
+          PactCrew(
+            id: crew!.id,
+            name: crew!.name,
+            timezone: crew!.timezone,
+            isOwner: crew!.isOwner,
+          ),
+        ];
+
+  @override
+  Future<CrewDetails?> fetchCrew({String? crewId}) async => crew;
 
   @override
   Future<CrewDetails> createCrew({
@@ -824,7 +847,7 @@ class DelayedCrewBackend extends FakeCrewBackend {
   int fetches = 0;
 
   @override
-  Future<CrewDetails?> fetchCrew() {
+  Future<CrewDetails?> fetchCrew({String? crewId}) {
     fetches++;
     return pending.future;
   }

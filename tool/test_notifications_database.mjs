@@ -1,3 +1,4 @@
+import { saveWithTestPhotos } from './photo_test_helpers.mjs';
 import { readFile,readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {storageTestSchema} from './storage_test_schema.mjs';
@@ -32,7 +33,8 @@ await user(member,s2,()=>register('second_token_'+member));
 await user(outsider,s3,()=>assert.rejects(register('token_'+member),/another active session/));
 await user(member,s2,()=>assert.rejects(db.query('select * from private.push_devices'),/permission denied/));
 await user(member,s2,()=>assert.rejects(db.query('select * from claim_notification_deliveries()'),/permission denied/));
-const save=ids=>user(actor,s1,()=>db.query('select save_pact_check_ins($1,current_date,$2)',[crew,ids]));
+const today=(await db.query("select to_char(current_date,'YYYY-MM-DD') as day")).rows[0].day;
+const save=ids=>user(actor,s1,()=>saveWithTestPhotos(db,crew,today,ids));
 await save([pact]);await save([pact]);await save([]);await save([pact]);
 assert.equal((await db.query('select * from private.notification_events')).rows.length,1);
 assert.equal((await db.query('select * from private.notification_deliveries')).rows.length,2);

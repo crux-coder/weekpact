@@ -57,6 +57,19 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
   @override
   void didUpdateWidget(covariant ExpandableHomePanels oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final hasChecked = widget.week.members.any(
+      (member) => widget.week.checkedToday(member.id).isNotEmpty,
+    );
+    final hasPending = widget.week.members.any(
+      (member) => widget.week.checkedToday(member.id).isEmpty,
+    );
+    if ((_panel == _HomePanel.checked && !hasChecked) ||
+        (_panel == _HomePanel.pending && hasChecked && !hasPending)) {
+      _expanded = false;
+      _panel = null;
+      _animation.reset();
+      _focus.unfocus();
+    }
     if (!widget.active && oldWidget.active) _collapse();
   }
 
@@ -201,17 +214,26 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     final pending = widget.week.members
         .where((m) => widget.week.checkedToday(m.id).isEmpty)
         .toList();
-    final available = math.max(0.0, space.maxWidth - 6);
-    final minimum = math.min(96.0, available / 2);
+    final gap = checked.isEmpty || pending.isEmpty ? 0.0 : 6.0;
+    final available = math.max(0.0, space.maxWidth - gap);
+    final minimum = math.min(140.0, available / 2);
     final fraction = widget.week.members.isEmpty
         ? .5
         : checked.length / widget.week.members.length;
-    final checkedWidth = (available * fraction).clamp(
-      minimum,
-      available - minimum,
-    );
-    final crewTop = widget.top + LatestActivityRow.height + 12;
-    for (final panel in [_HomePanel.checked, _HomePanel.pending]) {
+    final checkedWidth = checked.isEmpty
+        ? 0.0
+        : pending.isEmpty
+        ? available
+        : (available * fraction).clamp(minimum, available - minimum);
+    final crewTop =
+        widget.top +
+        LatestActivityRow.height +
+        12 +
+        TodayCrewCard.headingHeight;
+    for (final panel in [
+      if (checked.isNotEmpty) _HomePanel.checked,
+      if (pending.isNotEmpty || checked.isEmpty) _HomePanel.pending,
+    ]) {
       final done = panel == _HomePanel.checked;
       final members = done ? checked : pending;
       final selected = _panel == panel;
@@ -224,7 +246,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
       );
       final rect = Rect.lerp(
         Rect.fromLTWH(
-          done ? 0 : checkedWidth + 6,
+          done ? 0 : checkedWidth + gap,
           crewTop,
           done ? checkedWidth : available - checkedWidth,
           TodayCrewCard.groupHeight,
@@ -243,6 +265,8 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
             crewId: widget.crewId,
             members: members,
             done: done,
+            awaitingFirstCheckIn: checked.isEmpty,
+            everyoneCheckedIn: checked.isNotEmpty && pending.isEmpty,
             userId: widget.userId,
             onOpen: () => _toggle(panel),
             expansion: selected ? progress : 0,

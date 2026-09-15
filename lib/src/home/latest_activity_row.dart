@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'dart:math' as math;
 
@@ -20,7 +22,7 @@ class LatestActivityRow extends StatelessWidget {
     this.history,
   });
 
-  static const height = 64.0;
+  static const height = 60.0;
   final CrewWeek week;
   final String userId;
   final DateTime? now;
@@ -31,6 +33,7 @@ class LatestActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const background = WeekPactColors.activitySurface;
     final activity = week.latestActivity;
     final member = week.members
         .where((m) => m.id == activity?.userId)
@@ -68,34 +71,26 @@ class LatestActivityRow extends StatelessWidget {
           message: fullMessage,
           child: ExcludeSemantics(
             child: Material(
-              color: WeekPactColors.softYellow,
+              color: background,
               child: Ink(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFEBAF), WeekPactColors.softYellow],
-                  ),
-                ),
                 child: InkWell(
                   onTap: open,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 8,
+                      vertical: 6,
                     ),
                     child: LayoutBuilder(
                       builder: (context, space) => Row(
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF6E4B12)
-                                      .withValues(alpha: .24),
+                                  color: homeInk.withValues(alpha: .12),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -105,11 +100,14 @@ class LatestActivityRow extends StatelessWidget {
                               key: const ValueKey('activity-avatar'),
                               child: !hasActivity
                                   ? const ColoredBox(
-                                      color: Color(0xFFFFF3CF),
-                                      child: Icon(
-                                        Icons.wb_sunny_rounded,
-                                        color: Color(0xFFB67B25),
-                                        size: 24,
+                                      color: Color(0xFF3B3D3B),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(6),
+                                        child: HugeIcon(
+                                          icon: HugeIconsStrokeRounded.zap,
+                                          color: WeekPactColors.darkInk,
+                                          size: 20,
+                                        ),
                                       ),
                                     )
                                   : member.avatarUrl == null
@@ -136,25 +134,41 @@ class LatestActivityRow extends StatelessWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      const Text(
+                                        'LATEST ACTIVITY',
+                                        style: TextStyle(
+                                          color: WeekPactColors.darkMuted,
+                                          fontFamily: 'Roboto',
+                                          fontSize: 9,
+                                          height: 1.1,
+                                          letterSpacing: 1.2,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
                                       Text(
                                         message,
                                         maxLines: hasActivity ? 1 : 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          color: homeInk,
+                                          color: WeekPactColors.darkInk,
+                                          fontFamily: 'Roboto',
+                                          fontFamilyFallback: ['Arial'],
                                           fontSize: 14,
                                           height: 1.2,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       if (detail != null) ...[
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 2),
                                         Text(
                                           detail,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            color: Color(0xFF665633),
+                                            color: WeekPactColors.darkMuted,
+                                            fontFamily: 'Roboto',
+                                            fontFamilyFallback: ['Arial'],
                                             fontSize: 12,
                                             height: 1.2,
                                           ),
@@ -166,59 +180,20 @@ class LatestActivityRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (hasActivity &&
-                              space.maxWidth >= 340 &&
-                              MediaQuery.textScalerOf(context).scale(1) <=
-                                  1.3) ...[
-                            const SizedBox(width: 8),
-                            const SizedBox(
-                              width: 48,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.local_fire_department_rounded,
-                                    size: 24,
-                                    color: Color(0xFFE67D45),
-                                    shadows: [
-                                      Shadow(
-                                        color: Color(0xFF82502B),
-                                        offset: Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 3),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'Keep it up!',
-                                      textScaler: TextScaler.noScaling,
-                                      style: TextStyle(
-                                        color: homeInk,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                           if (open != null) ...[
                             const SizedBox(width: 8),
                             Container(
                               width: 28,
                               height: 28,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: .28),
+                                color: Colors.white.withValues(alpha: .06),
                                 shape: BoxShape.circle,
                               ),
                               child: Transform.rotate(
                                 angle: -math.pi / 2 * expansion,
-                                child: const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: homeInk,
+                                child: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.arrowRight01,
+                                  color: WeekPactColors.darkInk,
                                   size: 22,
                                 ),
                               ),
@@ -240,18 +215,11 @@ class LatestActivityRow extends StatelessWidget {
       height: height + (expandedHeight - height) * expansion,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: homeInk.withValues(alpha: .12),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
         child: ColoredBox(
-          color: WeekPactColors.softYellow,
+          color: background,
           child: Column(
             children: [
               header,
@@ -274,13 +242,15 @@ class LatestActivityRow extends StatelessWidget {
   }
 
   Widget _initials(WeekMember? member) => ColoredBox(
-    color: const Color(0xFFE1E5DC),
+    color: const Color(0xFF3B3D3B),
     child: Center(
       child: Text(
         member?.initials ?? '?',
         textScaler: TextScaler.noScaling,
         style: const TextStyle(
-          color: homeInk,
+          color: WeekPactColors.darkInk,
+          fontFamily: 'Roboto',
+          fontFamilyFallback: ['Arial'],
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),

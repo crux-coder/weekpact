@@ -108,7 +108,8 @@ abstract interface class CrewBackend {
     required String inviteId,
     required bool accept,
   });
-  Future<CrewDetails?> fetchCrew();
+  Future<List<PactCrew>> fetchCrews();
+  Future<CrewDetails?> fetchCrew({String? crewId});
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
@@ -141,26 +142,35 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
   final SupabaseClient _client;
 
   @override
-  Future<CrewDetails?> fetchCrew() async {
+  Future<List<PactCrew>> fetchCrews() =>
+      SupabasePactsBackend(_client).fetchCrews();
+
+  @override
+  Future<CrewDetails?> fetchCrew({String? crewId}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return null;
 
-    final membership = await _client
+    var query = _client
         .from('crew_members')
         .select(
           'crew_id,user_id,email,role,joined_at,'
           'crews!inner(id,name,timezone,owner_id)',
         )
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+    if (crewId != null) query = query.eq('crew_id', crewId);
+    final membership = await query
+        .order('joined_at')
+        .order('crew_id')
+        .limit(1)
         .maybeSingle();
     if (membership == null) return null;
 
     final crew = membership['crews'] as Map<String, dynamic>;
-    final crewId = crew['id'] as String;
+    final selectedId = crew['id'] as String;
     final memberRows = await _client
         .from('crew_members')
         .select('user_id,email,role,joined_at')
-        .eq('crew_id', crewId)
+        .eq('crew_id', selectedId)
         .order('joined_at');
 
     List<dynamic> inviteRows = const [];
@@ -168,14 +178,14 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
       inviteRows = await _client
           .from('crew_invites')
           .select('id,email,expires_at')
-          .eq('crew_id', crewId)
+          .eq('crew_id', selectedId)
           .isFilter('accepted_at', null)
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false);
     }
 
     return CrewDetails(
-      id: crewId,
+      id: selectedId,
       name: crew['name'] as String,
       timezone: crew['timezone'] as String,
       ownerId: crew['owner_id'] as String,
@@ -208,17 +218,12 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
     required String timezone,
   }) async {
     final userId = _requireUserId();
-    final existing = await fetchCrew();
-    if (existing != null) {
-      if (existing.ownerId == userId) return existing;
-      throw StateError('You already belong to a crew.');
-    }
-    await _client.from('crews').insert({
-      'name': name.trim(),
-      'timezone': timezone,
-      'owner_id': userId,
-    });
-    return (await fetchCrew())!;
+    final row = await _client
+        .from('crews')
+        .insert({'name': name.trim(), 'timezone': timezone, 'owner_id': userId})
+        .select('id')
+        .single();
+    return (await fetchCrew(crewId: row['id'] as String))!;
   }
 
   @override
@@ -230,7 +235,7 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
       'invite-crew-member',
       body: {'crewId': crewId, 'email': email.trim().toLowerCase()},
     );
-    return (await fetchCrew())!;
+    return (await fetchCrew(crewId: crewId))!;
   }
 
   @override
@@ -243,13 +248,16 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
         .delete()
         .eq('id', inviteId)
         .eq('crew_id', crewId);
-    return (await fetchCrew())!;
+    return (await fetchCrew(crewId: crewId))!;
   }
 
   @override
   Future<CrewDetails> acceptInvite(String token) async {
-    await _client.rpc('accept_crew_invite', params: {'p_token': token});
-    return (await fetchCrew())!;
+    final crewId = await _client.rpc(
+      'accept_crew_invite',
+      params: {'p_token': token},
+    ) as String;
+    return (await fetchCrew(crewId: crewId))!;
   }
 
   @override
@@ -305,6 +313,9 @@ class MissingCrewBackend implements CrewBackend {
   const MissingCrewBackend();
 
   @override
+  Future<List<PactCrew>> fetchCrews() async => [];
+
+  @override
   Future<void> leaveCrew({required String crewId, String? successorId}) =>
       Future.error(_error);
 
@@ -326,7 +337,7 @@ class MissingCrewBackend implements CrewBackend {
   );
 
   @override
-  Future<CrewDetails?> fetchCrew() async => null;
+  Future<CrewDetails?> fetchCrew({String? crewId}) async => null;
 
   @override
   Future<CrewDetails> acceptInvite(String token) => Future.error(_error);

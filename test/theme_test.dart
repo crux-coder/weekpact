@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:weekpact/src/theme/theme_preference.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
@@ -14,21 +12,6 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
-  test(
-    'theme preference defaults to device and restores saved choices',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      expect(ThemePreferenceStore(preferences).mode, ThemeMode.system);
-      for (final mode in ThemeMode.values) {
-        await ThemePreferenceStore(preferences).save(mode);
-        expect(ThemePreferenceStore(preferences).mode, mode);
-      }
-      await preferences.setString(ThemePreferenceStore.key, 'invalid');
-      expect(ThemePreferenceStore(preferences).mode, ThemeMode.system);
-    },
-  );
-
   testWidgets('home palette cards retain contrast on the dark canvas', (
     tester,
   ) async {

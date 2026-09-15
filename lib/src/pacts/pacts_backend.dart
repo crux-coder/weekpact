@@ -77,7 +77,8 @@ class SupabasePactsBackend implements PactsBackend {
         .from('crew_members')
         .select('role,crews!inner(id,name,timezone)')
         .eq('user_id', user.id)
-        .order('joined_at');
+        .order('joined_at')
+        .order('crew_id');
     return rows
         .map((row) {
           final crew = row['crews'] as Map<String, dynamic>;

@@ -1,3 +1,5 @@
+import '../home/photo_check_in_sheet.dart';
+
 import 'package:flutter/material.dart';
 
 import '../crew/crew_backend.dart';
@@ -19,12 +21,16 @@ class CrewSetupPage extends StatefulWidget {
     required this.homeBackend,
     required this.userId,
     this.initialCrew,
+    this.crewId,
+    this.captureCheckInPhoto,
   });
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
   final String userId;
   final CrewDetails? initialCrew;
+  final String? crewId;
+  final CheckInPhotoCapture? captureCheckInPhoto;
   @override
   State<CrewSetupPage> createState() => _CrewSetupPageState();
 }
@@ -56,7 +62,9 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
 
   Future<void> _resume() async {
     try {
-      final crew = widget.initialCrew ?? await widget.crewBackend.fetchCrew();
+      final crew =
+          widget.initialCrew ??
+          await widget.crewBackend.fetchCrew(crewId: widget.crewId);
       final pacts = crew == null
           ? <CrewPact>[]
           : await widget.pactsBackend.fetchPacts(crew.id);
@@ -147,12 +155,23 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
       if (_pact == null || !week.pacts.any((p) => p.id == _pact!.id)) {
         throw StateError('Pact changed');
       }
-      final checked = week.checkedToday(widget.userId)..add(_pact!.id);
-      await widget.homeBackend.saveCheckIns(
-        crewId: _crew!.id,
-        today: week.today,
-        pactIds: checked,
-      );
+      final checked = week.checkedToday(widget.userId);
+      if (!checked.contains(_pact!.id)) {
+        checked.add(_pact!.id);
+        if (!mounted) return;
+        final saved = await showPhotoCheckIn(
+          userId: widget.userId,
+          context: context,
+          backend: widget.homeBackend,
+          crewId: _crew!.id,
+          pactId: _pact!.id,
+          pactTitle: _pact!.title,
+          today: week.today,
+          selectedPactIds: checked,
+          capturePhoto: widget.captureCheckInPhoto,
+        );
+        if (!saved) return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

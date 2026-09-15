@@ -1,3 +1,4 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -40,7 +41,7 @@ class _PactIconPickerState extends State<PactIconPicker> {
               IconButton(
                 tooltip: 'Close icon picker',
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
+                icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
               ),
             ],
           ),
@@ -51,7 +52,10 @@ class _PactIconPickerState extends State<PactIconPicker> {
               decoration: InputDecoration(
                 hintText: 'Search icons',
                 hintStyle: TextStyle(color: context.muted),
-                prefixIcon: Icon(Icons.search, color: context.muted),
+                prefixIcon: HugeIcon(
+                  icon: HugeIconsStrokeRounded.search01,
+                  color: context.muted,
+                ),
                 filled: false,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,

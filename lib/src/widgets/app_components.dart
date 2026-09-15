@@ -215,93 +215,110 @@ class AppBottomNavigationBar extends StatelessWidget {
         border: Border.all(color: Colors.transparent, width: 2),
       ),
       child: LayoutBuilder(
-        builder: (context, constraints) {
-          final duration = MediaQuery.disableAnimationsOf(context)
+        builder: (context, constraints) => TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: selectedIndex.toDouble(),
+            end: selectedIndex.toDouble(),
+          ),
+          duration: MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
-              : const Duration(milliseconds: 320);
-          final unit = constraints.maxWidth / (items.length + 1);
-          return Row(
+              : const Duration(milliseconds: 280),
+          curve: Curves.easeInOutCubic,
+          builder: (context, position, _) => Stack(
             children: [
-              for (var i = 0; i < items.length; i++)
-                TweenAnimationBuilder<double>(
-                  key: ValueKey('nav-animation-${items[i].label}'),
-                  tween: Tween<double>(
-                    begin: selectedIndex == i ? 1 : 0,
-                    end: selectedIndex == i ? 1 : 0,
+              if (items.isNotEmpty)
+                PositionedDirectional(
+                  start: constraints.maxWidth / items.length * position,
+                  top: 0,
+                  bottom: 0,
+                  width: constraints.maxWidth / items.length,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      key: const ValueKey('nav-sliding-highlight'),
+                      decoration: BoxDecoration(
+                        color: context.ink,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                  duration: duration,
-                  curve: Curves.easeOutCubic,
-                  builder: (context, amount, _) => SizedBox(
-                    width: unit * (1 + amount),
-                    child: Semantics(
-                      selected: selectedIndex == i,
-                      label: items[i].label,
-                      child: Tooltip(
-                        message: items[i].label,
-                        child: Material(
-                          color: Color.lerp(
-                            Colors.transparent,
-                            context.ink,
-                            amount,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
-                            key: ValueKey(
-                              'nav-${items[i].label.toLowerCase()}',
-                            ),
+                ),
+              Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Expanded(
+                      child: Semantics(
+                        selected: selectedIndex == i,
+                        label: items[i].label,
+                        child: Tooltip(
+                          message: items[i].label,
+                          child: Material(
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
-                            onTap: () => onSelected(i),
-                            child: SizedBox(
-                              height: 52,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  HugeIcon(
-                                    icon: items[i].icon,
-                                    color: Color.lerp(
-                                      context.ink,
-                                      context.canvas,
-                                      amount,
-                                    ),
-                                    size: 25,
-                                  ),
-                                  if (amount > 0) ...[
-                                    SizedBox(width: 7 * amount),
-                                    Flexible(
-                                      child: ClipRect(
-                                        child: Align(
-                                          widthFactor: amount,
-                                          alignment: Alignment.centerLeft,
-                                          child: Opacity(
-                                            opacity: amount,
-                                            child: ExcludeSemantics(
-                                              child: Text(
-                                                items[i].label,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: context.canvas,
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                              ),
+                            child: InkWell(
+                              key: ValueKey(
+                                'nav-${items[i].label.toLowerCase()}',
+                              ),
+                              splashFactory: NoSplash.splashFactory,
+                              splashColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => onSelected(i),
+                              child: SizedBox(
+                                height:
+                                    42 +
+                                    MediaQuery.textScalerOf(context).scale(14),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    HugeIcon(
+                                      icon: items[i].icon,
+                                      color: Color.lerp(
+                                        context.ink,
+                                        context.canvas,
+                                        1 -
+                                            (position - i).abs().clamp(
+                                              0.0,
+                                              1.0,
                                             ),
+                                      ),
+                                      size: 23,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    ExcludeSemantics(
+                                      child: Text(
+                                        items[i].label,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontFamilyFallback: const ['Arial'],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color.lerp(
+                                            context.ink,
+                                            context.canvas,
+                                            1 -
+                                                (position - i).abs().clamp(
+                                                  0.0,
+                                                  1.0,
+                                                ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                ],
+              ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     ),
   );

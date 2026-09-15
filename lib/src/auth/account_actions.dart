@@ -1,3 +1,4 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/app_sheet.dart';
@@ -47,13 +48,13 @@ class PublicAccountLinks extends StatelessWidget {
       ? Column(
           children: [
             SettingsRow(
-              icon: Icons.support_agent,
+              icon: HugeIconsStrokeRounded.customerService,
               label: 'Support',
               onTap: () => _open(context, supportUrl),
             ),
             const Divider(height: 1),
             SettingsRow(
-              icon: Icons.description_outlined,
+              icon: HugeIconsStrokeRounded.file02,
               label: 'Privacy policy',
               onTap: () => _open(context, privacyUrl),
             ),
@@ -126,7 +127,7 @@ class _AccountActionsState extends State<AccountActions> {
       if (!widget.asRows) const SizedBox(height: 20),
       if (widget.showPasswordReset && widget.asRows) ...[
         SettingsRow(
-          icon: Icons.lock_outline,
+          icon: HugeIconsStrokeRounded.lockPassword,
           label: 'Reset password',
           onTap: _busy || !widget.enabled
               ? null
@@ -196,7 +197,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'This permanently removes your profile, photo, check-ins, invitations and notification registrations. Pacts you created, including everyone’s check-ins on those pacts, are removed too.\n\nIf you own a crew, its longest-standing remaining member becomes owner. A crew with no remaining members is deleted. This cannot be undone.',
+            'This permanently removes your profile, profile and check-in photos, check-ins, invitations and notification registrations. Pacts you created, including everyone’s check-ins on those pacts, are removed too.\n\nIf you own a crew, its longest-standing remaining member becomes owner. A crew with no remaining members is deleted. This cannot be undone.',
           ),
           const SizedBox(height: 16),
           TextField(

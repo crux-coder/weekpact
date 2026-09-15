@@ -1,3 +1,5 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -252,7 +254,8 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                     : () => setState(
                                         () => _memberPage = page - 1,
                                       ),
-                                icon: const Icon(Icons.chevron_left),
+                                icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft01,
+                                ),
                               ),
                               IconButton(
                                 tooltip: 'Next members',
@@ -261,7 +264,8 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                     : () => setState(
                                         () => _memberPage = page + 1,
                                       ),
-                                icon: const Icon(Icons.chevron_right),
+                                icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowRight01,
+                                ),
                               ),
                             ],
                           ),
@@ -510,7 +514,10 @@ class _MemberDays extends StatelessWidget {
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: done
-                              ? const Icon(Icons.check_rounded, size: 16)
+                              ? const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.tick02,
+                                  size: 16,
+                                )
                               : Container(
                                   width: 4,
                                   height: 4,

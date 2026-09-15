@@ -1,3 +1,5 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -9,14 +11,12 @@ class CrewInvitesPane extends StatefulWidget {
   const CrewInvitesPane({
     super.key,
     required this.backend,
-    required this.alreadyInCrew,
     required this.onAccepted,
     this.showEmptyState = true,
   });
   final bool showEmptyState;
   final CrewBackend backend;
-  final bool alreadyInCrew;
-  final Future<void> Function() onAccepted;
+  final Future<void> Function(String crewId) onAccepted;
 
   @override
   State<CrewInvitesPane> createState() => CrewInvitesPaneState();
@@ -86,7 +86,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
     try {
       await widget.backend.respondToInvite(inviteId: invite.id, accept: accept);
       if (accept) {
-        await widget.onAccepted();
+        await widget.onAccepted(invite.crewId);
       } else if (mounted) {
         setState(() {
           _invites = _invites.where((item) => item.id != invite.id).toList();
@@ -143,14 +143,23 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
   List<Widget> _inbox() => [
     if (_invites.isNotEmpty) ...[
       const Text(
-        'Received',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        'RECEIVED',
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 10,
+          letterSpacing: 2,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       const SizedBox(height: 12),
     ],
     if (_invites.isEmpty && _error == null && widget.showEmptyState) ...[
       const SizedBox(height: 12),
-      Icon(Icons.mail_outline, size: 32, color: context.muted),
+      HugeIcon(
+        icon: HugeIconsStrokeRounded.mail01,
+        size: 32,
+        color: context.muted,
+      ),
       const SizedBox(height: 12),
       const Text(
         'No invites yet',
@@ -161,14 +170,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
     ],
     for (final invite in _invites) ...[
       Material(
-        color: context.yellow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: context.border,
-            width: WeekPactMetrics.border,
-          ),
-        ),
+        color: const Color(0xFFE7EAE4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _openPreview(invite),
@@ -184,22 +187,28 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                         invite.name,
                         style: const TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         '${invite.members.length} ${invite.members.length == 1 ? 'member' : 'members'} · ${invite.pacts.length} ${invite.pacts.length == 1 ? 'pact' : 'pacts'}',
+                        style: const TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          height: 1.5,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       const Text(
                         'VIEW CREW',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward),
+                const HugeIcon(icon: HugeIconsStrokeRounded.arrowRight01),
               ],
             ),
           ),
@@ -221,7 +230,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                   _selected = null;
                   _error = null;
                 }),
-          icon: const Icon(Icons.arrow_back),
+          icon: const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft02),
           label: const Text('ALL INVITES'),
         ),
       ),
@@ -231,18 +240,29 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         style: TextStyle(
           color: context.ink,
           fontSize: 30,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
       ),
       const SizedBox(height: 8),
       Text(
         'Week starts Monday · ${invite.timezone}',
-        style: TextStyle(color: context.muted),
+        style: TextStyle(
+          color: context.muted,
+          fontFamily: 'Roboto',
+          fontWeight: FontWeight.w400,
+          fontSize: 13,
+          height: 1.5,
+        ),
       ),
       const SizedBox(height: 24),
       const Text(
         'MEMBERS',
-        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .7),
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 2,
+        ),
       ),
       const SizedBox(height: 10),
       for (final member in invite.members)
@@ -263,14 +283,22 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
               Expanded(
                 child: Text(
                   member.email,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
                 ),
               ),
               if (member.isOwner) ...[
                 const SizedBox(width: 8),
                 const Text(
                   'OWNER',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ],
@@ -279,7 +307,12 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const SizedBox(height: 20),
       const Text(
         'PACTS',
-        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .7),
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 2,
+        ),
       ),
       const SizedBox(height: 10),
       if (invite.pacts.isEmpty)
@@ -298,21 +331,32 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(pact.schedule, style: TextStyle(color: context.muted)),
+              Text(
+                pact.schedule,
+                style: TextStyle(
+                  color: context.muted,
+                  fontFamily: 'Roboto',
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
             ],
           ),
         ),
       const SizedBox(height: 22),
       Text(
         'Invite expires ${MaterialLocalizations.of(context).formatMediumDate(invite.expiresAt.toLocal())}.',
-        style: TextStyle(color: context.muted, fontSize: 12),
+        style: TextStyle(
+          color: context.muted,
+          fontFamily: 'Roboto',
+          fontSize: 12,
+          height: 1.5,
+        ),
       ),
-      if (widget.alreadyInCrew || expired) ...[
+      if (expired) ...[
         const SizedBox(height: 14),
         Text(
-          expired
-              ? 'This invitation has expired. Ask the owner for a new one.'
-              : 'You already belong to a crew. You can only join one crew at a time.',
+          'This invitation has expired. Ask the owner for a new one.',
           style: TextStyle(
             color: context.errorInk,
             fontWeight: FontWeight.w700,
@@ -322,18 +366,20 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const SizedBox(height: 20),
       AppButton(
         label: 'ACCEPT INVITE',
+        icon: HugeIconsStrokeRounded.arrowRight01,
 
         isLoading: _responding && _accepting,
-        onPressed: _responding || widget.alreadyInCrew || expired
-            ? null
-            : () => _respond(true),
+        onPressed: _responding || expired ? null : () => _respond(true),
       ),
       const SizedBox(height: 16),
-      AppButton(
-        label: 'DECLINE INVITE',
-
-        isLoading: _responding && !_accepting,
+      TextButton(
         onPressed: _responding || expired ? null : () => _respond(false),
+        child: _responding && !_accepting
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('DECLINE INVITE'),
       ),
     ];
   }
@@ -347,9 +393,6 @@ String _inviteError(Object error) {
   if (message.contains('no longer available')) {
     return 'This invitation has expired, was revoked, or was already answered. Refresh your invites.';
   }
-  if (message.contains('already belong') ||
-      message.contains('crew_members_one_crew_per_user')) {
-    return 'You already belong to a crew.';
-  }
+
   return 'Could not update your invitations. Please try again.';
 }

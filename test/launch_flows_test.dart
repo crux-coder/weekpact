@@ -1,3 +1,5 @@
+import 'support/photo_fakes.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -18,7 +20,7 @@ class SetupCrew extends MissingCrewBackend {
   CrewDetails? crew;
   int created = 0;
   @override
-  Future<CrewDetails?> fetchCrew() async => crew;
+  Future<CrewDetails?> fetchCrew({String? crewId}) async => crew;
   @override
   Future<CrewDetails> createCrew({
     required String name,
@@ -125,6 +127,7 @@ void main() {
                   crewBackend: crews,
                   pactsBackend: pacts,
                   homeBackend: home,
+                  captureCheckInPhoto: captureTestCheckInPhoto,
                   userId: '',
                 ),
               ),
@@ -158,6 +161,7 @@ void main() {
     await tester.ensureVisible(find.text('I did it today'));
     await tester.tap(find.text('I did it today'));
     await tester.pumpUi();
+    await submitTestPhoto(tester);
     expect(home.selected, {'new'});
     expect(crews.created, 1);
     expect(find.text('Begin'), findsOneWidget);

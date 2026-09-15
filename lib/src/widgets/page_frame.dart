@@ -68,20 +68,35 @@ class PageFrame extends StatelessWidget {
 }
 
 class PageHeading extends StatelessWidget {
-  const PageHeading(this.title, {super.key});
+  const PageHeading(
+    this.title, {
+    super.key,
+    this.dotColor = WeekPactColors.mintGreen,
+  });
   final String title;
+  final Color dotColor;
 
   @override
-  Widget build(BuildContext context) => Text(
-    title,
-    style: TextStyle(
+  Widget build(BuildContext context) {
+    final style = TextStyle(
       color: context.ink,
       fontSize: 32,
       height: 1.1,
       fontWeight: FontWeight.w900,
       letterSpacing: -.5,
-    ),
-  );
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Flexible(child: Text(title, style: style)),
+        ExcludeSemantics(
+          child: Text('.', style: style.copyWith(color: dotColor)),
+        ),
+      ],
+    );
+  }
 }
 
 class SkeletonBar extends StatelessWidget {

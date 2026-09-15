@@ -1,3 +1,4 @@
+import 'home/photo_check_in_sheet.dart';
 import 'home/home_backend.dart';
 
 import 'dart:async';
@@ -17,28 +18,25 @@ import 'auth/auth_gate.dart';
 import 'crew/crew_backend.dart';
 import 'invites/invite_links.dart';
 import 'theme/weekpact_theme.dart';
-import 'theme/theme_preference.dart';
 
 class WeekPactApp extends StatefulWidget {
   const WeekPactApp({
     super.key,
     required this.authBackend,
     this.notifications,
-    this.initialThemeMode = ThemeMode.system,
-    this.onThemeModeChanged,
     this.crewBackend = const MissingCrewBackend(),
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
+    this.captureCheckInPhoto,
     this.inviteLinkSource = const NoopInviteLinkSource(),
   });
 
-  final ThemeMode initialThemeMode;
-  final Future<void> Function(ThemeMode)? onThemeModeChanged;
   final AuthBackend authBackend;
   final NotificationService? notifications;
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
+  final CheckInPhotoCapture? captureCheckInPhoto;
   final InviteLinkSource inviteLinkSource;
 
   @override
@@ -46,7 +44,6 @@ class WeekPactApp extends StatefulWidget {
 }
 
 class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
-  late ThemeMode _themeMode = widget.initialThemeMode;
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
 
@@ -92,44 +89,30 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  void _setThemeMode(ThemeMode mode) async {
-    if (_themeMode == mode) return;
-    setState(() => _themeMode = mode);
-    try {
-      await widget.onThemeModeChanged?.call(mode);
-    } catch (error) {
-      debugPrint('Could not persist theme preference: $error');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ThemePreference(
-      mode: _themeMode,
-      onChanged: _setThemeMode,
-      child: MaterialApp(
-        scaffoldMessengerKey: _messenger,
-        debugShowCheckedModeBanner: false,
-        title: 'WeekPact',
-        theme: WeekPactTheme.light,
-        darkTheme: WeekPactTheme.dark,
-        themeMode: _themeMode,
-        builder: (context, child) {
-          final content = WeekPactBackground(
-            child: child ?? const SizedBox.shrink(),
-          );
-          final notifications = widget.notifications;
-          return notifications == null
-              ? content
-              : NotificationScope(service: notifications, child: content);
-        },
-        home: AuthGate(
-          authBackend: widget.authBackend,
-          crewBackend: widget.crewBackend,
-          pactsBackend: widget.pactsBackend,
-          homeBackend: widget.homeBackend,
-          inviteLinkSource: widget.inviteLinkSource,
-        ),
+    return MaterialApp(
+      scaffoldMessengerKey: _messenger,
+      debugShowCheckedModeBanner: false,
+      title: 'WeekPact',
+      theme: WeekPactTheme.dark,
+      themeMode: ThemeMode.dark,
+      builder: (context, child) {
+        final content = WeekPactBackground(
+          child: child ?? const SizedBox.shrink(),
+        );
+        final notifications = widget.notifications;
+        return notifications == null
+            ? content
+            : NotificationScope(service: notifications, child: content);
+      },
+      home: AuthGate(
+        authBackend: widget.authBackend,
+        crewBackend: widget.crewBackend,
+        pactsBackend: widget.pactsBackend,
+        homeBackend: widget.homeBackend,
+        captureCheckInPhoto: widget.captureCheckInPhoto,
+        inviteLinkSource: widget.inviteLinkSource,
       ),
     );
   }

@@ -1,3 +1,5 @@
+import '../pacts/pacts_backend.dart';
+import 'crew_switcher.dart';
 import 'crew_sharing.dart';
 
 import 'package:flutter/material.dart';
@@ -25,12 +27,16 @@ class CrewPage extends StatefulWidget {
     required this.currentUserEmail,
     this.profileBackend,
     this.active = true,
+    this.selectedCrewId,
+    this.onCrewSelected,
     this.onInviteAccepted,
     this.onCrewLeft,
     this.onCrewCreated,
   });
 
   final HomeBackend? profileBackend;
+  final String? selectedCrewId;
+  final ValueChanged<String>? onCrewSelected;
   final bool active;
   final CrewBackend backend;
   final String currentUserEmail;
@@ -50,6 +56,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   final _createFormKey = GlobalKey<FormState>();
 
   CrewDetails? _crew;
+  List<PactCrew> _crews = [];
+  String? _selectedCrewId;
+  bool _showCreate = false;
+  int _request = 0;
   String? _profileCrewId;
   Map<String, WeekMember> _memberProfiles = {};
   bool _loading = false;
@@ -74,18 +84,25 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  Future<void> _loadCrew() =>
-      _crewLoad ??= _fetchCrew().whenComplete(() => _crewLoad = null);
+  Future<void> _loadCrew() => _crewLoad = _fetchCrew();
 
   Future<void> _fetchCrew() async {
-    if (mounted) {
+    final request = ++_request;
+    if (mounted && request == _request) {
       setState(() {
         _loading = true;
         _error = null;
       });
     }
     try {
-      final crew = await widget.backend.fetchCrew();
+      final crews = await widget.backend.fetchCrews();
+      if (!mounted || request != _request) return;
+      final wanted = _selectedCrewId ?? widget.selectedCrewId ?? _crew?.id;
+      final selected =
+          crews.where((c) => c.id == wanted).firstOrNull ?? crews.firstOrNull;
+      final crew = await widget.backend.fetchCrew(crewId: selected?.id);
+      if (!mounted || request != _request) return;
+      _crews = crews;
       if (crew?.id != _profileCrewId) {
         _memberProfiles = {};
         _profileCrewId = crew?.id;
@@ -93,12 +110,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       if (crew != null && widget.profileBackend != null) {
         try {
           final week = await widget.profileBackend!.fetchWeek(crew.id);
-          if (!mounted) return;
+          if (!mounted || request != _request) return;
           _memberProfiles = {
             for (final member in week.members) member.id: member,
           };
         } catch (_) {
-          if (mounted) {
+          if (mounted && request == _request) {
             setState(
               () => _error =
                   'Could not refresh member profiles. Pull down to retry.',
@@ -107,16 +124,18 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         }
       }
 
-      if (mounted) {
+      if (mounted && request == _request) {
         setState(() {
           _crew = crew;
           _hasLoaded = true;
         });
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error));
+      if (mounted && request == _request) {
+        setState(() => _error = _messageFor(error));
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && request == _request) setState(() => _loading = false);
     }
   }
 
@@ -132,7 +151,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         timezone: _appTimezone,
       );
       if (mounted) {
-        setState(() => _crew = crew);
+        setState(() {
+          _crew = crew;
+          _selectedCrewId = crew.id;
+          _showCreate = false;
+        });
+        _crewNameController.clear();
+        widget.onCrewSelected?.call(crew.id);
+        await _loadCrew();
+        if (!mounted) return;
         widget.onCrewCreated?.call(crew);
       }
     } catch (error) {
@@ -187,6 +214,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 const Text('Choose the new owner:'),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
+                  icon: const HugeIcon(
+                    icon: HugeIconsStrokeRounded.arrowDown01,
+                    size: 20,
+                  ),
                   isExpanded: true,
                   hint: const Text('Select a member'),
                   items: successors
@@ -238,7 +269,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       // Discard any fetch begun before the membership mutation.
       await _crewLoad;
       if (!mounted) return;
-      if (leaving) setState(() => _crew = null);
+      if (leaving) {
+        setState(() {
+          _crew = null;
+          _selectedCrewId = null;
+        });
+      }
       await _refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -246,7 +282,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           content: Text(leaving ? 'You left the crew.' : 'Member removed.'),
         ),
       );
-      if (leaving) widget.onCrewLeft?.call();
+      if (leaving) {
+        if (_crew != null) widget.onCrewSelected?.call(_crew!.id);
+        widget.onCrewLeft?.call();
+      }
     } catch (error) {
       if (mounted) setState(() => _error = _messageFor(error));
     } finally {
@@ -266,7 +305,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant CrewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if ((widget.active && !oldWidget.active) ||
+    if (widget.selectedCrewId != oldWidget.selectedCrewId) {
+      _selectedCrewId = widget.selectedCrewId;
+    }
+    if ((widget.active &&
+            (!oldWidget.active ||
+                widget.selectedCrewId != oldWidget.selectedCrewId)) ||
         widget.profileBackend != oldWidget.profileBackend) {
       _refresh();
     }
@@ -285,7 +329,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     ]);
   }
 
-  Future<void> _joinedCrew() async {
+  Future<void> _joinedCrew(String crewId) async {
+    _selectedCrewId = crewId;
+    widget.onCrewSelected?.call(crewId);
     // A refresh started before acceptance may still contain the old membership.
     await _crewLoad;
     if (!mounted) return;
@@ -333,7 +379,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   IconButton(
                     tooltip: 'Close invites',
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
                   ),
                 ],
               ),
@@ -358,7 +404,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               CrewInvitesPane(
                 key: _invitesKey,
                 backend: widget.backend,
-                alreadyInCrew: _crew != null,
                 onAccepted: _joinedCrew,
                 showEmptyState: !(_crew?.pendingInvites.isNotEmpty ?? false),
               ),
@@ -399,6 +444,18 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       header: Row(
         children: [
           const Expanded(child: PageHeading('Crews')),
+          if (_crew != null)
+            IconButton(
+              tooltip: _showCreate ? 'Cancel new crew' : 'Create another crew',
+              onPressed: _creating || _changingMembership
+                  ? null
+                  : () => setState(() => _showCreate = !_showCreate),
+              icon: HugeIcon(
+                icon: _showCreate
+                    ? HugeIconsStrokeRounded.cancel01
+                    : HugeIconsStrokeRounded.add01,
+              ),
+            ),
           IconButton(
             tooltip: 'Invites',
             onPressed: _invitesOpen ? null : _openInvites,
@@ -408,7 +465,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   _receivedInviteCount > 0 ||
                   (_crew?.pendingInvites.isNotEmpty ?? false),
               backgroundColor: WeekPactColors.softYellow,
-              child: const Icon(Icons.inbox_outlined),
+              child: const HugeIcon(icon: HugeIconsStrokeRounded.inbox),
             ),
           ),
         ],
@@ -419,7 +476,25 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_crew != null) ...[
+          if (_crews.isNotEmpty && !_showCreate) ...[
+            CrewSwitcher(
+              crews: _crews,
+              selectedId: _loading
+                  ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)
+                  : _crew?.id,
+              onSelected: _changingMembership || _loading
+                  ? null
+                  : (id) {
+                      _selectedCrewId = id;
+                      widget.onCrewSelected?.call(id);
+                      _loadCrew();
+                    },
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_loading && !_showCreate && _crew != null)
+            const _CrewSkeleton(showSelector: false)
+          else if (_crew != null && !_showCreate) ...[
             _buildCrewState(context, _crew!),
           ] else if (_hasLoaded)
             AppSurfaceTheme(builder: (context) => _buildCreateState(context)),
@@ -549,27 +624,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppSurface(
-          builder: (context) => Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                const Icon(Icons.people_outline, size: 26),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    crew.name,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
         Text(
           'YOUR PEOPLE · ${crew.members.length}',
           style: TextStyle(
@@ -612,7 +666,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         const SizedBox(height: 16),
         TextButton.icon(
           onPressed: _changingMembership ? null : () => _changeMembership(),
-          icon: const Icon(Icons.logout, size: 20),
+          icon: const HugeIcon(icon: HugeIconsStrokeRounded.logout01, size: 20),
           label: const Text('LEAVE CREW'),
           style: TextButton.styleFrom(
             foregroundColor: context.ink,
@@ -651,7 +705,7 @@ class _InviteDrawer extends StatelessWidget {
             IconButton(
               tooltip: 'Close invite',
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
+              icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
             ),
           ],
         ),
@@ -674,7 +728,9 @@ class _InviteDrawer extends StatelessWidget {
 
 /// Reserves the same square tiles as the loaded people grid.
 class _CrewSkeleton extends StatelessWidget {
-  const _CrewSkeleton();
+  const _CrewSkeleton({this.showSelector = true});
+
+  final bool showSelector;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -684,13 +740,22 @@ class _CrewSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppSurface(
-            builder: (_) => const Padding(
-              padding: EdgeInsets.all(16),
-              child: SkeletonBar(height: 30),
+          if (showSelector) ...[
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: SkeletonBar(width: 84, height: 12),
             ),
+            const SizedBox(height: 8),
+            const SkeletonBar(height: 44),
+            const SizedBox(height: 12),
+          ],
+          LinearProgressIndicator(
+            minHeight: 2,
+            color: WeekPactColors.mintGreen,
+            backgroundColor: context.ink.withValues(alpha: .06),
+            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           const Align(
             alignment: Alignment.centerLeft,
             child: SkeletonBar(width: 120, height: 16),
@@ -795,10 +860,7 @@ class _InviteRow extends StatelessWidget {
 
 String _messageFor(Object error) {
   final message = error.toString();
-  if (message.contains('already belong to a crew') ||
-      message.contains('crew_members_one_crew_per_user')) {
-    return 'You already belong to a crew.';
-  }
+
   if (message.contains('already in this crew')) {
     return 'That person is already in this crew.';
   }

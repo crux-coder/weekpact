@@ -22,6 +22,8 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to share your check-in with your crew.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a profile photo for your WeekPact account.</string>
 	<key>FirebaseCrashlyticsCollectionEnabled</key>

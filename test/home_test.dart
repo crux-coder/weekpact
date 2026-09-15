@@ -1,3 +1,4 @@
+import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
 import 'package:flutter/services.dart';
@@ -26,6 +27,7 @@ Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
         crewBackend: const MissingCrewBackend(),
         pactsBackend: backend.pacts,
         homeBackend: backend,
+        captureCheckInPhoto: captureTestCheckInPhoto,
       ),
     ),
   );
@@ -90,18 +92,17 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('crew-board'))),
         loadingCrew,
       );
-      expect(find.text('Mark done').hitTestable(), findsOneWidget);
+      expect(find.text('Check in').hitTestable(), findsOneWidget);
       backend.failSave = true;
       await tester.tap(
         find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
       );
       await tester.pumpUi();
-      expect(find.textContaining('Could not save.'), findsOneWidget);
+      await submitTestPhoto(tester);
+      expect(find.textContaining('Could not save your photo'), findsOneWidget);
       expect(backend.selected, {'read'});
       backend.failSave = false;
-      await tester.tap(
-        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
-      );
+      await submitTestPhoto(tester);
       await tester.pumpUi();
       expect(backend.selected, {'move', 'read'});
       expect(find.text('Checked in today'), findsWidgets);
@@ -217,9 +218,10 @@ void main() {
     backend.failSave = true;
     await tester.tap(pact);
     await tester.pumpUi();
+    await submitTestPhoto(tester);
     expect(calls, isEmpty);
     backend.failSave = false;
-    await tester.tap(pact);
+    await submitTestPhoto(tester);
     await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.lightImpact');
     await tester.tap(pact);

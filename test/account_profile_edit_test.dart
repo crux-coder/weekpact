@@ -5,8 +5,6 @@ import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/pump_ui.dart';
 
-import 'package:weekpact/src/theme/theme_preference.dart';
-
 import 'widget_test.dart' show FakeAuthBackend;
 
 void main() {
@@ -17,18 +15,14 @@ void main() {
     addTearDown(backend.dispose);
     await backend.signIn(email: 'jasmin@example.com', password: 'password');
     await tester.pumpWidget(
-      ThemePreference(
-        mode: ThemeMode.light,
-        onChanged: (_) {},
-        child: MaterialApp(
-          theme: WeekPactTheme.light,
-          home: Scaffold(
-            body: AccountPage(
-              user: backend.currentUser!,
-              backend: backend,
-              signingOut: false,
-              onSignOut: () {},
-            ),
+      MaterialApp(
+        theme: WeekPactTheme.light,
+        home: Scaffold(
+          body: AccountPage(
+            user: backend.currentUser!,
+            backend: backend,
+            signingOut: false,
+            onSignOut: () {},
           ),
         ),
       ),

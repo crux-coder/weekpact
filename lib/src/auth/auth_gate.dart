@@ -1,3 +1,4 @@
+import '../home/photo_check_in_sheet.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../home/home_backend.dart';
 
@@ -22,6 +23,7 @@ class AuthGate extends StatefulWidget {
     required this.crewBackend,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
+    this.captureCheckInPhoto,
     required this.inviteLinkSource,
   });
 
@@ -29,6 +31,7 @@ class AuthGate extends StatefulWidget {
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
+  final CheckInPhotoCapture? captureCheckInPhoto;
   final InviteLinkSource inviteLinkSource;
 
   @override
@@ -38,6 +41,8 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   StreamSubscription<Uri>? _linkSubscription;
   String? _pendingInviteToken;
+  String? _joinedCrewId;
+  String? _joinedUser;
 
   @override
   void initState() {
@@ -118,14 +123,20 @@ class _AuthGateState extends State<AuthGate> {
                 token: inviteToken,
                 crewBackend: widget.crewBackend,
                 onFinished: _clearInvite,
+                onAccepted: (crew) {
+                  _joinedCrewId = crew.id;
+                  _joinedUser = user.id;
+                },
               );
             }
             return HomePage(
+              initialCrewId: _joinedUser == user.id ? _joinedCrewId : null,
               user: profile,
               authBackend: widget.authBackend,
               crewBackend: widget.crewBackend,
               pactsBackend: widget.pactsBackend,
               homeBackend: widget.homeBackend,
+              captureCheckInPhoto: widget.captureCheckInPhoto,
             );
           },
         );

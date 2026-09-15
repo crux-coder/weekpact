@@ -57,8 +57,8 @@ void main() {
       final tile = find.byKey(const ValueKey('checked-tile'));
       final original = tester.getRect(tile);
       final element = tester.element(tile);
-      expect(find.text('Checked in · 2'), findsOneWidget);
-      await tester.tap(tile);
+      expect(find.bySemanticsLabel('Checked in today · 2'), findsOneWidget);
+      await tester.tapAt(original.bottomRight - const Offset(10, 10));
       await tester.pumpUi();
       expect(tester.element(tile), same(element));
       expect(tester.getRect(tile).topLeft, original.topLeft);
@@ -99,7 +99,7 @@ void main() {
       await tester.pumpUi();
       final tile = find.byKey(const ValueKey('pending-tile'));
       final original = tester.getRect(tile);
-      await tester.tap(find.text('Not yet · 12'));
+      await tester.tap(find.bySemanticsLabel('Not yet today · 12'));
       await tester.pumpUi();
       expect(tester.getRect(tile).top, original.top);
       expect(tester.getRect(tile).left, lessThan(original.left));
@@ -138,26 +138,44 @@ void main() {
   );
 
   testWidgets(
-    'empty groups have honest states and changing tabs closes expansion',
+    'empty checked group stays hidden and changing tabs closes expansion',
     (tester) async {
       final backend = MembersBackend()..completed = 0;
       await pumpHome(tester, backend);
       await tester.pumpUi();
-      await tester.tap(find.byKey(const ValueKey('checked-tile')));
+      expect(find.byKey(const ValueKey('checked-tile')), findsNothing);
+      final pending = find.byKey(const ValueKey('pending-tile'));
+      expect(
+        tester.getSize(pending).width,
+        tester.getSize(find.byKey(const ValueKey('crew-board'))).width,
+      );
+      await tester.tap(pending);
       await tester.pumpUi();
-      expect(find.text('No one has checked in today yet.'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pending-members-list')),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const ValueKey('nav-pacts')));
       await tester.pumpUi();
       backend.completed = 14;
       await tester.tap(find.byKey(const ValueKey('nav-home')));
       await tester.pumpUi();
-      expect(find.text('No one has checked in today yet.'), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('pending-tile')));
+      expect(find.byKey(const ValueKey('pending-tile')), findsNothing);
+      final checked = find.byKey(const ValueKey('checked-tile'));
+      expect(
+        tester.getSize(checked).width,
+        tester.getSize(find.byKey(const ValueKey('crew-board'))).width,
+      );
+      expect(find.text('EVERYONE SHOWED UP · 14'), findsOneWidget);
+      await tester.tap(checked);
       await tester.pumpUi();
-      expect(find.text('Everyone has checked in today.'), findsOneWidget);
-      await tester.tap(find.text('Not yet · 0'));
+      expect(
+        find.byKey(const ValueKey('checked-members-list')),
+        findsOneWidget,
+      );
+      await tester.tap(find.bySemanticsLabel('Checked in today · 14'));
       await tester.pumpUi();
-      expect(find.text('Everyone has checked in today.'), findsNothing);
+      expect(find.byKey(const ValueKey('checked-members-list')), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

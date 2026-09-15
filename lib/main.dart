@@ -4,8 +4,6 @@ import 'src/home/home_backend.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'src/theme/theme_preference.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
@@ -48,7 +46,6 @@ Future<void> main() async {
     homeBackend = const MissingHomeBackend();
   }
 
-  final themePreference = ThemePreferenceStore(preferences);
   final notifications = NotificationService(
     createClient: FirebaseMessagingClient.create,
     enabled: preferences.getBool('notifications_enabled') ?? false,
@@ -75,8 +72,6 @@ Future<void> main() async {
     WeekPactApp(
       authBackend: authBackend,
       notifications: notifications,
-      initialThemeMode: themePreference.mode,
-      onThemeModeChanged: themePreference.save,
       crewBackend: crewBackend,
       pactsBackend: pactsBackend,
       homeBackend: homeBackend,

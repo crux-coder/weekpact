@@ -1,3 +1,4 @@
+import { saveWithTestPhotos } from './photo_test_helpers.mjs';
 // Run with PGLITE_MODULE pointing to an installed @electric-sql/pglite entrypoint.
 import assert from 'node:assert/strict';
 import { createTestDatabase } from './database_test_schema.mjs';
@@ -66,7 +67,7 @@ await asUser(owner, async () => {
 
 const pactId = (await db.query('select id from crew_pacts limit 1')).rows[0].id;
 const today = (await db.query("select to_char(now() at time zone 'UTC', 'YYYY-MM-DD') as day")).rows[0].day;
-const save = (ids, day=today, crewId=crew) => db.query('select public.save_pact_check_ins($1,$2,$3::uuid[])', [crewId,day,ids]);
+const save = (ids, day=today, crewId=crew) => saveWithTestPhotos(db,crewId,day,ids);
 await asUser(member, async () => {
   await save([pactId, pactId]);
   await save([pactId]);

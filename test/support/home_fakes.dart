@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:async';
 
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -37,9 +38,13 @@ class DashboardPacts extends MissingPactsBackend {
 }
 
 class DashboardBackend implements HomeBackend {
+  @override
+  Future<Uint8List> fetchCheckInPhoto(String path) =>
+      Future.error(StateError('Photo unavailable'));
   DashboardBackend({DashboardPacts? pacts}) : pacts = pacts ?? DashboardPacts();
   final DashboardPacts pacts;
   final selected = <String>{'read'};
+  Map<String, Uint8List> lastPhotos = {};
   bool failSave = false;
   bool failLoad = false;
   int fetches = 0;
@@ -90,8 +95,15 @@ class DashboardBackend implements HomeBackend {
     required String crewId,
     required String today,
     required Set<String> pactIds,
+    Map<String, Uint8List> photos = const {},
   }) async {
     if (failSave) throw StateError('offline');
+    for (final id in pactIds.difference(selected)) {
+      if (photos[id]?.isNotEmpty != true) {
+        throw StateError('Take a photo to check in.');
+      }
+    }
+    lastPhotos = Map.of(photos);
     selected
       ..clear()
       ..addAll(pactIds);

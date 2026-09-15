@@ -1,3 +1,6 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:hugeicons/hugeicons.dart';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -315,8 +318,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                         ),
                                         child: ClipOval(
                                           child: _avatar == null
-                                              ? Icon(
-                                                  Icons.add_a_photo_outlined,
+                                              ? HugeIcon(
+                                                  icon: HugeIconsStrokeRounded
+                                                      .cameraAdd01,
                                                   size: 36,
                                                   color: context.ink,
                                                 )

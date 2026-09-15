@@ -115,7 +115,7 @@ void main() {
               tester.getTopLeft(find.byKey(const ValueKey('nav-home'))).dy,
             ),
           );
-          expect(find.byTooltip('View week').hitTestable(), findsOneWidget);
+          expect(find.byKey(const ValueKey('crew-streak')), findsNothing);
           final before = find.text('Early Birds');
           expect(before, findsOneWidget);
           await tester.drag(find.byType(Swiper), Offset(-size.width * .7, 0));

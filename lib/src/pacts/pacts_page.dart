@@ -1,3 +1,6 @@
+import '../crew/crew_switcher.dart';
+
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,7 +21,11 @@ class PactsPage extends StatefulWidget {
     required this.backend,
     required this.onOpenCrews,
     this.active = true,
+    this.selectedCrewId,
+    this.onCrewSelected,
   });
+  final String? selectedCrewId;
+  final ValueChanged<String>? onCrewSelected;
   final bool active;
   final PactsBackend backend;
   final VoidCallback onOpenCrews;
@@ -43,7 +50,11 @@ class _PactsPageState extends State<PactsPage> {
   @override
   void didUpdateWidget(covariant PactsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !oldWidget.active) _refresh();
+    if (widget.active &&
+        (!oldWidget.active ||
+            widget.selectedCrewId != oldWidget.selectedCrewId)) {
+      _refresh();
+    }
   }
 
   Future<void> _refresh() async {
@@ -52,7 +63,9 @@ class _PactsPageState extends State<PactsPage> {
     try {
       final crews = await widget.backend.fetchCrews();
       if (!mounted || request != _request) return;
-      final matches = crews.where((crew) => crew.id == _selected?.id);
+      final matches = crews.where(
+        (crew) => crew.id == (widget.selectedCrewId ?? _selected?.id),
+      );
       final selected = matches.isNotEmpty
           ? matches.first
           : (crews.isEmpty ? null : crews.first);
@@ -74,6 +87,7 @@ class _PactsPageState extends State<PactsPage> {
 
   Future<void> _select(String? id) async {
     if (id == null || id == _selected?.id) return;
+    widget.onCrewSelected?.call(id);
     final crew = _crews!.firstWhere((crew) => crew.id == id);
     final request = ++_request;
     setState(() {
@@ -110,38 +124,17 @@ class _PactsPageState extends State<PactsPage> {
     return PageFrame(
       header: Row(
         children: [
-          const Expanded(child: PageHeading('Pacts')),
+          const Expanded(
+            child: PageHeading('Pacts', dotColor: WeekPactColors.softYellow),
+          ),
           if (crew != null) ...[
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: AppSurface(
-                builder: (context) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: crew.id,
-                      isExpanded: true,
-                      dropdownColor: context.surface,
-                      items: _crews!
-                          .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.id,
-                              child: Text(
-                                entry.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _select,
-                    ),
-                  ),
-                ),
+              child: CrewSwitcher(
+                crews: _crews!,
+                selectedId: crew.id,
+                onSelected: _select,
               ),
             ),
           ],
@@ -425,7 +418,7 @@ class PactEditorState extends State<PactEditor> {
                 IconButton(
                   tooltip: 'Close pact',
                   onPressed: _saving ? null : () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const HugeIcon(icon: HugeIconsStrokeRounded.cancel01),
                 ),
               ],
             ),
@@ -545,6 +538,10 @@ class PactEditorState extends State<PactEditor> {
             const SizedBox(height: 16),
             if (_frequency == PactFrequency.weekly)
               DropdownButtonFormField<int>(
+                icon: const HugeIcon(
+                  icon: HugeIconsStrokeRounded.arrowDown01,
+                  size: 20,
+                ),
                 initialValue: _days,
                 decoration: const InputDecoration(
                   labelText: 'Days per week',

@@ -1,3 +1,5 @@
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -129,7 +131,7 @@ class _CrewShareControlsState extends State<CrewShareControls> {
       Builder(
         builder: (anchor) => FilledButton.icon(
           onPressed: _busy ? null : () => _share(anchor),
-          icon: const Icon(Icons.ios_share),
+          icon: const HugeIcon(icon: HugeIconsStrokeRounded.share08),
           label: Text(_busy ? 'Please wait…' : 'Share invite link'),
         ),
       ),
@@ -137,14 +139,14 @@ class _CrewShareControlsState extends State<CrewShareControls> {
       Builder(
         builder: (anchor) => OutlinedButton.icon(
           onPressed: _busy ? null : () => _share(anchor, copy: true),
-          icon: const Icon(Icons.copy_outlined),
+          icon: const HugeIcon(icon: HugeIconsStrokeRounded.copy01),
           label: Text(_copied ? 'Link copied' : 'Copy invite link'),
         ),
       ),
       const SizedBox(height: 8),
       OutlinedButton.icon(
         onPressed: _busy ? null : _toggleQr,
-        icon: const Icon(Icons.qr_code_2),
+        icon: const HugeIcon(icon: HugeIconsStrokeRounded.qrCode),
         label: Text(_qrLink == null ? 'Show QR code' : 'Hide QR code'),
       ),
       if (_qrLink != null) ...[

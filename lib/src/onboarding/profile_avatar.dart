@@ -1,3 +1,6 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:hugeicons/hugeicons.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -33,10 +36,17 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
             ? Image.memory(
                 snapshot.data!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    Icon(Icons.person_outline, color: context.ink, size: 36),
+                errorBuilder: (_, _, _) => HugeIcon(
+                  icon: HugeIconsStrokeRounded.user,
+                  color: context.ink,
+                  size: 36,
+                ),
               )
-            : Icon(Icons.person_outline, color: context.ink, size: 36),
+            : HugeIcon(
+                icon: HugeIconsStrokeRounded.user,
+                color: context.ink,
+                size: 36,
+              ),
       ),
     ),
   );

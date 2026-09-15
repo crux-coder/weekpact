@@ -5,6 +5,7 @@ function fixture() {
   const backend: DeletionBackend = {
     async identify(token) { calls.push(`identify:${token}`); return { id: 'owner', email: 'owner@example.com' }; },
     async verify(email) { calls.push(`verify:${email}`); return 'owner'; },
+    async removeCheckInPhotos(id) { calls.push(`photos:${id}`); },
     async removeAvatar(id) { calls.push(`avatar:${id}`); },
     async removeUser(id) { calls.push(`user:${id}`); },
   };
@@ -13,7 +14,7 @@ function fixture() {
 Deno.test('deletes only the authenticated and password-verified account, storage first', async () => {
   const { backend, calls } = fixture();
   assert((await deleteAccount('token', 'password', backend)).status === 200);
-  assert(calls.join(',') === 'identify:token,verify:owner@example.com,avatar:owner,user:owner');
+  assert(calls.join(',') === 'identify:token,verify:owner@example.com,avatar:owner,photos:owner,user:owner');
 });
 Deno.test('invalid session cannot reach password verification or deletion', async () => {
   const { backend, calls } = fixture(); backend.identify = async () => null;
@@ -41,4 +42,11 @@ Deno.test('auth deletion failure never reports success', async () => {
   let failed = false;
   try { await deleteAccount('token', 'password', backend); } catch { failed = true; }
   assert(failed);
+});
+Deno.test('check-in photo deletion failure preserves the account for retry', async () => {
+  const { backend, calls } = fixture();
+  backend.removeCheckInPhotos = async () => { throw new Error('offline'); };
+  let failed = false;
+  try { await deleteAccount('token', 'password', backend); } catch { failed = true; }
+  assert(failed); assert(!calls.includes('user:owner'));
 });

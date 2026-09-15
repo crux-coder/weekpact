@@ -16,7 +16,7 @@ create or replace function private.wake_notification_dispatcher() returns void
 language plpgsql security definer set search_path='' as $$
 declare credential text;
 begin
-  if not exists(select 1 from private.notification_deliveries where status in ('pending','sending') and available_at<=now()) then return; end if;
+  if not exists(select 1 from private.notification_deliveries where status in ('pending','sending') and available_at<=now()) and not private.check_in_photo_cleanup_needed() then return; end if;
   select decrypted_secret into credential from vault.decrypted_secrets where name='notification_dispatch_secret';
   if credential is null then return; end if;
   perform net.http_post(

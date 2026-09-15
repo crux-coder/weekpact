@@ -4,7 +4,6 @@ import 'dart:async';
 
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
-import 'package:weekpact/src/theme/theme_preference.dart';
 
 import 'support/home_fakes.dart';
 
@@ -114,11 +113,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: WeekPactTheme.light,
-            builder: (context, child) => ThemePreference(
-              mode: ThemeMode.light,
-              onChanged: (_) {},
-              child: child!,
-            ),
+            builder: (context, child) => child!,
             home: HomePage(
               user: const AuthUser(email: 'member@example.com'),
               authBackend: const MissingConfigurationAuthBackend(),
@@ -210,28 +205,27 @@ void main() {
     expect(backend.responses, isEmpty);
   });
 
-  testWidgets(
-    'existing crew members can preview and decline but cannot accept',
-    (tester) async {
-      final backend = InboxBackend();
-      await backend.createCrew(name: 'My existing crew', timezone: 'UTC');
-      await showInbox(tester, backend);
-      await openPreview(tester);
-      final accept = tester.widget<AppButton>(
-        find.ancestor(
-          of: find.text('ACCEPT INVITE'),
-          matching: find.byType(AppButton),
-        ),
-      );
-      expect(accept.onPressed, isNull);
-      expect(find.textContaining('only join one crew'), findsOneWidget);
-      await tester.ensureVisible(find.text('DECLINE INVITE'));
-      await tester.tap(find.text('DECLINE INVITE'));
-      await tester.pumpUi();
-      expect(backend.crew!.name, 'My existing crew');
-      expect(backend.responses, [false]);
-    },
-  );
+  testWidgets('existing crew members can accept another invitation', (
+    tester,
+  ) async {
+    final backend = InboxBackend();
+    await backend.createCrew(name: 'My existing crew', timezone: 'UTC');
+    await showInbox(tester, backend);
+    await openPreview(tester);
+    final accept = tester.widget<AppButton>(
+      find.ancestor(
+        of: find.text('ACCEPT INVITE'),
+        matching: find.byType(AppButton),
+      ),
+    );
+    expect(accept.onPressed, isNotNull);
+    expect(find.textContaining('only join one crew'), findsNothing);
+    await tester.ensureVisible(find.text('ACCEPT INVITE'));
+    await tester.tap(find.text('ACCEPT INVITE'));
+    await tester.pumpUi();
+    expect(backend.crew!.name, 'Early Birds');
+    expect(backend.responses, [true]);
+  });
 
   testWidgets('inbox fetch failure can be retried', (tester) async {
     final backend = InboxBackend()..fetchError = StateError('offline');
@@ -270,10 +264,10 @@ void main() {
     await tester.ensureVisible(find.text('ACCEPT INVITE'));
     await tester.tap(find.text('ACCEPT INVITE'));
     await tester.pump();
-    final decline = tester.widget<AppButton>(
+    final decline = tester.widget<TextButton>(
       find.ancestor(
         of: find.text('DECLINE INVITE'),
-        matching: find.byType(AppButton),
+        matching: find.byType(TextButton),
       ),
     );
     expect(decline.onPressed, isNull);

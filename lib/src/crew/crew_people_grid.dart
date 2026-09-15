@@ -1,3 +1,5 @@
+import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -123,7 +125,10 @@ class CrewPersonCard extends StatelessWidget {
             child: IconButton(
               tooltip: 'Remove $_name',
               onPressed: onRemove,
-              icon: const Icon(Icons.more_horiz, size: 22),
+              icon: const HugeIcon(
+                icon: HugeIconsStrokeRounded.moreHorizontal,
+                size: 22,
+              ),
             ),
           ),
       ],
@@ -155,8 +160,8 @@ class CrewInviteTile extends StatelessWidget {
                   color: WeekPactColors.cream,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.add,
+                child: const HugeIcon(
+                  icon: HugeIconsStrokeRounded.add01,
                   size: 32,
                   color: WeekPactColors.black,
                 ),

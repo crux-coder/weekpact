@@ -231,8 +231,8 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.ensureVisible(find.byType(DropdownButton<String>));
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.ensureVisible(find.byTooltip('Switch crew'));
+    await tester.tap(find.byTooltip('Switch crew'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Weekend Crew').last);
     await tester.pumpAndSettle();

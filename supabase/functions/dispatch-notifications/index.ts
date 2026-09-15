@@ -3,16 +3,38 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { createFcmSender } from "./fcm.ts";
 import { renderNotification } from "./templates.ts";
 
+import { cleanUpCheckInPhotos } from "./photo_cleanup.ts";
+
 let sender: ReturnType<typeof createFcmSender> | undefined;
 Deno.serve(async (request) => {
   const expected = Deno.env.get("NOTIFICATION_DISPATCH_SECRET");
   if (!expected || request.headers.get("x-notification-secret") !== expected) return new Response("Unauthorized", { status: 401 });
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const credentials = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
-  if (!credentials) return new Response("Notification sender is not configured", { status: 503 });
+
   try {
-    sender ??= createFcmSender(JSON.parse(credentials));
     const client = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    // Photo cleanup runs even when push sending is not configured.
+    let photoCleanupFailed = false;
+    try {
+      await cleanUpCheckInPhotos({
+        async pending() {
+          const { data, error } = await client.rpc("pending_check_in_photo_cleanup");
+          if (error) throw error;
+          return (data as { path: string }[]).map(row => row.path);
+        },
+        async remove(paths) {
+          const { error } = await client.storage.from("check-in-photos").remove(paths);
+          if (error) throw error;
+        },
+        async finish(paths) {
+          const { error } = await client.rpc("finish_check_in_photo_cleanup", { paths });
+          if (error) throw error;
+        },
+      });
+    } catch (_) { photoCleanupFailed = true; }
+    if (!credentials) return new Response("Notification sender is not configured", { status: 503 });
+    sender ??= createFcmSender(JSON.parse(credentials));
     const { data: jobs, error } = await client.rpc("claim_notification_deliveries", { batch_size: 20 });
     if (error) throw new Error("claim_failed");
     const counts = { sent: 0, retry: 0, failed: 0, unregistered: 0 };
@@ -29,7 +51,7 @@ Deno.serve(async (request) => {
         counts[result.outcome as keyof typeof counts]++;
       }));
     }
-    return Response.json(counts);
+    return Response.json({ ...counts, photoCleanupFailed });
   } catch (_) {
     // Never log credentials, registration tokens, or notification content.
     return Response.json({ error: "Notification dispatch failed; queued jobs will retry." }, { status: 500 });

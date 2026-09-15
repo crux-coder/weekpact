@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
-import 'package:weekpact/src/theme/theme_preference.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 
 import 'support/home_fakes.dart';
@@ -48,62 +47,62 @@ void main() {
           ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
           ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
         await tester.runAsync(() => font.load());
+        final supportingFont = FontLoader('Roboto')
+          ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'))
+          ..addFont(rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
+        await tester.runAsync(() => supportingFont.load());
         final icons = FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await tester.runAsync(() => icons.load());
       }
       await tester.pumpWidget(
-        ThemePreference(
-          mode: dark ? ThemeMode.dark : ThemeMode.light,
-          onChanged: (_) {},
-          child: MaterialApp(
-            theme: dark ? WeekPactTheme.dark : WeekPactTheme.light,
-            home: RepaintBoundary(
-              key: capture,
-              child: HomePage(
-                user: const AuthUser(email: 'person@example.com'),
-                authBackend: auth,
-                crewBackend: FakeCrewBackend()
-                  ..crew = CrewDetails(
-                    id: 'crew',
-                    name: 'Hangboardasi',
-                    timezone: 'UTC',
-                    ownerId: 'person',
-                    currentUserRole: 'owner',
-                    members: [
-                      CrewMember(
-                        userId: 'person',
-                        email: 'person@example.com',
-                        displayName: 'Jasmin',
-                        role: 'owner',
-                        joinedAt: DateTime(2026),
-                      ),
-                      CrewMember(
-                        userId: 'two',
-                        email: 'jasmin@example.com',
-                        displayName: 'Jasmin',
-                        role: 'member',
-                        joinedAt: DateTime(2026),
-                      ),
-                      CrewMember(
-                        userId: 'three',
-                        email: 'mirnes@example.com',
-                        displayName: 'Mirnes',
-                        role: 'member',
-                        joinedAt: DateTime(2026),
-                      ),
-                    ],
-                    pendingInvites: [
-                      CrewInvite(
-                        id: 'invite',
-                        email: 'alex@example.com',
-                        expiresAt: DateTime(2027),
-                      ),
-                    ],
-                  ),
-                pactsBackend: backend.pacts,
-                homeBackend: backend,
-              ),
+        MaterialApp(
+          theme: dark ? WeekPactTheme.dark : WeekPactTheme.light,
+          home: RepaintBoundary(
+            key: capture,
+            child: HomePage(
+              user: const AuthUser(email: 'person@example.com'),
+              authBackend: auth,
+              crewBackend: FakeCrewBackend()
+                ..crew = CrewDetails(
+                  id: 'crew',
+                  name: 'Hangboardasi',
+                  timezone: 'UTC',
+                  ownerId: 'person',
+                  currentUserRole: 'owner',
+                  members: [
+                    CrewMember(
+                      userId: 'person',
+                      email: 'person@example.com',
+                      displayName: 'Jasmin',
+                      role: 'owner',
+                      joinedAt: DateTime(2026),
+                    ),
+                    CrewMember(
+                      userId: 'two',
+                      email: 'jasmin@example.com',
+                      displayName: 'Jasmin',
+                      role: 'member',
+                      joinedAt: DateTime(2026),
+                    ),
+                    CrewMember(
+                      userId: 'three',
+                      email: 'mirnes@example.com',
+                      displayName: 'Mirnes',
+                      role: 'member',
+                      joinedAt: DateTime(2026),
+                    ),
+                  ],
+                  pendingInvites: [
+                    CrewInvite(
+                      id: 'invite',
+                      email: 'alex@example.com',
+                      expiresAt: DateTime(2027),
+                    ),
+                  ],
+                ),
+              pactsBackend: backend.pacts,
+              homeBackend: backend,
             ),
           ),
         ),
@@ -112,6 +111,7 @@ void main() {
         await tester.tap(find.byKey(ValueKey('nav-$tab')));
         await tester.pumpUi();
         expect(tester.takeException(), isNull);
+        expect(find.byType(Icon), findsNothing);
         if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
           for (final preview
               in tab == 'home'

@@ -11,7 +11,7 @@ project and test delivery. Run `npm run firebase:configure` after installing the
 
 ## What is implemented
 
-- Each user can belong to exactly one crew.
+- Each user can create and join multiple crews. Switch crews from Home, Pacts, or Crews; use the + button on Crews to create another.
 - A crew owner can create a crew, invite an email address, list members, and
   revoke pending invitations.
 - Invitations expire after seven days, are stored as SHA-256 hashes, can only
@@ -421,3 +421,39 @@ Guided crew setup, native share invitations, immutable weekly results,
 first-party product metrics, and optional Crashlytics are described in
 [the launch feature guide](docs/launch-features.md). That guide includes migration
 order, screenshot generation, metric queries, and release verification.
+
+### Multiple crews
+
+Apply `20260915104654_allow_multiple_crews.sql` before releasing the updated app.
+It removes the one-crew-per-user constraint, preserves unique membership within
+each crew, and updates email, inbox, and share-link acceptance. Existing crew
+memberships, ownership, pacts, and check-ins are preserved.
+
+Run `node tool/test_multi_crew_database.mjs` (with `PGLITE_MODULE` set if needed)
+and `flutter test test/multiple_crews_test.dart` for the focused regression checks.
+
+### Photo check-ins
+
+New check-ins open a camera drawer with a rounded square preview, retake action, and explicit
+submission. Capture is camera-only on supported iOS/Android devices. Images are
+center-cropped to 1024 × 1024 PNG and re-encoded without EXIF metadata. Android can
+recover an interrupted capture when the same user reopens the same pact/day.
+
+Apply `20260915114621_require_check_in_photos.sql`, then redeploy
+`dispatch-notifications` and `delete-account`. Rebuild iOS for the camera usage
+permission text. The migration enforces a photo for every new client check-in;
+older photo-free records stay intact, but older app versions cannot add check-ins.
+Release the updated app with this migration.
+
+The private `check-in-photos` bucket limits images to 5 MB. Current crew members
+can open submitted photos from activity. Photos cannot be replaced or removed by
+clients. Undo, deleted pacts/crews, and unused uploads queue Storage API deletion
+through the existing minute dispatcher; abandoned uploads expire after 24 hours.
+Keep `tool/deploy_notifications.py` configured for the dispatcher schedule.
+Account deletion removes the user's uploaded photos before deleting Auth data.
+
+Focused checks: `flutter test test/photo_check_in_test.dart test/home_test.dart`,
+`node tool/test_check_in_photos_database.mjs` (with `PGLITE_MODULE` if needed), and
+`deno test supabase/functions/dispatch-notifications/photo_cleanup_test.ts
+supabase/functions/delete-account/service_test.ts`. Verify capture/retake and
+camera permissions on physical iOS and Android devices before store release.

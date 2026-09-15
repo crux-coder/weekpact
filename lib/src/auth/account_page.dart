@@ -1,4 +1,5 @@
 import '../telemetry/diagnostics_control.dart';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -9,7 +10,6 @@ import 'account_actions.dart';
 import '../onboarding/profile_avatar.dart';
 import '../notifications/notification_scope.dart';
 import '../notifications/notification_settings_card.dart';
-import '../theme/theme_preference.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';
@@ -48,7 +48,7 @@ class _AccountPageState extends State<AccountPage> {
     final user = _edited ?? widget.user;
     final name = '${user.firstName} ${user.lastName}'.trim();
     return PageFrame(
-      header: const PageHeading('Account'),
+      header: const PageHeading('Account', dotColor: WeekPactColors.lavender),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -111,41 +111,15 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 8),
           const DiagnosticsControl(),
           const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final twoColumns =
-                  constraints.maxWidth >= 340 &&
-                  MediaQuery.textScalerOf(context).scale(1) <= 1.15;
-              final side = twoColumns
-                  ? (constraints.maxWidth - 8) / 2
-                  : constraints.maxWidth;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  SizedBox.square(
-                    dimension: side,
-                    child: AccountPreferenceTile(
-                      color: WeekPactColors.softYellow,
-                      icon: Icons.contrast,
-                      title: 'Appearance',
-                      subtitle: 'Choose your theme',
-                      control: const AppearanceChoices(),
-                    ),
-                  ),
-                  SizedBox.square(
-                    dimension: side,
-                    child: AccountPreferenceTile(
-                      color: WeekPactColors.cream,
-                      icon: Icons.notifications_none,
-                      title: 'Notifications',
-                      subtitle: 'Stay in the loop',
-                      control: const _NotificationControl(),
-                    ),
-                  ),
-                ],
-              );
-            },
+          SizedBox(
+            height: MediaQuery.textScalerOf(context).scale(180),
+            child: AccountPreferenceTile(
+              color: WeekPactColors.cream,
+              icon: HugeIconsStrokeRounded.notification02,
+              title: 'Notifications',
+              subtitle: 'Stay in the loop',
+              control: const _NotificationControl(),
+            ),
           ),
           const SizedBox(height: 8),
           AppSurface(
@@ -165,7 +139,10 @@ class _AccountPageState extends State<AccountPage> {
               foregroundColor: context.muted,
               minimumSize: const Size.fromHeight(48),
             ),
-            icon: const Icon(Icons.logout, size: 22),
+            icon: const HugeIcon(
+              icon: HugeIconsStrokeRounded.logout01,
+              size: 22,
+            ),
             label: Text(widget.signingOut ? 'Logging out…' : 'LOG OUT'),
           ),
         ],
@@ -184,7 +161,7 @@ class AccountPreferenceTile extends StatelessWidget {
     required this.control,
   });
   final Color color;
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final String title;
   final String subtitle;
   final Widget control;
@@ -197,7 +174,7 @@ class AccountPreferenceTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 29),
+          HugeIcon(icon: icon, size: 29),
           const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -215,64 +192,6 @@ class AccountPreferenceTile extends StatelessWidget {
       ),
     ),
   );
-}
-
-class AppearanceChoices extends StatelessWidget {
-  const AppearanceChoices({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final preference = ThemePreference.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: context.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          for (final entry in [
-            (ThemeMode.light, 'Light'),
-            (ThemeMode.dark, 'Dark'),
-            (ThemeMode.system, 'Device'),
-          ])
-            Expanded(
-              child: Semantics(
-                selected: preference.mode == entry.$1,
-                button: true,
-                child: Material(
-                  color: preference.mode == entry.$1
-                      ? WeekPactColors.black
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => preference.onChanged(entry.$1),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 13,
-                        horizontal: 2,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          entry.$2,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: preference.mode == entry.$1
-                                ? WeekPactColors.cream
-                                : WeekPactColors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class _NotificationControl extends StatelessWidget {

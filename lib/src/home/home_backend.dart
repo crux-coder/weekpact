@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -55,6 +56,7 @@ class CrewActivity {
     required this.createdAt,
     this.completedOn,
     this.pactTitle,
+    this.photoPath,
   });
 
   final String pactId;
@@ -62,8 +64,10 @@ class CrewActivity {
   final DateTime createdAt;
   final String? completedOn;
   final String? pactTitle;
+  final String? photoPath;
 
   factory CrewActivity.fromJson(Map<String, dynamic> row) => CrewActivity(
+    photoPath: row['photo_path'] as String?,
     pactId: row['pact_id'] as String,
     userId: row['user_id'] as String,
     createdAt: DateTime.parse(row['created_at'] as String),
@@ -190,6 +194,7 @@ class CrewWeek {
 }
 
 abstract interface class HomeBackend {
+  Future<Uint8List> fetchCheckInPhoto(String path);
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId);
   Future<CrewNudgeState> sendNudge({
     required String crewId,
@@ -205,6 +210,7 @@ abstract interface class HomeBackend {
     required String crewId,
     required String today,
     required Set<String> pactIds,
+    Map<String, Uint8List> photos = const {},
   });
 }
 
@@ -212,6 +218,10 @@ class SupabaseHomeBackend implements HomeBackend {
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
   final SupabaseClient client;
+  @override
+  Future<Uint8List> fetchCheckInPhoto(String path) =>
+      client.storage.from('check-in-photos').download(path);
+
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async {
     final rows = await client.rpc(
@@ -247,7 +257,7 @@ class SupabaseHomeBackend implements HomeBackend {
     var query = client
         .from('pact_check_ins')
         .select(
-          'pact_id,user_id,completed_on,created_at,crew_pacts!inner(title,crew_id)',
+          'pact_id,user_id,completed_on,created_at,photo_path,crew_pacts!inner(title,crew_id)',
         )
         .eq('crew_pacts.crew_id', crewId);
     if (before != null) {
@@ -285,7 +295,7 @@ class SupabaseHomeBackend implements HomeBackend {
         ? null
         : await client
               .from('pact_check_ins')
-              .select('pact_id,user_id,created_at')
+              .select('pact_id,user_id,created_at,photo_path')
               .inFilter('pact_id', week.pacts.map((pact) => pact.id).toList())
               .inFilter(
                 'user_id',
@@ -333,20 +343,66 @@ class SupabaseHomeBackend implements HomeBackend {
     required String crewId,
     required String today,
     required Set<String> pactIds,
+    Map<String, Uint8List> photos = const {},
   }) async {
-    await client.rpc(
-      'save_pact_check_ins',
-      params: {
-        'target_crew_id': crewId,
-        'expected_today': today,
-        'selected_pact_ids': pactIds.toList(),
-      },
-    );
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) throw StateError('Sign in to check in.');
+    final paths = <String, String>{};
+    final bucket = client.storage.from('check-in-photos');
+    try {
+      for (final entry in photos.entries) {
+        if (!pactIds.contains(entry.key) ||
+            entry.value.isEmpty ||
+            entry.value.length > 5 * 1024 * 1024) {
+          throw StateError('Invalid check-in photo.');
+        }
+        final random = math.Random.secure();
+        final nonce = List.generate(
+          16,
+          (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+        ).join();
+        final path = '$userId/$crewId/${entry.key}/$today/$nonce.png';
+        paths[entry.key] = path;
+        await bucket.uploadBinary(
+          path,
+          entry.value,
+          fileOptions: const FileOptions(
+            contentType: 'image/png',
+            upsert: false,
+          ),
+        );
+      }
+      await client.rpc(
+        'save_pact_check_ins_with_photos',
+        params: {
+          'target_crew_id': crewId,
+          'expected_today': today,
+          'selected_pact_ids': pactIds.toList(),
+          'photos': paths,
+        },
+      );
+    } finally {
+      if (paths.isNotEmpty) {
+        // Queue only unused uploads, including when a save committed but its
+        // response was lost. The server preserves every referenced photo.
+        try {
+          await client.rpc(
+            'discard_unused_check_in_photos',
+            params: {'paths': paths.values.toList()},
+          );
+        } catch (_) {
+          /* Orphan sweeper retries. */
+        }
+      }
+    }
   }
 }
 
 class MissingHomeBackend implements HomeBackend {
   const MissingHomeBackend();
+  @override
+  Future<Uint8List> fetchCheckInPhoto(String path) =>
+      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));
@@ -369,5 +425,6 @@ class MissingHomeBackend implements HomeBackend {
     required String crewId,
     required String today,
     required Set<String> pactIds,
+    Map<String, Uint8List> photos = const {},
   }) => Future.error(StateError('Supabase is not configured.'));
 }

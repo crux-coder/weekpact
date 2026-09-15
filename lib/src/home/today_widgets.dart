@@ -1,3 +1,5 @@
+import '../crew/crew_switcher.dart';
+
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -12,6 +14,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
@@ -26,16 +29,19 @@ BoxDecoration _panel(
 ]) => BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius));
 
 class CrewTitleBanner extends StatelessWidget {
-  static const height = 60.0;
+  static const height = 76.0;
   const CrewTitleBanner({
     super.key,
     required this.name,
-    required this.completed,
-    required this.target,
+    required this.streakWeeks,
+    this.onOpen,
+    this.selector,
   });
+  final Widget? selector;
+  final VoidCallback? onOpen;
   final String name;
-  final int completed;
-  final int target;
+  final int streakWeeks;
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: height,
@@ -56,111 +62,110 @@ class CrewTitleBanner extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'YOUR CREW',
-                        style: TextStyle(
-                          color: context.muted,
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w700,
+                child:
+                    selector ??
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const CrewControlLabel('YOUR CREW'),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                color: context.ink,
+                                fontSize: 25,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          name,
-                          style: TextStyle(
-                            color: context.ink,
-                            fontSize: 25,
-                            fontWeight: FontWeight.w700,
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 110,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const CrewControlLabel('CREW STREAK'),
+                    const SizedBox(height: 4),
+                    Tooltip(
+                      message: 'View week',
+                      child: InkWell(
+                        onTap: onOpen,
+                        borderRadius: BorderRadius.circular(
+                          WeekPactMetrics.cardRadius,
+                        ),
+                        child: Semantics(
+                          label: 'Crew streak',
+                          value:
+                              '$streakWeeks ${streakWeeks == 1 ? 'week' : 'weeks'}',
+                          child: ExcludeSemantics(
+                            child: Container(
+                              height: 44,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: context.canvas,
+                                borderRadius: BorderRadius.circular(
+                                  WeekPactMetrics.cardRadius,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x40000000),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  children: [
+                                    HugeIcon(
+                                      icon: HugeIconsStrokeRounded.fire,
+                                      color: streakWeeks > 0
+                                          ? const Color(0xFFE67D45)
+                                          : context.muted,
+                                      size: 34,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(text: '$streakWeeks'),
+                                          TextSpan(
+                                            text: streakWeeks == 1
+                                                ? ' week'
+                                                : ' weeks',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      key: const ValueKey('crew-header-streak'),
+                                      style: TextStyle(
+                                        color: context.ink,
+                                        fontSize: 30,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 36,
-                height: 32,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'THIS\nWEEK',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: context.muted,
-                      fontSize: 10,
-                      height: 1.25,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Tooltip(
-                message: 'Your week: $completed of $target check-ins',
-                child: Semantics(
-                  label: 'Your weekly progress',
-                  value: '$completed of $target check-ins',
-                  child: ExcludeSemantics(
-                    child: SizedBox.square(
-                      dimension: 44,
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(
-                          begin: 0,
-                          end: target == 0
-                              ? 0
-                              : (completed / target).clamp(0.0, 1.0),
-                        ),
-                        duration: MediaQuery.disableAnimationsOf(context)
-                            ? Duration.zero
-                            : const Duration(milliseconds: 350),
-                        builder: (context, progress, _) => Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Positioned.fill(
-                              child: CircularProgressIndicator(
-                                value: progress,
-                                strokeWidth: 3,
-                                strokeCap: StrokeCap.round,
-                                color: WeekPactColors.mintGreen,
-                                backgroundColor: context.ink.withValues(
-                                  alpha: .14,
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  '${(progress * 100).round()}%',
-                                  style: TextStyle(
-                                    color: context.ink,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -239,17 +244,14 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final height = widget.height ?? (370 + math.max(0.0, scale - 1) * 200);
-    final verticalPadding = ((height - 128) / 2).clamp(0.0, 12.0);
-    final cardHeight = math.max(80.0, height - 48 - verticalPadding * 2);
+    final cardHeight = math.max(
+      80.0,
+      math.min(height - 48, 410 + math.max(0.0, scale - 1) * 200),
+    );
     final visibleDots = math.min(5, pacts.length);
     final start = math.max(0, math.min(_index - 2, pacts.length - visibleDots));
-    return Container(
+    return SizedBox(
       height: height,
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: verticalPadding),
-      decoration: BoxDecoration(
-        color: context.homePanel,
-        borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -263,7 +265,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Today',
+                      'TODAY',
                       style: TextStyle(
                         color: context.ink,
                         fontSize: 18,
@@ -277,10 +279,12 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerRight,
                     child: Text(
-                      '${(_index + 1).toString().padLeft(2, '0')} / ${pacts.length.toString().padLeft(2, '0')}',
+                      '${pacts.length} ${pacts.length == 1 ? 'pact' : 'pacts'}',
                       key: const ValueKey('pact-position'),
                       style: TextStyle(
                         color: context.muted,
+                        fontFamily: 'Roboto',
+                        fontFamilyFallback: const ['Arial'],
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -294,14 +298,15 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
             height: cardHeight,
             child: LayoutBuilder(
               builder: (context, space) {
-                final previewCount = math.min(2, pacts.length - 1);
+                final previewCount = math.min(1, pacts.length - 1);
                 final peek = math.min(32.0, space.maxWidth * .085);
-                // Leave equal room on both sides so the active card stays centered.
-                final reserve = previewCount * peek;
+                // Keep the same centered card size even when there is no next card.
+                final reserve = peek;
                 final width = space.maxWidth - reserve * 2;
                 final viewportWidth =
                     space.maxWidth + widget.horizontalBleed * 2;
-                final previousTravel = (viewportWidth + width) / 2 - peek * .65;
+                final previousTravel =
+                    (viewportWidth + width) / 2 - peek * .65 + 10;
                 return OverflowBox(
                   minWidth: space.maxWidth + widget.horizontalBleed * 2,
                   maxWidth: space.maxWidth + widget.horizontalBleed * 2,
@@ -407,14 +412,10 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                                         week: widget.week,
                                         userId: widget.userId,
                                         color:
-                                            [
-                                              WeekPactColors.cream,
-                                              WeekPactColors.softYellow,
-                                              const Color(0xFFF9DCDD),
-                                            ][widget.week.pacts.indexOf(
-                                                  pacts[index],
-                                                ) %
-                                                3],
+                                            WeekPactColors.pactPalette[index %
+                                                WeekPactColors
+                                                    .pactPalette
+                                                    .length],
                                         busy:
                                             widget.savingPact ==
                                             pacts[index].id,
@@ -570,8 +571,8 @@ class _PactCompletionEffectState extends State<_PactCompletionEffect>
                                   color: Color(0xFFD0E5BA),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
-                                  Icons.check_rounded,
+                                child: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.tick02,
                                   color: Color(0xFF375D31),
                                   size: 34,
                                 ),
@@ -622,11 +623,11 @@ class _PactCard extends StatelessWidget {
     final completed = week.days(pact.id, userId);
     return HomeSurface(
       tint: color,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minimumHeight =
-              362 +
+              382 +
               math.max(0.0, MediaQuery.textScalerOf(context).scale(1) - 1) *
                   340;
           final shrink =
@@ -637,7 +638,7 @@ class _PactCard extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
             child: SizedBox(
-              // Compensate for height scaling so the calendar, dashes, and
+              // Compensate for height scaling so the calendar and
               // action still span the entire inner width of the active card.
               width: constraints.maxWidth / shrink,
               height: math.max(minimumHeight, constraints.maxHeight),
@@ -667,8 +668,10 @@ class _PactCard extends StatelessWidget {
                         const SizedBox(width: 72, height: 60),
                       ],
                     ),
+                    const SizedBox(height: 16),
                     Expanded(
-                      child: Center(
+                      child: Align(
+                        alignment: Alignment.topLeft,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,6 +710,8 @@ class _PactCard extends StatelessWidget {
                                 const Text(
                                   'days this week',
                                   style: TextStyle(
+                                    fontFamily: 'Roboto',
+                                    fontFamilyFallback: ['Arial'],
                                     fontSize: 18,
                                     height: 1.2,
                                     fontWeight: FontWeight.w700,
@@ -761,22 +766,24 @@ class _PactCard extends StatelessWidget {
                         return Expanded(
                           child: Semantics(
                             label:
-                                '$day: ${done
+                                '$day${current ? ', today' : ''}: ${done
                                     ? 'completed'
                                     : future
                                     ? 'upcoming'
                                     : 'not completed'}',
                             child: Container(
+                              key: ValueKey('pact-day-${pact.id}-$day'),
                               margin: const EdgeInsets.symmetric(horizontal: 2),
                               padding: const EdgeInsets.symmetric(vertical: 7),
                               decoration: BoxDecoration(
-                                color: current
+                                color: done
                                     ? WeekPactColors.mintGreen
                                     : Colors.white.withValues(alpha: .35),
                                 border: Border.all(
                                   color: _ink.withValues(
-                                    alpha: current ? .18 : .06,
+                                    alpha: current ? .65 : .06,
                                   ),
+                                  width: current ? 2 : 1,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -794,6 +801,8 @@ class _PactCard extends StatelessWidget {
                                     ][date.weekday - 1],
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
+                                      fontFamily: 'Roboto',
+                                      fontFamilyFallback: ['Arial'],
                                       fontSize: 12,
                                     ),
                                   ),
@@ -802,6 +811,8 @@ class _PactCard extends StatelessWidget {
                                     '${date.day}',
                                     key: ValueKey('pact-date-${pact.id}-$day'),
                                     style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontFamilyFallback: const ['Arial'],
                                       fontSize: 16,
                                       fontWeight: current
                                           ? FontWeight.w900
@@ -815,23 +826,20 @@ class _PactCard extends StatelessWidget {
                                   SizedBox(
                                     height: 12,
                                     child: done
-                                        ? const Icon(
-                                            Icons.check_circle,
+                                        ? const HugeIcon(
+                                            icon: HugeIconsStrokeRounded
+                                                .checkmarkCircle02,
                                             color: Color(0xFF4C8050),
                                             size: 12,
                                           )
-                                        : Center(
-                                            child: Container(
-                                              width: current ? 12 : 3,
-                                              height: 3,
-                                              decoration: BoxDecoration(
-                                                color: _ink.withValues(
-                                                  alpha: current ? .7 : .12,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(2),
-                                              ),
+                                        : future
+                                        ? const SizedBox.shrink()
+                                        : HugeIcon(
+                                            icon: HugeIconsStrokeRounded.circle,
+                                            color: _ink.withValues(
+                                              alpha: current ? .7 : .3,
                                             ),
+                                            size: 12,
                                           ),
                                   ),
                                 ],
@@ -871,11 +879,16 @@ class _PactCard extends StatelessWidget {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Icon(Icons.radio_button_unchecked, size: 22),
+                              : HugeIcon(
+                                  icon: HugeIconsStrokeRounded.circle,
+                                  size: 22,
+                                ),
                           label: Text(
-                            'Mark done',
+                            'Check in',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
+                              fontFamily: 'Roboto',
+                              fontFamilyFallback: ['Arial'],
                               fontSize: 17,
                             ),
                           ),
@@ -913,7 +926,8 @@ class _PactCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  right: 0,
+                  // Preserve the icon’s inset so stacked previews stay visible.
+                  right: -6,
                   top: 0,
                   child: IgnorePointer(
                     child: Container(
@@ -974,8 +988,8 @@ class _CompletedCheckIn extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.check_circle,
+                  const HugeIcon(
+                    icon: HugeIconsStrokeRounded.checkmarkCircle02,
                     color: Color(0xFF4C8050),
                     size: 24,
                   ),
@@ -986,6 +1000,8 @@ class _CompletedCheckIn extends StatelessWidget {
                       'Checked in today',
                       style: TextStyle(
                         color: _ink,
+                        fontFamily: 'Roboto',
+                        fontFamilyFallback: ['Arial'],
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1022,6 +1038,8 @@ class _CompletedCheckIn extends StatelessWidget {
                       child: Text(
                         'Undo',
                         style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontFamilyFallback: ['Arial'],
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                           decoration: TextDecoration.underline,
@@ -1043,7 +1061,7 @@ class TodayCrewCard extends StatelessWidget {
     required this.userId,
     required this.onOpen,
     this.crewName = '',
-    this.height = 180,
+    this.height = groupHeight + headingHeight,
     this.showGroups = true,
   });
   final CrewWeek week;
@@ -1053,6 +1071,7 @@ class TodayCrewCard extends StatelessWidget {
   final double height;
   final bool showGroups;
   static const groupHeight = 106.0;
+  static const headingHeight = 24.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1067,13 +1086,50 @@ class TodayCrewCard extends StatelessWidget {
       height: height,
       child: Column(
         children: [
+          SizedBox(
+            height: headingHeight,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'TODAY’S CHECK-INS',
+                  style: TextStyle(
+                    color: context.muted,
+                    fontFamily: 'Roboto',
+                    fontFamilyFallback: const ['Arial'],
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, space) {
                 if (!showGroups) return const SizedBox.shrink();
+                if (checked.isEmpty || pending.isEmpty) {
+                  final allCheckedIn = checked.isNotEmpty;
+                  return SizedBox(
+                    key: ValueKey(
+                      allCheckedIn ? 'checked-tile' : 'pending-tile',
+                    ),
+                    width: double.infinity,
+                    child: CrewCheckInTile(
+                      userId: userId,
+                      onOpen: onOpen,
+                      members: allCheckedIn ? checked : pending,
+                      done: allCheckedIn,
+                      awaitingFirstCheckIn: !allCheckedIn,
+                      everyoneCheckedIn: allCheckedIn,
+                    ),
+                  );
+                }
                 final available = math.max(0.0, space.maxWidth - 6);
                 final total = checked.length + pending.length;
-                final minimum = math.min(96.0, available / 2);
+                final minimum = math.min(140.0, available / 2);
                 final fraction = total == 0 ? .5 : checked.length / total;
                 final targetWidth = (available * fraction).clamp(
                   minimum,
@@ -1121,107 +1177,6 @@ class TodayCrewCard extends StatelessWidget {
               },
             ),
           ),
-          Container(
-            key: const ValueKey('crew-streak'),
-            height: 62,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: context.isDark
-                  ? const Color(0xFF483629)
-                  : const Color(0xFFF1D8BF),
-              borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: context.isDark
-                        ? const Color(0xFF34251C)
-                        : const Color(0xFFE8C4A2),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Icon(
-                    Icons.local_fire_department_rounded,
-                    color: context.isDark
-                        ? const Color(0xFFFF982B)
-                        : const Color(0xFFAD5719),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          week.streakWeeks == 0
-                              ? 'Week 1'
-                              : '${week.streakWeeks} week${week.streakWeeks == 1 ? '' : 's'} streak',
-                          style: TextStyle(
-                            color: context.ink,
-                            fontSize: 13,
-                            height: 1.1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          week.streakWeeks == 0
-                              ? 'Start your first crew streak'
-                              : 'Keep your crew streak going',
-                          style: TextStyle(
-                            color: context.isDark
-                                ? const Color(0xFFE0C3A3)
-                                : const Color(0xFF6E5543),
-                            fontSize: 11,
-                            height: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 92,
-                  child: Tooltip(
-                    message: 'View week',
-                    child: TextButton(
-                      onPressed: onOpen,
-                      style: TextButton.styleFrom(
-                        foregroundColor: context.ink,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Open crew',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(width: 5),
-                            Icon(Icons.north_east, size: 16),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1235,6 +1190,8 @@ class CrewCheckInTile extends StatelessWidget {
     required this.done,
     required this.userId,
     required this.onOpen,
+    this.awaitingFirstCheckIn = false,
+    this.everyoneCheckedIn = false,
     this.expansion = 0,
     this.showDetails = false,
     this.expandedHeight = TodayCrewCard.groupHeight,
@@ -1243,6 +1200,8 @@ class CrewCheckInTile extends StatelessWidget {
   });
   final List<WeekMember> members;
   final bool done;
+  final bool awaitingFirstCheckIn;
+  final bool everyoneCheckedIn;
   final String userId;
   final VoidCallback onOpen;
   final double expansion;
@@ -1250,106 +1209,154 @@ class CrewCheckInTile extends StatelessWidget {
   final double expandedHeight;
   final HomeBackend? backend;
   final String? crewId;
-  String get title => '${done ? 'Checked in' : 'Not yet'} · ${members.length}';
+  String get title =>
+      '${done ? 'Checked in today' : 'Not yet today'} · ${members.length}';
 
   @override
-  Widget build(BuildContext context) => HomeSurface(
-    tint: done ? WeekPactColors.mintGreen : WeekPactColors.cream,
-    outlined: false,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          button: true,
-          hint: showDetails ? 'Collapse members' : 'Show all members',
-          child: InkWell(
-            onTap: onOpen,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-              child: SizedBox(
-                height: 22,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            color: _ink,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: showDetails ? MouseCursor.defer : SystemMouseCursors.click,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: showDetails ? null : onOpen,
+      child: HomeSurface(
+        tint: done ? WeekPactColors.mintGreen : WeekPactColors.cream,
+        outlined: false,
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  label: title,
+                  excludeSemantics: true,
+                  button: true,
+                  hint: showDetails ? 'Collapse members' : 'Show all members',
+                  child: InkWell(
+                    splashFactory: NoSplash.splashFactory,
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    onTap: onOpen,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                      child: SizedBox(
+                        height: MediaQuery.textScalerOf(context).scale(20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${done
+                                    ? everyoneCheckedIn
+                                          ? 'EVERYONE SHOWED UP'
+                                          : 'CHECKED IN'
+                                    : awaitingFirstCheckIn
+                                    ? 'LET’S GET STARTED'
+                                    : 'NOT YET'} · ${members.length}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _ink,
+                                  fontFamily: 'Roboto',
+                                  fontSize: 12,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            ExcludeSemantics(
+                              child: RotatedBox(
+                                quarterTurns: showDetails ? 2 : 0,
+                                child: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.arrowDown01,
+                                  color: Color(0xFF555A53),
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: showDetails
-              ? ClipRect(
-                  child: OverflowBox(
-                    alignment: Alignment.topCenter,
-                    minHeight: expandedHeight - 38,
-                    maxHeight: expandedHeight - 38,
-                    child: Opacity(
-                      opacity: expansion,
-                      child: _memberList(context),
-                    ),
                   ),
-                )
-              : GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onOpen,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: SizedBox(
-                      key: ValueKey(
-                        done ? 'checked-members' : 'pending-members',
-                      ),
-                      child: members.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (done) ...[
-                                        const Icon(
-                                          Icons.hourglass_empty_rounded,
-                                          color: Color(0xFF748368),
-                                          size: 26,
+                ),
+                Expanded(
+                  child: showDetails
+                      ? ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.topCenter,
+                            minHeight:
+                                expandedHeight -
+                                16 -
+                                MediaQuery.textScalerOf(context).scale(20),
+                            maxHeight:
+                                expandedHeight -
+                                16 -
+                                MediaQuery.textScalerOf(context).scale(20),
+                            child: Opacity(
+                              opacity: expansion,
+                              child: _memberList(context),
+                            ),
+                          ),
+                        )
+                      : GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: onOpen,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: SizedBox(
+                              key: ValueKey(
+                                done ? 'checked-members' : 'pending-members',
+                              ),
+                              child: members.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
                                         ),
-                                        const SizedBox(height: 4),
-                                      ],
-                                      Text(
-                                        done ? 'No one yet' : 'All checked in',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: Color(0xFF646B60),
-                                          fontSize: 12,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (done) ...[
+                                                const HugeIcon(
+                                                  icon: HugeIconsStrokeRounded
+                                                      .hourglass,
+                                                  color: Color(0xFF748368),
+                                                  size: 26,
+                                                ),
+                                                const SizedBox(height: 4),
+                                              ],
+                                              Text(
+                                                done
+                                                    ? 'No one yet'
+                                                    : 'All checked in',
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  color: Color(0xFF555A53),
+                                                  fontFamily: 'Roboto',
+                                                  fontFamilyFallback: ['Arial'],
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )
-                          : _members(context, members, done),
-                    ),
-                  ),
+                                    )
+                                  : _members(context, members, done),
+                            ),
+                          ),
+                        ),
                 ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 
@@ -1376,6 +1383,10 @@ class CrewCheckInTile extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: TextButton(
+                style: TextButton.styleFrom(
+                  splashFactory: NoSplash.splashFactory,
+                  overlayColor: Colors.transparent,
+                ),
                 onPressed: onOpen,
                 child: Text(
                   '+${members.length}',
@@ -1420,6 +1431,10 @@ class CrewCheckInTile extends StatelessWidget {
                       child: Tooltip(
                         message: 'View ${members.length - shown} more members',
                         child: InkWell(
+                          splashFactory: NoSplash.splashFactory,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
                           onTap: onOpen,
                           child: Container(
                             width: size,
@@ -1437,6 +1452,8 @@ class CrewCheckInTile extends StatelessWidget {
                                   '+${members.length - shown}',
                                   style: const TextStyle(
                                     color: _ink,
+                                    fontFamily: 'Roboto',
+                                    fontFamilyFallback: ['Arial'],
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -1466,7 +1483,13 @@ class CrewCheckInTile extends StatelessWidget {
     final fallback = Center(
       child: Text(
         member.initials,
-        style: TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w900),
+        style: TextStyle(
+          color: ink,
+          fontFamily: 'Roboto',
+          fontFamilyFallback: const ['Arial'],
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
     return Tooltip(
@@ -1516,6 +1539,8 @@ class CrewCheckInTile extends StatelessWidget {
                       : member.displayName.trim().split(RegExp(r'\s+')).first,
                   style: TextStyle(
                     color: ink,
+                    fontFamily: 'Roboto',
+                    fontFamilyFallback: const ['Arial'],
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1599,7 +1624,7 @@ class _TodaySkeletonState extends State<TodaySkeleton>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                height: 60,
+                height: CrewTitleBanner.height,
                 child: Row(
                   children: [
                     Expanded(
@@ -1613,14 +1638,22 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                         ],
                       ),
                     ),
-                    const SkeletonBar(width: 44, height: 44, radius: 22),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _line(90, 8),
+                        const SizedBox(height: 8),
+                        _line(72, 22),
+                      ],
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               HomeSurface(
                 key: const ValueKey('skeleton-latest-activity'),
-                tint: WeekPactColors.cream,
+                tint: WeekPactColors.activitySurface,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: SizedBox(
                   height: LatestActivityRow.height,
@@ -1636,9 +1669,10 @@ class _TodaySkeletonState extends State<TodaySkeleton>
               const SizedBox(height: 12),
               SizedBox(
                 key: const ValueKey('skeleton-crew-board'),
-                height: 180,
+                height: TodayCrewCard.groupHeight + TodayCrewCard.headingHeight,
                 child: Column(
                   children: [
+                    const SizedBox(height: TodayCrewCard.headingHeight),
                     Expanded(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1646,16 +1680,6 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                           _crewTile(WeekPactColors.mintGreen),
                           const SizedBox(width: 6),
                           _crewTile(WeekPactColors.cream),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: 42,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SkeletonBar(width: 95, height: 12),
-                          SkeletonBar(width: 70, height: 12),
                         ],
                       ),
                     ),
@@ -1688,7 +1712,7 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                               top: 6,
                               bottom: 6,
                               child: HomeSurface(
-                                tint: WeekPactColors.softYellow,
+                                tint: WeekPactColors.pactPalette[1],
                                 child: Align(
                                   alignment: Alignment.topRight,
                                   child: Padding(
@@ -1712,7 +1736,7 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                               right: 32,
                               child: HomeSurface(
                                 key: const ValueKey('skeleton-pact-card'),
-                                tint: WeekPactColors.cream,
+                                tint: WeekPactColors.pactPalette.first,
                                 padding: const EdgeInsets.all(12),
                                 child: LayoutBuilder(
                                   builder: (context, space) => Column(

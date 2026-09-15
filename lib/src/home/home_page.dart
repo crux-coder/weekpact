@@ -1,3 +1,5 @@
+import 'photo_check_in_sheet.dart';
+import '../crew/crew_switcher.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
@@ -32,6 +34,8 @@ class HomePage extends StatefulWidget {
     required this.user,
     required this.authBackend,
     required this.crewBackend,
+    this.initialCrewId,
+    this.captureCheckInPhoto,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
   });
@@ -39,6 +43,8 @@ class HomePage extends StatefulWidget {
   final AuthUser user;
   final AuthBackend authBackend;
   final CrewBackend crewBackend;
+  final String? initialCrewId;
+  final CheckInPhotoCapture? captureCheckInPhoto;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
 
@@ -73,11 +79,17 @@ class _HomePageState extends State<HomePage> {
   late final PageController _pageController;
   int _selectedIndex = 0;
   int _homeRevision = 0;
+  String? _selectedCrewId;
+  void _selectCrew(String id) {
+    if (_selectedCrewId != id) setState(() => _selectedCrewId = id);
+  }
+
   bool _signingOut = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedCrewId = widget.initialCrewId;
     _pageController = PageController();
   }
 
@@ -102,6 +114,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _startCrew([CrewDetails? crew]) async {
+    if (crew != null) _selectCrew(crew.id);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CrewSetupPage(
@@ -110,6 +123,8 @@ class _HomePageState extends State<HomePage> {
           homeBackend: widget.homeBackend,
           userId: widget.user.id,
           initialCrew: crew,
+          crewId: _selectedCrewId,
+          captureCheckInPhoto: widget.captureCheckInPhoto,
         ),
       ),
     );
@@ -139,8 +154,11 @@ class _HomePageState extends State<HomePage> {
           _HomeDestination(
             key: ValueKey(_homeRevision),
             backend: widget.homeBackend,
+            selectedCrewId: _selectedCrewId,
+            onCrewSelected: _selectCrew,
             pactsBackend: widget.pactsBackend,
             userId: widget.user.id,
+            captureCheckInPhoto: widget.captureCheckInPhoto,
             active: _selectedIndex == 0,
             onStartCrew: _startCrew,
             onOpenCrews: () => _selectDestination(2),
@@ -149,6 +167,8 @@ class _HomePageState extends State<HomePage> {
           PactsPage(
             active: _selectedIndex == 1,
             backend: widget.pactsBackend,
+            selectedCrewId: _selectedCrewId,
+            onCrewSelected: _selectCrew,
             onOpenCrews: () => _selectDestination(2),
           ),
           CrewPage(
@@ -157,6 +177,8 @@ class _HomePageState extends State<HomePage> {
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
             backend: widget.crewBackend,
+            selectedCrewId: _selectedCrewId,
+            onCrewSelected: _selectCrew,
             profileBackend: widget.homeBackend,
             currentUserEmail: widget.user.email,
           ),
@@ -190,13 +212,19 @@ class _HomeDestination extends StatefulWidget {
     required this.pactsBackend,
     required this.userId,
     required this.active,
+    this.captureCheckInPhoto,
+    this.selectedCrewId,
+    this.onCrewSelected,
     required this.onOpenCrews,
     required this.onOpenPacts,
     required this.onStartCrew,
   });
+  final CheckInPhotoCapture? captureCheckInPhoto;
   final HomeBackend backend;
   final PactsBackend pactsBackend;
   final String userId;
+  final String? selectedCrewId;
+  final ValueChanged<String>? onCrewSelected;
   final bool active;
   final VoidCallback onOpenCrews;
   final VoidCallback onOpenPacts;
@@ -236,7 +264,11 @@ class _HomeDestinationState extends State<_HomeDestination>
   @override
   void didUpdateWidget(covariant _HomeDestination oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !oldWidget.active) _refresh();
+    if (widget.active &&
+        (!oldWidget.active ||
+            widget.selectedCrewId != oldWidget.selectedCrewId)) {
+      _refresh();
+    }
   }
 
   @override
@@ -254,7 +286,9 @@ class _HomeDestinationState extends State<_HomeDestination>
     try {
       final crews = await widget.pactsBackend.fetchCrews();
       if (!mounted || request != _request) return;
-      final matches = crews.where((c) => c.id == (crewId ?? _crew?.id));
+      final matches = crews.where(
+        (c) => c.id == (crewId ?? widget.selectedCrewId ?? _crew?.id),
+      );
       final crew = matches.isNotEmpty ? matches.first : crews.firstOrNull;
       setState(() {
         _crews = crews;
@@ -287,11 +321,26 @@ class _HomeDestinationState extends State<_HomeDestination>
       _saveError = null;
     });
     try {
-      await widget.backend.saveCheckIns(
-        crewId: crew.id,
-        today: week.today,
-        pactIds: selected,
-      );
+      if (selected.contains(pactId)) {
+        final saved = await showPhotoCheckIn(
+          userId: widget.userId,
+          context: context,
+          backend: widget.backend,
+          crewId: crew.id,
+          pactId: pactId,
+          pactTitle: week.pacts.firstWhere((p) => p.id == pactId).title,
+          today: week.today,
+          selectedPactIds: selected,
+          capturePhoto: widget.captureCheckInPhoto,
+        );
+        if (!saved) return;
+      } else {
+        await widget.backend.saveCheckIns(
+          crewId: crew.id,
+          today: week.today,
+          pactIds: selected,
+        );
+      }
       if (!mounted) return;
       if (selected.contains(pactId)) {
         // Haptics are best-effort and must never turn a saved check-in into an error.
@@ -324,9 +373,11 @@ class _HomeDestinationState extends State<_HomeDestination>
         setState(() => _saveError = 'Could not save. Tap the pact to retry.');
       }
     } finally {
-      if (mounted) setState(() => _savingPact = null);
+      if (mounted) {
+        setState(() => _savingPact = null);
+        if (_saveError == null) await _refresh();
+      }
     }
-    if (mounted && _saveError == null) await _refresh();
   }
 
   Future<void> _openCrewWeek() async {
@@ -364,7 +415,8 @@ class _HomeDestinationState extends State<_HomeDestination>
                   child: SizedBox(
                     width: constraints.maxWidth,
                     height: constraints.maxHeight.clamp(
-                      404 +
+                      294 +
+                          CrewTitleBanner.height +
                           LatestActivityRow.height +
                           (_saveError == null ? 0 : 40),
                       double.infinity,
@@ -419,7 +471,9 @@ class _HomeDestinationState extends State<_HomeDestination>
                           );
                         }
                         if (week == null) return const SizedBox.shrink();
-                        const crewHeight = 180.0;
+                        const crewHeight =
+                            TodayCrewCard.groupHeight +
+                            TodayCrewCard.headingHeight;
                         return ExpandableHomePanels(
                           showCrewCheckIns: true,
                           key: ValueKey(_crew!.id),
@@ -433,9 +487,22 @@ class _HomeDestinationState extends State<_HomeDestination>
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               CrewTitleBanner(
+                                selector: (_crews?.length ?? 0) > 0
+                                    ? CrewSwitcher(
+                                        compact: true,
+                                        crews: _crews!,
+                                        selectedId: _crew!.id,
+                                        onSelected: _savingPact != null
+                                            ? null
+                                            : (id) {
+                                                widget.onCrewSelected?.call(id);
+                                                _refresh(crewId: id);
+                                              },
+                                      )
+                                    : null,
                                 name: _crew!.name,
-                                completed: week.completed(widget.userId),
-                                target: week.target,
+                                onOpen: _openCrewWeek,
+                                streakWeeks: week.streakWeeks,
                               ),
                               const SizedBox(height: 12),
                               const SizedBox(height: LatestActivityRow.height),
@@ -492,6 +559,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         builder: (context, space) =>
                                             TodayPactsCard(
                                               height: space.maxHeight,
+                                              horizontalBleed: 12,
                                               week: week,
                                               userId: widget.userId,
                                               savingPact: _savingPact,
