@@ -1,4 +1,5 @@
 import '../widgets/squircle_button_border.dart';
+
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -31,6 +32,7 @@ abstract final class WeekPactMetrics {
 }
 
 abstract final class WeekPactColors {
+  static const pendingCheckIns = Color(0xFFC6C9C3);
   static const success = Color(0xFF4C8C5D);
   static const warning = Color(0xFFC48A42);
   static const outlineInk = Color(0xFF161C23);

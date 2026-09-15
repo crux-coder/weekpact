@@ -95,11 +95,7 @@ void main() {
               .getBottomRight(find.byType(CrewTitleBanner))
               .dy;
           final crewTop = tester.getTopLeft(find.byType(TodayCrewCard)).dy;
-          final activity = tester.getRect(
-            find.byKey(const ValueKey('latest-activity')),
-          );
-          expect(activity.top, greaterThanOrEqualTo(titleBottom));
-          expect(activity.bottom, lessThanOrEqualTo(crewTop));
+          expect(find.byKey(const ValueKey('latest-activity')), findsNothing);
           final todayTop = tester.getTopLeft(find.byType(TodayPactsCard)).dy;
           expect(crewTop, greaterThanOrEqualTo(titleBottom));
           expect(todayTop, greaterThanOrEqualTo(crewBounds.bottom));

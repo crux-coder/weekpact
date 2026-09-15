@@ -1,5 +1,4 @@
 import '../widgets/avatar_shape.dart';
-import '../widgets/raised_icon.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
@@ -122,13 +121,10 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Container(
+                        SizedBox(
                           width: 64,
                           height: 64,
-                          decoration: pactIconDecoration(
-                            WeekPactColors.neutralInset,
-                            radius: 12,
-                          ),
+
                           child: Center(
                             child: HugeIcon(
                               icon: PactIcon.find(pact.iconKey).data,

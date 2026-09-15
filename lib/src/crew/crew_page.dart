@@ -481,6 +481,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         children: [
           if (_crews.isNotEmpty && !_showCreate) ...[
             CrewSwitcher(
+              compact: true,
               crews: _crews,
               selectedId: _loading
                   ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)

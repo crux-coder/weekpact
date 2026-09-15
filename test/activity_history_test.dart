@@ -106,60 +106,27 @@ void main() {
     },
   );
 
-  testWidgets('home card expands over blur even without activity today', (
+  testWidgets('heading history button opens and dismisses crew history', (
     tester,
   ) async {
     final backend = HistoryBackend()..selected.clear();
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    final card = find.byKey(const ValueKey('latest-activity'));
-    final collapsedRect = tester.getRect(card);
-    final headerElement = tester.element(card);
-    final container = find.byKey(const ValueKey('activity-container'));
-    final containerElement = tester.element(container);
-    final route = ModalRoute.of(headerElement);
-    await tester.tap(card);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 160));
-    expect(tester.getRect(container).topLeft, collapsedRect.topLeft);
-    expect(tester.getSize(container).width, collapsedRect.width);
-    expect(tester.getSize(container).height, greaterThan(collapsedRect.height));
-    expect(tester.element(container), same(containerElement));
-    expect(tester.element(card), same(headerElement));
+    final button = find.byKey(const ValueKey('crew-history-button'));
+    expect(find.byKey(const ValueKey('latest-activity')), findsNothing);
+    expect(find.byKey(const ValueKey('crew-check-in-count')), findsNothing);
+    final heading = tester.getRect(find.byKey(const ValueKey('crew-board')));
+    expect(tester.getRect(button).top, heading.top);
+    expect(tester.getSize(button).width, 44);
+    await tester.tap(button);
     await tester.pumpUi();
     expect(find.byType(ActivityHistory), findsOneWidget);
-    expect(
-      tester
-          .widget<ImageFiltered>(
-            find.byKey(const ValueKey('home-panels-background')),
-          )
-          .enabled,
-      isTrue,
-    );
-    expect(ModalRoute.of(tester.element(card)), same(route));
-    expect(Navigator.of(tester.element(card)).canPop(), isFalse);
-    expect(tester.getRect(card), collapsedRect);
-    expect(
-      tester.getSize(find.byKey(const ValueKey('activity-history'))).height,
-      greaterThan(collapsedRect.height),
-    );
     expect(find.text('History entry 0'), findsOneWidget);
-    final expandedRect = tester.getRect(container);
-    final backdropRect = tester.getRect(
-      find.byKey(const ValueKey('activity-backdrop')),
-    );
-    expect(backdropRect.bottom - expandedRect.bottom, greaterThanOrEqualTo(48));
-    await tester.tapAt(
-      Offset(
-        expandedRect.center.dx,
-        (expandedRect.bottom + backdropRect.bottom) / 2,
-      ),
-    );
+    await tester.tap(find.byTooltip('Close activity history'));
     await tester.pumpUi();
     expect(find.byType(ActivityHistory), findsNothing);
-    expect(tester.getRect(container), collapsedRect);
-    expect(card, findsOneWidget);
-    await tester.tap(card);
+    expect(button, findsOneWidget);
+    await tester.tap(button);
     await tester.pumpUi();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpUi();
@@ -251,7 +218,7 @@ void main() {
     final backend = HistoryBackend()..fail = true;
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('latest-activity')));
+    await tester.tap(find.byKey(const ValueKey('crew-history-button')));
     await tester.pumpUi();
     expect(find.text('Could not load activity.'), findsOneWidget);
     backend.fail = false;
@@ -265,7 +232,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('latest-activity')));
+    await tester.tap(find.byTooltip('Close activity history'));
     await tester.pumpUi();
     backend.pending!.complete([]);
     await tester.pumpUi();
@@ -301,7 +268,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.byKey(const ValueKey('latest-activity')));
+      await tester.tap(find.byKey(const ValueKey('crew-history-button')));
       await tester.pumpAndSettle();
       expect(find.textContaining('No activity yet.'), findsOneWidget);
       expect(tester.takeException(), isNull);

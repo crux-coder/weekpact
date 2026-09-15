@@ -26,7 +26,6 @@ import '../crew/crew_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import 'today_widgets.dart';
-import 'latest_activity_row.dart';
 import 'expandable_home_panels.dart';
 
 class HomePage extends StatefulWidget {
@@ -466,9 +465,8 @@ class _HomeDestinationState extends State<_HomeDestination>
                           child: SizedBox(
                             width: constraints.maxWidth,
                             height: constraints.maxHeight.clamp(
-                              294 +
+                              302 +
                                   CrewTitleBanner.height +
-                                  LatestActivityRow.height +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
                             ),
@@ -558,10 +556,6 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         name: _crew!.name,
                                         onOpen: _openCrewWeek,
                                         streakWeeks: week.streakWeeks,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      const SizedBox(
-                                        height: LatestActivityRow.height,
                                       ),
                                       const SizedBox(height: 12),
                                       TodayCrewCard(

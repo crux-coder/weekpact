@@ -175,6 +175,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
         children: [
           if (crew != null) ...[
             CrewSwitcher(
+              compact: true,
               crews: _crews!,
               selectedId: crew.id,
               onSelected: _loading ? null : _select,

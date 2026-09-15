@@ -1,5 +1,3 @@
-import '../widgets/raised_icon.dart';
-
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -162,15 +160,10 @@ class PactManagementCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
+              SizedBox(
                 width: 40,
                 height: 40,
-                decoration: pactIconDecoration(
-                  pact.frequency == PactFrequency.daily
-                      ? WeekPactColors.stone
-                      : WeekPactColors.coolGrey,
-                  radius: 8,
-                ),
+
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: HugeIcon(

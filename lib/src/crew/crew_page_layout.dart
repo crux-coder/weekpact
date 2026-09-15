@@ -1,3 +1,4 @@
+import 'crew_switcher.dart';
 import '../widgets/avatar_shape.dart';
 
 import 'package:flutter/material.dart';
@@ -52,12 +53,22 @@ class CrewPageSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (showSelector) ...[
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: SkeletonBar(width: 84, height: 12),
+            const CrewHeaderSurface(
+              child: SizedBox(
+                height: 60,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBar(width: 62, height: 8),
+                      SizedBox(height: 8),
+                      SkeletonBar(width: 145, height: 20),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 4),
-            const SkeletonBar(height: 60, shape: WeekPactMetrics.pactCardShape),
             const SizedBox(height: 12),
           ],
           LinearProgressIndicator(

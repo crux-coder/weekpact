@@ -36,12 +36,3 @@ class RaisedIcon extends StatelessWidget {
     );
   }
 }
-
-/// Flat filled squircle for decorative pact icons.
-ShapeDecoration pactIconDecoration(Color face, {double radius = 10}) =>
-    ShapeDecoration(
-      color: face,
-      shape: ContinuousRectangleBorder(
-        borderRadius: BorderRadius.circular(radius * 2.8),
-      ),
-    );

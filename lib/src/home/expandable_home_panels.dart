@@ -6,7 +6,12 @@ import 'package:flutter/services.dart';
 
 import 'activity_history.dart';
 import 'home_backend.dart';
-import 'latest_activity_row.dart';
+
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
+import '../theme/weekpact_theme.dart';
+import 'home_surface.dart';
 import 'today_widgets.dart';
 
 enum _HomePanel { activity, checked, pending }
@@ -181,30 +186,88 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     final cards = <_HomePanel, Widget>{
       _HomePanel.activity: _position(
         _HomePanel.activity,
-        Rect.fromLTWH(
-          0,
-          widget.top,
-          space.maxWidth,
-          LatestActivityRow.height +
-              (space.maxHeight - widget.top - 64 - LatestActivityRow.height) *
-                  (activitySelected ? progress : 0),
-        ),
+        Rect.lerp(
+          Rect.fromLTWH(
+            space.maxWidth - 44,
+            widget.top,
+            44,
+            TodayCrewCard.headingHeight,
+          ),
+          Rect.fromLTWH(
+            0,
+            widget.top,
+            space.maxWidth,
+            math.max(160, space.maxHeight - widget.top - 64),
+          ),
+          activitySelected ? progress : 0,
+        )!,
         progress,
-        LatestActivityRow(
-          week: widget.week,
-          userId: widget.userId,
-          onOpen: () => _toggle(_HomePanel.activity),
-          expansion: activitySelected ? progress : 0,
-          expandedHeight: space.maxHeight - widget.top - 64,
-          history: activitySelected
-              ? ActivityHistory(
-                  backend: widget.backend,
-                  crewId: widget.crewId,
-                  week: widget.week,
-                  userId: widget.userId,
-                )
-              : null,
-        ),
+        activitySelected
+            ? ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: space.maxWidth,
+                  maxWidth: space.maxWidth,
+                  minHeight: math.max(160, space.maxHeight - widget.top - 64),
+                  maxHeight: math.max(160, space.maxHeight - widget.top - 64),
+                  child: HomeSurface(
+                    key: const ValueKey('activity-container'),
+                    tint: WeekPactColors.cream,
+                    shape: WeekPactMetrics.pactCardShape,
+                    raised: true,
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: TodayCrewCard.headingHeight,
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 16),
+                              const Expanded(
+                                child: Text(
+                                  'CREW HISTORY',
+                                  style: TextStyle(
+                                    color: homeInk,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Close activity history',
+                                onPressed: _collapse,
+                                icon: const HugeIcon(
+                                  icon: HugeIconsStrokeRounded.cancel01,
+                                  color: homeInk,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: ActivityHistory(
+                            backend: widget.backend,
+                            crewId: widget.crewId,
+                            week: widget.week,
+                            userId: widget.userId,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            : IconButton(
+                key: const ValueKey('crew-history-button'),
+                tooltip: 'View crew history',
+                onPressed: () => _toggle(_HomePanel.activity),
+                icon: HugeIcon(
+                  icon: HugeIconsStrokeRounded.transactionHistory,
+                  color: context.muted,
+                  size: 22,
+                ),
+              ),
       ),
     };
     if (!widget.showCrewCheckIns) return cards;
@@ -225,11 +288,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
         : pending.isEmpty
         ? available
         : (available * fraction).clamp(minimum, available - minimum);
-    final crewTop =
-        widget.top +
-        LatestActivityRow.height +
-        12 +
-        TodayCrewCard.headingHeight;
+    final crewTop = widget.top + TodayCrewCard.headingHeight;
     for (final panel in [
       if (checked.isNotEmpty) _HomePanel.checked,
       if (pending.isNotEmpty || checked.isEmpty) _HomePanel.pending,

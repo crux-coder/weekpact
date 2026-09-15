@@ -76,8 +76,8 @@ navigation card stays raised with a plain icon. The activity chevron retains
 its opening press animation, which compresses the solid edge.
 
 Home’s progress bars remain flat. Weekday cells are raised when complete and
-flat otherwise; today’s letter and date are bold without an underline or heavier
-border. Preserve these state cues.
+flat otherwise; today’s letter and date are bold, with an outline reserved for
+today. Completed days have a green fill and checkmark. Preserve these state cues.
 
 Home’s compact crew header has two solid raised containers with labels inside:
 crew selection on the left and a narrower streak summary on the right. Use
@@ -86,13 +86,19 @@ crew selection on the left and a narrower streak summary on the right. Use
 Buttons use `WeekPactMetrics.buttonShape` for squircle faces, outlines, and
 raised edges. Preserve the existing tap areas and flat icon glyphs.
 
-Pact icons are decorative: use flat filled squircle containers, without outlines
-or elevation. Show status circles only for today and past unchecked dates;
-future dates stay muted without markers. The streak flame is muted at zero and
+Pact icons are decorative: render the glyph alone, without a background, outline,
+or elevation. Label the Home pact section “YOUR PACTS” to reflect weekly progress. Unchecked dates have no status circles; future dates remain readable at 65%
+ink opacity. The streak flame is muted at zero and
 orange once the streak starts. Offset the Home pact stack 12px left while
 preserving card widths and preview strips.
 
-Today’s Check-ins uses a single heading with a checked-members/total-members
-count on its right. Collapsed panels contain only avatars and names, with
-status conveyed by grouping and sage/neutral fills. Preserve explicit status
+Today’s Check-ins uses a single heading with a 44px history button on its right
+(Hugeicons transactionHistory). Omit the total fraction and standalone activity
+card. The history button opens recent crew check-ins in an expandable panel with
+a close control; the loading skeleton mirrors the compact heading. Collapsed panels show small “Checked in”/“Not yet” labels with group counts,
+avatars, and names. Use sage for checked-in members and muted grey for pending
+members. Preserve explicit status
 semantics and tap-to-expand behavior; show a collapse control when expanded.
+
+Check-in group labels use 10px medium-weight captions. In dark mode, selected
+navigation tiles use muted warm off-white rather than bright white.

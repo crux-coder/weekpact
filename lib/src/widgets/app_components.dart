@@ -270,12 +270,16 @@ class AppBottomNavigationBar extends StatelessWidget {
                     child: DecoratedBox(
                       key: const ValueKey('nav-sliding-highlight'),
                       decoration: ShapeDecoration(
-                        color: context.ink,
+                        color: context.isDark
+                            ? const Color(0xFFD8D3C8)
+                            : context.ink,
                         shape: ContinuousRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                           side: BorderSide(
                             color: Color.lerp(
-                              context.ink,
+                              context.isDark
+                                  ? const Color(0xFFD8D3C8)
+                                  : context.ink,
                               context.canvas,
                               .28,
                             )!,
@@ -284,7 +288,9 @@ class AppBottomNavigationBar extends StatelessWidget {
                         shadows: [
                           BoxShadow(
                             color: Color.lerp(
-                              context.ink,
+                              context.isDark
+                                  ? const Color(0xFFD8D3C8)
+                                  : context.ink,
                               context.canvas,
                               .24,
                             )!,

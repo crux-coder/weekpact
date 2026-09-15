@@ -166,7 +166,7 @@ void main() {
         tester.getSize(checked).width,
         tester.getSize(find.byKey(const ValueKey('crew-board'))).width,
       );
-      expect(find.text('14/14'), findsOneWidget);
+      expect(find.text('14/14'), findsNothing);
       await tester.tap(checked);
       await tester.pumpUi();
       expect(
