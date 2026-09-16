@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pact card — telling the button from the icon</title>
+<style>
+  :root {
+    --canvas: #2B302C;
+    --ink: #14170F;
+    --paper: #F3F5F2;
+    --muted: #9aa197;
+    --lemon: #E8D05A;
+    --mint: #8CDCAC;
+    --sky: #8AC9EC;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 44px 24px 90px; background: #0e110e; color: var(--paper);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .page { max-width: 1500px; margin: 0 auto; }
+  h1 { font-size: 31px; margin: 0 0 10px; letter-spacing: -.6px; }
+  .lede { margin: 0 0 6px; color: var(--muted); max-width: 78ch; line-height: 1.6; }
+  .why { margin: 0 0 34px; color: #6f766d; font-size: 13px; max-width: 78ch; line-height: 1.6; }
+  .why b { color: #b8bfb5; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+  .cell { background: #151815; border: 1px solid #242a23; border-radius: 20px; padding: 20px; }
+  .cellHead { display: flex; align-items: baseline; gap: 9px; }
+  .cellHead h2 { font-size: 17px; margin: 0; }
+  .tag { font-size: 10px; letter-spacing: 1.3px; font-weight: 700; color: #0e110e;
+    background: var(--mint); padding: 3px 7px; border-radius: 5px; }
+  .tag.warn { background: #F9A08A; }
+  .cell p { color: #b8bfb5; font-size: 13px; line-height: 1.6; margin: 9px 0 15px; }
+  .stage { background: var(--canvas); border-radius: 16px; padding: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* the card, unchanged apart from the corner treatment */
+  .card { border-radius: 18px; padding: 13px; color: var(--ink); min-height: 156px;
+    display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; height: 28px; }
+  .title { font-size: 20px; font-weight: 800; letter-spacing: -.3px; margin-top: 12px;
+    line-height: 1.15; }
+  .rule { border-top: 1px solid rgba(20,23,15,.22); margin-top: auto; padding-top: 9px;
+    display: flex; align-items: baseline; gap: 6px; }
+  .rule b { font-size: 26px; font-weight: 900; line-height: 1; }
+  .rule span { font-size: 12px; font-weight: 700; opacity: .75; }
+
+  .ic { width: 26px; height: 26px; display: block; }
+  .ic svg { width: 100%; height: 100%; stroke: var(--ink); stroke-width: 1.8; fill: none;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .ic.sm { width: 17px; height: 17px; }
+  .ic.sm svg { stroke-width: 2.1; }
+
+  /* A — action on a disc */
+  .a .btn { width: 30px; height: 30px; border-radius: 50%; background: rgba(20,23,15,.9);
+    display: grid; place-items: center; }
+  .a .btn .ic svg { stroke: #fff; }
+
+  /* B — overflow dots */
+  .b .btn { width: 30px; height: 30px; border-radius: 50%; background: rgba(20,23,15,.12);
+    display: grid; place-items: center; gap: 3px; grid-auto-flow: column; }
+  .b .btn i { width: 3.5px; height: 3.5px; border-radius: 50%; background: var(--ink); }
+
+  /* C — the icon joins the title, the corner holds a labelled button */
+  .c .top { height: auto; justify-content: flex-end; }
+  .c .pill { background: rgba(20,23,15,.9); color: #fff; font-size: 10px; font-weight: 800;
+    letter-spacing: 1px; padding: 5px 10px; border-radius: 8px; }
+  .c .titleRow { display: flex; align-items: center; gap: 9px; margin-top: 10px; }
+  .c .titleRow .ic { flex: none; }
+  .c .titleRow .title { margin: 0; min-width: 0; font-size: 18px; }
+
+  /* D — no button at all */
+  .d .top { justify-content: space-between; align-items: center; }
+  .d .hint { font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: .4; }
+
+  /* E — action in the footer */
+  .e .rule { justify-content: space-between; }
+  .e .rule { align-items: center; }
+  .e .foot { display: grid; place-items: center; width: 30px; height: 30px; flex: none;
+    background: rgba(20,23,15,.9); border-radius: 50%; }
+  .e .foot .ic svg { stroke: #fff; }
+
+  /* F — data icon as a watermark */
+  .f .ghost { position: absolute; left: -10px; top: -6px; width: 104px; height: 104px; opacity: .18; }
+  .f .ghost svg { width: 100%; height: 100%; stroke: var(--ink); stroke-width: 2; fill: none; }
+  .f .top { justify-content: flex-end; }
+  .f .btn { width: 30px; height: 30px; border-radius: 50%; background: rgba(20,23,15,.9);
+    display: grid; place-items: center; }
+  .f .btn .ic svg { stroke: #fff; }
+  .f .title { position: relative; }
+
+  .legend { margin-top: 13px; font-size: 11px; color: #6f766d; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Pact card — telling the button from the icon</h1>
+  <p class="lede">The card stays as it is. The only thing that changes is how the two things in
+  the top row are drawn: one is a picture of the pact, the other is a control.</p>
+  <p class="why"><b>Why it reads as unfinished:</b> both corners hold a 26px line icon in the same
+  ink at the same weight, so the card offers two equal icons and only one of them does anything.
+  Nothing on the card says which.</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const TARGET = 'M12 3a9 9 0 1 0 9 9M12 12l7-7M15 3h4v4';
+const DUMB = 'M4 9v6M8 7v10M16 7v10M20 9v6M8 12h8';
+const PEN = 'M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z';
+const svg = (d, cls) => `<span class="ic ${cls || ''}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span>`;
+
+const PACTS = [
+  { title: 'Hangboard', icon: TARGET, colour: 'var(--lemon)', days: 5 },
+  { title: 'Gym', icon: DUMB, colour: 'var(--mint)', days: 3 },
+];
+
+const shell = (p, top, extra = '', rule = null) => `
+  <div class="card" style="background:${p.colour}">
+    ${extra}
+    ${top}
+    <div class="rule">${rule ?? `<b>${p.days}</b><span>days / week</span>`}</div>
+  </div>`;
+
+const VARIANTS = [
+  {
+    id: 'a', title: 'Action on a disc', tag: 'SMALLEST CHANGE',
+    copy: 'The pencil keeps its place but sits on a filled ink disc, so it reads as a button. The pact icon stays flat line art. One is on the card, the other is in it.',
+    render: p => shell(p,
+      `<div class="top">${svg(p.icon)}<span class="btn">${svg(PEN, 'sm')}</span></div>
+       <div class="title">${p.title}</div>`),
+  },
+  {
+    id: 'b', title: 'Overflow dots', tag: 'NO AMBIGUITY',
+    copy: 'Three dots are never mistaken for data — nothing in an app is a picture of three dots. Room to grow: edit, archive, reorder, all behind the same corner.',
+    render: p => shell(p,
+      `<div class="top">${svg(p.icon)}<span class="btn"><i></i><i></i><i></i></span></div>
+       <div class="title">${p.title}</div>`),
+  },
+  {
+    id: 'c', title: 'Icon joins the title', tag: 'CLEANEST TOP',
+    copy: 'The pact icon drops down beside its own title, where it obviously belongs to the words. The corner is then the only thing up there, and it says EDIT in type rather than in pictures.',
+    render: p => shell(p,
+      `<div class="top"><span class="pill">EDIT</span></div>
+       <div class="titleRow">${svg(p.icon)}<div class="title">${p.title}</div></div>`),
+  },
+  {
+    id: 'd', title: 'No button at all', tag: 'MINIMAL',
+    copy: 'Take the pencil out. The whole card opens the pact, the way a list row does, and the only icon left is the pact icon — so there is nothing to confuse it with.',
+    render: p => shell(p,
+      `<div class="top">${svg(p.icon)}<span class="hint">TAP TO EDIT</span></div>
+       <div class="title">${p.title}</div>`),
+  },
+  {
+    id: 'e', title: 'Action in the footer', tag: 'THUMB REACH',
+    copy: 'The top row belongs to the pact, the bottom row to what you can do with it — low on the card and easy to reach. At this card width the button has to stay icon-only; a labelled chip pushes the frequency onto three lines.',
+    render: p => shell(p,
+      `<div class="top">${svg(p.icon)}</div>
+       <div class="title">${p.title}</div>`,
+      '',
+      `<span><b>${p.days}</b> <span>days / week</span></span>
+       <span class="foot">${svg(PEN, 'sm')}</span>`),
+  },
+  {
+    id: 'f', title: 'Icon as watermark', tag: 'BOLDEST',
+    copy: 'The pact icon stops being icon-sized and becomes a big soft mark behind the title — clearly scenery. Then the one sharp icon left on the card is the button, and it needs no explaining.',
+    render: p => shell(p,
+      `<div class="top"><span class="btn">${svg(PEN, 'sm')}</span></div>
+       <div class="title">${p.title}</div>`,
+      `<span class="ghost"><svg viewBox="0 0 24 24"><path d="${p.icon}"/></svg></span>`),
+  },
+];
+
+document.getElementById('grid').innerHTML = VARIANTS.map(v => `
+  <section class="cell">
+    <div class="cellHead"><h2>${v.title}</h2><span class="tag">${v.tag}</span></div>
+    <p>${v.copy}</p>
+    <div class="stage ${v.id}">
+      <div class="two">${PACTS.map(v.render).join('')}</div>
+    </div>
+  </section>`).join('');
+</script>
+</body>
+</html>

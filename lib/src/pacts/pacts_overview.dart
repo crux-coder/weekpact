@@ -190,10 +190,18 @@ class PactManagementCard extends StatelessWidget {
                     tooltip: 'Edit ${pact.title}',
                     onPressed: onEdit,
                     padding: EdgeInsets.zero,
+                    // A filled disc, so the one icon that does something does not
+                    // read as another picture of the pact.
+                    style: IconButton.styleFrom(
+                      backgroundColor: context.ink,
+                      shape: const CircleBorder(),
+                      minimumSize: const Size(32, 32),
+                      maximumSize: const Size(32, 32),
+                    ),
                     icon: AppIcon(
                       icon: HugeIconsStrokeRounded.pencilEdit02,
-                      color: context.ink,
-                      size: 20,
+                      color: tint ?? context.canvas,
+                      size: 17,
                     ),
                   ),
                 ),

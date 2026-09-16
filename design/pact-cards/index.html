@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pact cards — ideas</title>
+<style>
+  :root {
+    --canvas: #2B302C;
+    --ink: #14170F;
+    --paper: #F3F5F2;
+    --muted: #9aa197;
+    --lemon: #E8D05A;
+    --mint: #8CDCAC;
+    --sky: #8AC9EC;
+    --coral: #F9A08A;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 44px 24px 90px; background: #0e110e; color: var(--paper);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .page { max-width: 1500px; margin: 0 auto; }
+  h1 { font-size: 32px; margin: 0 0 10px; letter-spacing: -.6px; }
+  .lede { margin: 0 0 6px; color: var(--muted); max-width: 76ch; line-height: 1.6; }
+  .why { margin: 0 0 34px; color: #6f766d; font-size: 13px; max-width: 76ch; line-height: 1.6; }
+  .why b { color: #b8bfb5; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 24px; }
+  .cell { background: #151815; border: 1px solid #242a23; border-radius: 20px; padding: 20px; }
+  .cellHead { display: flex; align-items: baseline; gap: 9px; }
+  .cellHead h2 { font-size: 18px; margin: 0; }
+  .tag { font-size: 10px; letter-spacing: 1.3px; font-weight: 700; color: #0e110e;
+    background: var(--mint); padding: 3px 7px; border-radius: 5px; }
+  .cell p { color: #b8bfb5; font-size: 13px; line-height: 1.6; margin: 9px 0 16px; }
+  .stage { background: var(--canvas); border-radius: 16px; padding: 14px; }
+  .stage h3 { font-size: 15px; margin: 0 0 12px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .one { display: flex; flex-direction: column; gap: 10px; }
+
+  .ic { width: 26px; height: 26px; display: block; }
+  .ic svg { width: 100%; height: 100%; stroke: var(--ink); stroke-width: 1.8; fill: none;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .edit { opacity: .45; width: 18px; height: 18px; }
+  .title { font-size: 19px; font-weight: 800; letter-spacing: -.3px; color: var(--ink);
+    line-height: 1.15; }
+
+  /* --- A. week strip --- */
+  .a .card { border-radius: 18px; padding: 13px; color: var(--ink); display: flex;
+    flex-direction: column; gap: 10px; }
+  .days { display: flex; gap: 4px; }
+  .days i { flex: 1; height: 22px; border-radius: 6px; background: rgba(20,23,15,.14);
+    display: flex; align-items: center; justify-content: center; font-size: 8px;
+    font-weight: 800; font-style: normal; color: rgba(20,23,15,.5); }
+  .days i.on { background: var(--ink); color: #fff; }
+  .days i.today { box-shadow: inset 0 0 0 2px var(--ink); }
+  .count { font-size: 12px; font-weight: 700; opacity: .72; }
+
+  /* --- B. sticker --- */
+  .b .card { border-radius: 18px; padding: 14px; color: var(--ink); border: 2px solid var(--ink);
+    box-shadow: 4px 5px 0 var(--ink); position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 6px; min-height: 132px; }
+  .b .ghost { position: absolute; right: -14px; bottom: -18px; width: 92px; height: 92px;
+    opacity: .16; }
+  .b .ghost svg { width: 100%; height: 100%; stroke: var(--ink); stroke-width: 2; fill: none; }
+  .b .chip { align-self: flex-start; margin-top: auto; background: var(--ink); color: #fff;
+    font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 7px; letter-spacing: .3px; }
+
+  /* --- C. rows --- */
+  .c .row { display: flex; align-items: center; gap: 12px; background: #1B1F1B; border-radius: 16px;
+    padding: 10px 12px; }
+  .c .swatch { width: 44px; height: 44px; border-radius: 13px; flex: none; display: flex;
+    align-items: center; justify-content: center; }
+  .c .nm { font-size: 15px; font-weight: 800; }
+  .c .sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .c .mini { display: flex; gap: 3px; margin-left: auto; }
+  .c .mini i { width: 7px; height: 7px; border-radius: 4px; background: #3a413a; }
+  .c .mini i.on { background: var(--mint); }
+
+  /* --- D. big number --- */
+  .d .card { border-radius: 18px; padding: 13px; color: var(--ink); min-height: 150px;
+    display: flex; flex-direction: column; }
+  .d .huge { font-size: 62px; font-weight: 900; line-height: .9; letter-spacing: -3px;
+    margin-top: auto; }
+  .d .huge small { font-size: 18px; font-weight: 800; letter-spacing: -.5px; }
+  .d .lbl { font-size: 11px; font-weight: 700; opacity: .6; letter-spacing: .6px;
+    text-transform: uppercase; }
+
+  /* --- E. ring --- */
+  /* Side by side does not survive two columns at phone width, so it stacks. */
+  .e .card { border-radius: 18px; padding: 13px; color: var(--ink); display: flex;
+    flex-direction: column; gap: 10px; min-height: 132px; }
+  .e .ring { width: 54px; height: 54px; flex: none; border-radius: 50%; display: grid;
+    place-items: center; }
+  .e .ring .inner { width: 40px; height: 40px; border-radius: 50%; display: grid;
+    place-items: center; }
+  .e .ring .inner .ic { width: 20px; height: 20px; }
+  .e .card .title { margin-top: auto; }
+
+  /* --- F. crew --- */
+  .f .card { border-radius: 18px; padding: 13px; color: var(--ink); display: flex;
+    flex-direction: column; gap: 9px; }
+  .f .faces { display: flex; }
+  .f .faces span { width: 25px; height: 25px; border-radius: 50%; margin-left: -7px;
+    border: 2px solid; font-size: 9px; font-weight: 800; display: grid; place-items: center; }
+  .f .faces span:first-child { margin-left: 0; }
+  .f .foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px;
+    font-weight: 700; opacity: .75; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Pact cards — six ways to finish them</h1>
+  <p class="lede">The card today is a title, a rule and a frequency, in a box tall enough for
+  three times that much. The blank middle is what reads as unfinished.</p>
+  <p class="why"><b>The fix in every one of these is the same:</b> put this week in the card.
+  A pact is a promise about a week, and the card is the only place on that screen where the week
+  is invisible.</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const TARGET = 'M12 3a9 9 0 1 0 9 9M12 12l7-7M15 3h4v4';
+const DUMB = 'M4 9v6M8 7v10M16 7v10M20 9v6M8 12h8';
+const SHOE = 'M3 15h13l5 2v2H3zM3 15V9l4 2 3 2';
+const ICONS = { hang: TARGET, gym: DUMB, pull: SHOE };
+const svg = (d, cls) => `<span class="${cls || 'ic'}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span>`;
+const PEN = 'M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z';
+
+const PACTS = [
+  { title: 'Hangboard', icon: 'hang', colour: 'var(--lemon)', days: 5, done: 3, dark: '#C9AE33' },
+  { title: 'Gym', icon: 'gym', colour: 'var(--mint)', days: 3, done: 3, dark: '#5FBE88' },
+  { title: '50 Pull-ups', icon: 'pull', colour: 'var(--sky)', days: 5, done: 1, dark: '#5AA8D6' },
+];
+const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+const VARIANTS = [
+  {
+    id: 'a', title: 'Week strip', tag: 'MOST USEFUL',
+    copy: 'Seven day pills fill the middle, filled for the days already checked in and outlined for today. The frequency stops being the only fact on the card.',
+    render: p => `<div class="two">${p.slice(0, 2).map(x => `
+      <div class="card" style="background:${x.colour}">
+        <div class="top">${svg(ICONS[x.icon])}${svg(PEN, 'ic edit')}</div>
+        <div class="title">${x.title}</div>
+        <div class="days">${WEEK.map((d, i) =>
+          `<i class="${i < x.done ? 'on' : ''} ${i === 2 ? 'today' : ''}">${d}</i>`).join('')}</div>
+        <div class="count">${x.done} of ${x.days} days this week</div>
+      </div>`).join('')}</div>`,
+  },
+  {
+    id: 'b', title: 'Sticker', tag: 'MOST ON-BRAND',
+    copy: 'Black outline and hard shadow, the same language as the check-in cards, plus the pact icon blown up as a watermark so the card has something in it at any size.',
+    render: p => `<div class="two">${p.slice(0, 2).map(x => `
+      <div class="card" style="background:${x.colour}">
+        <div class="top">${svg(ICONS[x.icon])}${svg(PEN, 'ic edit')}</div>
+        <div class="title">${x.title}</div>
+        <span class="chip">${x.days}× A WEEK</span>
+        <span class="ghost"><svg viewBox="0 0 24 24"><path d="${ICONS[x.icon]}"/></svg></span>
+      </div>`).join('')}</div>`,
+  },
+  {
+    id: 'c', title: 'Rows, not tiles', tag: 'NO DEAD SPACE',
+    copy: 'Drop the grid. A row is exactly as tall as its content, the colour moves into a tile behind the icon, and the week rides on the right. Ten pacts fit on one screen.',
+    render: p => `<div class="one">${p.map(x => `
+      <div class="row">
+        <span class="swatch" style="background:${x.colour}">${svg(ICONS[x.icon])}</span>
+        <div>
+          <div class="nm">${x.title}</div>
+          <div class="sub">${x.done} of ${x.days} this week</div>
+        </div>
+        <span class="mini">${WEEK.map((_, i) =>
+          `<i class="${i < x.done ? 'on' : ''}"></i>`).join('')}</span>
+      </div>`).join('')}</div>`,
+  },
+  {
+    id: 'd', title: 'Big number', tag: 'SIMPLEST',
+    copy: 'Keep the card exactly as it is and let the number own the space it already has. The count sits at the bottom at display size, the way the pact card on Home does it.',
+    render: p => `<div class="two">${p.slice(0, 2).map(x => `
+      <div class="card" style="background:${x.colour}">
+        <div class="top">${svg(ICONS[x.icon])}${svg(PEN, 'ic edit')}</div>
+        <div class="title">${x.title}</div>
+        <div class="huge">${x.done}<small>/${x.days}</small></div>
+        <div class="lbl">days this week</div>
+      </div>`).join('')}</div>`,
+  },
+  {
+    id: 'e', title: 'Progress ring', tag: 'AT A GLANCE',
+    copy: 'A ring carries the week and the icon sits inside it. The card gets shorter, two fit in a row comfortably, and a finished pact closes the ring completely.',
+    render: p => `<div class="two">${p.slice(0, 2).map(x => {
+      const pct = Math.round((x.done / x.days) * 100);
+      return `<div class="card" style="background:${x.colour}">
+        <span class="ring" style="background:conic-gradient(var(--ink) ${pct}%, rgba(20,23,15,.18) 0)">
+          <span class="inner" style="background:${x.colour}">${svg(ICONS[x.icon])}</span>
+        </span>
+        <div>
+          <div class="title">${x.title}</div>
+          <div class="count">${x.done} of ${x.days} days</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`,
+  },
+  {
+    id: 'f', title: 'Who else', tag: 'MOST SOCIAL',
+    copy: 'The card carries the crew. Faces of everyone on this pact, how many are done today, and the streak — the things that make it a pact rather than a to-do.',
+    render: p => `<div class="two">${p.slice(0, 2).map(x => `
+      <div class="card" style="background:${x.colour}">
+        <div class="top">${svg(ICONS[x.icon])}${svg(PEN, 'ic edit')}</div>
+        <div class="title">${x.title}</div>
+        <div class="faces">
+          <span style="background:#fff;border-color:${x.colour};color:var(--ink)">JM</span>
+          <span style="background:${x.dark};border-color:${x.colour};color:var(--ink)">AL</span>
+          <span style="background:var(--ink);border-color:${x.colour};color:#fff">+2</span>
+        </div>
+        <div class="foot"><span>${x.done} of 4 in today</span><span>${x.days}× / week</span></div>
+      </div>`).join('')}</div>`,
+  },
+];
+
+document.getElementById('grid').innerHTML = VARIANTS.map(v => `
+  <section class="cell">
+    <div class="cellHead"><h2>${v.title}</h2><span class="tag">${v.tag}</span></div>
+    <p>${v.copy}</p>
+    <div class="stage ${v.id}">
+      <h3>Your pacts</h3>
+      ${v.render(PACTS)}
+    </div>
+  </section>`).join('');
+</script>
+</body>
+</html>
