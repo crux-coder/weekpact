@@ -60,20 +60,22 @@ void main() {
           expect(checkedTile, findsNothing);
           expect(tester.getSize(pendingTile).width, boardWidth);
           expect(find.text('0/2'), findsNothing);
-          expect(find.text('Be the first in today'), findsOneWidget);
+          expect(find.text('be the first in today'), findsOneWidget);
+          expect(find.byKey(const ValueKey('pending-count')), findsOneWidget);
         } else if (count == 2) {
           expect(pendingTile, findsNothing);
           expect(tester.getSize(checkedTile).width, boardWidth);
           expect(find.text('2/2'), findsNothing);
-          expect(find.text('Whole crew is in'), findsOneWidget);
+          expect(find.text('whole crew is in'), findsOneWidget);
+          expect(find.byKey(const ValueKey('checked-count')), findsOneWidget);
         } else {
           expect(
             tester.getSize(checkedTile).width,
             closeTo(tester.getSize(pendingTile).width, .01),
           );
           expect(find.text('1/2'), findsNothing);
-          expect(find.text('Not yet · 1'), findsOneWidget);
-          expect(find.text('Checked in · 1'), findsOneWidget);
+          expect(find.text('not yet'), findsOneWidget);
+          expect(find.text('checked in'), findsOneWidget);
         }
         final checkedGroup = find.byKey(const ValueKey('checked-members'));
         final pendingGroup = find.byKey(const ValueKey('pending-members'));

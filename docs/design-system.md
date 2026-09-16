@@ -127,10 +127,16 @@ check-in (“Mirnes checked in · Move for 30 min · 12m ago”) with the member
 avatar and a chevron into the Feed — rather than a section label. With nothing
 posted yet it reads “Nobody has checked in yet today”. Omit the total fraction and
 standalone activity card. Crew history no longer lives on Home; the Feed
-destination carries it instead. When one side is empty the single tile speaks for
-the crew — “Whole crew is in”, “Be the first in today” — instead of showing a
-count against nobody. Otherwise collapsed panels show small “Checked in”/“Not yet” labels with group counts,
-avatars, and names. Use sage for checked-in members and muted grey for pending
+destination carries it instead. Collapsed, a crew tile leads with the count at 34pt and a
+lowercase caption under it (“checked in”, “not yet”), with faces to its right:
+overlapping avatars with no rim, separated by the same raised edge the tile
+carries, capped at three slots. The last slot becomes a “+n” chip when
+the crew outgrows it, and a narrow tile drops to the chip alone — the expanded
+list is where a big crew is read. Faces carry no names when collapsed, and the
+count block scales down together rather than overflowing at large text sizes.
+When one side is empty the tile speaks for the crew instead — its caption reads
+“whole crew is in” or “be the first in today”. Expanded panels show the
+“Checked in”/“Not yet” label with group counts, avatars, and names. Use sage for checked-in members and muted grey for pending
 members. Preserve explicit status
 semantics and tap-to-expand behavior; show a collapse control when expanded.
 

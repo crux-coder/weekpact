@@ -1354,7 +1354,8 @@ class TodayCrewCard extends StatelessWidget {
   final DateTime? now;
   final double height;
   final bool showGroups;
-  static const groupHeight = 106.0;
+  // A count, its caption and a row of faces — no taller than that needs.
+  static const groupHeight = 86.0;
   // The latest-check-in surface plus the gap to the tiles below it.
   static const headingHeight = 54.0;
 
@@ -1487,6 +1488,25 @@ class CrewCheckInTile extends StatelessWidget {
   final HomeBackend? backend;
   final String? crewId;
 
+  /// The tile's raised edge, shared by its surface, faces and overflow chip.
+  static Color _tileEdge(bool done) =>
+      done ? const Color(0xFF5F9774) : const Color(0xFFADB5BC);
+
+  /// Beyond this the stack stops being faces and becomes a number.
+  static const _maxFaces = 3;
+  static const _faceSize = 34.0;
+  static const _minFaceSize = 24.0;
+  static const _overlap = .62;
+
+  /// The words under the count.
+  String get caption => everyoneCheckedIn
+      ? 'whole crew is in'
+      : awaitingFirstCheckIn
+      ? 'be the first in today'
+      : done
+      ? 'checked in'
+      : 'not yet';
+
   /// The tile's own words. When one side is empty the tile speaks for the whole
   /// crew, so a bare count would read as a scoreline nobody asked for.
   String get label => everyoneCheckedIn
@@ -1540,43 +1560,44 @@ class CrewCheckInTile extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      height: 36,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    label,
-                                    style: const TextStyle(
-                                      color: _ink,
-                                      fontFamily: 'Roboto',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
+                    if (showDetails)
+                      SizedBox(
+                        height: 36,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      label,
+                                      style: const TextStyle(
+                                        color: _ink,
+                                        fontFamily: 'Roboto',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            if (showDetails)
-                              IconButton(
-                                tooltip: 'Collapse members',
-                                onPressed: onOpen,
-                                icon: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.arrowUp01,
-                                  size: 16,
-                                  color: Color(0xFF555A53),
+                              if (showDetails)
+                                IconButton(
+                                  tooltip: 'Collapse members',
+                                  onPressed: onOpen,
+                                  icon: const HugeIcon(
+                                    icon: HugeIconsStrokeRounded.arrowUp01,
+                                    size: 16,
+                                    color: Color(0xFF555A53),
+                                  ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                     Expanded(
                       child: showDetails
                           ? ClipRect(
@@ -1593,57 +1614,7 @@ class CrewCheckInTile extends StatelessWidget {
                           : GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: onOpen,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: SizedBox(
-                                  key: ValueKey(
-                                    done
-                                        ? 'checked-members'
-                                        : 'pending-members',
-                                  ),
-                                  child: members.isEmpty
-                                      ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                            ),
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  if (done) ...[
-                                                    const HugeIcon(
-                                                      icon:
-                                                          HugeIconsStrokeRounded
-                                                              .hourglass,
-                                                      color: Color(0xFF748368),
-                                                      size: 26,
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                  ],
-                                                  Text(
-                                                    done
-                                                        ? 'No one yet'
-                                                        : 'All checked in',
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF555A53),
-                                                      fontFamily: 'Roboto',
-                                                      fontFamilyFallback: [
-                                                        'Arial',
-                                                      ],
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : _members(context, members, done),
-                                ),
-                              ),
+                              child: _collapsed(context),
                             ),
                     ),
                   ],
@@ -1656,118 +1627,172 @@ class CrewCheckInTile extends StatelessWidget {
     ),
   );
 
-  Widget _memberList(BuildContext context) => CrewMemberList(
-    members: members,
-    done: done,
-    userId: userId,
-    backend: backend,
-    crewId: crewId,
-  );
-
-  Widget _members(
-    BuildContext context,
-    List<WeekMember> members,
-    bool done,
-  ) => ClipRect(
-    child: LayoutBuilder(
-      builder: (context, space) {
-        if (members.isEmpty || space.maxWidth < 1) {
-          return const SizedBox.shrink();
-        }
-        if (space.maxWidth < 48) {
-          return Center(
+  /// Collapsed, the tile leads with the count and lets faces fill the rest.
+  /// Nobody on this side means the count would be a zero nobody asked for, so
+  /// the state's own words take the whole tile instead.
+  Widget _collapsed(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+    child: members.isEmpty
+        ? Center(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  splashFactory: NoSplash.splashFactory,
-                  overlayColor: Colors.transparent,
-                ),
-                onPressed: onOpen,
-                child: Text(
-                  '+${members.length}',
-                  style: TextStyle(color: _ink),
+              child: Text(
+                done ? 'No one yet' : 'All checked in',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF555A53),
+                  fontFamily: 'Roboto',
+                  fontFamilyFallback: ['Arial'],
+                  fontSize: 12,
                 ),
               ),
             ),
-          );
-        }
-        final size = math.min(
-          48.0,
-          math.max(1.0, math.min(space.maxWidth - 16, space.maxHeight - 18)),
-        );
-        final step = size + 10;
-        final capacity = math.max(
-          1,
-          ((space.maxWidth - 16 - size) / math.max(1, step)).floor() + 1,
-        );
-        final shown = members.length > capacity ? capacity - 1 : members.length;
-        final slots = shown + (members.length > shown ? 1 : 0);
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Align(
-            alignment: Alignment.center,
-            child: SizedBox(
-              width: size + math.max(0, slots - 1) * step,
-              height: size + 16,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  for (var i = 0; i < shown; i++)
-                    Positioned(
-                      key: ValueKey('crew-member-${members[i].id}'),
-                      left: i * step,
-                      top: 0,
-                      child: _avatar(context, members[i], done, size),
-                    ),
-                  if (members.length > shown)
-                    Positioned(
-                      left: shown * step,
-                      top: 0,
-                      child: Tooltip(
-                        message: 'View ${members.length - shown} more members',
-                        child: InkWell(
-                          splashFactory: NoSplash.splashFactory,
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          hoverColor: Colors.transparent,
-                          onTap: onOpen,
-                          child: Container(
-                            width: size,
-                            height: size,
-                            decoration: ShapeDecoration(
-                              color: WeekPactColors.cream,
-                              shape: AvatarShape(
-                                side: BorderSide(
-                                  color: _ink.withValues(alpha: .25),
-                                ),
-                              ),
-                            ),
-                            child: Center(
-                              child: FittedBox(
-                                child: Text(
-                                  '+${members.length - shown}',
-                                  style: const TextStyle(
-                                    color: _ink,
-                                    fontFamily: 'Roboto',
-                                    fontFamilyFallback: ['Arial'],
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
+          )
+        : Row(
+            key: ValueKey(done ? 'checked-members' : 'pending-members'),
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                // Scale the count and its caption together, so a large text
+                // setting shrinks the block instead of overflowing the tile.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${members.length}',
+                        key: ValueKey(done ? 'checked-count' : 'pending-count'),
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 34,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        caption,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontFamily: 'Roboto',
+                          fontFamilyFallback: ['Arial'],
+                          fontSize: 11,
+                          height: 1.1,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: _faces(context)),
+            ],
+          ),
+  );
+
+  /// Overlapping faces, as many as the tile can hold, with the remainder as a
+  /// “+n” chip. Past that the chip stands alone — the expanded list is where
+  /// a big crew is actually read.
+  Widget _faces(BuildContext context) => LayoutBuilder(
+    builder: (context, space) {
+      if (space.maxWidth < 24 || space.maxHeight < 20) {
+        return const SizedBox.shrink();
+      }
+      // Faces overlap, so each extra one costs well under its own width. Fit as
+      // many slots as the tile allows, shrinking the faces before dropping one,
+      // and never below a size that still reads as a person.
+      final maxSize = math.min(_faceSize, space.maxHeight);
+      var slots = math.min(_maxFaces, members.length);
+      var size = maxSize;
+      while (slots > 0) {
+        size = math.min(maxSize, space.maxWidth / (1 + (slots - 1) * _overlap));
+        if (size >= _minFaceSize) break;
+        slots--;
+      }
+      // Too narrow for a face: the count chip carries the whole crew.
+      if (slots == 0) {
+        if (space.maxWidth < 20) return const SizedBox.shrink();
+        slots = 1;
+        size = math.min(maxSize, space.maxWidth);
+      }
+      final shown = members.length <= slots ? members.length : slots - 1;
+      final overflow = members.length - shown;
+      slots = shown + (overflow > 0 ? 1 : 0);
+      final step = size * _overlap;
+      return Align(
+        alignment: Alignment.centerRight,
+        child: SizedBox(
+          width: size + (slots - 1) * step,
+          height: size,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              for (var i = 0; i < shown; i++)
+                Positioned(
+                  key: ValueKey('crew-member-${members[i].id}'),
+                  left: i * step,
+                  child: _avatar(context, members[i], done, size),
+                ),
+              if (overflow > 0)
+                Positioned(
+                  left: shown * step,
+                  child: Tooltip(
+                    message: shown == 0
+                        ? 'View all ${members.length} members'
+                        : 'View $overflow more members',
+                    child: Container(
+                      key: const ValueKey('crew-overflow'),
+                      width: size,
+                      height: size,
+                      decoration: ShapeDecoration(
+                        color: WeekPactColors.cream,
+                        shape: AvatarShape(
+                          side: BorderSide(color: _ink.withValues(alpha: .25)),
+                        ),
+                        shadows: [
+                          BoxShadow(
+                            color: _tileEdge(done),
+                            offset: WeekPactMetrics.raisedOffset,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: FittedBox(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              '+$overflow',
+                              style: const TextStyle(
+                                color: _ink,
+                                fontFamily: 'Roboto',
+                                fontFamilyFallback: ['Arial'],
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+            ],
           ),
-        );
-      },
-    ),
+        ),
+      );
+    },
+  );
+
+  Widget _memberList(BuildContext context) => CrewMemberList(
+    members: members,
+    done: done,
+    userId: userId,
+    backend: backend,
+    crewId: crewId,
   );
 
   Widget _avatar(
@@ -1806,9 +1831,15 @@ class CrewCheckInTile extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Container(
-                      decoration: const ShapeDecoration(
-                        shape: AvatarShape(),
+                      decoration: ShapeDecoration(
+                        shape: const AvatarShape(),
                         color: homePaper,
+                        shadows: [
+                          BoxShadow(
+                            color: _tileEdge(done),
+                            offset: WeekPactMetrics.raisedOffset,
+                          ),
+                        ],
                       ),
                       child: AvatarClip(
                         child: member.avatarUrl == null
@@ -1823,25 +1854,6 @@ class CrewCheckInTile extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 3),
-            SizedBox(
-              height: 13,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  member.displayName.trim().isEmpty
-                      ? 'Member'
-                      : member.displayName.trim().split(RegExp(r'\s+')).first,
-                  style: TextStyle(
-                    color: ink,
-                    fontFamily: 'Roboto',
-                    fontFamilyFallback: const ['Arial'],
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
               ),
             ),
           ],
@@ -1899,18 +1911,18 @@ class _TodaySkeletonState extends State<TodaySkeleton>
       outlineColor: color == WeekPactColors.mintGreen
           ? const Color(0xFF5F9774)
           : const Color(0xFFADB5BC),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      // The loaded tile leads with a count and trails with faces.
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _line(80, 9),
-          const Spacer(),
-          const Center(
-            child: SkeletonBar(width: 44, height: 44, shape: AvatarShape()),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [_line(22, 26), const SizedBox(height: 6), _line(46, 8)],
           ),
-          const SizedBox(height: 8),
-          Center(child: SizedBox(width: 36, child: _line(36, 8))),
           const Spacer(),
+          const SkeletonBar(width: 34, height: 34, shape: AvatarShape()),
         ],
       ),
     ),
