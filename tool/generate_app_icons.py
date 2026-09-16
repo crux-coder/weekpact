@@ -19,6 +19,8 @@ for item in json.loads((catalog / 'Contents.json').read_text())['images']:
 for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
     outputs[ROOT / f'android/app/src/main/res/mipmap-{density}/ic_launcher.png'] = size
 outputs[ROOT / 'web/favicon.png'] = 32
+outputs[ROOT / 'website/public/app-icon.png'] = 1024
+outputs[ROOT / 'website/public/favicon.png'] = 32
 for size in (192,512):
     outputs[ROOT / f'web/icons/Icon-{size}.png'] = size
 for destination, size in outputs.items():
@@ -27,7 +29,7 @@ for destination, size in outputs.items():
 with tempfile.TemporaryDirectory() as temporary:
     padded = Path(temporary) / 'maskable.png'
     resize(padded, 768)
-    subprocess.run(['sips', '-p', '1024', '1024', '--padColor', 'FFE66B', str(padded)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(['sips', '-p', '1024', '1024', '--padColor', '191D19', str(padded)], check=True, stdout=subprocess.DEVNULL)
     for size in (192,512):
         destination = ROOT / f'web/icons/Icon-maskable-{size}.png'
         resize(destination, size, padded)

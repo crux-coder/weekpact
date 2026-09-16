@@ -127,6 +127,7 @@ class _HomePageState extends State<HomePage> {
   void _selectDestination(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
+    unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
     if (MediaQuery.disableAnimationsOf(context)) {
       _pageController.jumpToPage(index);
       return;

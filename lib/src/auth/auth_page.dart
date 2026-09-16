@@ -146,13 +146,26 @@ class _AuthPageState extends State<AuthPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'WeekPact.',
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/branding/weekpact-icon.png',
+                          width: 44,
+                          height: 44,
+                          excludeFromSemantics: true,
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            'WeekPact.',
+                            style: TextStyle(
+                              color: context.ink,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     WelcomeCard(
