@@ -489,12 +489,31 @@ class _PactCompletionEffect extends StatefulWidget {
   State<_PactCompletionEffect> createState() => _PactCompletionEffectState();
 }
 
+/// One short pop when a check-in lands. It runs after the check-in drawer has
+/// finished closing, and the buzz comes from the save itself.
 class _PactCompletionEffectState extends State<_PactCompletionEffect>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animation = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 650),
+    duration: const Duration(milliseconds: 260),
   );
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 1.06,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 40,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.06,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
+      weight: 60,
+    ),
+  ]).animate(_animation);
+
   @override
   void didUpdateWidget(covariant _PactCompletionEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -522,65 +541,10 @@ class _PactCompletionEffectState extends State<_PactCompletionEffect>
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _animation,
     child: widget.child,
-    builder: (context, child) {
-      final active = _animation.isAnimating;
-      final pulse = active ? math.sin(_animation.value * math.pi) : 0.0;
-      return Transform.scale(
-        scale: 1 - pulse * .018,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            child!,
-            if (active)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: ExcludeSemantics(
-                    child: Opacity(
-                      opacity: pulse,
-                      child: Container(
-                        key: const ValueKey('pact-completion-effect'),
-                        decoration: BoxDecoration(
-                          color: _doneFill.withValues(alpha: .14),
-                          borderRadius: BorderRadius.circular(
-                            WeekPactMetrics.cardRadius,
-                          ),
-                          border: Border.all(color: _doneMark, width: 2),
-                        ),
-                        child: Center(
-                          child: Transform.translate(
-                            offset: Offset(0, -12 * _animation.value),
-                            child: Transform.scale(
-                              scale:
-                                  .85 +
-                                  .15 *
-                                      Curves.easeOut.transform(
-                                        _animation.value,
-                                      ),
-                              child: Container(
-                                width: 58,
-                                height: 58,
-                                decoration: const BoxDecoration(
-                                  color: _doneFill,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.tick02,
-                                  color: _doneMark,
-                                  size: 34,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
-    },
+    builder: (context, child) => Transform.scale(
+      scale: _animation.isAnimating ? _scale.value : 1.0,
+      child: child,
+    ),
   );
 }
 

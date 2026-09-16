@@ -436,16 +436,12 @@ void main() {
       final updated = await backend.fetchWeek('crew');
       refresh(() => week = updated);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-      expect(
-        find.byKey(const ValueKey('pact-completion-effect')),
-        findsWidgets,
-      );
+      await tester.pump(const Duration(milliseconds: 100));
+      // Completing pops the card out and then returns it to its resting size.
+      final popped = tester.getRect(find.byKey(const ValueKey('third')));
       await tester.pumpUi();
-      expect(
-        find.byKey(const ValueKey('pact-completion-effect')),
-        findsNothing,
-      );
+      final settled = tester.getRect(find.byKey(const ValueKey('third')));
+      expect(popped.width, greaterThan(settled.width));
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Checked in today').hitTestable(), findsOneWidget);
       backend.selected.remove('third');
@@ -453,8 +449,8 @@ void main() {
       refresh(() => week = undone);
       await tester.pump();
       expect(
-        find.byKey(const ValueKey('pact-completion-effect')),
-        findsNothing,
+        tester.getRect(find.byKey(const ValueKey('third'))).width,
+        settled.width,
       );
       await tester.pumpUi();
       expect(find.text('Stretch').hitTestable(), findsOneWidget);

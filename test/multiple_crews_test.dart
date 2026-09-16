@@ -195,6 +195,84 @@ void main() {
     },
   );
 
+  testWidgets('holding the header fans the crews out and the finger picks one', (
+    tester,
+  ) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    final home = CrewHome(pacts);
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: home,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.text('Switch to Night Owls'), findsNothing);
+
+    final header = find.byTooltip('Switch crew');
+    final gesture = await tester.startGesture(tester.getCenter(header));
+    // Nothing happens until the press is held.
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(find.text('Switch to Night Owls'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpUi();
+    expect(find.text('Night Owls').hitTestable(), findsOneWidget);
+
+    await gesture.moveTo(tester.getCenter(find.text('Night Owls')));
+    await tester.pumpUi();
+    await gesture.up();
+    await tester.pumpUi();
+    expect(home.requested.last, 'second');
+    // The hand is put away once a card is taken.
+    expect(find.text('Switch to Night Owls'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('releasing away from the fan keeps the crew you were on', (
+    tester,
+  ) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    final home = CrewHome(pacts);
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: home,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    final before = home.requested.length;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byTooltip('Switch crew')),
+    );
+    await tester.pump(const Duration(milliseconds: 320));
+    await tester.pumpUi();
+    await gesture.moveTo(const Offset(20, 20));
+    await tester.pumpUi();
+    await gesture.up();
+    await tester.pumpUi();
+    expect(home.requested.length, before);
+    expect(find.text('Switch to Night Owls'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('crew selection follows the user between Home, Pacts and Crews', (
     tester,
   ) async {

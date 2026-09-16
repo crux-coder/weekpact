@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -32,6 +33,13 @@ Future<bool> showPhotoCheckIn({
         builder: (_) => PhotoCheckInSheet(
           pactTitle: pactTitle,
           capturePhoto: capturePhoto,
+          // Debug builds check in without a picture so the flow is testable on
+          // simulators, which have no camera.
+          saveWithoutPhoto: () => backend.saveCheckIns(
+            crewId: crewId,
+            today: today,
+            pactIds: selectedPactIds,
+          ),
           save: (bytes) => backend.saveCheckIns(
             crewId: crewId,
             today: today,
@@ -49,10 +57,14 @@ class PhotoCheckInSheet extends StatefulWidget {
     required this.pactTitle,
     this.capturePhoto,
     required this.save,
+    this.saveWithoutPhoto,
   });
   final String pactTitle;
   final CheckInPhotoCapture? capturePhoto;
   final Future<void> Function(Uint8List) save;
+
+  /// Debug-only escape hatch: check in with no picture at all.
+  final Future<void> Function()? saveWithoutPhoto;
   @override
   State<PhotoCheckInSheet> createState() => _PhotoCheckInSheetState();
 }
@@ -93,6 +105,25 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
       }
     } finally {
       if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  Future<void> _skipPhoto() async {
+    final skip = widget.saveWithoutPhoto;
+    if (skip == null || _saving || _capturing) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await skip();
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not save the check-in. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -233,6 +264,12 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
                 ? _capture
                 : _cameraAction,
           ),
+          if (kDebugMode && widget.saveWithoutPhoto != null && _photo == null)
+            TextButton(
+              key: const ValueKey('skip-photo-check-in'),
+              onPressed: _saving || _capturing ? null : _skipPhoto,
+              child: const Text('SKIP PHOTO (DEBUG)'),
+            ),
         ],
       ),
     ),

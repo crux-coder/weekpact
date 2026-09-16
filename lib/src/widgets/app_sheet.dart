@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
 
+/// Completes once the sheet is gone, not merely popped, so callers can follow a
+/// sheet with motion of their own without it playing behind the closing drawer.
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
-}) {
-  return showModalBottomSheet<T>(
+}) async {
+  ModalRoute<T>? route;
+  final result = await showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -15,8 +18,13 @@ Future<T?> showAppSheet<T>({
     constraints: BoxConstraints.tightFor(
       width: MediaQuery.sizeOf(context).width,
     ),
-    builder: (context) => AppSurfaceTheme(builder: builder),
+    builder: (context) {
+      route ??= ModalRoute.of<T>(context);
+      return AppSurfaceTheme(builder: builder);
+    },
   );
+  await route?.completed;
+  return result;
 }
 
 /// A content-sized, edge-to-edge sheet with safe-area space inside its surface.

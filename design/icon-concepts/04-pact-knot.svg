@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+    <defs>
+    <clipPath id="overlap-top">
+      <rect x="400" y="300" width="228" height="212"/>
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="#8CDCAC"/>
+  <g fill="none" stroke-linecap="round">
+    <g stroke="#191B19" stroke-width="150"><rect x="150" y="330" width="404" height="364" rx="182"/><rect x="470" y="330" width="404" height="364" rx="182"/></g>
+    <g stroke="#F5F6F5" stroke-width="150"><rect x="470" y="330" width="404" height="364" rx="182"/></g>
+    <g stroke="#191B19" stroke-width="150"><rect x="470" y="330" width="404" height="364" rx="182"/></g>
+    <g stroke="#F5F6F5" stroke-width="96"><rect x="470" y="330" width="404" height="364" rx="182"/></g>
+    <g clip-path="url(#overlap-top)">
+      <g stroke="#191B19" stroke-width="150"><rect x="150" y="330" width="404" height="364" rx="182"/></g>
+    </g>
+  </g>
+</svg>

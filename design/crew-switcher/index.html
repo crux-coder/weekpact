@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew switching concepts</title>
+<style>
+  :root {
+    --canvas: #2B302C;
+    --surface: #242924;
+    --face: #20251F;
+    --ink: #F3F5F2;
+    --muted: #B8BEB5;
+    --border: #3C433C;
+    --mint: #8CDCAC;
+    --lemon: #E8D05A;
+    --sky: #8AC9EC;
+    --coral: #F9A08A;
+    --lavender: #BCA9EE;
+    --grey: #C4CDD4;
+    --page: #14170F;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 24px 96px;
+    background: #101310;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 34px; margin: 0 0 10px; letter-spacing: -.6px; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 70ch; line-height: 1.6; }
+  .hint { margin: 0 0 40px; color: #7f877d; font-size: 13px; }
+  .concepts { display: flex; flex-direction: column; gap: 28px; }
+  .concept {
+    display: grid; grid-template-columns: 300px 1fr; gap: 34px; align-items: start;
+    background: #171A16; border: 1px solid #262b25; border-radius: 22px; padding: 26px;
+  }
+  .copy h2 { font-size: 22px; margin: 2px 0 4px; letter-spacing: -.3px; }
+  .gesture {
+    display: inline-block; font-size: 11px; letter-spacing: 1.6px; font-weight: 700;
+    color: var(--canvas); background: var(--mint); padding: 4px 9px; border-radius: 6px;
+  }
+  .copy p { color: #c8cec6; line-height: 1.65; font-size: 14px; margin: 14px 0 0; }
+  .copy .why { color: var(--muted); }
+  .tradeoff { margin-top: 14px; padding-top: 14px; border-top: 1px solid #262b25;
+    font-size: 13px; color: #8d958a; line-height: 1.6; }
+  .tradeoff b { color: #c8cec6; font-weight: 600; }
+
+  /* ---- phone ---- */
+  .phone {
+    width: 300px; height: 620px; border-radius: 42px; padding: 12px;
+    background: #000; border: 1px solid #2c312b; flex: none;
+    box-shadow: 0 24px 50px rgba(0,0,0,.5);
+  }
+  .screen {
+    width: 100%; height: 100%; border-radius: 32px; overflow: hidden;
+    background: var(--canvas); position: relative;
+    display: flex; flex-direction: column; padding: 14px 12px 0;
+    touch-action: none; user-select: none;
+  }
+  [data-body] { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .status { display: flex; justify-content: space-between; font-size: 10px;
+    color: var(--muted); padding: 2px 6px 10px; }
+
+  .headerRow { display: flex; gap: 8px; align-items: stretch; }
+  .crewBox {
+    flex: 1; background: var(--face); border: 1px solid var(--border);
+    border-radius: 18px; padding: 9px 12px; min-height: 58px;
+    display: flex; flex-direction: column; justify-content: center; position: relative;
+    overflow: hidden;
+  }
+  .label { font-size: 8px; letter-spacing: 1.8px; color: var(--muted); font-weight: 700; }
+  .crewName { font-size: 19px; font-weight: 800; letter-spacing: -.3px; line-height: 1.15; }
+  .streak {
+    width: 86px; background: var(--face); border: 1px solid var(--border);
+    border-radius: 18px; padding: 9px 10px; display: flex; flex-direction: column;
+    justify-content: center; gap: 2px;
+  }
+  .streak .big { font-size: 17px; font-weight: 800; }
+  .streak .big span { font-size: 9px; color: var(--muted); font-weight: 600; }
+
+  .body { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1;
+    transition: opacity .25s, filter .25s; }
+  .activity { background: var(--face); border: 1px solid var(--border); border-radius: 14px;
+    padding: 9px 11px; font-size: 11px; color: #d7dcd5; display: flex; gap: 8px; align-items: center; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--sky); flex: none; }
+  .tiles { display: flex; gap: 8px; }
+  .tile { flex: 1; border-radius: 14px; padding: 9px 11px; color: #14170F; }
+  .tile .n { font-size: 20px; font-weight: 800; line-height: 1; }
+  .tile .t { font-size: 9px; font-weight: 700; margin-top: 3px; }
+  .tile.done { background: var(--mint); }
+  .tile.wait { background: var(--grey); }
+  .sectionTitle { display: flex; justify-content: space-between; font-size: 11px;
+    font-weight: 800; margin-top: 2px; }
+  .sectionTitle span:last-child { color: var(--muted); font-weight: 600; }
+  .pact { border-radius: 16px; padding: 12px; color: #14170F; flex: 1; min-height: 120px;
+    display: flex; flex-direction: column; justify-content: space-between; }
+  .pact .title { font-size: 15px; font-weight: 800; }
+  .pact .count { font-size: 26px; font-weight: 800; line-height: 1; }
+  .pact .count small { font-size: 12px; font-weight: 700; }
+  .pact .cta { background: #14170F; color: var(--ink); border-radius: 10px;
+    text-align: center; font-size: 11px; font-weight: 700; padding: 8px; }
+  .nav { display: flex; justify-content: space-around; padding: 8px 0 12px; margin-top: 8px;
+    font-size: 8px; color: var(--muted); }
+  .nav b { color: var(--ink); background: #E7E9E4; color: #14170F; padding: 4px 8px;
+    border-radius: 8px; font-size: 8px; }
+
+  .avatars { display: flex; }
+  .av { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--face);
+    margin-left: -6px; font-size: 8px; font-weight: 800; color: #14170F;
+    display: flex; align-items: center; justify-content: center; }
+  .av:first-child { margin-left: 0; }
+
+  /* ---- 1. rail ---- */
+  /* No side padding on the box, so the next name cannot peek into the gutter. */
+  .rail { overflow: hidden; padding-left: 0; padding-right: 0; }
+  .rail > .label { padding-left: 12px; }
+  .railItem { padding: 0 12px; }
+  .railTrack { display: flex; width: 100%; transition: transform .32s cubic-bezier(.22,1,.36,1); }
+  .railItem { flex: 0 0 100%; min-width: 100%; }
+  .railItem .crewName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding-right: 34px; font-size: 18px; }
+  .railDots { display: flex; gap: 4px; position: absolute; right: 12px; bottom: 9px; }
+  .railDots i { width: 5px; height: 5px; border-radius: 3px; background: #4b524a; transition: all .25s; }
+  .railDots i.on { width: 14px; background: var(--mint); }
+  .thumb { position: absolute; width: 46px; height: 46px; border-radius: 50%;
+    border: 2px solid rgba(140,220,172,.8); background: rgba(140,220,172,.14);
+    pointer-events: none; opacity: 0; transition: opacity .2s; }
+
+  /* ---- 2. folder tabs ---- */
+  .tabs { display: flex; gap: 3px; padding-left: 10px; }
+  .tab { flex: 1; min-width: 0; font-size: 9.5px; font-weight: 800; padding: 6px 8px 14px;
+    margin-bottom: -10px; border-radius: 11px 11px 0 0; background: #1b201b; color: #8d958a;
+    border: 1px solid var(--border); border-bottom: none; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: transform .2s, background .2s, color .2s; }
+  /* The selected tab shares the header's fill, so the two read as one folder. */
+  .tab.on { background: var(--face); color: var(--ink); border-color: var(--mint);
+    transform: translateY(-3px); z-index: 3; }
+  .tab.on::after { content: ''; position: absolute; left: 8px; right: 8px; top: 3px;
+    height: 2px; border-radius: 2px; background: var(--mint); }
+  .tab .pip { position: absolute; top: 5px; right: 6px; width: 5px; height: 5px;
+    border-radius: 50%; background: var(--coral); }
+
+  /* ---- 3. fan ---- */
+  .fanLayer { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+  .scrim { position: absolute; inset: 0; background: rgba(10,12,10,.72);
+    opacity: 0; transition: opacity .28s; }
+  .fanCard {
+    position: absolute; left: 50%; top: 78px; width: 218px; margin-left: -109px;
+    border-radius: 16px; padding: 13px 14px; color: #14170F; cursor: pointer;
+    transform: translateY(-90px) scale(.9); opacity: 0;
+    transition: transform .36s cubic-bezier(.2,1.1,.3,1), opacity .24s;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45);
+  }
+  .fanCard .fn { font-size: 15px; font-weight: 800; }
+  .fanCard .fm { font-size: 10px; font-weight: 600; opacity: .72; margin-top: 2px; }
+  .fanCard .bar { height: 5px; border-radius: 3px; background: rgba(20,23,15,.22); margin-top: 8px; }
+  .fanCard .bar i { display: block; height: 100%; border-radius: 3px; background: #14170F; }
+  .open .scrim { opacity: 1; }
+  .open .fanLayer { pointer-events: auto; }
+  .open .fanCard { opacity: 1; }
+
+  /* ---- 4. dial ---- */
+  .dialLayer { position: absolute; inset: 0; z-index: 30; pointer-events: none; opacity: 0;
+    transition: opacity .2s; }
+  .dialLayer.on { opacity: 1; pointer-events: auto; }
+  .dialScrim { position: absolute; inset: 0; background: rgba(10,12,10,.6); }
+  .pip {
+    position: absolute; width: 62px; height: 62px; border-radius: 50%; margin: -31px 0 0 -31px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 800; color: #14170F; text-align: center; line-height: 1.15;
+    padding: 0 5px;
+    transform: scale(.4); opacity: 0; transition: transform .26s cubic-bezier(.2,1.2,.3,1), opacity .2s;
+    border: 2px solid transparent;
+  }
+  .dialLayer.on .pip { transform: scale(1); opacity: 1; }
+  .pip.sel { transform: scale(1.18); border-color: var(--ink); }
+  .dialHand { position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+    border-radius: 50%; border: 2px dashed rgba(243,245,242,.35); }
+
+  /* ---- 5. deck ---- */
+  .deck { position: relative; flex: 1; min-height: 76px; }
+  .deckCard {
+    position: absolute; left: 0; right: 0; top: 0; height: 58px; border-radius: 18px; padding: 9px 12px;
+    background: var(--face); border: 1px solid var(--border);
+    display: flex; flex-direction: column; justify-content: center;
+    transition: transform .34s cubic-bezier(.22,1,.36,1), opacity .3s;
+    cursor: grab;
+  }
+  .deckCard.flying { transition: transform .3s ease-in, opacity .3s ease-in; }
+  .badge { position: absolute; right: 10px; top: 9px; font-size: 8px; font-weight: 800;
+    color: var(--canvas); background: var(--lemon); border-radius: 5px; padding: 2px 5px; }
+  code { color: #8d958a; font-size: 12px; }
+  @media (max-width: 880px) { .concept { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Switching crews without a dropdown</h1>
+  <p class="lede">Five replacements for the <code>YOUR CREW ⌄</code> menu, drawn on the real Home screen.
+  Each one is live — drag, tap or hold the header in the phone to feel the mechanic.</p>
+  <p class="hint">Sample crews: Hangboardasi · Early Birds · Sunday Long Run</p>
+
+  <div class="concepts" id="concepts"></div>
+</div>
+
+<script>
+const CREWS = [
+  { name: 'Hangboardasi', members: 3, in: 1, colour: 'var(--lemon)', short: 'HB' },
+  { name: 'Early Birds',  members: 5, in: 4, colour: 'var(--mint)',  short: 'EB' },
+  { name: 'Sunday Run',   members: 4, in: 0, colour: 'var(--coral)', short: 'SR' },
+];
+
+/* The page body under the header, so each concept sits on the real screen. */
+function bodyMarkup(i) {
+  const c = CREWS[i];
+  return `
+  <div class="body">
+    <div class="activity"><span class="dot" style="background:${c.colour}"></span>
+      <span><b>${c.in ? 'Jasmin checked in' : 'Nobody yet today'}</b> · ${c.name}</span></div>
+    <div class="tiles">
+      <div class="tile done"><div class="n">${c.in}</div><div class="t">checked in</div></div>
+      <div class="tile wait"><div class="n">${c.members - c.in}</div><div class="t">not yet</div></div>
+    </div>
+    <div class="sectionTitle"><span>YOUR PACTS</span><span>3 pacts</span></div>
+    <div class="pact" style="background:${c.colour}">
+      <div class="title">${['Hangboard','Run 5k','Long run'][i]}</div>
+      <div class="count">${c.in}<small> / 5 days</small></div>
+      <div class="cta">Check in</div>
+    </div>
+  </div>
+  <div class="nav"><b>Home</b><span>Feed</span><span>Pacts</span><span>Crews</span><span>Account</span></div>`;
+}
+
+function phone(inner) {
+  return `<div class="phone"><div class="screen">
+    <div class="status"><span>18:31</span><span>􀙇 􀛨</span></div>${inner}</div></div>`;
+}
+
+function streak(weeks) {
+  return `<div class="streak"><div class="label">STREAK</div>
+    <div class="big">${weeks} <span>weeks</span></div></div>`;
+}
+
+const CONCEPTS = [
+  {
+    id: 'rail',
+    title: 'Crew rail',
+    gesture: 'SWIPE THE HEADER',
+    copy: `The header becomes a one-item-wide carousel. Swipe it sideways and the crew name slides
+           across like a tape, dots on the right showing where you are.`,
+    why: `Costs nothing to discover — people already swipe the pact stack right below it, so the
+          gesture is taught elsewhere in the app. Fastest possible switch: one thumb flick, no menu,
+          no target to hit.`,
+    tradeoff: `<b>Watch out:</b> you can only reach the next crew, so it stops scaling past four or
+               five. Needs the dots to hint that anything is there at all.`,
+  },
+  {
+    id: 'tabs',
+    title: 'Folder tabs',
+    gesture: 'TAP A TAB',
+    copy: `Crews become paper tabs sitting on top of the header, like dividers in a binder. The
+           active one is filled and pushed up; the others wait behind it.`,
+    why: `Every crew is visible at once, and each tab can carry a dot when someone checked in there.
+          It borrows the tab shape the Today card already uses, so it looks native to the app.`,
+    tradeoff: `<b>Watch out:</b> tab width shrinks with long crew names, and past four crews they
+               have to scroll or truncate.`,
+  },
+  {
+    id: 'fan',
+    title: 'Card fan',
+    gesture: 'TAP THE HEADER',
+    copy: `Tapping the header deals the crews out like a hand of cards — each one a real card with
+           its colour, today's check-in count and who's still missing. Tap one and the hand collapses
+           back into the header.`,
+    why: `A dropdown lists names; this shows state. You pick the crew that needs you today rather
+          than the one you remember the name of.`,
+    tradeoff: `<b>Watch out:</b> it is still a menu, just a better looking one — two taps, and it
+               covers the screen while open.`,
+  },
+  {
+    id: 'dial',
+    title: 'Thumb dial',
+    gesture: 'PRESS AND HOLD',
+    copy: `Hold the header and the crews arc out around your thumb. Slide onto one and let go. Never
+           lift your hand, never aim at a list item.`,
+    why: `The fastest one-handed switch of the five, and it scales to six crews without shrinking
+          anything. Feels like a game radial menu — memorable, and the muscle memory sticks.`,
+    tradeoff: `<b>Watch out:</b> invisible until you hold, so it needs the plain tap to still open a
+               list for anyone who never discovers it.`,
+  },
+  {
+    id: 'deck',
+    title: 'Crew deck',
+    gesture: 'FLICK THE CARD AWAY',
+    copy: `The header is a small deck of cards. Flick the top one aside and it flies off to reveal
+           the next crew, with the deck edges stacked behind it.`,
+    why: `It is the exact gesture the pact stack uses, moved to the header — one interaction idiom
+          for the whole screen. Physical and a little addictive.`,
+    tradeoff: `<b>Watch out:</b> two horizontal swipe zones on one screen can collide, and you can
+               only go forward through the deck.`,
+  },
+];
+
+/* ---------- markup per concept ---------- */
+function headerFor(concept, i) {
+  const c = CREWS[i];
+  if (concept === 'rail') {
+    return `<div class="headerRow">
+      <div class="crewBox rail" data-rail>
+        <div class="label">YOUR CREW</div>
+        <div class="railTrack" data-track>
+          ${CREWS.map(x => `<div class="railItem"><div class="crewName">${x.name}</div></div>`).join('')}
+        </div>
+        <div class="railDots">${CREWS.map((_, k) =>
+          `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      </div>${streak(3)}</div>`;
+  }
+  if (concept === 'tabs') {
+    return `<div class="tabs">${CREWS.map((x, k) => `
+      <div class="tab ${k === i ? 'on' : ''}" data-tab="${k}">${x.name}
+        ${x.in === 0 && k !== i ? '<span class="pip"></span>' : ''}</div>`).join('')}</div>
+      <div class="headerRow" style="margin-top:0">
+      <div class="crewBox" style="border-color:var(--mint);z-index:2">
+        <div class="label">YOUR CREW</div>
+        <div class="crewName">${c.name}</div>
+      </div>${streak(3)}</div>`;
+  }
+  if (concept === 'fan') {
+    return `<div class="headerRow">
+      <div class="crewBox" data-fanbtn style="cursor:pointer">
+        <div class="label">YOUR CREW</div>
+        <div class="crewName">${c.name} <span style="font-size:12px;color:var(--muted)">▾</span></div>
+      </div>${streak(3)}</div>
+      <div class="fanLayer"><div class="scrim" data-scrim></div>
+        ${CREWS.map((x, k) => `
+          <div class="fanCard" data-pick="${k}" style="background:${x.colour}">
+            <div class="fn">${x.name}</div>
+            <div class="fm">${x.in} of ${x.members} checked in today</div>
+            <div class="bar"><i style="width:${(x.in / x.members) * 100}%"></i></div>
+          </div>`).join('')}
+      </div>`;
+  }
+  if (concept === 'dial') {
+    return `<div class="headerRow">
+      <div class="crewBox" data-dialbtn style="cursor:pointer">
+        <div class="label">YOUR CREW · HOLD TO SWITCH</div>
+        <div class="crewName">${c.name}</div>
+      </div>${streak(3)}</div>
+      <div class="dialLayer"><div class="dialScrim"></div>
+        <div class="dialHand" data-hand></div>
+        ${CREWS.map((x, k) => `
+          <div class="pip" data-pip="${k}" style="background:${x.colour}">
+            ${x.name}<span style="font-weight:700;opacity:.65;font-size:9px">${x.in}/${x.members}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+  return `<div class="headerRow">
+      <div class="deck">
+        ${CREWS.map((x, k) => `
+          <div class="deckCard" data-card="${k}">
+            <div class="label">YOUR CREW</div>
+            <div class="crewName">${x.name}</div>
+            ${x.in ? `<span class="badge">${x.in} IN</span>` : ''}
+          </div>`).join('')}
+      </div>${streak(3)}</div>`;
+}
+
+function render() {
+  document.getElementById('concepts').innerHTML = CONCEPTS.map(c => `
+    <section class="concept" data-concept="${c.id}">
+      ${phone(`<div data-header></div><div data-body></div>`)}
+      <div class="copy">
+        <span class="gesture">${c.gesture}</span>
+        <h2>${c.title}</h2>
+        <p>${c.copy}</p>
+        <p class="why">${c.why}</p>
+        <div class="tradeoff">${c.tradeoff}</div>
+      </div>
+    </section>`).join('');
+  CONCEPTS.forEach(c => paint(c.id, 0));
+}
+
+const state = {};
+function paint(id, index) {
+  state[id] = index;
+  const section = document.querySelector(`[data-concept="${id}"]`);
+  section.querySelector('[data-header]').innerHTML = headerFor(id, index);
+  section.querySelector('[data-body]').innerHTML = bodyMarkup(index);
+  wire(id, section, index);
+}
+
+/* ---------- behaviour ---------- */
+function wire(id, section, index) {
+  const screen = section.querySelector('.screen');
+
+  if (id === 'rail') {
+    const rail = section.querySelector('[data-rail]');
+    const track = section.querySelector('[data-track]');
+    track.style.transform = `translateX(${-index * 100}%)`;
+    let startX = null;
+    rail.addEventListener('pointerdown', e => { startX = e.clientX; rail.setPointerCapture(e.pointerId); });
+    rail.addEventListener('pointermove', e => {
+      if (startX === null) return;
+      const drag = (e.clientX - startX) / rail.offsetWidth;
+      track.style.transition = 'none';
+      track.style.transform = `translateX(${(-index + drag * .9) * 100}%)`;
+    });
+    const end = e => {
+      if (startX === null) return;
+      const moved = (e.clientX ?? startX) - startX;
+      startX = null;
+      track.style.transition = '';
+      const next = Math.min(CREWS.length - 1, Math.max(0, index + (moved < -30 ? 1 : moved > 30 ? -1 : 0)));
+      if (next === index) { track.style.transform = `translateX(${-index * 100}%)`; return; }
+      paint(id, next);
+    };
+    rail.addEventListener('pointerup', end);
+    rail.addEventListener('pointercancel', end);
+  }
+
+  if (id === 'tabs') {
+    section.querySelectorAll('[data-tab]').forEach(tab =>
+      tab.addEventListener('click', () => paint(id, +tab.dataset.tab)));
+  }
+
+  if (id === 'fan') {
+    const layer = section.querySelector('.fanLayer');
+    const cards = [...section.querySelectorAll('.fanCard')];
+    const close = () => screen.classList.remove('open');
+    const spread = [[-6, 0, 104], [0, 0, 190], [6, 0, 276]];
+    cards.forEach((card, k) => {
+      const [rot, y, top] = spread[k];
+      card.style.setProperty('--r', rot);
+      card.addEventListener('click', () => { close(); setTimeout(() => paint(id, k), 120); });
+      card.dataset.rot = rot; card.dataset.y = y; card.style.top = top + 'px';
+    });
+    const open = () => {
+      screen.classList.add('open');
+      cards.forEach((card, k) => {
+        card.style.transitionDelay = (k * 45) + 'ms';
+        card.style.transform = `translateY(0) rotate(${card.dataset.rot}deg) scale(1)`;
+      });
+    };
+    section.querySelector('[data-fanbtn]').addEventListener('click', open);
+    section.querySelector('[data-scrim]').addEventListener('click', () => {
+      cards.forEach(card => { card.style.transform = ''; card.style.transitionDelay = '0ms'; });
+      close();
+    });
+  }
+
+  if (id === 'dial') {
+    const layer = section.querySelector('.dialLayer');
+    const hand = section.querySelector('[data-hand]');
+    const pips = [...section.querySelectorAll('[data-pip]')];
+    const button = section.querySelector('[data-dialbtn]');
+    let holding = false, chosen = index, timer = null;
+
+    const place = (x, y) => {
+      hand.style.left = x + 'px'; hand.style.top = y + 'px';
+      // The header sits at the top of the screen, so the arc has to open downward.
+      const spread = Math.PI * .62, start = Math.PI * .12, radius = 108;
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      pips.forEach((pip, k) => {
+        const angle = start + (spread * k) / (pips.length - 1);
+        pip.style.left = clamp(x + Math.cos(angle) * radius, 36, screen.clientWidth - 36) + 'px';
+        pip.style.top = clamp(y + Math.sin(angle) * radius, 36, screen.clientHeight - 36) + 'px';
+        pip.style.transitionDelay = (k * 40) + 'ms';
+      });
+    };
+    const highlight = (x, y) => {
+      let best = null, bestDistance = 70;
+      pips.forEach((pip, k) => {
+        const box = pip.getBoundingClientRect();
+        const screenBox = screen.getBoundingClientRect();
+        const dx = x - (box.left - screenBox.left + box.width / 2);
+        const dy = y - (box.top - screenBox.top + box.height / 2);
+        const distance = Math.hypot(dx, dy);
+        if (distance < bestDistance) { bestDistance = distance; best = k; }
+      });
+      pips.forEach((pip, k) => pip.classList.toggle('sel', k === best));
+      chosen = best === null ? index : best;
+    };
+    const local = e => {
+      const box = screen.getBoundingClientRect();
+      return [e.clientX - box.left, e.clientY - box.top];
+    };
+    let sticky = false;
+    button.addEventListener('pointerdown', e => {
+      const [x, y] = local(e);
+      screen.setPointerCapture(e.pointerId);
+      timer = setTimeout(() => { holding = true; place(x, y); layer.classList.add('on'); }, 160);
+    });
+    screen.addEventListener('pointermove', e => { if (holding) highlight(...local(e)); });
+    pips.forEach((pip, k) => pip.addEventListener('click', () => {
+      layer.classList.remove('on');
+      sticky = false;
+      if (k !== index) setTimeout(() => paint(id, k), 120);
+    }));
+    section.querySelector('.dialScrim').addEventListener('click', () => {
+      layer.classList.remove('on');
+      sticky = false;
+    });
+    const release = e => {
+      clearTimeout(timer);
+      if (!holding) {
+        // Tapped rather than held: leave the arc up so it can be clicked.
+        if (!sticky) { sticky = true; place(...local(e)); layer.classList.add('on'); }
+        return;
+      }
+      holding = false;
+      layer.classList.remove('on');
+      if (chosen !== index) setTimeout(() => paint(id, chosen), 120);
+    };
+    screen.addEventListener('pointerup', release);
+    screen.addEventListener('pointercancel', release);
+  }
+
+  if (id === 'deck') {
+    const cards = [...section.querySelectorAll('[data-card]')];
+    const order = k => (k - index + CREWS.length) % CREWS.length;
+    cards.forEach(card => {
+      const depth = order(+card.dataset.card);
+      card.style.zIndex = 10 - depth;
+      card.style.transform = `translate(${depth * 3}px, ${depth * 8}px) scale(${1 - depth * .04})`;
+      card.style.opacity = depth > 2 ? 0 : 1;
+      if (depth !== 0) return;
+      let startX = null;
+      card.addEventListener('pointerdown', e => { startX = e.clientX; card.setPointerCapture(e.pointerId); });
+      card.addEventListener('pointermove', e => {
+        if (startX === null) return;
+        const dx = e.clientX - startX;
+        card.style.transition = 'none';
+        card.style.transform = `translate(${dx}px, 0) rotate(${dx * .04}deg)`;
+      });
+      const end = e => {
+        if (startX === null) return;
+        const dx = (e.clientX ?? startX) - startX;
+        startX = null;
+        card.style.transition = '';
+        if (dx < -40) {
+          card.classList.add('flying');
+          card.style.transform = 'translate(-360px, -20px) rotate(-16deg)';
+          card.style.opacity = '0';
+          setTimeout(() => paint('deck', (index + 1) % CREWS.length), 260);
+        } else {
+          card.style.transform = 'translate(0,0)';
+        }
+      };
+      card.addEventListener('pointerup', end);
+      card.addEventListener('pointercancel', end);
+    });
+  }
+}
+
+render();
+</script>
+</body>
+</html>
