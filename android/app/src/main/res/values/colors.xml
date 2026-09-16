@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app has a single light theme; the splash matches its canvas. -->
+    <color name="canvas">#2B302C</color>
+</resources>

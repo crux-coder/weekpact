@@ -142,7 +142,7 @@ void main() {
                 find.byType(AppBottomNavigationBar),
               )
               .selectedIndex,
-          outcome == 'accept' ? 0 : 2,
+          outcome == 'accept' ? 0 : 3,
         );
         if (outcome == 'accept') {
           expect(home.fetches, greaterThan(0));

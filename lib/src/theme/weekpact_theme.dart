@@ -32,7 +32,8 @@ abstract final class WeekPactMetrics {
 }
 
 abstract final class WeekPactColors {
-  static const pendingCheckIns = Color(0xFFC6C9C3);
+  // Cool neutral, so waiting reads as its own state rather than washed-out mint.
+  static const pendingCheckIns = Color(0xFFC4CDD4);
   static const success = Color(0xFF4C8C5D);
   static const warning = Color(0xFFC48A42);
   static const outlineInk = Color(0xFF161C23);
@@ -42,8 +43,8 @@ abstract final class WeekPactColors {
   static const salmon = Color(0xFFFF836F);
   static const black = Color(0xFF191B19);
   static const cream = Color(0xFFF5F6F5);
-  static const lightCanvas = Color(0xFFF7F3E9);
-  static const darkCanvas = Color(0xFF191B19);
+  static const lightCanvas = Color(0xFFECEDEA);
+  static const darkCanvas = Color(0xFF2B302C);
   static const darkSurface = Color(0xFF282D28);
   static const darkInk = Color(0xFFF3F5F2);
   static const darkBorder = Color(0xFF747E70);
@@ -56,26 +57,33 @@ abstract final class WeekPactColors {
   static const darkAccent = coolGrey;
   static const darkError = Color(0xFFFFA8AE);
   static const softYellow = Color(0xFFF4D88F);
-  static const mintGreen = Color(0xFFC2D8AC);
+  static const mintGreen = Color(0xFF8CDCAC);
   static const bubblegumPink = Color(0xFFEAC7D4);
   static const pinkInk = Color(0xFF505550);
-  static const softCoral = Color(0xFFF0C6B6);
-  static const stone = Color(0xFFDCD0BB);
-  static const coolGrey = Color(0xFFB9CBD0);
+  static const softCoral = Color(0xFFF9BBA8);
+  static const stone = Color(0xFFEFD98D);
+  static const coolGrey = Color(0xFFA7D6F0);
   static const neutralInset = Color(0xFFDDDFD7);
   static const activitySurface = Color(0xFF292A29);
+  // Card tints carry real colour, held light enough for near-black card ink.
   static const pactPalette = <Color>[
-    stone,
-    coolGrey,
-    Color(0xFFD3C3B9), // Warm grey.
-    Color(0xFFC4CEBF), // Silver sage.
-    Color(0xFFCCC2D4), // Ash.
-    Color(0xFFD8CBAF), // Oat.
-    Color(0xFFBFCFCA), // Mist.
-    Color(0xFFD0C6BA), // Pebble.
-    Color(0xFFC0C8D5), // Slate.
-    Color(0xFFD8CDBF), // Linen.
+    Color(0xFFE8D05A), // Lemon.
+    Color(0xFF8CDCAC), // Mint.
+    Color(0xFF8AC9EC), // Sky.
+    Color(0xFFF9A08A), // Coral.
+    Color(0xFFBCA9EE), // Lavender.
+    Color(0xFFF7C382), // Peach.
+    Color(0xFFC4E07A), // Lime.
+    Color(0xFF89D7D2), // Aqua.
+    Color(0xFFE3A8D6), // Orchid.
+    Color(0xFFEFD98D), // Butter.
   ];
+
+  /// A pact's card colour, by its position in the crew's pact list. Home, the
+  /// crew week and the pacts grid all read it, so one pact looks the same
+  /// wherever it appears.
+  static Color pactTint(int index) => pactPalette[index % pactPalette.length];
+
   static const mutedLight = Color(0xFF51564F);
   static const error = Color(0xFFC94F59);
 }

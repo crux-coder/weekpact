@@ -432,6 +432,22 @@ memberships, ownership, pacts, and check-ins are preserved.
 Run `node tool/test_multi_crew_database.mjs` (with `PGLITE_MODULE` set if needed)
 and `flutter test test/multiple_crews_test.dart` for the focused regression checks.
 
+### Check-in feed
+
+Apply `20260916120000_add_check_in_feed.sql` before releasing the updated app. It
+adds the `check_in_feed` RPC, which returns one paginated page of check-ins across
+every crew the caller belongs to — author display name and avatar path, crew name,
+pact title and icon, and the photo path — plus the index that orders it.
+Membership is re-checked per row, so leaving a crew removes its posts from the
+feed. No existing data changes.
+
+The Feed destination sits between Home and Pacts and replaces Home's crew history
+panel, which is removed. Photos and avatars load as short-lived signed URLs, one
+batch per page.
+
+Focused checks: `flutter test test/feed_test.dart` and
+`node tool/test_check_in_feed_database.mjs` (with `PGLITE_MODULE` set if needed).
+
 ### Photo check-ins
 
 New check-ins open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after

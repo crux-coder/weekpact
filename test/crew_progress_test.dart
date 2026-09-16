@@ -38,11 +38,17 @@ void main() {
         );
         await tester.pumpUi();
         expect(
-          find.bySemanticsLabel('Checked in today · $count'),
+          find.bySemanticsLabel(
+            count == 2 ? 'Whole crew is in today' : 'Checked in today · $count',
+          ),
           count == 0 ? findsNothing : findsOneWidget,
         );
         expect(
-          find.bySemanticsLabel('Not yet today · ${2 - count}'),
+          find.bySemanticsLabel(
+            count == 0
+                ? 'Nobody has checked in today · 2 to go'
+                : 'Not yet today · ${2 - count}',
+          ),
           count == 2 ? findsNothing : findsOneWidget,
         );
         final checkedTile = find.byKey(const ValueKey('checked-tile'));
@@ -54,12 +60,12 @@ void main() {
           expect(checkedTile, findsNothing);
           expect(tester.getSize(pendingTile).width, boardWidth);
           expect(find.text('0/2'), findsNothing);
-          expect(find.text('Not yet · 2'), findsOneWidget);
+          expect(find.text('Be the first in today'), findsOneWidget);
         } else if (count == 2) {
           expect(pendingTile, findsNothing);
           expect(tester.getSize(checkedTile).width, boardWidth);
           expect(find.text('2/2'), findsNothing);
-          expect(find.text('Checked in · 2'), findsOneWidget);
+          expect(find.text('Whole crew is in'), findsOneWidget);
         } else {
           expect(
             tester.getSize(checkedTile).width,

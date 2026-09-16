@@ -11,6 +11,7 @@ import '../crew/crew_week_page.dart';
 
 import 'dart:async';
 
+import '../feed/feed_page.dart';
 import 'home_backend.dart';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,11 @@ class _HomePageState extends State<HomePage> {
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
       color: WeekPactColors.stone,
+    ),
+    AppNavigationItem(
+      label: 'Feed',
+      icon: HugeIconsStrokeRounded.image02,
+      color: WeekPactColors.coolGrey,
     ),
     AppNavigationItem(
       label: 'Pacts',
@@ -187,20 +193,26 @@ class _HomePageState extends State<HomePage> {
             captureCheckInPhoto: widget.captureCheckInPhoto,
             active: _selectedIndex == 0,
             onStartCrew: _startCrew,
-            onOpenCrews: () => _selectDestination(2),
-            onOpenPacts: () => _selectDestination(1),
+            onOpenCrews: () => _selectDestination(3),
+            onOpenPacts: () => _selectDestination(2),
+            onOpenFeed: () => _selectDestination(1),
+          ),
+          FeedPage(
+            backend: widget.homeBackend,
+            userId: widget.user.id,
+            active: _selectedIndex == 1,
           ),
           PactsPage(
-            active: _selectedIndex == 1,
+            active: _selectedIndex == 2,
             backend: widget.pactsBackend,
             loadWeek: widget.homeBackend.fetchWeek,
             userId: widget.user.id,
             selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
-            onOpenCrews: () => _selectDestination(2),
+            onOpenCrews: () => _selectDestination(3),
           ),
           CrewPage(
-            active: _selectedIndex == 2,
+            active: _selectedIndex == 3,
             onInviteAccepted: () => _selectDestination(0),
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
@@ -245,6 +257,7 @@ class _HomeDestination extends StatefulWidget {
     this.onCrewSelected,
     required this.onOpenCrews,
     required this.onOpenPacts,
+    required this.onOpenFeed,
     required this.onStartCrew,
   });
   final CheckInPhotoCapture? captureCheckInPhoto;
@@ -256,6 +269,7 @@ class _HomeDestination extends StatefulWidget {
   final bool active;
   final VoidCallback onOpenCrews;
   final VoidCallback onOpenPacts;
+  final VoidCallback onOpenFeed;
   final VoidCallback onStartCrew;
   @override
   State<_HomeDestination> createState() => _HomeDestinationState();
@@ -466,7 +480,9 @@ class _HomeDestinationState extends State<_HomeDestination>
                           child: SizedBox(
                             width: constraints.maxWidth,
                             height: constraints.maxHeight.clamp(
-                              302 +
+                              // Banner, latest-check-in strip, crew tiles and a
+                              // usable pact card; shorter viewports scale down.
+                              312 +
                                   CrewTitleBanner.height +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
@@ -566,6 +582,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         week: week,
                                         userId: widget.userId,
                                         onOpen: _openCrewWeek,
+                                        onOpenFeed: widget.onOpenFeed,
                                       ),
                                       const SizedBox(height: 12),
                                       if (_saveError != null)

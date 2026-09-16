@@ -25,6 +25,11 @@ import 'crew_member_list.dart';
 
 const _ink = homeInk;
 
+/// A completed day or check-in: a cream inset with a green mark, legible on
+/// every card tint. The raised edge is mixed per card from its own colour.
+const _doneFill = WeekPactColors.cream;
+const _doneMark = Color(0xFF3F7A57);
+
 class CrewTitleBanner extends StatelessWidget {
   static const height = 76.0;
   const CrewTitleBanner({
@@ -404,11 +409,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                                           pact: pacts[index],
                                           week: widget.week,
                                           userId: widget.userId,
-                                          color:
-                                              WeekPactColors.pactPalette[index %
-                                                  WeekPactColors
-                                                      .pactPalette
-                                                      .length],
+                                          color: WeekPactColors.pactTint(index),
                                           busy:
                                               widget.savingPact ==
                                               pacts[index].id,
@@ -539,14 +540,11 @@ class _PactCompletionEffectState extends State<_PactCompletionEffect>
                       child: Container(
                         key: const ValueKey('pact-completion-effect'),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF8DBD70).withValues(alpha: .09),
+                          color: _doneFill.withValues(alpha: .14),
                           borderRadius: BorderRadius.circular(
                             WeekPactMetrics.cardRadius,
                           ),
-                          border: Border.all(
-                            color: const Color(0xFF80AB64),
-                            width: 2,
-                          ),
+                          border: Border.all(color: _doneMark, width: 2),
                         ),
                         child: Center(
                           child: Transform.translate(
@@ -562,12 +560,12 @@ class _PactCompletionEffectState extends State<_PactCompletionEffect>
                                 width: 58,
                                 height: 58,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFD0E5BA),
+                                  color: _doneFill,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const HugeIcon(
                                   icon: HugeIconsStrokeRounded.tick02,
-                                  color: Color(0xFF375D31),
+                                  color: _doneMark,
                                   size: 34,
                                 ),
                               ),
@@ -615,6 +613,10 @@ class _PactCard extends StatelessWidget {
     final checked = week.checkedToday(userId).contains(pact.id);
     final start = DateTime.parse(week.weekStart);
     final completed = week.days(pact.id, userId);
+    // Completion reads as a cream inset with a green mark, so the cue works on
+    // every card tint instead of fighting the warm ones. Its edge is mixed from
+    // the card's own colour, which keeps the raised edge in family.
+    final doneEdge = Color.lerp(color, Colors.black, .35)!;
     return HomeSurface(
       tint: color,
       radius: 18,
@@ -780,7 +782,7 @@ class _PactCard extends StatelessWidget {
                               margin: const EdgeInsets.symmetric(horizontal: 2),
                               decoration: BoxDecoration(
                                 color: done
-                                    ? WeekPactColors.mintGreen
+                                    ? _doneFill
                                     : Colors.white.withValues(alpha: .35),
                                 border: Border.all(
                                   color: _ink.withValues(
@@ -790,9 +792,9 @@ class _PactCard extends StatelessWidget {
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: done
-                                    ? const [
+                                    ? [
                                         BoxShadow(
-                                          color: Color(0xFF9AAF87),
+                                          color: doneEdge,
                                           offset: WeekPactMetrics.raisedOffset,
                                         ),
                                       ]
@@ -848,7 +850,7 @@ class _PactCard extends StatelessWidget {
                                           ? const HugeIcon(
                                               icon: HugeIconsStrokeRounded
                                                   .checkmarkCircle02,
-                                              color: Color(0xFF4C8050),
+                                              color: _doneMark,
                                               size: 12,
                                             )
                                           : const SizedBox.shrink(),
@@ -867,6 +869,7 @@ class _PactCard extends StatelessWidget {
                         pactTitle: pact.title,
                         busy: busy,
                         onUndo: onToggle,
+                        edge: doneEdge,
                       )
                     else
                       Container(
@@ -931,6 +934,24 @@ class _PactCard extends StatelessWidget {
               ? fullIconSize + (previewSize - fullIconSize) * depth
               : previewSize * (1 - .25 * (depth - 1)).clamp(.5, 1.0);
           final iconSize = renderedIconSize / stackScale;
+          // Give the strip behind the active card a readable weekly score.
+          // Both edges of its reveal are eased so the digits never kink or
+          // overshoot while the gesture drags the stack back and forth: they
+          // glide onto the rule as the card falls into the second slot and
+          // leave with the icon as it is drawn forward.
+          final peekReveal =
+              Curves.easeInOut.transform(
+                ((depth - .55) / .45).clamp(0.0, 1.0),
+              ) *
+              Curves.easeInOut.transform(
+                (1 - (depth - 1) / .55).clamp(0.0, 1.0),
+              );
+          // Hold the type at its strip size instead of following the icon, which
+          // grows to full size as the card comes forward.
+          final readoutFont = previewSize * .95 / stackScale;
+          // Fade faster than the digits travel, so the pair is gone before it
+          // is close enough to read as one smudged glyph.
+          final peekOpacity = peekReveal * peekReveal;
           // Fade foreground content with the gesture while retaining the card tint.
           return Opacity(
             key: ValueKey('pact-content-opacity-${pact.id}'),
@@ -966,6 +987,68 @@ class _PactCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (peekReveal > 0)
+                  Positioned(
+                    key: ValueKey('pact-peek-score-${pact.id}'),
+                    right: -6,
+                    // Ride just under the icon so the two never collide while
+                    // the icon is still growing or shrinking.
+                    top: iconSize + 4 / stackScale,
+                    child: IgnorePointer(
+                      child: ExcludeSemantics(
+                        child: Opacity(
+                          opacity: peekOpacity,
+                          child: SizedBox(
+                            width: iconSize,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(
+                                    0,
+                                    readoutFont * .38 * (1 - peekReveal),
+                                  ),
+                                  child: _PeekNumeral(
+                                    value: completed,
+                                    size: readoutFont,
+                                  ),
+                                ),
+                                // The rule draws itself outward from the centre
+                                // as the two numerals close in on it.
+                                Container(
+                                  height: 1.5,
+                                  width: previewSize * .62 / stackScale,
+                                  margin: EdgeInsets.symmetric(
+                                    vertical: readoutFont * .12,
+                                  ),
+                                  transform: Matrix4.diagonal3Values(
+                                    peekReveal,
+                                    1,
+                                    1,
+                                  ),
+                                  transformAlignment: Alignment.center,
+                                  color: _ink.withValues(
+                                    alpha: .55 * peekOpacity,
+                                  ),
+                                ),
+                                Transform.translate(
+                                  offset: Offset(
+                                    0,
+                                    -readoutFont * .38 * (1 - peekReveal),
+                                  ),
+                                  child: _PeekNumeral(
+                                    value: pact.daysPerWeek,
+                                    size: readoutFont * .86,
+                                    alpha: .7,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           );
@@ -975,12 +1058,39 @@ class _PactCard extends StatelessWidget {
   }
 }
 
+/// A single digit in the stacked score shown on a card's exposed strip.
+class _PeekNumeral extends StatelessWidget {
+  const _PeekNumeral({required this.value, required this.size, this.alpha = 1});
+
+  final int value;
+  final double size;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    '$value',
+    maxLines: 1,
+    textAlign: TextAlign.center,
+    style: TextStyle(
+      fontFamily: 'Roboto',
+      fontFamilyFallback: const ['Arial'],
+      fontSize: size,
+      height: 1,
+      fontWeight: FontWeight.w900,
+      color: _ink.withValues(alpha: alpha),
+    ),
+  );
+}
+
 class _CompletedCheckIn extends StatelessWidget {
   const _CompletedCheckIn({
     required this.pactTitle,
     required this.busy,
     required this.onUndo,
+    required this.edge,
   });
+
+  final Color edge;
 
   final String pactTitle;
   final bool busy;
@@ -990,16 +1100,11 @@ class _CompletedCheckIn extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: 56,
     decoration: ShapeDecoration(
-      color: WeekPactColors.mintGreen,
+      color: _doneFill,
       shape: WeekPactMetrics.buttonShape.copyWith(
-        side: const BorderSide(color: Color(0xFF8D9F7D)),
+        side: BorderSide(color: edge),
       ),
-      shadows: const [
-        BoxShadow(
-          color: Color(0xFF9AAF87),
-          offset: WeekPactMetrics.raisedOffset,
-        ),
-      ],
+      shadows: [BoxShadow(color: edge, offset: WeekPactMetrics.raisedOffset)],
     ),
     padding: const EdgeInsets.only(left: 10),
     child: Row(
@@ -1015,7 +1120,7 @@ class _CompletedCheckIn extends StatelessWidget {
                 children: [
                   const HugeIcon(
                     icon: HugeIconsStrokeRounded.checkmarkCircle02,
-                    color: Color(0xFF4C8050),
+                    color: _doneMark,
                     size: 24,
                   ),
                   const SizedBox(width: 8),
@@ -1062,7 +1167,7 @@ class _CompletedCheckIn extends StatelessWidget {
                       dimension: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFF4C8050),
+                        color: _doneMark,
                       ),
                     )
                   : const FittedBox(
@@ -1086,6 +1191,149 @@ class _CompletedCheckIn extends StatelessWidget {
   );
 }
 
+/// The crew's freshest check-in, in the strip above the crew tiles. It is the
+/// one line on Home that changes without the viewer doing anything, so it opens
+/// the feed rather than restating what the tiles below already show.
+class LatestCheckInStrip extends StatelessWidget {
+  const LatestCheckInStrip({
+    super.key,
+    required this.week,
+    required this.userId,
+    this.now,
+    this.onOpenFeed,
+  });
+
+  final CrewWeek week;
+  final String userId;
+  final DateTime? now;
+  final VoidCallback? onOpenFeed;
+
+  /// How long ago, at the coarseness a feed reads at.
+  static String age(DateTime at, DateTime now) {
+    final elapsed = now.difference(at);
+    if (elapsed.inMinutes < 1) return 'just now';
+    if (elapsed.inMinutes < 60) return '${elapsed.inMinutes}m ago';
+    if (elapsed.inHours < 24) return '${elapsed.inHours}h ago';
+    return '${elapsed.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activity = week.latestActivity;
+    final member = week.members
+        .where((m) => m.id == activity?.userId)
+        .firstOrNull;
+    final pact = week.pacts.where((p) => p.id == activity?.pactId).firstOrNull;
+    final hasActivity = activity != null && member != null;
+    final name = activity?.userId == userId
+        ? 'You'
+        : member == null || member.displayName.trim().isEmpty
+        ? 'A crew member'
+        : member.displayName.trim().split(RegExp(r'\s+')).first;
+    final detail = hasActivity
+        ? '${pact?.title ?? 'a pact'} · ${age(activity.createdAt, now ?? DateTime.now())}'
+        : null;
+    final message = hasActivity
+        ? '$name checked in'
+        : 'Nobody has checked in yet today';
+    final open = onOpenFeed;
+    return Semantics(
+      button: open != null,
+      label: hasActivity
+          ? 'Latest check-in: $message · $detail'
+          : 'Latest check-in: $message',
+      hint: open == null ? null : 'Open the feed',
+      child: ExcludeSemantics(
+        // Its own surface, so the crew's latest reads as a thing to open rather
+        // than a caption on the tiles below it.
+        child: CrewHeaderSurface(
+          child: InkWell(
+            onTap: open,
+            child: Padding(
+              key: const ValueKey('latest-check-in'),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  if (hasActivity) ...[
+                    FlatAvatar(
+                      radius: 13,
+                      backgroundColor: WeekPactColors.mintGreen,
+                      child: AvatarClip(
+                        child: member.avatarUrl == null
+                            ? Text(
+                                member.initials,
+                                style: const TextStyle(
+                                  color: _ink,
+                                  fontSize: 10,
+                                ),
+                              )
+                            : Image.network(
+                                member.avatarUrl!,
+                                width: 26,
+                                height: 26,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Text(
+                                  member.initials,
+                                  style: const TextStyle(
+                                    color: _ink,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      // Text.rich, not RichText: the latter ignores the ambient
+                      // text style and would fall back to the platform font.
+                      child: Text.rich(
+                        maxLines: 1,
+                        TextSpan(
+                          style: TextStyle(
+                            color: context.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          children: [
+                            TextSpan(text: message),
+                            if (detail != null)
+                              TextSpan(
+                                text: '  ·  $detail',
+                                style: TextStyle(
+                                  color: context.muted,
+                                  fontFamily: 'Roboto',
+                                  fontFamilyFallback: const ['Arial'],
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (open != null) ...[
+                    const SizedBox(width: 8),
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.arrowRight01,
+                      color: context.muted,
+                      size: 18,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class TodayCrewCard extends StatelessWidget {
   const TodayCrewCard({
     super.key,
@@ -1095,15 +1343,20 @@ class TodayCrewCard extends StatelessWidget {
     this.crewName = '',
     this.height = groupHeight + headingHeight,
     this.showGroups = true,
+    this.onOpenFeed,
+    this.now,
   });
   final CrewWeek week;
   final String userId;
   final String crewName;
   final VoidCallback onOpen;
+  final VoidCallback? onOpenFeed;
+  final DateTime? now;
   final double height;
   final bool showGroups;
   static const groupHeight = 106.0;
-  static const headingHeight = 44.0;
+  // The latest-check-in surface plus the gap to the tiles below it.
+  static const headingHeight = 54.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1120,30 +1373,14 @@ class TodayCrewCard extends StatelessWidget {
         children: [
           SizedBox(
             height: headingHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'TODAY’S CHECK-INS',
-                        style: TextStyle(
-                          color: context.muted,
-                          fontFamily: 'Roboto',
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const SizedBox(width: 44),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: LatestCheckInStrip(
+                week: week,
+                userId: userId,
+                now: now,
+                onOpenFeed: onOpenFeed,
+              ),
             ),
           ),
           Expanded(
@@ -1249,8 +1486,19 @@ class CrewCheckInTile extends StatelessWidget {
   final double expandedHeight;
   final HomeBackend? backend;
   final String? crewId;
-  String get title =>
-      '${done ? 'Checked in today' : 'Not yet today'} · ${members.length}';
+
+  /// The tile's own words. When one side is empty the tile speaks for the whole
+  /// crew, so a bare count would read as a scoreline nobody asked for.
+  String get label => everyoneCheckedIn
+      ? 'Whole crew is in'
+      : awaitingFirstCheckIn
+      ? 'Be the first in today'
+      : '${done ? 'Checked in' : 'Not yet'} · ${members.length}';
+  String get title => everyoneCheckedIn
+      ? 'Whole crew is in today'
+      : awaitingFirstCheckIn
+      ? 'Nobody has checked in today · ${members.length} to go'
+      : '${done ? 'Checked in today' : 'Not yet today'} · ${members.length}';
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -1272,7 +1520,7 @@ class CrewCheckInTile extends StatelessWidget {
             shape: WeekPactMetrics.pactCardShape,
             shadows: [
               BoxShadow(
-                color: done ? const Color(0xFF9AAF87) : const Color(0xFFB8BBB8),
+                color: done ? const Color(0xFF649E7B) : const Color(0xFFB6BFC5),
                 offset: WeekPactMetrics.raisedOffset,
               ),
             ],
@@ -1285,8 +1533,8 @@ class CrewCheckInTile extends StatelessWidget {
             shape: WeekPactMetrics.pactCardShape,
             outlined: true,
             outlineColor: done
-                ? const Color(0xFF8D9F7D)
-                : const Color(0xFFAFB2AF),
+                ? const Color(0xFF5F9774)
+                : const Color(0xFFADB5BC),
             child: Stack(
               children: [
                 Column(
@@ -1304,7 +1552,7 @@ class CrewCheckInTile extends StatelessWidget {
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
-                                    '${done ? 'Checked in' : 'Not yet'} · ${members.length}',
+                                    label,
                                     style: const TextStyle(
                                       color: _ink,
                                       fontFamily: 'Roboto',
@@ -1488,7 +1736,7 @@ class CrewCheckInTile extends StatelessWidget {
                             width: size,
                             height: size,
                             decoration: ShapeDecoration(
-                              color: const Color(0xFFF7F3E9),
+                              color: WeekPactColors.cream,
                               shape: AvatarShape(
                                 side: BorderSide(
                                   color: _ink.withValues(alpha: .25),
@@ -1649,8 +1897,8 @@ class _TodaySkeletonState extends State<TodaySkeleton>
       shape: WeekPactMetrics.pactCardShape,
       raised: true,
       outlineColor: color == WeekPactColors.mintGreen
-          ? const Color(0xFF8D9F7D)
-          : const Color(0xFFAFB2AF),
+          ? const Color(0xFF5F9774)
+          : const Color(0xFFADB5BC),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

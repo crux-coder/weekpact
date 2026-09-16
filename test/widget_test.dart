@@ -24,7 +24,7 @@ import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
 void main() {
-  testWidgets('account has no appearance setting and always uses dark theme', (
+  testWidgets('account has no appearance setting and one fixed theme', (
     tester,
   ) async {
     final auth = FakeAuthBackend();
@@ -394,7 +394,8 @@ void main() {
     await tester.pumpUi();
 
     final initialHomeX = tester.getTopLeft(find.text('Early Birds')).dx;
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+    // The adjacent destination keeps Home mounted through the slide.
+    await tester.tap(find.byKey(const ValueKey('nav-feed')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -404,7 +405,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('Pacts'), findsWidgets);
+    expect(find.text('Feed'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (
@@ -512,7 +513,7 @@ void main() {
     );
   });
 
-  testWidgets('uses dark theme regardless of device appearance', (
+  testWidgets('uses one theme regardless of device appearance', (
     tester,
   ) async {
     final auth = FakeAuthBackend();

@@ -130,12 +130,13 @@ class PactSquareGrid extends StatelessWidget {
         spacing: 12,
         runSpacing: 12,
         children: [
-          for (final pact in pacts)
+          for (final (index, pact) in pacts.indexed)
             SizedBox.square(
               dimension: side,
               child: PactManagementCard(
                 key: ValueKey('pact-management-${pact.id}'),
                 pact: pact,
+                tint: WeekPactColors.pactTint(index),
                 onEdit: onEdit == null ? null : () => onEdit!(pact),
               ),
             ),
@@ -146,12 +147,19 @@ class PactSquareGrid extends StatelessWidget {
 }
 
 class PactManagementCard extends StatelessWidget {
-  const PactManagementCard({super.key, required this.pact, this.onEdit});
+  const PactManagementCard({
+    super.key,
+    required this.pact,
+    this.tint,
+    this.onEdit,
+  });
   final CrewPact pact;
+  final Color? tint;
   final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) => AppSurface(
+    fillColor: tint,
     shape: WeekPactMetrics.pactCardShape,
     builder: (context) => Padding(
       padding: const EdgeInsets.all(12),

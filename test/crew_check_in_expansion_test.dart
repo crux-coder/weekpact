@@ -39,7 +39,7 @@ class MembersBackend extends DashboardBackend {
 Future<void> closeFromBackground(WidgetTester tester, Finder tile) async {
   final rect = tester.getRect(tile);
   final backdrop = tester.getRect(
-    find.byKey(const ValueKey('activity-backdrop')),
+    find.byKey(const ValueKey('crew-panel-backdrop')),
   );
   expect(backdrop.bottom - rect.bottom, greaterThan(40));
   await tester.tapAt(

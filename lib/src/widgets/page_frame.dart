@@ -46,8 +46,10 @@ class PageFrame extends StatelessWidget {
           unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
           return onRefresh!();
         },
-        color: context.ink,
-        backgroundColor: context.surface,
+        // context.surface is cream in both themes; a dark-canvas ink arrow
+        // would be invisible on it.
+        color: WeekPactColors.black,
+        backgroundColor: WeekPactColors.cream,
         child: content,
       );
     }

@@ -107,7 +107,7 @@ void main() {
           ),
         ),
       );
-      for (final tab in ['home', 'pacts', 'crews', 'account']) {
+      for (final tab in ['home', 'feed', 'pacts', 'crews', 'account']) {
         await tester.tap(find.byKey(ValueKey('nav-$tab')));
         await tester.pumpUi();
         expect(tester.takeException(), isNull);

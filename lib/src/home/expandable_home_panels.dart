@@ -4,17 +4,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'activity_history.dart';
 import 'home_backend.dart';
 
-import 'package:hugeicons/hugeicons.dart';
-import 'package:hugeicons/styles/stroke_rounded.dart';
-
-import '../theme/weekpact_theme.dart';
-import 'home_surface.dart';
 import 'today_widgets.dart';
 
-enum _HomePanel { activity, checked, pending }
+enum _HomePanel { checked, pending }
 
 /// Keeps home cards mounted while the selected surface unfolds over its peers.
 class ExpandableHomePanels extends StatefulWidget {
@@ -155,12 +149,10 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
                   if (_panel != null)
                     Positioned.fill(
                       child: Semantics(
-                        label: _panel == _HomePanel.activity
-                            ? 'Collapse activity history'
-                            : 'Collapse crew check-ins',
+                        label: 'Collapse crew check-ins',
                         button: true,
                         child: GestureDetector(
-                          key: const ValueKey('activity-backdrop'),
+                          key: const ValueKey('crew-panel-backdrop'),
                           behavior: HitTestBehavior.opaque,
                           onTap: _collapse,
                           child: const ColoredBox(color: Colors.transparent),
@@ -182,94 +174,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     BoxConstraints space,
     double progress,
   ) {
-    final activitySelected = _panel == _HomePanel.activity;
-    final cards = <_HomePanel, Widget>{
-      _HomePanel.activity: _position(
-        _HomePanel.activity,
-        Rect.lerp(
-          Rect.fromLTWH(
-            space.maxWidth - 44,
-            widget.top,
-            44,
-            TodayCrewCard.headingHeight,
-          ),
-          Rect.fromLTWH(
-            0,
-            widget.top,
-            space.maxWidth,
-            math.max(160, space.maxHeight - widget.top - 64),
-          ),
-          activitySelected ? progress : 0,
-        )!,
-        progress,
-        activitySelected
-            ? ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.topLeft,
-                  minWidth: space.maxWidth,
-                  maxWidth: space.maxWidth,
-                  minHeight: math.max(160, space.maxHeight - widget.top - 64),
-                  maxHeight: math.max(160, space.maxHeight - widget.top - 64),
-                  child: HomeSurface(
-                    key: const ValueKey('activity-container'),
-                    tint: WeekPactColors.cream,
-                    shape: WeekPactMetrics.pactCardShape,
-                    raised: true,
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: TodayCrewCard.headingHeight,
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 16),
-                              const Expanded(
-                                child: Text(
-                                  'CREW HISTORY',
-                                  style: TextStyle(
-                                    color: homeInk,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Close activity history',
-                                onPressed: _collapse,
-                                icon: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.cancel01,
-                                  color: homeInk,
-                                  size: 20,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: ActivityHistory(
-                            backend: widget.backend,
-                            crewId: widget.crewId,
-                            week: widget.week,
-                            userId: widget.userId,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            : IconButton(
-                key: const ValueKey('crew-history-button'),
-                tooltip: 'View crew history',
-                onPressed: () => _toggle(_HomePanel.activity),
-                icon: HugeIcon(
-                  icon: HugeIconsStrokeRounded.transactionHistory,
-                  color: context.muted,
-                  size: 22,
-                ),
-              ),
-      ),
-    };
+    final cards = <_HomePanel, Widget>{};
     if (!widget.showCrewCheckIns) return cards;
     final checked = widget.week.members
         .where((m) => widget.week.checkedToday(m.id).isNotEmpty)

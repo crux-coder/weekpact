@@ -1,0 +1,503 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
+import '../home/home_surface.dart';
+import '../home/home_backend.dart';
+import '../pacts/pact_icons.dart';
+import '../theme/weekpact_theme.dart';
+import '../widgets/app_components.dart';
+import '../widgets/avatar_shape.dart';
+import '../widgets/page_frame.dart';
+
+/// Check-ins from every crew the member belongs to, newest first, as a photo
+/// feed. Paging is keyed on the last entry, so new posts never shift a page.
+class FeedPage extends StatefulWidget {
+  const FeedPage({
+    super.key,
+    required this.backend,
+    required this.userId,
+    this.active = true,
+  });
+
+  final HomeBackend backend;
+  final String userId;
+  final bool active;
+
+  @override
+  State<FeedPage> createState() => _FeedPageState();
+}
+
+class _FeedPageState extends State<FeedPage> {
+  static const _pageSize = 12;
+  final _scroll = ScrollController();
+  final _entries = <FeedEntry>[];
+  bool _loading = false;
+  bool _loaded = false;
+  bool _hasMore = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_loadNearEnd);
+    unawaited(_loadMore());
+  }
+
+  @override
+  void didUpdateWidget(covariant FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Returning to the tab should show check-ins posted since it was left.
+    if (widget.active && !oldWidget.active && !_loading) unawaited(_refresh());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _loadNearEnd() {
+    if (_scroll.hasClients && _scroll.position.extentAfter < 600 && !_failed) {
+      unawaited(_loadMore());
+    }
+  }
+
+  Future<void> _refresh() async {
+    _hasMore = true;
+    final fresh = await _read();
+    if (fresh == null || !mounted) return;
+    setState(() {
+      _entries
+        ..clear()
+        ..addAll(fresh);
+    });
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || !_hasMore) return;
+    final page = await _read(before: _entries.lastOrNull);
+    if (page == null || !mounted) return;
+    setState(() => _entries.addAll(page));
+    // Fill a tall viewport without requiring a scroll gesture first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadNearEnd();
+    });
+  }
+
+  /// Returns null when the read failed; state carries the error either way.
+  Future<List<FeedEntry>?> _read({FeedEntry? before}) async {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    try {
+      final page = await widget.backend.fetchFeed(
+        before: before,
+        limit: _pageSize,
+      );
+      if (!mounted) return null;
+      setState(() {
+        _hasMore = page.length == _pageSize;
+        _loading = false;
+        _loaded = true;
+      });
+      return page;
+    } catch (_) {
+      if (!mounted) return null;
+      setState(() {
+        _loading = false;
+        _failed = true;
+      });
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showEmpty = _loaded && _entries.isEmpty && !_failed;
+    return SafeArea(
+      bottom: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: RefreshIndicator(
+            onRefresh: () {
+              unawaited(
+                HapticFeedback.mediumImpact().catchError((Object _) {}),
+              );
+              return _refresh();
+            },
+            // The indicator disc is cream in both themes, so its arrow stays
+            // dark rather than following the canvas ink.
+            color: WeekPactColors.black,
+            backgroundColor: WeekPactColors.cream,
+            child: ListView.builder(
+              key: const ValueKey('feed-list'),
+              controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 32),
+              // Heading, entries, then the trailing status row.
+              itemCount: _entries.length + 2,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return const Padding(
+                    padding: EdgeInsets.only(
+                      bottom: WeekPactMetrics.sectionGap,
+                    ),
+                    child: PageHeading(
+                      'Feed',
+                      dotColor: WeekPactColors.mintGreen,
+                    ),
+                  );
+                }
+                if (index == _entries.length + 1) return _trailing(showEmpty);
+                final entry = _entries[index - 1];
+                final previous = index >= 2 ? _entries[index - 2] : null;
+                final date = entry.createdAt.toLocal();
+                final startsDay =
+                    previous == null ||
+                    !DateUtils.isSameDay(date, previous.createdAt.toLocal());
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (startsDay) _DayHeading(date: date),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: FeedPost(
+                        key: ValueKey('feed-post-${entry.id}'),
+                        entry: entry,
+                        isMine: entry.userId == widget.userId,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _trailing(bool showEmpty) {
+    if (_failed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          children: [
+            Text(
+              'Could not load the feed.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.ink),
+            ),
+            TextButton(
+              onPressed: () => unawaited(_loadMore()),
+              child: const Text('TRY AGAIN'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_loading && _entries.isEmpty) return const _FeedSkeleton();
+    if (showEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Text(
+              'No check-ins yet.',
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Photos from every crew you’re in land here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.muted),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_hasMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              semanticsLabel: 'Loading more check-ins',
+            ),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Text(
+        'You’re all caught up',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: context.muted),
+      ),
+    );
+  }
+}
+
+class _DayHeading extends StatelessWidget {
+  const _DayHeading({required this.date});
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final yesterday = DateTime(today.year, today.month, today.day - 1);
+    final label = DateUtils.isSameDay(date, today)
+        ? 'Today'
+        : DateUtils.isSameDay(date, yesterday)
+        ? 'Yesterday'
+        : '${MaterialLocalizations.of(context).formatMediumDate(date)}'
+              '${date.year == today.year ? '' : ', ${date.year}'}';
+    return Semantics(
+      header: true,
+      child: Padding(
+        key: ValueKey(
+          'feed-date-${DateUtils.dateOnly(date).toIso8601String()}',
+        ),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                color: context.muted,
+                fontSize: 12,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Divider(color: context.ink.withValues(alpha: .12))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single check-in: the photo they posted, then the pact it kept and who
+/// kept it. Compact by design — the photo is a wide crop and the text sits in
+/// one bar beneath it, so a day's check-ins fit on a screen.
+class FeedPost extends StatelessWidget {
+  const FeedPost({super.key, required this.entry, this.isMine = false});
+
+  final FeedEntry entry;
+  final bool isMine;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = entry.createdAt.toLocal();
+    final time = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(date),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+    final name = isMine ? 'You' : entry.displayName;
+    return AppSurface(
+      borderRadius: 16,
+      builder: (context) => Semantics(
+        label:
+            '$name checked in · ${entry.pactTitle} · ${entry.crewName} · $time',
+        child: ExcludeSemantics(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (entry.photoPath != null)
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: _Photo(
+                    key: ValueKey('feed-photo-${entry.id}'),
+                    url: entry.photoUrl,
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Row(
+                  children: [
+                    _Avatar(entry: entry),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            entry.pactTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.ink,
+                              fontSize: 15,
+                              height: 1.2,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            '$name · ${entry.crewName} · $time',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontFamilyFallback: const ['Arial'],
+                              fontSize: 11,
+                              height: 1.35,
+                              color: context.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    HugeIcon(
+                      icon: PactIcon.find(entry.iconKey).data,
+                      color: context.muted,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.entry});
+  final FeedEntry entry;
+
+  @override
+  Widget build(BuildContext context) => FlatAvatar(
+    radius: 15,
+    backgroundColor: homeInk.withValues(alpha: .08),
+    child: AvatarClip(
+      child: entry.avatarUrl == null
+          ? Text(entry.initials, style: const TextStyle(color: homeInk))
+          : Image.network(
+              entry.avatarUrl!,
+              width: 30,
+              height: 30,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) =>
+                  Text(entry.initials, style: const TextStyle(color: homeInk)),
+            ),
+    ),
+  );
+}
+
+/// Keeps the square photo slot filled while loading, and honest when the
+/// signed URL has expired or the image cannot be fetched.
+class _Photo extends StatelessWidget {
+  const _Photo({super.key, required this.url});
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    if (url == null) return const _PhotoPlaceholder(failed: true);
+    return Image.network(
+      url!,
+      fit: BoxFit.cover,
+      semanticLabel: 'Check-in photo',
+      loadingBuilder: (context, child, progress) =>
+          progress == null ? child : const _PhotoPlaceholder(),
+      errorBuilder: (_, _, _) => const _PhotoPlaceholder(failed: true),
+    );
+  }
+}
+
+class _PhotoPlaceholder extends StatelessWidget {
+  const _PhotoPlaceholder({this.failed = false});
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: homeInk.withValues(alpha: .06),
+    child: Center(
+      child: failed
+          ? HugeIcon(
+              icon: HugeIconsStrokeRounded.image01,
+              color: homeInk.withValues(alpha: .35),
+              size: 26,
+            )
+          : const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0x66191B19),
+                semanticsLabel: 'Loading check-in photo',
+              ),
+            ),
+    ),
+  );
+}
+
+class _FeedSkeleton extends StatelessWidget {
+  const _FeedSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('feed-skeleton'),
+    children: [
+      for (var index = 0; index < 2; index++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AppSurface(
+            borderRadius: 16,
+            builder: (context) {
+              final bone = context.ink.withValues(alpha: .1);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: ColoredBox(color: bone),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: Row(
+                      children: [
+                        SkeletonBar(
+                          height: 30,
+                          width: 30,
+                          shape: const AvatarShape(),
+                          color: bone,
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonBar(height: 12, width: 130, color: bone),
+                            const SizedBox(height: 6),
+                            SkeletonBar(height: 9, width: 90, color: bone),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+    ],
+  );
+}

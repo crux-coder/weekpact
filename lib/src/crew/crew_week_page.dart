@@ -243,6 +243,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                                 ),
                                                 week: week,
                                                 pact: week.pacts[index],
+                                                tint: WeekPactColors.pactTint(
+                                                  index,
+                                                ),
                                                 members: members,
                                                 userId: widget.userId,
                                               ),

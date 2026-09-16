@@ -64,6 +64,11 @@ class DashboardBackend implements HomeBackend {
     int limit = 20,
   }) async => [];
   @override
+  Future<List<FeedEntry>> fetchFeed({
+    FeedEntry? before,
+    int limit = 20,
+  }) async => [];
+  @override
   Future<CrewWeek> fetchWeek(String crewId) async {
     fetches++;
     if (failLoad) throw StateError('offline');

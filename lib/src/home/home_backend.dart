@@ -76,6 +76,85 @@ class CrewActivity {
   );
 }
 
+/// One check-in as it appears in the cross-crew feed, with everything needed to
+/// render it: who posted, in which crew, against which pact, and its photo.
+class FeedEntry {
+  const FeedEntry({
+    required this.pactId,
+    required this.userId,
+    required this.crewId,
+    required this.crewName,
+    required this.pactTitle,
+    required this.iconKey,
+    required this.day,
+    required this.createdAt,
+    required this.displayName,
+    this.photoPath,
+    this.photoUrl,
+    this.avatarPath,
+    this.avatarUrl,
+  });
+
+  final String pactId;
+  final String userId;
+  final String crewId;
+  final String crewName;
+  final String pactTitle;
+  final String iconKey;
+  final String day;
+  final DateTime createdAt;
+  final String displayName;
+  final String? photoPath;
+  final String? photoUrl;
+  final String? avatarPath;
+  final String? avatarUrl;
+
+  /// Stable across pages, so list items keep their state while more load.
+  String get id => '$pactId/$userId/$day';
+
+  String get initials {
+    final parts = displayName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty || displayName == 'Crew member') return '?';
+    return (parts.first.characters.first +
+            (parts.length > 1 ? parts.last.characters.first : ''))
+        .toUpperCase();
+  }
+
+  FeedEntry withUrls({String? photoUrl, String? avatarUrl}) => FeedEntry(
+    pactId: pactId,
+    userId: userId,
+    crewId: crewId,
+    crewName: crewName,
+    pactTitle: pactTitle,
+    iconKey: iconKey,
+    day: day,
+    createdAt: createdAt,
+    displayName: displayName,
+    photoPath: photoPath,
+    photoUrl: photoUrl ?? this.photoUrl,
+    avatarPath: avatarPath,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+  );
+
+  factory FeedEntry.fromJson(Map<String, dynamic> row) => FeedEntry(
+    pactId: row['pact_id'] as String,
+    userId: row['user_id'] as String,
+    crewId: row['crew_id'] as String,
+    crewName: row['crew_name'] as String? ?? 'Crew',
+    pactTitle: row['pact_title'] as String? ?? 'Pact',
+    iconKey: row['icon_key'] as String? ?? 'target',
+    day: row['completed_on'] as String,
+    createdAt: DateTime.parse(row['created_at'] as String),
+    displayName: row['display_name'] as String? ?? 'Crew member',
+    photoPath: row['photo_path'] as String?,
+    avatarPath: row['avatar_path'] as String?,
+  );
+}
+
 enum CrewNudgeStatus { ready, sent, cooldown, checkedIn, unavailable }
 
 class CrewNudgeState {
@@ -206,6 +285,9 @@ abstract interface class HomeBackend {
     CrewActivity? before,
     int limit = 20,
   });
+
+  /// Check-ins from every crew the signed-in member belongs to, newest first.
+  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20});
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
@@ -217,6 +299,7 @@ abstract interface class HomeBackend {
 class SupabaseHomeBackend implements HomeBackend {
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
+  final _feedAvatars = AvatarUrlCache();
   final SupabaseClient client;
   @override
   Future<Uint8List> fetchCheckInPhoto(String path) =>
@@ -278,6 +361,57 @@ class SupabaseHomeBackend implements HomeBackend {
         .order('completed_on', ascending: false)
         .limit(limit);
     return rows.map(CrewActivity.fromJson).toList();
+  }
+
+  @override
+  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20}) async {
+    final rows = await client.rpc(
+      'check_in_feed',
+      params: {
+        'before_created_at': before?.createdAt.toUtc().toIso8601String(),
+        'before_pact': before?.pactId,
+        'before_user': before?.userId,
+        'before_day': before?.day,
+        'page_limit': limit,
+      },
+    );
+    final entries = (rows as List)
+        .map((row) => FeedEntry.fromJson(Map<String, dynamic>.from(row as Map)))
+        .toList();
+    // Sign both buckets for the whole page, so a post renders in one round trip
+    // each rather than one download per image.
+    final photos = await _signed(
+      'check-in-photos',
+      entries.map((entry) => entry.photoPath).nonNulls.toSet().toList(),
+    );
+    final avatars = await _feedAvatars.resolve(
+      scope: '${client.auth.currentUser?.id}:feed',
+      paths: entries.map((entry) => entry.avatarPath).nonNulls.toSet().toList(),
+      sign: (missing, lifetime) => _signed('avatars', missing, lifetime),
+    );
+    return entries
+        .map(
+          (entry) => entry.withUrls(
+            photoUrl: photos[entry.photoPath],
+            avatarUrl: avatars[entry.avatarPath],
+          ),
+        )
+        .toList();
+  }
+
+  Future<Map<String, String>> _signed(
+    String bucket,
+    List<String> paths, [
+    int lifetime = AvatarUrlCache.lifetimeSeconds,
+  ]) async {
+    if (paths.isEmpty) return {};
+    final signed = await client.storage
+        .from(bucket)
+        .createSignedUrlsResult(paths, lifetime);
+    return {
+      for (final result in signed)
+        if (result is SignedUrlSuccess) result.path: result.signedUrl,
+    };
   }
 
   @override
@@ -417,6 +551,9 @@ class MissingHomeBackend implements HomeBackend {
     CrewActivity? before,
     int limit = 20,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20}) =>
+      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewWeek> fetchWeek(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));

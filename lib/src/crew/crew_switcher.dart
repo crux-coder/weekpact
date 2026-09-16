@@ -287,8 +287,10 @@ class CrewHeaderSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Recessed against the canvas by the same amount in either theme, so the
+    // header keeps its relationship when the canvas colour changes.
     final face = context.isDark
-        ? const Color(0xFF101210)
+        ? Color.lerp(context.canvas, Colors.black, .3)!
         : Color.lerp(context.canvas, context.ink, .07)!;
     return DecoratedBox(
       decoration: ShapeDecoration(

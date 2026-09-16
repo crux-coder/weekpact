@@ -1,6 +1,6 @@
 # WeekPact visual system
 
-The app uses solid-color raised cards, flat icons, condensed typography, compact spacing, and restrained pastel accents. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
+The app uses solid-color raised cards, flat icons, condensed typography, compact spacing, and saturated mid-tone card tints on a neutral canvas. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
 
 ## Where to make changes
 
@@ -12,7 +12,20 @@ The app uses solid-color raised cards, flat icons, condensed typography, compact
 
 ## Theme behavior
 
-Light uses a cream canvas, off-white surfaces, dark text, and pastel highlights. Dark uses a near-black canvas with the SAME off-white, pale yellow, and pale green cards as Home. Card content is always dark; only canvas text and navigation invert. Do not introduce olive, brown, charcoal, coral, or pink card variants. Both use the same component structure, metrics, and navigation. Appearance continues to support Light, Dark, and Device in Account and persists through the existing preference store.
+The app ships one theme, set at the root (`theme`/`themeMode` in `app.dart`); the
+device's appearance setting does not change it, and the Android splash, iOS
+launch screen and web chrome carry the same canvas colour. It is the dark one: a
+charcoal canvas (`darkCanvas`, #2B302C) with light canvas text and navigation,
+carrying the SAME bright cards as the light palette — card content stays dark on
+every tint, including the cream feed posts. The light palette (`lightCanvas`,
+#ECEDEA) stays defined and swaps in by changing those two root lines. Card content is always dark; only canvas text and
+navigation invert. `pactPalette` carries bright colour — lemon, mint, sky, coral,
+lavender, peach, lime, aqua, orchid, butter — held light enough that near-black
+card ink clears 8.5:1 against every entry; keep new tints in that band. Its
+companions follow the same family: `stone` is butter, `coolGrey` sky, `mintGreen`
+mint, `softCoral` coral. `pendingCheckIns` stays muted grey, since reading as
+*not done* is its job.
+Do not introduce charcoal or pink card variants. Both use the same component structure, metrics, and navigation. Appearance continues to support Light, Dark, and Device in Account and persists through the existing preference store.
 
 All `AppSurface`, `AppSectionCard`, and `AppSheet` content uses a `builder: (context) => ...` API. Build color-dependent content inside that callback: `AppSurfaceTheme` scopes it to the pale-card palette even on a dark canvas. Use `context.ink` for canvas and regular surface text, `context.muted` for secondary text, and `context.border` for outlines. Explicit pastel home surfaces use `homeInk`; do not place dark-theme foreground colors onto those pale cards. Use `AppSurface.resolveTone: false` only when the component also deliberately owns its foreground contrast.
 
@@ -20,11 +33,11 @@ Use continuous squircle corners on cards (40px curve radius for standard cards),
 
 ## Verification
 
-`flutter test` covers authentication, onboarding, pacts, crews, invitations, account/theme switching, carousel behavior, avatar caching, and responsive home layouts. `test/design_preview_test.dart` visits all main destinations in both themes. Run it with `--dart-define=CAPTURE_DESIGN=true` to save eight rendered previews under `/tmp/weekpact-{light,dark}-{home,pacts,crews,account}.png`.
+`flutter test` covers authentication, onboarding, pacts, crews, invitations, account/theme switching, carousel behavior, avatar caching, and responsive home layouts. `test/design_preview_test.dart` visits all main destinations in both themes. Run it with `--dart-define=CAPTURE_DESIGN=true` to save the rendered previews under `/tmp/weekpact-{light,dark}-{home,feed,pacts,crews,account}.png`.
 
 ## Pacts overview
 
-`lib/src/pacts/pacts_overview.dart` owns the personal weekly progress summary and square management cards. `YourWeekCard` reads the current crew week and caps each pact’s completed days at its target. `PactSquareGrid` uses two columns when space and text size permit and one column otherwise, keeping cards square. Editing remains owner-only.
+`lib/src/pacts/pacts_overview.dart` owns the personal weekly progress summary and square management cards. `YourWeekCard` reads the current crew week and caps each pact’s completed days at its target. `PactSquareGrid` uses two columns when space and text size permit and one column otherwise, keeping cards square. A pact's colour comes from `WeekPactColors.pactTint(index)` — its position in the crew's pact list — so Home's stack, the crew week carousel and this grid all show the same pact in the same colour. Editing remains owner-only.
 
 ### Crews: people first
 
@@ -35,6 +48,23 @@ shared offwhite and yellow palette. Circular profile images reuse Home's cached
 profile loader, with initials and email fallbacks when profile data is unavailable.
 Pending invitations expand below the grid; incoming invitations live in the header
 inbox. Membership confirmation and owner permissions remain in `CrewPage`.
+
+### Feed: check-ins from every crew
+
+`lib/src/feed/feed_page.dart` is the second destination, between Home and Pacts.
+It lists check-ins from every crew the member belongs to, newest first, one post
+per check-in: a full-bleed 16:9 photo, then one text bar beneath it with the
+author's avatar, the pact title leading, and the byline — name (“You” for your
+own), crew and time — as muted secondary text beside a muted pact glyph. The
+compact crop keeps a day's check-ins on one screen. Posts are deliberately quiet:
+one neutral `AppSurface` card in both themes, so the photo carries the colour.
+The feed is the one place photos are not bowed by `CheckInPhotoFrame`; the card's
+own corners clip them edge to edge. A check-in without a photo is the bar alone.
+Day headings separate the stream, matching Home's date grouping. Paging
+is keyed on the last entry, so new posts never shift a page; pull to refresh
+reloads from the top. Photos and avatars arrive as signed URLs from
+`HomeBackend.fetchFeed`, one batch per page, with an honest placeholder when an
+image cannot be fetched.
 
 ### Account: profile hub
 
@@ -77,7 +107,7 @@ its opening press animation, which compresses the solid edge.
 
 Home’s progress bars remain flat. Weekday cells are raised when complete and
 flat otherwise; today’s letter and date are bold, with an outline reserved for
-today. Completed days have a green fill and checkmark. Preserve these state cues.
+today. Completed days and the “Checked in today” banner use one cue that works on every tint: a cream fill (`_doneFill`), a green mark (`_doneMark`), and a raised edge mixed from the card's own colour. Do not tie an on-card completion cue to a fixed green — it fights the warm tints and vanishes on the green ones. Crew check-in tiles sit on the canvas, not a tint, and stay mint. Preserve these state cues.
 
 Home’s compact crew header has two solid raised containers with labels inside:
 crew selection on the left and a narrower streak summary on the right. Use
@@ -92,10 +122,14 @@ ink opacity. The streak flame is muted at zero and
 orange once the streak starts. Offset the Home pact stack 12px left while
 preserving card widths and preview strips.
 
-Today’s Check-ins uses a single heading with a 44px history button on its right
-(Hugeicons transactionHistory). Omit the total fraction and standalone activity
-card. The history button opens recent crew check-ins in an expandable panel with
-a close control; the loading skeleton mirrors the compact heading. Collapsed panels show small “Checked in”/“Not yet” labels with group counts,
+The strip above the crew tiles carries `LatestCheckInStrip` — the crew's freshest
+check-in (“Mirnes checked in · Move for 30 min · 12m ago”) with the member's
+avatar and a chevron into the Feed — rather than a section label. With nothing
+posted yet it reads “Nobody has checked in yet today”. Omit the total fraction and
+standalone activity card. Crew history no longer lives on Home; the Feed
+destination carries it instead. When one side is empty the single tile speaks for
+the crew — “Whole crew is in”, “Be the first in today” — instead of showing a
+count against nobody. Otherwise collapsed panels show small “Checked in”/“Not yet” labels with group counts,
 avatars, and names. Use sage for checked-in members and muted grey for pending
 members. Preserve explicit status
 semantics and tap-to-expand behavior; show a collapse control when expanded.

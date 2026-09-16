@@ -39,7 +39,9 @@ class CrewPactWeekCard extends StatefulWidget {
     required this.pact,
     required this.members,
     required this.userId,
+    this.tint,
   });
+  final Color? tint;
   final CrewWeek week;
   final CrewPact pact;
   final List<WeekMember> members;
@@ -62,6 +64,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
     final start = page * _membersPerPage;
     final visible = widget.members.skip(start).take(_membersPerPage).toList();
     return AppSurface(
+      fillColor: widget.tint,
       shape: WeekPactMetrics.pactCardShape,
       borderWidth: 1,
       builder: (context) => Padding(

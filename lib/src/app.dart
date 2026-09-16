@@ -98,6 +98,7 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       scaffoldMessengerKey: _messenger,
       debugShowCheckedModeBanner: false,
       title: 'WeekPact',
+      // One theme, regardless of the device's appearance setting.
       theme: WeekPactTheme.dark,
       themeMode: ThemeMode.dark,
       builder: (context, child) {

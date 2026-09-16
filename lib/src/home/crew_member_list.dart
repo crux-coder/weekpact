@@ -318,10 +318,10 @@ class _CrewMemberListState extends State<CrewMemberList>
               ? () => _send(member.id)
               : null,
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF36552C),
+            foregroundColor: const Color(0xFF2F6347),
             disabledForegroundColor: const Color(0xFF687361),
             backgroundColor: ready && !busy
-                ? const Color(0xFFD0E5BA)
+                ? WeekPactColors.mintGreen
                 : Colors.transparent,
             minimumSize: const Size(64, 36),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
