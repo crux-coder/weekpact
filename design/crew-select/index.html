@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew select — card designs</title>
+<style>
+  :root {
+    --canvas: #2B302C;
+    --face: #20251F;
+    --ink: #F3F5F2;
+    --muted: #9aa197;
+    --mint: #8CDCAC;
+    --lemon: #E8D05A;
+    --sky: #8AC9EC;
+    --coral: #F9A08A;
+    --cream: #F5F6F5;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 44px 24px 90px; background: #0e110e; color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 32px; margin: 0 0 10px; letter-spacing: -.6px; }
+  .lede { margin: 0 0 8px; color: var(--muted); max-width: 74ch; line-height: 1.6; }
+  .note { margin: 0 0 36px; color: #6f766d; font-size: 13px; max-width: 74ch; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 26px; }
+  .cell { background: #151815; border: 1px solid #242a23; border-radius: 20px; padding: 20px; }
+  .cellHead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .cellHead h2 { font-size: 18px; margin: 0; letter-spacing: -.2px; }
+  .tag { font-size: 10px; letter-spacing: 1.4px; font-weight: 700; color: #0e110e;
+    background: var(--mint); padding: 3px 7px; border-radius: 5px; }
+  .cell p { color: #b8bfb5; font-size: 13px; line-height: 1.6; margin: 8px 0 16px; }
+
+  /* ---- phone with the blurred home screen behind ---- */
+  .phone { position: relative; width: 100%; aspect-ratio: 390 / 500; border-radius: 26px;
+    overflow: hidden; background: var(--canvas); }
+  .behind { position: absolute; inset: 0; filter: blur(15px); transform: scale(1.06); }
+  .behind .hdr { display: flex; gap: 8px; padding: 14px 12px 0; }
+  .behind .box { background: var(--face); border-radius: 18px; height: 54px; flex: 1; }
+  .behind .box.sm { flex: 0 0 96px; }
+  .behind .strip { margin: 10px 12px 0; height: 42px; background: var(--face); border-radius: 14px; }
+  .behind .tiles { display: flex; gap: 8px; margin: 8px 12px 0; }
+  .behind .tiles div { flex: 1; height: 62px; border-radius: 14px; }
+  .behind .pact { margin: 10px 12px 0; height: 220px; border-radius: 18px; background: var(--lemon); }
+
+  .overlay { position: absolute; inset: 0; padding: 62px 16px 0;
+    display: flex; flex-direction: column; gap: 12px; }
+
+  /* ---------- 1. soft shelf ---------- */
+  .v1 .card { background: #1B1F1B; border-radius: 22px; padding: 13px 16px;
+    box-shadow: 0 4px 0 #0B0D0B; }
+  .v1 .card.on { box-shadow: 0 4px 0 #0B0D0B; }
+  .v1 .card.on .nm { display: flex; align-items: center; gap: 8px; }
+  .v1 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); flex: none; }
+  .v1 .card.press { background: #262C26; box-shadow: 0 12px 0 #0B0D0B; transform: translateY(-8px); }
+
+  /* ---------- 2. grouped menu ---------- */
+  .v2 .menu { background: rgba(28,33,27,.93); border-radius: 22px; overflow: hidden;
+    box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+  .v2 .row { padding: 15px 16px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,.07); }
+  .v2 .row:last-child { border-bottom: none; }
+  .v2 .row.press { background: rgba(255,255,255,.1); }
+  .v2 .tick { color: var(--mint); font-size: 15px; font-weight: 800; }
+
+  /* ---------- 3. monogram rows ---------- */
+  .v3 .card { background: #1B1F1B; border-radius: 20px; padding: 11px 14px; display: flex;
+    align-items: center; gap: 13px; box-shadow: 0 4px 0 #0B0D0B; }
+  .v3 .mono { width: 42px; height: 42px; border-radius: 14px; flex: none; display: flex;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: #14170F; }
+  .v3 .card.press { background: #262C26; transform: translateY(-8px); box-shadow: 0 12px 0 #0B0D0B; }
+  .v3 .sub { font-size: 11px; color: var(--muted); }
+
+  /* ---------- 4. left rail ---------- */
+  .v4 .card { background: #1B1F1B; border-radius: 18px; padding: 13px 16px 13px 20px;
+    position: relative; overflow: hidden; }
+  .v4 .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+    background: #333a32; }
+  .v4 .card.on::before { background: var(--mint); }
+  .v4 .card.press { background: #2C332B; transform: scale(1.02); }
+
+  /* ---------- 5. cream stickers ---------- */
+  .v5 .card { background: var(--cream); color: #14170F; border: 2px solid #14170F;
+    border-radius: 16px; padding: 12px 15px; box-shadow: 4px 5px 0 #14170F; }
+  .v5 .card.on { background: var(--mint); }
+  .v5 .card.press { box-shadow: 7px 8px 0 #14170F; transform: translate(-2px, -3px); }
+  .v5 .sub { font-size: 11px; font-weight: 700; opacity: .65; }
+
+  /* ---------- 6. full-bleed type ---------- */
+  .v6 .overlay { padding-top: 76px; gap: 2px;
+    background: linear-gradient(180deg, rgba(10,13,10,.82) 55%, rgba(10,13,10,0) 100%); }
+  .v6 .card { padding: 14px 6px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .v6 .card .nm { font-size: 27px; font-weight: 800; letter-spacing: -.5px; color: #8b938a; }
+  .v6 .card.on .nm { color: var(--ink); }
+  .v6 .card.press .nm { color: var(--mint); transform: translateX(6px); }
+  .v6 .card .nm { transition: none; display: block; }
+
+  .nm { font-size: 19px; font-weight: 800; letter-spacing: -.2px; }
+  .cur { font-size: 11px; color: var(--mint); font-weight: 600; margin-top: 1px; }
+  .fingerNote { margin-top: 14px; font-size: 11px; color: #6f766d; letter-spacing: .4px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Crew select — six ways to draw the cards</h1>
+  <p class="lede">Same gesture, same drop animation. Only the look of the options changes. In every
+  one the middle crew is drawn as if a finger were on it, and the first is the crew you are on.</p>
+  <p class="note">The problem with what is on the phone now: the mint shelf under the current crew
+  is as heavy as the card itself, so it reads as a separate green slab rather than as "this one".</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const CREWS = [
+  { name: 'Hangboardasi', mono: 'HB', colour: 'var(--lemon)', members: '3 people' },
+  { name: 'Testing',      mono: 'TS', colour: 'var(--mint)',  members: '5 people' },
+  { name: 'Early Birds',  mono: 'EB', colour: 'var(--coral)', members: '4 people' },
+];
+
+const behind = `
+  <div class="behind">
+    <div class="hdr"><div class="box sm"></div><div class="box"></div></div>
+    <div class="strip"></div>
+    <div class="tiles"><div style="background:var(--mint)"></div><div style="background:#C4CDD4"></div></div>
+    <div class="pact"></div>
+  </div>`;
+
+/* state: 0 = current crew, 1 = finger on it, 2 = plain */
+const VARIANTS = [
+  {
+    id: 'v1', title: 'Soft shelf', tag: 'CLOSEST TO NOW',
+    copy: 'Keeps the raised shelf, but the shelf is always the same near-black. The crew you are on is marked by a mint dot beside its name instead of a green slab underneath.',
+    render: c => c.map((crew, i) => `
+      <div class="card ${i === 0 ? 'on' : ''} ${i === 1 ? 'press' : ''}">
+        <div class="nm">${i === 0 ? '<span class="dot"></span>' : ''}${crew.name}</div>
+      </div>`).join(''),
+  },
+  {
+    id: 'v2', title: 'Grouped menu', tag: 'IOS NATIVE',
+    copy: 'One frosted panel, hairline dividers, a mint tick on the current crew. The panel is the object; the rows are just rows. Reads as a system menu, which is what this gesture already feels like.',
+    render: c => `<div class="menu">${c.map((crew, i) => `
+      <div class="row ${i === 1 ? 'press' : ''}">
+        <span class="nm" style="font-size:17px">${crew.name}</span>
+        ${i === 0 ? '<span class="tick">✓</span>' : ''}
+      </div>`).join('')}</div>`,
+  },
+  {
+    id: 'v3', title: 'Monogram rows', tag: 'MOST INFO',
+    copy: 'A coloured tile per crew carries the identity, so crews are told apart by colour and initials before you read anything. Room for a member count or today’s check-ins on the second line.',
+    render: c => c.map((crew, i) => `
+      <div class="card ${i === 1 ? 'press' : ''}">
+        <div class="mono" style="background:${crew.colour}">${crew.mono}</div>
+        <div>
+          <div class="nm">${crew.name}</div>
+          <div class="sub">${i === 0 ? 'Current crew · ' : ''}${crew.members}</div>
+        </div>
+      </div>`).join(''),
+  },
+  {
+    id: 'v4', title: 'Left rail', tag: 'QUIETEST',
+    copy: 'Flat cards, no shelf at all. A 5px rail down the left edge is grey on every crew and mint on the one you are on. Pressing lightens the whole card rather than lifting it.',
+    render: c => c.map((crew, i) => `
+      <div class="card ${i === 0 ? 'on' : ''} ${i === 1 ? 'press' : ''}">
+        <div class="nm">${crew.name}</div>
+      </div>`).join(''),
+  },
+  {
+    id: 'v5', title: 'Cream stickers', tag: 'MOST ON-BRAND',
+    copy: 'The app’s own sticker language, borrowed from the pact cards: cream fill, black outline, hard black shadow. The current crew is mint-filled. Pressing pushes the shadow out further.',
+    render: c => c.map((crew, i) => `
+      <div class="card ${i === 0 ? 'on' : ''} ${i === 1 ? 'press' : ''}">
+        <div class="nm">${crew.name}</div>
+        ${i === 0 ? '<div class="sub">CURRENT CREW</div>' : ''}
+      </div>`).join(''),
+  },
+  {
+    id: 'v6', title: 'Just type', tag: 'BOLDEST',
+    copy: 'No cards. Big names on the blurred page, the current one in full white and the rest dimmed. The finger brightens a name and nudges it right. Nothing to draw, nothing to collide.',
+    render: c => c.map((crew, i) => `
+      <div class="card ${i === 0 ? 'on' : ''} ${i === 1 ? 'press' : ''}">
+        <span class="nm">${crew.name}</span>
+      </div>`).join(''),
+  },
+];
+
+document.getElementById('grid').innerHTML = VARIANTS.map(v => `
+  <section class="cell ${v.id}">
+    <div class="cellHead"><h2>${v.title}</h2><span class="tag">${v.tag}</span></div>
+    <p>${v.copy}</p>
+    <div class="phone">
+      ${behind}
+      <div class="overlay ${v.id}">${v.render(CREWS)}</div>
+    </div>
+    <div class="fingerNote">Middle crew shown with a finger on it · first is the current crew</div>
+  </section>`).join('');
+</script>
+</body>
+</html>

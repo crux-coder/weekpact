@@ -52,115 +52,110 @@ class CrewTitleBanner extends StatelessWidget {
       padding: const EdgeInsets.only(top: 7, bottom: 9),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child:
-                selector ??
-                CrewHeaderSurface(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const CrewControlLabel('YOUR CREW'),
-                        const SizedBox(height: 4),
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              name,
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 25,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+        children: [_streak(context), const SizedBox(width: 10), _crew(context)],
+      ),
+    ),
+  );
+
+  Widget _crew(BuildContext context) => Expanded(
+    child:
+        selector ??
+        CrewHeaderSurface(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const CrewControlLabel('YOUR CREW'),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      name,
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
+              ],
+            ),
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 100,
-            child: CrewHeaderSurface(
-              child: Tooltip(
-                message: 'View week',
-                child: Semantics(
-                  label: 'Crew streak',
-                  value: '$streakWeeks ${streakWeeks == 1 ? 'week' : 'weeks'}',
-                  button: onOpen != null,
-                  child: InkWell(
-                    onTap: onOpen,
-                    child: ExcludeSemantics(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+  );
+
+  Widget _streak(BuildContext context) => SizedBox(
+    width: 100,
+    child: CrewHeaderSurface(
+      child: Tooltip(
+        message: 'View week',
+        child: Semantics(
+          label: 'Crew streak',
+          value: '$streakWeeks ${streakWeeks == 1 ? 'week' : 'weeks'}',
+          button: onOpen != null,
+          child: InkWell(
+            onTap: onOpen,
+            child: ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const CrewControlLabel('CREW STREAK'),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
                           children: [
-                            const CrewControlLabel('CREW STREAK'),
-                            const SizedBox(height: 4),
-                            Expanded(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Row(
-                                  children: [
-                                    HugeIcon(
-                                      icon: HugeIconsStrokeRounded.fire,
-                                      color: streakWeeks > 0
-                                          ? const Color(0xFFFF9138)
-                                          : context.muted,
-                                      size: 28,
-                                      strokeWidth: 2,
+                            HugeIcon(
+                              icon: HugeIconsStrokeRounded.fire,
+                              color: streakWeeks > 0
+                                  ? const Color(0xFFFF9138)
+                                  : context.muted,
+                              size: 28,
+                              strokeWidth: 2,
+                            ),
+                            const SizedBox(width: 6),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(text: '$streakWeeks'),
+                                  TextSpan(
+                                    text: streakWeeks == 1 ? ' week' : ' weeks',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          TextSpan(text: '$streakWeeks'),
-                                          TextSpan(
-                                            text: streakWeeks == 1
-                                                ? ' week'
-                                                : ' weeks',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      key: const ValueKey('crew-header-streak'),
-                                      style: TextStyle(
-                                        color: context.ink,
-                                        fontSize: 28,
-                                        height: 1.1,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
+                              ),
+                              key: const ValueKey('crew-header-streak'),
+                              style: TextStyle(
+                                color: context.ink,
+                                fontSize: 28,
+                                height: 1.1,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     ),
   );

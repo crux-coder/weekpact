@@ -27,21 +27,32 @@ class CrewSwitcher extends StatefulWidget {
 }
 
 class _CrewSwitcherState extends State<CrewSwitcher>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Long enough that a tap never deals the hand, short enough to feel direct.
   static const _holdDelay = Duration(milliseconds: 240);
 
   final _portal = OverlayPortalController();
+
+  /// The deal runs a beat longer for each extra crew, so every card keeps the
+  /// same pace. [CrewFan.dealDuration] owns that arithmetic.
   late final AnimationController _deal = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 260),
+    duration: CrewFan.dealDuration(widget.crews.length),
+  );
+
+  /// The hand leaves faster than it arrives, the way dismissals should.
+  late final AnimationController _exit = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 190),
   );
 
   bool _open = false;
 
+  /// True while the cards are on their way back off the top of the screen.
+  bool _closing = false;
+
   /// True while the fan follows a finger that has not lifted yet.
   bool _dragging = false;
-  Offset _anchor = Offset.zero;
   List<Rect> _cards = const [];
   int? _highlighted;
 
@@ -50,6 +61,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   @override
   void dispose() {
     _deal.dispose();
+    _exit.dispose();
     super.dispose();
   }
 
@@ -61,7 +73,6 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     final screen = MediaQuery.sizeOf(context);
     setState(() {
       _dragging = dragging;
-      _anchor = anchor;
       _cards = CrewFanLayout.of(
         screen: screen,
         padding: MediaQuery.paddingOf(context),
@@ -72,6 +83,9 @@ class _CrewSwitcherState extends State<CrewSwitcher>
       _open = true;
     });
     _portal.show();
+    _exit.value = 0;
+    _closing = false;
+    _deal.duration = CrewFan.dealDuration(widget.crews.length);
     if (MediaQuery.disableAnimationsOf(context)) {
       _deal.value = 1;
     } else {
@@ -80,11 +94,30 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     _buzz(HapticFeedback.mediumImpact);
   }
 
+  /// Send the cards back up, then take the overlay down once they are gone.
   void _close() {
+    if (!_open || _closing) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _hide();
+      return;
+    }
+    setState(() {
+      _closing = true;
+      _dragging = false;
+      _highlighted = null;
+    });
+    _exit.forward(from: 0).whenComplete(() {
+      if (mounted && _closing) _hide();
+    });
+  }
+
+  void _hide() {
     _portal.hide();
     _deal.value = 0;
+    _exit.value = 0;
     setState(() {
       _open = false;
+      _closing = false;
       _dragging = false;
       _highlighted = null;
     });
@@ -244,8 +277,8 @@ class _CrewSwitcherState extends State<CrewSwitcher>
         selectedId: widget.selectedId,
         highlighted: _highlighted,
         cards: _cards,
-        anchor: _anchor,
         animation: _deal,
+        exit: _exit,
         onPicked: _pick,
         onDismissed: _close,
       ),
