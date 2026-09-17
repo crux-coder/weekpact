@@ -4,11 +4,12 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 
 const homeInk = WeekPactColors.black;
-const homePaper = Color(0xFFECEDEC);
+
+/// Light ink for Home's dark fills — the canvas colour, read as paper.
+const homePaper = WeekPactColors.lightCanvas;
 
 extension HomePanelTheme on BuildContext {
-  Color get homePanel =>
-      isDark ? WeekPactColors.activitySurface : WeekPactColors.stone;
+  Color get homePanel => isDark ? WeekPactDarkCard.fill : WeekPactColors.stone;
 }
 
 class HomeBackground extends StatelessWidget {
@@ -25,7 +26,7 @@ class HomeSurface extends StatelessWidget {
     super.key,
     required this.child,
     this.tint = WeekPactColors.stone,
-    this.radius = WeekPactMetrics.cardRadius,
+    this.radius = WeekPactMetrics.controlRadius,
     this.shape,
     this.padding = EdgeInsets.zero,
     this.outlined = true,
@@ -47,7 +48,7 @@ class HomeSurface extends StatelessWidget {
     final surfaceShape =
         shape ??
         ContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(radius * (40 / 18)),
+          borderRadius: BorderRadius.circular(WeekPactMetrics.curveFor(radius)),
         );
     final surface = AppSurface(
       fillColor: tint,

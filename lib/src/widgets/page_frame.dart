@@ -75,6 +75,12 @@ class PageFrame extends StatelessWidget {
   }
 }
 
+/// A page's title with a coloured full stop.
+///
+/// The dot is the destination's own tint, so each tab is recognisable before
+/// the title is read: Feed mint, Pacts butter, Crews sky, Account coral. Every
+/// destination passes its own; the default covers one-off pages outside the
+/// nav, such as an invitation.
 class PageHeading extends StatelessWidget {
   const PageHeading(
     this.title, {
@@ -112,13 +118,13 @@ class SkeletonBar extends StatelessWidget {
     super.key,
     this.width,
     required this.height,
-    this.radius = 5,
+    this.radius,
     this.shape,
     this.color,
   });
   final double? width;
   final double height;
-  final double radius;
+  final double? radius;
   final ShapeBorder? shape;
   final Color? color;
 
@@ -130,7 +136,11 @@ class SkeletonBar extends StatelessWidget {
       color: color ?? context.ink.withValues(alpha: .14),
       shape:
           shape ??
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+          RoundedRectangleBorder(
+            borderRadius: radius == null
+                ? WeekPactMetrics.pill
+                : BorderRadius.circular(radius!),
+          ),
     ),
   );
 }

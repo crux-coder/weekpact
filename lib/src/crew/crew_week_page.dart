@@ -426,15 +426,17 @@ class _WeekSummary extends StatelessWidget {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: WeekPactColors.activitySurface,
-              borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+              color: WeekPactDarkCard.fill,
+              borderRadius: BorderRadius.circular(
+                WeekPactMetrics.controlRadius,
+              ),
             ),
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 const AppIcon(
                   icon: HugeIconsStrokeRounded.fire,
-                  color: WeekPactColors.darkMuted,
+                  color: WeekPactDarkCard.muted,
                   size: 30,
                 ),
                 const SizedBox(width: 8),
@@ -448,7 +450,7 @@ class _WeekSummary extends StatelessWidget {
                             ? 'Week 1'
                             : '${week.streakWeeks} ${week.streakWeeks == 1 ? 'week' : 'weeks'}',
                         style: const TextStyle(
-                          color: WeekPactColors.cream,
+                          color: WeekPactDarkCard.ink,
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         ),
@@ -459,7 +461,7 @@ class _WeekSummary extends StatelessWidget {
                             ? 'Start your first crew streak'
                             : 'Crew streak',
                         style: const TextStyle(
-                          color: WeekPactColors.darkMuted,
+                          color: WeekPactDarkCard.muted,
                           fontSize: 12,
                         ),
                       ),

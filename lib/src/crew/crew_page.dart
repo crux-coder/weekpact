@@ -480,6 +480,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return PageFrame(
       header: CrewPageHeading(
         title: 'Crews',
+        dotColor: WeekPactColors.coolGrey,
         actions: [
           if (_crew != null)
             IconButton(
@@ -603,7 +604,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                         color: context.border,
                         width: WeekPactMetrics.border,
                       ),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(
+                        WeekPactMetrics.controlRadius,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -810,9 +813,7 @@ class _InviteRow extends StatelessWidget {
                 color: context.border,
                 width: WeekPactMetrics.border,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
+              shape: WeekPactMetrics.buttonShape,
             ),
             child: const Text(
               'REVOKE',

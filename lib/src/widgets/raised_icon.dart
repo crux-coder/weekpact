@@ -15,8 +15,10 @@ class RaisedIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final ink = color ?? IconTheme.of(context).color ?? context.ink;
     final dark = ink.computeLuminance() > .5;
-    final face = dark ? const Color(0xFF3A3A3A) : const Color(0xFFE4E4E4);
-    final edge = dark ? const Color(0xFF5A5A5A) : const Color(0xFFA0A0A0);
+    // The same neutral pair the rest of the app raises with: a pale face on
+    // a muted edge, or the dark canvas on its own lighter border.
+    final face = dark ? WeekPactColors.darkSurface : WeekPactColors.cream;
+    final edge = dark ? WeekPactColors.darkBorder : WeekPactColors.pendingEdge;
     return SizedBox.square(
       dimension: size + 8,
       child: DecoratedBox(

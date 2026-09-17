@@ -196,8 +196,8 @@ class _CrewMemberListState extends State<CrewMemberList>
         member.initials,
         style: const TextStyle(
           color: homeInk,
-          fontFamily: 'Roboto',
-          fontFamilyFallback: ['Arial'],
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -206,7 +206,7 @@ class _CrewMemberListState extends State<CrewMemberList>
     final action = member.id == widget.userId
         ? const Text(
             'You',
-            style: TextStyle(color: Color(0xFF646B60), fontSize: 12),
+            style: TextStyle(color: WeekPactColors.mutedLight, fontSize: 12),
           )
         : _canNudge
         ? _nudgeButton(context, member)
@@ -218,8 +218,8 @@ class _CrewMemberListState extends State<CrewMemberList>
           name,
           style: const TextStyle(
             color: homeInk,
-            fontFamily: 'Roboto',
-            fontFamilyFallback: ['Arial'],
+            fontFamily: WeekPactType.secondary,
+            fontFamilyFallback: WeekPactType.secondaryFallback,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -227,7 +227,7 @@ class _CrewMemberListState extends State<CrewMemberList>
         if (_failed.contains(member.id))
           const Text(
             'Could not send. Try again.',
-            style: TextStyle(color: Color(0xFF8A3831), fontSize: 11),
+            style: TextStyle(color: WeekPactColors.error, fontSize: 11),
           ),
       ],
     );
@@ -318,16 +318,16 @@ class _CrewMemberListState extends State<CrewMemberList>
               ? () => _send(member.id)
               : null,
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF2F6347),
-            disabledForegroundColor: const Color(0xFF687361),
+            foregroundColor: WeekPactColors.doneMark,
+            disabledForegroundColor: WeekPactColors.mutedLight,
             backgroundColor: ready && !busy
                 ? WeekPactColors.mintGreen
                 : Colors.transparent,
             minimumSize: const Size(64, 36),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             textStyle: const TextStyle(
-              fontFamily: 'Roboto',
-              fontFamilyFallback: ['Arial'],
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),

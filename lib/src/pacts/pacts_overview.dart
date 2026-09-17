@@ -54,7 +54,7 @@ class YourWeekCard extends StatelessWidget {
               LinearProgressIndicator(
                 value: completed / target,
                 minHeight: 10,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: WeekPactMetrics.pill,
                 color: context.ink,
                 backgroundColor: context.ink.withValues(alpha: .12),
                 semanticsLabel:

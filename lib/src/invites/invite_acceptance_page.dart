@@ -77,7 +77,8 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
             'CREW INVITATION',
             style: TextStyle(
               color: context.muted,
-              fontFamily: 'Roboto',
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               fontSize: 10,
               letterSpacing: 2,
               fontWeight: FontWeight.w500,
@@ -101,7 +102,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                       decoration: BoxDecoration(
                         color: WeekPactColors.coolGrey,
                         borderRadius: BorderRadius.circular(
-                          WeekPactMetrics.cardRadius,
+                          WeekPactMetrics.controlRadius,
                         ),
                       ),
                       child: AppIcon(
@@ -127,7 +128,8 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                     'Build your habits together. Join the crew to see its pacts and check in with your people.',
                     style: TextStyle(
                       color: context.muted,
-                      fontFamily: 'Roboto',
+                      fontFamily: WeekPactType.secondary,
+                      fontFamilyFallback: WeekPactType.secondaryFallback,
                       fontWeight: FontWeight.w400,
                       fontSize: 15,
                       height: 1.55,
@@ -149,7 +151,8 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
             'SIGNED IN AS',
             style: TextStyle(
               color: context.muted,
-              fontFamily: 'Roboto',
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               fontSize: 10,
               letterSpacing: 2,
               fontWeight: FontWeight.w500,
@@ -160,7 +163,8 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
             widget.email,
             style: TextStyle(
               color: context.ink,
-              fontFamily: 'Roboto',
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               fontWeight: FontWeight.w400,
               fontSize: 15,
               height: 1.5,
@@ -174,7 +178,8 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                 _error!,
                 style: TextStyle(
                   color: context.errorInk,
-                  fontFamily: 'Roboto',
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
                   fontSize: 14,
                   height: 1.5,
                 ),

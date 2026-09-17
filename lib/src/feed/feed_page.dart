@@ -311,7 +311,7 @@ class FeedPost extends StatelessWidget {
     final name = isMine ? 'You' : entry.displayName;
     return AppSurface(
       borderRadius: 16,
-      fillColor: WeekPactColors.activitySurface,
+      fillColor: WeekPactDarkCard.fill,
       resolveTone: false,
       builder: (context) => Semantics(
         label:
@@ -333,7 +333,7 @@ class FeedPost extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: WeekPactColors.cream,
+                          color: WeekPactDarkCard.ink,
                           fontSize: 15,
                           height: 1.2,
                           fontWeight: FontWeight.w700,
@@ -344,9 +344,9 @@ class FeedPost extends StatelessWidget {
                     Text(
                       time,
                       style: const TextStyle(
-                        fontFamily: 'Roboto',
-                        fontFamilyFallback: ['Arial'],
-                        color: WeekPactColors.darkMuted,
+                        fontFamily: WeekPactType.secondary,
+                        fontFamilyFallback: WeekPactType.secondaryFallback,
+                        color: WeekPactDarkCard.muted,
                         fontSize: 11,
                         height: 1.35,
                       ),
@@ -375,7 +375,7 @@ class FeedPost extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: WeekPactColors.cream,
+                              color: WeekPactDarkCard.ink,
                               fontSize: 15,
                               height: 1.2,
                               fontWeight: FontWeight.w700,
@@ -386,11 +386,12 @@ class FeedPost extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              fontFamilyFallback: ['Arial'],
+                              fontFamily: WeekPactType.secondary,
+                              fontFamilyFallback:
+                                  WeekPactType.secondaryFallback,
                               fontSize: 11,
                               height: 1.35,
-                              color: WeekPactColors.darkMuted,
+                              color: WeekPactDarkCard.muted,
                             ),
                           ),
                         ],
@@ -399,7 +400,7 @@ class FeedPost extends StatelessWidget {
                     const SizedBox(width: 8),
                     HugeIcon(
                       icon: PactIcon.find(entry.iconKey).data,
-                      color: WeekPactColors.darkMuted,
+                      color: WeekPactDarkCard.muted,
                       size: 18,
                     ),
                   ],
@@ -420,12 +421,12 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FlatAvatar(
     radius: 15,
-    backgroundColor: WeekPactColors.cream.withValues(alpha: .12),
+    backgroundColor: WeekPactDarkCard.ink.withValues(alpha: .12),
     child: AvatarClip(
       child: entry.avatarUrl == null
           ? Text(
               entry.initials,
-              style: const TextStyle(color: WeekPactColors.cream),
+              style: const TextStyle(color: WeekPactDarkCard.ink),
             )
           : Image.network(
               entry.avatarUrl!,
@@ -434,7 +435,7 @@ class _Avatar extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => Text(
                 entry.initials,
-                style: const TextStyle(color: WeekPactColors.cream),
+                style: const TextStyle(color: WeekPactDarkCard.ink),
               ),
             ),
     ),
@@ -467,19 +468,19 @@ class _PhotoPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: WeekPactColors.cream.withValues(alpha: .08),
+    color: WeekPactDarkCard.ink.withValues(alpha: .08),
     child: Center(
       child: failed
           ? HugeIcon(
               icon: HugeIconsStrokeRounded.image01,
-              color: WeekPactColors.cream.withValues(alpha: .35),
+              color: WeekPactDarkCard.ink.withValues(alpha: .35),
               size: 26,
             )
           : const SizedBox.square(
               dimension: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: WeekPactColors.darkMuted,
+                color: WeekPactDarkCard.muted,
                 semanticsLabel: 'Loading check-in photo',
               ),
             ),
@@ -499,10 +500,10 @@ class _FeedSkeleton extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: AppSurface(
             borderRadius: 16,
-            fillColor: WeekPactColors.activitySurface,
+            fillColor: WeekPactDarkCard.fill,
             resolveTone: false,
             builder: (context) {
-              final bone = WeekPactColors.cream.withValues(alpha: .1);
+              final bone = WeekPactDarkCard.ink.withValues(alpha: .1);
               return Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(

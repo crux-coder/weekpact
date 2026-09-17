@@ -4,37 +4,93 @@ The app uses solid-color raised cards, flat icons, condensed typography, compact
 
 ## Where to make changes
 
-- `lib/src/theme/weekpact_theme.dart`: palettes, theme configuration, and `WeekPactMetrics` for corner radii, strokes, spacing, and control sizes. `BuildContext` getters supply semantic canvas, surface, ink, muted, and accent colors.
+- `lib/src/theme/weekpact_theme.dart`: palettes, theme configuration, and `WeekPactMetrics` for corner radii, strokes, spacing, and control sizes. `BuildContext` getters supply semantic canvas, surface, ink, muted, and accent colors. `WeekPactType`
+  names the two faces: RobotoCondensed is the display face and the theme
+  default, and `WeekPactType.secondary` (with `secondaryFallback`) is the wider
+  companion for body copy, captions and numerals — use it rather than writing
+  the family strings at a call site. State colours are named too, so a screen
+  never spells one as a hex literal: `mintEdge` and `pendingEdge` for the two
+  crew tile states, `doneMark` for a completed check-in, `streak` for a running
+  flame, `inkEdge` for the dark check-in button, `navSelected` for the selected
+  nav tile, and `castShadow` where a shadow falls on the canvas with no card
+  colour to mix from.
 - `lib/src/widgets/app_components.dart`: `AppSurface`, `AppSectionCard`, `AppButton`, `AppTextField`, and `AppBottomNavigationBar`.
 - `lib/src/widgets/app_dialog.dart`: `AppDialog` and `AppDialogDismiss`. The app's own dialog, on the same raised squircle as every other surface. Its actions stack full width as real buttons rather than the cramped text links `AlertDialog` puts in a row, with the action being offered on top and the dismissal below it in `WeekPactColors.neutralInset`. Pass it to `showAppDialog`; prefer it over `AlertDialog` for anything the person is meant to choose between. Section cards integrate their title/selector and optional actions within the same unbroken fill, without a colored header strip.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
-- `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement.
-- `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces in both themes.
+- `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement. `PageHeading`'s
+  full stop is the destination's own tint, so a tab is recognisable before its
+  title is read: Feed mint, Pacts butter, Crews sky, Account coral. Every
+  destination passes its own `dotColor`; the default covers one-off pages
+  outside the nav, such as an invitation.
+- `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces on any tint.
 
 ## Theme behavior
 
-The app ships one theme, set at the root (`theme`/`themeMode` in `app.dart`); the
-device's appearance setting does not change it, and the Android splash, iOS
-launch screen and web chrome carry the same canvas colour. It is the dark one: a
-charcoal canvas (`darkCanvas`, #2B302C) with light canvas text and navigation,
-carrying the SAME bright cards as the light palette — card content stays dark on
-every tint, including the cream feed posts. The light palette (`lightCanvas`,
-#ECEDEA) stays defined and swaps in by changing those two root lines. Card content is always dark; only canvas text and
-navigation invert. `pactPalette` carries bright colour — lemon, mint, sky, coral,
+The app has one theme. It is set at the root (`theme`/`themeMode` in `app.dart`)
+and nothing changes it at runtime: a charcoal canvas (`darkCanvas`, #2B302C)
+with light canvas text and navigation, carrying bright cards. Card content is
+always dark, on every tint.
+
+`WeekPactTheme.light` still exists, but it is not a second theme the app can be
+put into. It is the pale-card scope: `AppSurfaceTheme` applies it inside card
+builders so content on a cream or pact-tint fill resolves against a light
+palette while the canvas around it stays charcoal. It is also what
+`design_preview_test.dart` renders the light previews with. There is no
+appearance setting — not in Account, not from the device, and no stored
+preference; `widget_test.dart` asserts both. Changing the app's one theme means
+editing the two root lines in `app.dart`, and the Android splash, iOS launch
+screen and web chrome have to be changed to match by hand.
+
+`pactPalette` carries bright colour — lemon, mint, sky, coral,
 lavender, peach, lime, aqua, orchid, butter — held light enough that near-black
 card ink clears 8.5:1 against every entry; keep new tints in that band. Its
 companions follow the same family: `stone` is butter, `coolGrey` sky, `mintGreen`
 mint, `softCoral` coral. `pendingCheckIns` stays muted grey, since reading as
 *not done* is its job.
-Do not introduce charcoal or pink card variants. Both use the same component structure, metrics, and navigation. Appearance continues to support Light, Dark, and Device in Account and persists through the existing preference store.
+There are exactly two card languages, and `WeekPactDarkCard` in
+`weekpact_theme.dart` is the second one. Most of the app is a pale card with
+dark ink. Three content-heavy surfaces invert that — the Feed, the paywall and
+the subscription page — because the photos and the pricing carry the colour
+there and a pale card would compete with them; Crew week's streak panel and
+Home's activity panel use the same fill. Take `fill`, `outline`, `ink` and
+`muted` from `WeekPactDarkCard` together, as a closed set: never put pale-card
+ink (`black`, `mutedLight`) on that fill, and never put dark-card ink on a pact
+tint. Do not add a third card language, and do not introduce pink card variants.
+Both use the same component structure, metrics, and navigation.
 
 All `AppSurface`, `AppSectionCard`, and `AppSheet` content uses a `builder: (context) => ...` API. Build color-dependent content inside that callback: `AppSurfaceTheme` scopes it to the pale-card palette even on a dark canvas. Use `context.ink` for canvas and regular surface text, `context.muted` for secondary text, and `context.border` for outlines. Explicit pastel home surfaces use `homeInk`; do not place dark-theme foreground colors onto those pale cards. Use `AppSurface.resolveTone: false` only when the component also deliberately owns its foreground contrast.
 
-Use continuous squircle corners on cards (40px curve radius for standard cards), 8px control radius, 1px outlines, 12px page insets, and 48px primary controls. Preserve scroll access for longer forms and large text. Respect reduced-motion settings for finite transitions.
+There are four corners in `WeekPactMetrics`, and a screen should reach for one
+of them rather than a new number:
+
+- `controlRadius` (8) — a control, a cell or a flat panel, as a rounded rect.
+  Weekday cells on Home and in the crew week card are both this.
+- `cardCorner` (18) / `cardCurve` (40) — a standard card, as a continuous
+  squircle. They are the same corner: `cardCorner` is its plain radius and
+  `cardCurve` is what that corner needs to read at the same size once drawn as
+  a squircle. `curveFor` converts, so a surface can switch shape without a
+  caller restating both. `pactCardShape` is `cardCurve` prebuilt.
+- `panelCurve` (24) — a smaller raised panel, header or tile, so the curve
+  stays proportional to the box instead of swallowing it. The crew switcher
+  header, the crew fan cards, the invites pane and the navigation highlight.
+- `buttonShape` — every button. A button that draws its own
+  `RoundedRectangleBorder` is a bug.
+
+Two more shapes sit outside the scale. `pill` is a bar, pip or progress track
+rounded to its own half-height, so it reads as a pill at whatever size it is
+rather than at a guessed radius — Home's progress segments, the Pacts progress
+bar, carousel dots, step pips, sheet grab handles and skeleton bars are all
+this one value. `sheetRadius` (16) is a modal sheet, which meets the screen
+edge and so rounds only along the top.
+
+A dashed outline traces the same continuous squircle as the surface it sits on
+(`DashedBorder`), so a dashed tile sits flush beside solid cards.
+
+Also 1px outlines, 12px page insets, and 48px primary controls. Preserve scroll access for longer forms and large text. Respect reduced-motion settings for finite transitions.
 
 ## Verification
 
-`flutter test` covers authentication, onboarding, pacts, crews, invitations, account/theme switching, carousel behavior, avatar caching, and responsive home layouts. `test/design_preview_test.dart` visits all main destinations in both themes. Run it with `--dart-define=CAPTURE_DESIGN=true` to save the rendered previews under `/tmp/weekpact-{light,dark}-{home,feed,pacts,crews,account}.png`.
+`flutter test` covers authentication, onboarding, pacts, crews, invitations, account actions, carousel behavior, avatar caching, and responsive home layouts; `widget_test.dart` asserts the app keeps one theme and offers no appearance setting. `test/design_preview_test.dart` visits all main destinations against both palettes — the shipping charcoal one and the light one used for card scope — so a change is checked against both. Run it with `--dart-define=CAPTURE_DESIGN=true` to save the rendered previews under `/tmp/weekpact-{light,dark}-{home,feed,pacts,crews,account}.png`.
 
 ## Pacts overview
 
@@ -57,8 +113,8 @@ It lists check-ins from every crew the member belongs to, newest first, one post
 per check-in: a full-bleed 16:9 photo, then one text bar beneath it with the
 author's avatar, the pact title leading, and the byline — name (“You” for your
 own), crew and time — as muted secondary text beside a muted pact glyph. The
-compact crop keeps a day's check-ins on one screen. Posts are deliberately quiet:
-one neutral `AppSurface` card in both themes, so the photo carries the colour.
+compact crop keeps a day's check-ins on one screen. Posts are deliberately quiet: one
+`WeekPactDarkCard` surface, so the photo carries the colour.
 The feed is the one place photos are not bowed by `CheckInPhotoFrame`; the card's
 own corners clip them edge to edge. A check-in without a photo is the bar alone.
 Day headings separate the stream, matching Home's date grouping. Paging
@@ -141,5 +197,5 @@ When one side is empty the tile speaks for the crew instead — its caption read
 members. Preserve explicit status
 semantics and tap-to-expand behavior; show a collapse control when expanded.
 
-Check-in group labels use 10px medium-weight captions. In dark mode, selected
-navigation tiles use muted warm off-white rather than bright white.
+Check-in group labels use 10px medium-weight captions. Selected navigation
+tiles use muted warm off-white (`navSelected`) rather than bright white.

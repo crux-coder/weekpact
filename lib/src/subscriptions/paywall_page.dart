@@ -151,7 +151,7 @@ class _PaywallPageState extends State<PaywallPage> {
               const Text(
                 'WeekPact Pro',
                 style: TextStyle(
-                  color: _cream,
+                  color: WeekPactDarkCard.ink,
                   fontSize: 38,
                   height: 1.05,
                   fontWeight: FontWeight.w700,
@@ -266,7 +266,7 @@ class _Plan extends StatelessWidget {
     // A price cannot wrap — there is no space to break at — so past roughly
     // 1.4x the row is stacked instead of being pushed off the screen edge.
     final stacked = MediaQuery.textScalerOf(context).scale(24) > 34;
-    final ink = selected ? _ink : _cream;
+    final ink = selected ? _ink : WeekPactDarkCard.ink;
     final period = Text(
       _period,
       style: TextStyle(
@@ -289,9 +289,9 @@ class _Plan extends StatelessWidget {
       _detail,
       textAlign: stacked ? TextAlign.left : TextAlign.right,
       style: TextStyle(
-        fontFamily: 'Roboto',
-        fontFamilyFallback: const ['Arial'],
-        color: selected ? WeekPactColors.mutedLight : WeekPactColors.darkMuted,
+        fontFamily: WeekPactType.secondary,
+        fontFamilyFallback: WeekPactType.secondaryFallback,
+        color: selected ? WeekPactColors.mutedLight : WeekPactDarkCard.muted,
         fontSize: 13,
       ),
     );
@@ -307,10 +307,10 @@ class _Plan extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           AppSurface(
-            fillColor: selected ? _cream : WeekPactColors.activitySurface,
+            fillColor: selected ? _cream : WeekPactDarkCard.fill,
             resolveTone: false,
             borderWidth: selected ? 2 : 1,
-            outlineColor: selected ? _ink : WeekPactColors.darkBorder,
+            outlineColor: selected ? _ink : WeekPactDarkCard.outline,
             builder: (context) => InkWell(
               onTap: onTap,
               child: Padding(
@@ -423,7 +423,7 @@ class _Benefit extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: _cream,
+                  color: WeekPactDarkCard.ink,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -447,9 +447,9 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     text,
     style: TextStyle(
-      fontFamily: 'Roboto',
-      fontFamilyFallback: const ['Arial'],
-      color: WeekPactColors.darkMuted,
+      fontFamily: WeekPactType.secondary,
+      fontFamilyFallback: WeekPactType.secondaryFallback,
+      color: WeekPactDarkCard.muted,
       fontSize: size,
       height: 1.3,
     ),
@@ -468,7 +468,7 @@ class _PlansSkeleton extends StatelessWidget {
           SkeletonBar(
             height: 74,
             radius: 18,
-            color: _cream.withValues(alpha: .08),
+            color: WeekPactDarkCard.ink.withValues(alpha: .08),
           ),
           if (row == 0) const SizedBox(height: 10),
         ],
@@ -484,9 +484,9 @@ class _Unavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppSurface(
-    fillColor: WeekPactColors.activitySurface,
+    fillColor: WeekPactDarkCard.fill,
     resolveTone: false,
-    outlineColor: WeekPactColors.darkBorder,
+    outlineColor: WeekPactDarkCard.outline,
     builder: (context) => const Padding(
       padding: EdgeInsets.all(18),
       child: _Body(
@@ -529,7 +529,7 @@ class _FooterDot extends StatelessWidget {
     padding: EdgeInsets.symmetric(horizontal: 4),
     child: Text(
       '·',
-      style: TextStyle(color: WeekPactColors.darkMuted, fontSize: 12),
+      style: TextStyle(color: WeekPactDarkCard.muted, fontSize: 12),
     ),
   );
 }
@@ -545,14 +545,14 @@ class _FooterLink extends StatelessWidget {
     style: TextButton.styleFrom(
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      foregroundColor: WeekPactColors.darkMuted,
+      foregroundColor: WeekPactDarkCard.muted,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     ),
     child: Text(
       label,
       style: const TextStyle(
-        fontFamily: 'Roboto',
-        fontFamilyFallback: ['Arial'],
+        fontFamily: WeekPactType.secondary,
+        fontFamilyFallback: WeekPactType.secondaryFallback,
         fontSize: 12,
       ),
     ),
@@ -567,10 +567,10 @@ class _CloseButton extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox.square(
     dimension: 34,
     child: AppSurface(
-      fillColor: WeekPactColors.activitySurface,
+      fillColor: WeekPactDarkCard.fill,
       resolveTone: false,
       borderRadius: 10,
-      outlineColor: WeekPactColors.darkBorder,
+      outlineColor: WeekPactDarkCard.outline,
       builder: (context) => Semantics(
         button: true,
         label: 'Close',
@@ -581,7 +581,7 @@ class _CloseButton extends StatelessWidget {
             child: AppIcon(
               icon: HugeIconsStrokeRounded.cancel01,
               size: 16,
-              color: WeekPactColors.darkMuted,
+              color: WeekPactDarkCard.muted,
               strokeWidth: 2,
             ),
           ),

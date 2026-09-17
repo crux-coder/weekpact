@@ -593,7 +593,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              color: const Color(0xFFFFB4A9),
+                                              color: context.errorInk,
                                               fontSize: 13,
                                             ),
                                           ),

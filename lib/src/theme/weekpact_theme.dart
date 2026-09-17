@@ -11,12 +11,36 @@ abstract final class WeekPactMetrics {
   static const controlDepth = 2.0;
   static const cardDepth = 3.0;
   static const pactCardShape = ContinuousRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(40)),
+    borderRadius: BorderRadius.all(Radius.circular(cardCurve)),
   );
   static const raisedOffset = Offset(0, controlDepth);
-  static const cardRadius = 8.0;
+
+  // Corners. There are four, and only four.
+  //
+  // A control, a cell or a flat panel is a rounded rect of `controlRadius`.
+  // A card is a continuous squircle: `cardCorner` is that corner as a plain
+  // radius and `cardCurve` is the same corner drawn as a squircle, which needs
+  // a larger number to read at the same size — `curveFor` converts between
+  // them, so a surface can switch shape without a caller restating both. A
+  // smaller raised panel, header or tile steps down to `panelCurve`, keeping
+  // the curve proportional to the box instead of swallowing it. Buttons use
+  // `buttonShape`. Reach for one of these rather than a new number.
   static const controlRadius = 8.0;
+  static const cardCorner = 18.0;
+  static const cardCurve = 40.0;
+  static const panelCurve = 24.0;
   static const buttonShape = SquircleButtonBorder();
+
+  /// The squircle curve that draws `radius` at the size it reads as a card.
+  static double curveFor(double radius) => radius * (cardCurve / cardCorner);
+
+  /// A bar, pip or progress track: rounded to its own half-height, so it reads
+  /// as a pill at whatever size it happens to be rather than at a guessed
+  /// radius. Oversized on purpose — the paint clamps it to the box.
+  static const pill = BorderRadius.all(Radius.circular(999));
+
+  /// Modal sheets meet the screen edge, so they round only along the top.
+  static const sheetRadius = 16.0;
   static const pageInset = 12.0;
   static const sectionGap = 20.0;
   static const fineBorder = 1.0;
@@ -86,6 +110,54 @@ abstract final class WeekPactColors {
 
   static const mutedLight = Color(0xFF51564F);
   static const error = Color(0xFFC94F59);
+
+  // Edges and outlines for the two crew check-in tile states. One value per
+  // state, shared by the tile's outline, its raised edge, the faces and the
+  // overflow chip, so a tile reads as a single object.
+  static const mintEdge = Color(0xFF5F9774);
+  static const pendingEdge = Color(0xFFADB5BC);
+
+  /// The one green for a completed check-in, on cards and on the nudge button.
+  static const doneMark = Color(0xFF3F7A57);
+
+  /// The streak flame, once the streak has started.
+  static const streak = Color(0xFFFF9138);
+
+  /// The dark check-in button's outline and raised edge: black lifted just
+  /// enough to separate the face from its own shadow.
+  static const inkEdge = Color(0xFF484848);
+
+  /// The selected navigation tile on a dark canvas: muted warm off-white
+  /// rather than bright white.
+  static const navSelected = Color(0xFFD8D3C8);
+
+  /// A cast shadow on the canvas, where no card colour is available to mix from.
+  static const castShadow = Color(0x40000000);
+}
+
+/// The app's two faces. RobotoCondensed is the display face and the theme
+/// default; this is its wider companion for body copy, captions and numerals.
+/// Use these rather than repeating the family strings at a call site.
+abstract final class WeekPactType {
+  static const secondary = 'Roboto';
+  static const secondaryFallback = <String>['Arial'];
+}
+
+/// The charcoal card.
+///
+/// Most of the app is pale cards with dark ink. Three content-heavy surfaces —
+/// the Feed, the paywall and the subscription page — invert that: the photos
+/// and the pricing carry the colour there, and a pale card would compete with
+/// them. Crew week's streak panel and Home's activity panel use it too.
+///
+/// It is a closed set. Take fill, outline, ink and muted from here together;
+/// never put pale-card ink (`WeekPactColors.black`, `mutedLight`) on this fill,
+/// and never put these on a pact tint.
+abstract final class WeekPactDarkCard {
+  static const fill = WeekPactColors.activitySurface;
+  static const outline = WeekPactColors.darkBorder;
+  static const ink = WeekPactColors.cream;
+  static const muted = WeekPactColors.darkMuted;
 }
 
 abstract final class WeekPactTheme {
@@ -168,7 +240,7 @@ abstract final class WeekPactTheme {
         backgroundColor: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+          borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
           side: BorderSide(color: outline),
         ),
       ),
@@ -177,7 +249,9 @@ abstract final class WeekPactTheme {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(WeekPactMetrics.sheetRadius),
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(

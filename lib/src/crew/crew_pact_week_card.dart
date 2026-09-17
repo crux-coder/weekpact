@@ -516,7 +516,9 @@ class _MemberDays extends StatelessWidget {
                                 : context.ink.withValues(
                                     alpha: future ? .025 : .06,
                                   ),
-                            borderRadius: BorderRadius.circular(5),
+                            borderRadius: BorderRadius.circular(
+                              WeekPactMetrics.controlRadius,
+                            ),
                           ),
                           child: done
                               ? const HugeIcon(

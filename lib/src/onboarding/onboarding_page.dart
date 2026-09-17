@@ -306,7 +306,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                       onTap: _saving || _picking
                                           ? null
                                           : _choosePhoto,
-                                      borderRadius: BorderRadius.circular(60),
+                                      borderRadius: WeekPactMetrics.pill,
                                       child: Container(
                                         width: 112,
                                         height: 112,

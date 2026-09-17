@@ -181,7 +181,8 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
           Text(
             'A quick photo for your crew.',
             style: TextStyle(
-              fontFamily: 'Roboto',
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               fontSize: 14,
               fontWeight: FontWeight.w400,
               color: context.muted,
@@ -245,7 +246,8 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
               child: Text(
                 _error!,
                 style: TextStyle(
-                  fontFamily: 'Roboto',
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
                   fontSize: 13,
                   color: context.errorInk,
                 ),

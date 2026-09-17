@@ -242,8 +242,8 @@ class _StatusCard extends StatelessWidget {
           Text(
             _renewal(access),
             style: const TextStyle(
-              fontFamily: 'Roboto',
-              fontFamilyFallback: ['Arial'],
+              fontFamily: WeekPactType.secondary,
+              fontFamilyFallback: WeekPactType.secondaryFallback,
               color: WeekPactColors.mutedLight,
               fontSize: 15,
               height: 1.35,
@@ -254,8 +254,8 @@ class _StatusCard extends StatelessWidget {
             const Text(
               'Sandbox purchase — not a real charge.',
               style: TextStyle(
-                fontFamily: 'Roboto',
-                fontFamilyFallback: ['Arial'],
+                fontFamily: WeekPactType.secondary,
+                fontFamilyFallback: WeekPactType.secondaryFallback,
                 color: WeekPactColors.mutedLight,
                 fontSize: 12,
               ),
@@ -336,9 +336,9 @@ class _Action extends StatelessWidget {
       child: Opacity(
         opacity: enabled ? 1 : .5,
         child: AppSurface(
-          fillColor: WeekPactColors.activitySurface,
+          fillColor: WeekPactDarkCard.fill,
           resolveTone: false,
-          outlineColor: WeekPactColors.darkBorder,
+          outlineColor: WeekPactDarkCard.outline,
           builder: (context) => InkWell(
             onTap: onTap,
             child: Padding(
@@ -369,7 +369,7 @@ class _Action extends StatelessWidget {
                         Text(
                           title,
                           style: const TextStyle(
-                            color: _cream,
+                            color: WeekPactDarkCard.ink,
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -378,9 +378,9 @@ class _Action extends StatelessWidget {
                         Text(
                           body,
                           style: const TextStyle(
-                            fontFamily: 'Roboto',
-                            fontFamilyFallback: ['Arial'],
-                            color: WeekPactColors.darkMuted,
+                            fontFamily: WeekPactType.secondary,
+                            fontFamilyFallback: WeekPactType.secondaryFallback,
+                            color: WeekPactDarkCard.muted,
                             fontSize: 13,
                             height: 1.3,
                           ),
@@ -392,7 +392,7 @@ class _Action extends StatelessWidget {
                   const AppIcon(
                     icon: HugeIconsStrokeRounded.arrowRight01,
                     size: 18,
-                    color: WeekPactColors.darkMuted,
+                    color: WeekPactDarkCard.muted,
                     strokeWidth: 2,
                   ),
                 ],
@@ -413,7 +413,7 @@ class _Heading extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     label,
     style: const TextStyle(
-      color: WeekPactColors.darkMuted,
+      color: WeekPactDarkCard.muted,
       fontSize: 11,
       letterSpacing: 2,
       fontWeight: FontWeight.w700,

@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// A thin, rounded dashed outline that leaves its child's fill unchanged.
+import '../theme/weekpact_theme.dart';
+
+/// A thin dashed outline that leaves its child's fill unchanged.
+///
+/// It traces the same continuous squircle the surfaces underneath it are
+/// drawn with, so a dashed tile sits flush beside solid cards instead of
+/// reading as a tighter, squarer shape.
 class DashedBorder extends StatelessWidget {
   const DashedBorder({
     super.key,
     required this.child,
     required this.color,
-    this.radius = 12,
+    this.radius = WeekPactMetrics.cardCurve,
   });
   final Widget child;
   final Color color;
@@ -26,13 +32,9 @@ class _DashedOutline extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          (Offset.zero & size).deflate(.5),
-          Radius.circular(radius),
-        ),
-      );
+    final path = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(radius),
+    ).getOuterPath((Offset.zero & size).deflate(.5));
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke

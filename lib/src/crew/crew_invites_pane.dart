@@ -165,7 +165,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const Text(
         'RECEIVED',
         style: TextStyle(
-          fontFamily: 'Roboto',
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 10,
           letterSpacing: 2,
           fontWeight: FontWeight.w500,
@@ -192,7 +193,9 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       Material(
         color: WeekPactColors.stone,
         shape: const ContinuousRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(WeekPactMetrics.panelCurve),
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -216,7 +219,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                       Text(
                         '${invite.members.length} ${invite.members.length == 1 ? 'member' : 'members'} · ${invite.pacts.length} ${invite.pacts.length == 1 ? 'pact' : 'pacts'}',
                         style: const TextStyle(
-                          fontFamily: 'Roboto',
+                          fontFamily: WeekPactType.secondary,
+                          fontFamilyFallback: WeekPactType.secondaryFallback,
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
                           height: 1.5,
@@ -270,7 +274,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         'Week starts Monday · ${invite.timezone}',
         style: TextStyle(
           color: context.muted,
-          fontFamily: 'Roboto',
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontWeight: FontWeight.w400,
           fontSize: 13,
           height: 1.5,
@@ -280,7 +285,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const Text(
         'MEMBERS',
         style: TextStyle(
-          fontFamily: 'Roboto',
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 10,
           fontWeight: FontWeight.w500,
           letterSpacing: 2,
@@ -306,7 +312,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                 child: Text(
                   member.email,
                   style: const TextStyle(
-                    fontFamily: 'Roboto',
+                    fontFamily: WeekPactType.secondary,
+                    fontFamilyFallback: WeekPactType.secondaryFallback,
                     fontSize: 14,
                     height: 1.4,
                   ),
@@ -317,7 +324,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                 const Text(
                   'OWNER',
                   style: TextStyle(
-                    fontFamily: 'Roboto',
+                    fontFamily: WeekPactType.secondary,
+                    fontFamilyFallback: WeekPactType.secondaryFallback,
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -330,7 +338,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const Text(
         'PACTS',
         style: TextStyle(
-          fontFamily: 'Roboto',
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 10,
           fontWeight: FontWeight.w500,
           letterSpacing: 2,
@@ -357,7 +366,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                 pact.schedule,
                 style: TextStyle(
                   color: context.muted,
-                  fontFamily: 'Roboto',
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -370,7 +380,8 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         'Invite expires ${MaterialLocalizations.of(context).formatMediumDate(invite.expiresAt.toLocal())}.',
         style: TextStyle(
           color: context.muted,
-          fontFamily: 'Roboto',
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 12,
           height: 1.5,
         ),

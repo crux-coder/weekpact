@@ -273,7 +273,8 @@ class _InlineCheckInCameraState extends State<InlineCheckInCamera>
               _error!,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Roboto',
+                fontFamily: WeekPactType.secondary,
+                fontFamilyFallback: WeekPactType.secondaryFallback,
                 fontSize: 13,
                 color: context.errorInk,
               ),

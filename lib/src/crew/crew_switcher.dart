@@ -187,7 +187,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
         hint: _enabled ? 'Hold to fan out your crews' : null,
         child: InkWell(
           onTap: _enabled ? _tapped : null,
-          borderRadius: BorderRadius.circular(WeekPactMetrics.cardRadius),
+          borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: SizedBox(
@@ -253,11 +253,13 @@ class _CrewSwitcherState extends State<CrewSwitcher>
                 decoration: ShapeDecoration(
                   color: context.canvas,
                   shape: const ContinuousRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(WeekPactMetrics.panelCurve),
+                    ),
                   ),
                   shadows: const [
                     BoxShadow(
-                      color: Color(0x40000000),
+                      color: WeekPactColors.castShadow,
                       offset: WeekPactMetrics.raisedOffset,
                     ),
                   ],
@@ -334,7 +336,7 @@ class _FanHint extends StatelessWidget {
                   height: 3,
                   decoration: BoxDecoration(
                     color: colour.withValues(alpha: i == 1 ? .95 : .55),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: WeekPactMetrics.pill,
                   ),
                 ),
               ),
@@ -359,8 +361,8 @@ class CrewControlLabel extends StatelessWidget {
         text,
         style: TextStyle(
           color: context.muted,
-          fontFamily: 'Roboto',
-          fontFamilyFallback: const ['Arial'],
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 10,
           letterSpacing: 2,
           fontWeight: FontWeight.w700,
@@ -385,7 +387,9 @@ class CrewHeaderSurface extends StatelessWidget {
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: const ContinuousRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(28)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(WeekPactMetrics.panelCurve),
+          ),
         ),
         shadows: [
           BoxShadow(
@@ -397,7 +401,7 @@ class CrewHeaderSurface extends StatelessWidget {
       child: Material(
         color: face,
         shape: ContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(WeekPactMetrics.panelCurve),
           side: BorderSide(color: Color.lerp(face, context.ink, .12)!),
         ),
         clipBehavior: Clip.antiAlias,

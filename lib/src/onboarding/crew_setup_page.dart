@@ -217,7 +217,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                               color: i <= _step
                                   ? WeekPactColors.mintGreen
                                   : context.muted.withValues(alpha: .25),
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: WeekPactMetrics.pill,
                             ),
                           ),
                         ),

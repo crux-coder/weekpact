@@ -28,7 +28,7 @@ const _ink = homeInk;
 /// A completed day or check-in: a cream inset with a green mark, legible on
 /// every card tint. The raised edge is mixed per card from its own colour.
 const _doneFill = WeekPactColors.cream;
-const _doneMark = Color(0xFF3F7A57);
+const _doneMark = WeekPactColors.doneMark;
 
 class CrewTitleBanner extends StatelessWidget {
   static const height = 76.0;
@@ -119,7 +119,7 @@ class CrewTitleBanner extends StatelessWidget {
                             HugeIcon(
                               icon: HugeIconsStrokeRounded.fire,
                               color: streakWeeks > 0
-                                  ? const Color(0xFFFF9138)
+                                  ? WeekPactColors.streak
                                   : context.muted,
                               size: 28,
                               strokeWidth: 2,
@@ -268,8 +268,8 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                       key: const ValueKey('pact-position'),
                       style: TextStyle(
                         color: context.muted,
-                        fontFamily: 'Roboto',
-                        fontFamilyFallback: const ['Arial'],
+                        fontFamily: WeekPactType.secondary,
+                        fontFamilyFallback: WeekPactType.secondaryFallback,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -457,7 +457,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                           color: dot == _index
                               ? context.ink
                               : context.ink.withValues(alpha: .3),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: WeekPactMetrics.pill,
                         ),
                       ),
                     ),
@@ -578,7 +578,7 @@ class _PactCard extends StatelessWidget {
     final doneEdge = Color.lerp(color, Colors.black, .35)!;
     return HomeSurface(
       tint: color,
-      radius: 18,
+      radius: WeekPactMetrics.cardCorner,
       raised: true,
       depth: WeekPactMetrics.cardDepth,
       shape: WeekPactMetrics.pactCardShape,
@@ -670,8 +670,9 @@ class _PactCard extends StatelessWidget {
                                 const Text(
                                   'days this week',
                                   style: TextStyle(
-                                    fontFamily: 'Roboto',
-                                    fontFamilyFallback: ['Arial'],
+                                    fontFamily: WeekPactType.secondary,
+                                    fontFamilyFallback:
+                                        WeekPactType.secondaryFallback,
                                     fontSize: 18,
                                     height: 1.2,
                                     fontWeight: FontWeight.w700,
@@ -699,10 +700,10 @@ class _PactCard extends StatelessWidget {
                                         color: i < completed
                                             ? _ink
                                             : _ink.withValues(alpha: .20),
-                                        borderRadius: BorderRadius.circular(3),
+                                        borderRadius: WeekPactMetrics.pill,
                                         border: i < completed
                                             ? Border.all(
-                                                color: const Color(0xFF484848),
+                                                color: WeekPactColors.inkEdge,
                                               )
                                             : null,
                                       ),
@@ -749,7 +750,9 @@ class _PactCard extends StatelessWidget {
                                   ),
                                   width: 1,
                                 ),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(
+                                  WeekPactMetrics.controlRadius,
+                                ),
                                 boxShadow: done
                                     ? [
                                         BoxShadow(
@@ -779,8 +782,9 @@ class _PactCard extends StatelessWidget {
                                         fontWeight: current
                                             ? FontWeight.w700
                                             : FontWeight.w400,
-                                        fontFamily: 'Roboto',
-                                        fontFamilyFallback: const ['Arial'],
+                                        fontFamily: WeekPactType.secondary,
+                                        fontFamilyFallback:
+                                            WeekPactType.secondaryFallback,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -791,8 +795,9 @@ class _PactCard extends StatelessWidget {
                                         'pact-date-${pact.id}-$day',
                                       ),
                                       style: TextStyle(
-                                        fontFamily: 'Roboto',
-                                        fontFamilyFallback: const ['Arial'],
+                                        fontFamily: WeekPactType.secondary,
+                                        fontFamilyFallback:
+                                            WeekPactType.secondaryFallback,
                                         fontSize: 16,
                                         fontWeight: current
                                             ? FontWeight.w700
@@ -837,7 +842,7 @@ class _PactCard extends StatelessWidget {
                           shape: WeekPactMetrics.buttonShape,
                           shadows: [
                             BoxShadow(
-                              color: Color(0xFF404040),
+                              color: WeekPactColors.inkEdge,
                               offset: WeekPactMetrics.raisedOffset,
                             ),
                           ],
@@ -850,7 +855,9 @@ class _PactCard extends StatelessWidget {
                             foregroundColor: homePaper,
                             minimumSize: const Size(0, 48),
                             shape: WeekPactMetrics.buttonShape.copyWith(
-                              side: const BorderSide(color: Color(0xFF484848)),
+                              side: const BorderSide(
+                                color: WeekPactColors.inkEdge,
+                              ),
                             ),
                           ),
                           icon: busy
@@ -870,8 +877,9 @@ class _PactCard extends StatelessWidget {
                             'Check in',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
-                              fontFamily: 'Roboto',
-                              fontFamilyFallback: ['Arial'],
+                              fontFamily: WeekPactType.secondary,
+                              fontFamilyFallback:
+                                  WeekPactType.secondaryFallback,
                               fontSize: 17,
                             ),
                           ),
@@ -1031,8 +1039,8 @@ class _PeekNumeral extends StatelessWidget {
     maxLines: 1,
     textAlign: TextAlign.center,
     style: TextStyle(
-      fontFamily: 'Roboto',
-      fontFamilyFallback: const ['Arial'],
+      fontFamily: WeekPactType.secondary,
+      fontFamilyFallback: WeekPactType.secondaryFallback,
       fontSize: size,
       height: 1,
       fontWeight: FontWeight.w900,
@@ -1089,8 +1097,8 @@ class _CompletedCheckIn extends StatelessWidget {
                       'Checked in today',
                       style: TextStyle(
                         color: _ink,
-                        fontFamily: 'Roboto',
-                        fontFamilyFallback: ['Arial'],
+                        fontFamily: WeekPactType.secondary,
+                        fontFamilyFallback: WeekPactType.secondaryFallback,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1117,7 +1125,7 @@ class _CompletedCheckIn extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 shape: const ContinuousRectangleBorder(
                   borderRadius: BorderRadius.horizontal(
-                    right: Radius.circular(24),
+                    right: Radius.circular(WeekPactMetrics.panelCurve),
                   ),
                 ),
               ),
@@ -1134,8 +1142,8 @@ class _CompletedCheckIn extends StatelessWidget {
                       child: Text(
                         'Undo',
                         style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontFamilyFallback: ['Arial'],
+                          fontFamily: WeekPactType.secondary,
+                          fontFamilyFallback: WeekPactType.secondaryFallback,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           decoration: TextDecoration.underline,
@@ -1264,8 +1272,9 @@ class LatestCheckInStrip extends StatelessWidget {
                                 text: '  ·  $detail',
                                 style: TextStyle(
                                   color: context.muted,
-                                  fontFamily: 'Roboto',
-                                  fontFamilyFallback: const ['Arial'],
+                                  fontFamily: WeekPactType.secondary,
+                                  fontFamilyFallback:
+                                      WeekPactType.secondaryFallback,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1449,7 +1458,7 @@ class CrewCheckInTile extends StatelessWidget {
 
   /// The tile's raised edge, shared by its surface, faces and overflow chip.
   static Color _tileEdge(bool done) =>
-      done ? const Color(0xFF5F9774) : const Color(0xFFADB5BC);
+      done ? WeekPactColors.mintEdge : WeekPactColors.pendingEdge;
 
   /// Beyond this the stack stops being faces and becomes a number.
   static const _maxFaces = 3;
@@ -1499,7 +1508,7 @@ class CrewCheckInTile extends StatelessWidget {
             shape: WeekPactMetrics.pactCardShape,
             shadows: [
               BoxShadow(
-                color: done ? const Color(0xFF649E7B) : const Color(0xFFB6BFC5),
+                color: _tileEdge(done),
                 offset: WeekPactMetrics.raisedOffset,
               ),
             ],
@@ -1508,12 +1517,10 @@ class CrewCheckInTile extends StatelessWidget {
             tint: done
                 ? WeekPactColors.mintGreen
                 : WeekPactColors.pendingCheckIns,
-            radius: 18,
+            radius: WeekPactMetrics.cardCorner,
             shape: WeekPactMetrics.pactCardShape,
             outlined: true,
-            outlineColor: done
-                ? const Color(0xFF5F9774)
-                : const Color(0xFFADB5BC),
+            outlineColor: _tileEdge(done),
             child: Stack(
               children: [
                 Column(
@@ -1535,7 +1542,9 @@ class CrewCheckInTile extends StatelessWidget {
                                       label,
                                       style: const TextStyle(
                                         color: _ink,
-                                        fontFamily: 'Roboto',
+                                        fontFamily: WeekPactType.secondary,
+                                        fontFamilyFallback:
+                                            WeekPactType.secondaryFallback,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -1550,7 +1559,7 @@ class CrewCheckInTile extends StatelessWidget {
                                   icon: const HugeIcon(
                                     icon: HugeIconsStrokeRounded.arrowUp01,
                                     size: 16,
-                                    color: Color(0xFF555A53),
+                                    color: WeekPactColors.mutedLight,
                                   ),
                                 ),
                             ],
@@ -1599,9 +1608,9 @@ class CrewCheckInTile extends StatelessWidget {
                 done ? 'No one yet' : 'All checked in',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFF555A53),
-                  fontFamily: 'Roboto',
-                  fontFamilyFallback: ['Arial'],
+                  color: WeekPactColors.mutedLight,
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
                   fontSize: 12,
                 ),
               ),
@@ -1636,8 +1645,8 @@ class CrewCheckInTile extends StatelessWidget {
                         caption,
                         style: const TextStyle(
                           color: _ink,
-                          fontFamily: 'Roboto',
-                          fontFamilyFallback: ['Arial'],
+                          fontFamily: WeekPactType.secondary,
+                          fontFamilyFallback: WeekPactType.secondaryFallback,
                           fontSize: 11,
                           height: 1.1,
                           fontWeight: FontWeight.w700,
@@ -1727,8 +1736,9 @@ class CrewCheckInTile extends StatelessWidget {
                               '+$overflow',
                               style: const TextStyle(
                                 color: _ink,
-                                fontFamily: 'Roboto',
-                                fontFamilyFallback: ['Arial'],
+                                fontFamily: WeekPactType.secondary,
+                                fontFamilyFallback:
+                                    WeekPactType.secondaryFallback,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -1766,8 +1776,8 @@ class CrewCheckInTile extends StatelessWidget {
         member.initials,
         style: TextStyle(
           color: ink,
-          fontFamily: 'Roboto',
-          fontFamilyFallback: const ['Arial'],
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 14,
           fontWeight: FontWeight.w900,
         ),
@@ -1864,12 +1874,12 @@ class _TodaySkeletonState extends State<TodaySkeleton>
   Widget _crewTile(Color color) => Expanded(
     child: HomeSurface(
       tint: color,
-      radius: 18,
+      radius: WeekPactMetrics.cardCorner,
       shape: WeekPactMetrics.pactCardShape,
       raised: true,
       outlineColor: color == WeekPactColors.mintGreen
-          ? const Color(0xFF5F9774)
-          : const Color(0xFFADB5BC),
+          ? WeekPactColors.mintEdge
+          : WeekPactColors.pendingEdge,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       // The loaded tile leads with a count and trails with faces.
       child: Row(

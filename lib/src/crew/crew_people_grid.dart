@@ -148,7 +148,7 @@ class CrewInviteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DashedBorder(
     color: WeekPactColors.cream.withValues(alpha: .8),
-    radius: 18,
+    radius: WeekPactMetrics.cardCurve,
     child: AppSurface(
       fillColor: WeekPactColors.black,
       resolveTone: false,

@@ -58,7 +58,7 @@ class AppSheet extends StatelessWidget {
                   ),
                 ),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
+                  top: Radius.circular(WeekPactMetrics.sheetRadius),
                 ),
               ),
               child: SafeArea(
@@ -75,7 +75,7 @@ class AppSheet extends StatelessWidget {
                           height: 5,
                           decoration: BoxDecoration(
                             color: context.border,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: WeekPactMetrics.pill,
                           ),
                         ),
                       ),

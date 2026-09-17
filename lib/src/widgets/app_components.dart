@@ -12,7 +12,7 @@ class AppSurface extends StatelessWidget {
     required this.builder,
     this.fillColor,
     this.borderWidth = WeekPactMetrics.border,
-    this.borderRadius = 18,
+    this.borderRadius = WeekPactMetrics.cardCorner,
     this.cornerRadius,
     this.shape,
     this.outlineColor,
@@ -36,7 +36,11 @@ class AppSurface extends StatelessWidget {
     final surfaceShape =
         shape ??
         (raised
-            ? ContinuousRectangleBorder(borderRadius: radius * (40 / 18))
+            ? ContinuousRectangleBorder(
+                borderRadius:
+                    radius *
+                    (WeekPactMetrics.cardCurve / WeekPactMetrics.cardCorner),
+              )
             : RoundedRectangleBorder(borderRadius: radius));
     final face = resolveTone
         ? context.tone(fillColor ?? context.surface)
@@ -244,6 +248,8 @@ class AppBottomNavigationBar extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: context.canvas,
+        // Pinned at 16 by widget_test.dart, and invisible in any case: the bar
+        // is canvas-coloured on the canvas. Left as it was found.
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.transparent, width: 2),
       ),
@@ -271,14 +277,16 @@ class AppBottomNavigationBar extends StatelessWidget {
                       key: const ValueKey('nav-sliding-highlight'),
                       decoration: ShapeDecoration(
                         color: context.isDark
-                            ? const Color(0xFFD8D3C8)
+                            ? WeekPactColors.navSelected
                             : context.ink,
                         shape: ContinuousRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(
+                            WeekPactMetrics.panelCurve,
+                          ),
                           side: BorderSide(
                             color: Color.lerp(
                               context.isDark
-                                  ? const Color(0xFFD8D3C8)
+                                  ? WeekPactColors.navSelected
                                   : context.ink,
                               context.canvas,
                               .28,
@@ -289,7 +297,7 @@ class AppBottomNavigationBar extends StatelessWidget {
                           BoxShadow(
                             color: Color.lerp(
                               context.isDark
-                                  ? const Color(0xFFD8D3C8)
+                                  ? WeekPactColors.navSelected
                                   : context.ink,
                               context.canvas,
                               .24,
@@ -312,7 +320,9 @@ class AppBottomNavigationBar extends StatelessWidget {
                           message: items[i].label,
                           child: Material(
                             color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(
+                              WeekPactMetrics.panelCurve,
+                            ),
                             child: InkWell(
                               key: ValueKey(
                                 'nav-${items[i].label.toLowerCase()}',
@@ -320,7 +330,9 @@ class AppBottomNavigationBar extends StatelessWidget {
                               splashFactory: NoSplash.splashFactory,
                               splashColor: Colors.transparent,
                               highlightColor: Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(
+                                WeekPactMetrics.panelCurve,
+                              ),
                               onTap: () => onSelected(i),
                               child: SizedBox(
                                 height:
@@ -349,8 +361,9 @@ class AppBottomNavigationBar extends StatelessWidget {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          fontFamily: 'Roboto',
-                                          fontFamilyFallback: const ['Arial'],
+                                          fontFamily: WeekPactType.secondary,
+                                          fontFamilyFallback:
+                                              WeekPactType.secondaryFallback,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: Color.lerp(

@@ -260,7 +260,9 @@ class _CrewFanCard extends StatelessWidget {
                 ? (active ? _fillCurrentActive : _fillCurrent)
                 : (active ? _fillActive : _fill),
             shape: const ContinuousRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(24)),
+              borderRadius: BorderRadius.all(
+                Radius.circular(WeekPactMetrics.panelCurve),
+              ),
               side: BorderSide(color: _ink, width: 2),
             ),
             shadows: [BoxShadow(color: _ink, offset: depth)],
@@ -284,7 +286,8 @@ class _CrewFanCard extends StatelessWidget {
                   'CURRENT CREW',
                   style: TextStyle(
                     color: _ink.withValues(alpha: .6),
-                    fontFamily: 'Roboto',
+                    fontFamily: WeekPactType.secondary,
+                    fontFamilyFallback: WeekPactType.secondaryFallback,
                     fontSize: 10,
                     letterSpacing: 1.4,
                     fontWeight: FontWeight.w700,
