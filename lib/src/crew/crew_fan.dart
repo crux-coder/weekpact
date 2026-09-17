@@ -1,11 +1,15 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
+import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
+import '../widgets/avatar_shape.dart';
 
 /// Geometry for the crew fan: full-width cards stacked below the thumb.
 ///
@@ -15,7 +19,11 @@ abstract final class CrewFanLayout {
   static const cardHeight = 76.0;
   static const _gap = 12.0;
   static const _sideInset = 16.0;
-  static const _reachBelowThumb = 30.0;
+
+  /// The hand hangs off the switcher rather than off the finger: it opens
+  /// directly under the control it belongs to, the same gap a card keeps from
+  /// its neighbour.
+  static const _gapBelowSwitcher = _gap;
 
   /// Full bleed: a card is as wide as the screen allows, so a finger anywhere
   /// along it still leaves the crew name and its state in view.
@@ -23,15 +31,19 @@ abstract final class CrewFanLayout {
       math.max(0.0, screen.width - _sideInset * 2);
 
   /// One rectangle per crew, in global coordinates, ordered like [crews].
+  ///
+  /// [anchor] is the switcher's own rect: the cards take its width and line up
+  /// under it, so the hand reads as that control unfolded.
   static List<Rect> of({
     required Size screen,
     required EdgeInsets padding,
-    required Offset anchor,
+    required Rect anchor,
     required int count,
   }) {
     if (count == 0) return const [];
-    final width = cardWidth(screen);
-    final top = anchor.dy + _reachBelowThumb;
+    final width = anchor.width > 0 ? anchor.width : cardWidth(screen);
+    final left = anchor.width > 0 ? anchor.left : _sideInset;
+    final top = anchor.bottom + _gapBelowSwitcher;
     // Tighten the spacing rather than run off the bottom when a crew list grows.
     final room = screen.height - padding.bottom - 12 - top;
     final step = math.min(
@@ -40,7 +52,7 @@ abstract final class CrewFanLayout {
     );
     return [
       for (var i = 0; i < count; i++)
-        Rect.fromLTWH(_sideInset, top + step * i, width, cardHeight),
+        Rect.fromLTWH(left, top + step * i, width, cardHeight),
     ];
   }
 
@@ -65,6 +77,9 @@ class CrewFan extends StatelessWidget {
     required this.exit,
     required this.onPicked,
     required this.onDismissed,
+    this.switcher,
+    this.switcherRect,
+    this.previews = const {},
   });
 
   final List<PactCrew> crews;
@@ -78,6 +93,16 @@ class CrewFan extends StatelessWidget {
   final ValueChanged<int> onPicked;
   final VoidCallback onDismissed;
 
+  /// The switcher itself, redrawn over the scrim at [switcherRect], so the
+  /// control the hand came from keeps its own light while the page behind it
+  /// goes dark. Taps on it fall through to the scrim and dismiss.
+  final Widget? switcher;
+  final Rect? switcherRect;
+
+  /// Each crew's week, by crew id, once it has loaded: the faces and the streak
+  /// a card shows. A crew that has none yet keeps its name alone.
+  final Map<String, CrewWeek> previews;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -90,12 +115,17 @@ class CrewFan extends StatelessWidget {
               child: GestureDetector(
                 onTap: onDismissed,
                 behavior: HitTestBehavior.opaque,
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
+                child: CustomPaint(
+                  painter: _FanScrim(dim: _dim),
                   child: const SizedBox.expand(),
                 ),
               ),
             ),
+            if (switcher != null && switcherRect != null)
+              Positioned.fromRect(
+                rect: switcherRect!,
+                child: IgnorePointer(child: switcher),
+              ),
             for (var i = crews.length - 1; i >= 0; i--)
               _card(context, i, offsets[i]),
           ],
@@ -131,11 +161,11 @@ class CrewFan extends StatelessWidget {
     return offsets;
   }
 
-  /// The page behind goes soft rather than dark, so the crews read as cards
-  /// held above it.
-  static const _maxBlur = 16.0;
-  double get _blur =>
-      _maxBlur * (animation.value * 2).clamp(0.0, 1.0) * (1 - exit.value);
+  /// The page behind goes dark rather than soft: the crews read as cards held
+  /// above it, and the switcher they came from keeps its own light.
+  static const _maxDim = .55;
+  double get _dim =>
+      _maxDim * (animation.value * 2).clamp(0.0, 1.0) * (1 - exit.value);
 
   /// Spring seconds one card's drop covers, and how far it dips past its
   /// resting place on the bounce. The window runs long enough for the spring to
@@ -197,6 +227,7 @@ class CrewFan extends StatelessWidget {
               crew: crew,
               current: current,
               active: active,
+              preview: previews[crew.id],
               onTap: () => onPicked(index),
             ),
           ),
@@ -211,39 +242,103 @@ class _CrewFanCard extends StatelessWidget {
     required this.crew,
     required this.current,
     required this.active,
+    required this.preview,
     required this.onTap,
   });
 
-  /// The pact cards' own sticker language: a flat fill inside a black outline,
-  /// standing on a hard black shadow. The crew you are on is the mint one.
-  static const _fill = WeekPactColors.cream;
+  /// The app's own card language rather than a sticker: a flat fill, a hairline
+  /// outline mixed from that fill and the short raised edge every surface
+  /// stands on. The crew you are on is the mint one; the rest take the charcoal
+  /// card, so the hand reads as one current crew among graphite peers.
+  static const _fill = WeekPactDarkCard.fill;
   static const _fillCurrent = WeekPactColors.mintGreen;
-  static const _ink = WeekPactColors.black;
+  static const _ink = WeekPactDarkCard.ink;
+  static const _inkCurrent = WeekPactColors.black;
+  static const _edge = WeekPactDarkCard.outline;
+  static const _edgeCurrent = WeekPactColors.mintEdge;
 
   /// A finger covers most of a card, so the cue is the shadow it throws and a
   /// brighter face — not a colour swap that would be hidden under the thumb.
-  static const _fillActive = Color(0xFFFFFFFF);
+  static const _fillActive = Color(0xFF3A3F3A);
   static const _fillCurrentActive = Color(0xFFA8E9C2);
 
   /// Depth at rest and under a finger. The card shifts by exactly the growth,
-  /// so its shadow stays pinned and only the gap beneath it opens up — 3px of
-  /// travel, nowhere near the 12px between one card and the next.
-  static const _depth = Offset(4, 5);
-  static const _depthActive = Offset(8, 9);
+  /// so its shadow stays pinned and only the gap beneath it opens up — far less
+  /// travel than the 12px between one card and the next.
+  static const _depth = WeekPactMetrics.raisedOffset;
+  static const _depthActive = Offset(0, 5);
 
   final PactCrew crew;
   final bool current;
   final bool active;
+
+  /// The crew's week, once it is in. Null while it loads, or when the caller
+  /// has no way to load one.
+  final CrewWeek? preview;
   final VoidCallback onTap;
+
+  int get _streak => preview?.streakWeeks ?? 0;
+
+  String get _streakWords => _streak == 0
+      ? 'no streak yet'
+      : '$_streak week${_streak == 1 ? '' : 's'} running';
+
+  /// The line under the name: which crew you are on, and how its streak stands.
+  /// Until the week is in there is nothing honest to say, so it stays empty.
+  Widget _meta(Color ink) {
+    final muted = ink.withValues(alpha: .6);
+    return Row(
+      children: [
+        if (current) ...[
+          Text('CURRENT CREW', style: _caption(muted)),
+          if (preview != null) Text('  ·  ', style: _caption(muted)),
+        ],
+        if (preview != null) ...[
+          HugeIcon(
+            icon: HugeIconsStrokeRounded.fire,
+            color: _streak > 0 ? WeekPactColors.streak : muted,
+            size: 14,
+            strokeWidth: 2,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _streak == 0
+                ? 'NO STREAK YET'
+                : '$_streak WEEK${_streak == 1 ? '' : 'S'}',
+            style: _caption(muted),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static TextStyle _caption(Color colour) => TextStyle(
+    color: colour,
+    fontFamily: WeekPactType.secondary,
+    fontFamilyFallback: WeekPactType.secondaryFallback,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: FontWeight.w700,
+  );
 
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
     final depth = active ? _depthActive : _depth;
+    final ink = current ? _inkCurrent : _ink;
+    final edge = current ? _edgeCurrent : _edge;
+    final fill = current
+        ? (active ? _fillCurrentActive : _fillCurrent)
+        : (active ? _fillActive : _fill);
+    final members = preview?.members ?? const <WeekMember>[];
     return Semantics(
       button: true,
       selected: current,
       label: 'Switch to ${crew.name}',
+      value: members.isEmpty
+          ? null
+          : '${members.length} ${members.length == 1 ? 'member' : 'members'}, '
+                '$_streakWords',
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -256,47 +351,142 @@ class _CrewFanCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           decoration: ShapeDecoration(
-            color: current
-                ? (active ? _fillCurrentActive : _fillCurrent)
-                : (active ? _fillActive : _fill),
-            shape: const ContinuousRectangleBorder(
-              borderRadius: BorderRadius.all(
+            color: fill,
+            shape: ContinuousRectangleBorder(
+              borderRadius: const BorderRadius.all(
                 Radius.circular(WeekPactMetrics.panelCurve),
               ),
-              side: BorderSide(color: _ink, width: 2),
+              side: BorderSide(color: edge, width: WeekPactMetrics.border),
             ),
-            shadows: [BoxShadow(color: _ink, offset: depth)],
+            shadows: [BoxShadow(color: edge, offset: depth)],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(
-                crew.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      crew.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: ink,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    _meta(ink),
+                  ],
                 ),
               ),
-              if (current)
-                Text(
-                  'CURRENT CREW',
-                  style: TextStyle(
-                    color: _ink.withValues(alpha: .6),
-                    fontFamily: WeekPactType.secondary,
-                    fontFamilyFallback: WeekPactType.secondaryFallback,
-                    fontSize: 10,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              if (members.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                _CrewFaces(members: members, ring: fill),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The page behind the hand, darkened.
+class _FanScrim extends CustomPainter {
+  const _FanScrim({required this.dim});
+  final double dim;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (dim <= 0) return;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = Colors.black.withValues(alpha: dim),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_FanScrim old) => old.dim != dim;
+}
+
+/// The crew's members, as the same overlapping squircle faces the check-in
+/// tiles use. The ring between them is the card's own fill, so the stack reads
+/// as people rather than one smear whichever card it sits on.
+class _CrewFaces extends StatelessWidget {
+  const _CrewFaces({required this.members, required this.ring});
+  final List<WeekMember> members;
+  final Color ring;
+
+  static const _size = 30.0;
+  static const _overlap = .62;
+  static const _ring = 2.0;
+
+  /// Beyond this the stack stops being faces and becomes a number.
+  static const _max = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = members.length <= _max ? members.length : _max - 1;
+    final overflow = members.length - shown;
+    final slots = shown + (overflow > 0 ? 1 : 0);
+    final step = _size * _overlap;
+    return SizedBox(
+      width: _size + (slots - 1) * step,
+      height: _size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = 0; i < shown; i++)
+            Positioned(left: i * step, child: _face(members[i])),
+          if (overflow > 0)
+            Positioned(left: shown * step, child: _overflowChip(overflow)),
+        ],
+      ),
+    );
+  }
+
+  Widget _face(WeekMember member) {
+    final fallback = Center(child: Text(member.initials, style: _initials));
+    return _shell(
+      AvatarClip(
+        child: member.avatarUrl == null
+            ? fallback
+            : Image.network(
+                member.avatarUrl!,
+                gaplessPlayback: true,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => fallback,
+              ),
+      ),
+    );
+  }
+
+  Widget _overflowChip(int overflow) =>
+      _shell(Center(child: Text('+$overflow', style: _initials)));
+
+  Widget _shell(Widget child) => Container(
+    width: _size,
+    height: _size,
+    padding: const EdgeInsets.all(_ring),
+    decoration: ShapeDecoration(color: ring, shape: const AvatarShape()),
+    child: DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: WeekPactColors.cream,
+        shape: AvatarShape(),
+      ),
+      child: child,
+    ),
+  );
+
+  static const _initials = TextStyle(
+    color: WeekPactColors.black,
+    fontFamily: WeekPactType.secondary,
+    fontFamilyFallback: WeekPactType.secondaryFallback,
+    fontSize: 12,
+    fontWeight: FontWeight.w900,
+  );
 }

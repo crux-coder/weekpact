@@ -169,60 +169,78 @@ class CrewStreakPill extends StatelessWidget {
   );
 }
 
-/// The way into the crew's week: a labelled row, where the streak used to be a
-/// tap nobody could see. It sits directly below the check-in tiles, so the
-/// crew's things stay together and the tiles keep the line under the header.
+/// The crew's week as one surface: the check-in tiles sit in its top, held by
+/// a thin frame, and the labelled row underneath is the way in. Keeping them in
+/// the same container says the tiles and the week are the same thing.
 class CrewWeekButton extends StatelessWidget {
-  const CrewWeekButton({super.key, required this.onOpen});
+  const CrewWeekButton({super.key, required this.onOpen, this.checkIns});
   final VoidCallback? onOpen;
 
+  /// The crew's check-in tiles. The unfolding panels paint their own copy over
+  /// this space, so what sits here holds the place and sets the width.
+  final Widget? checkIns;
+
+  /// The frame the surface keeps around the tiles: enough to read as a
+  /// container, not enough to become a margin.
+  static const pad = 6.0;
   static const height = 44.0;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: height,
-    // The tooltip keeps the old control's wording: the one place that opens the
-    // week is still named the same thing.
-    child: Tooltip(
-      message: 'View week',
-      child: CrewHeaderSurface(
-        child: InkWell(
-          key: const ValueKey('open-crew-week'),
-          onTap: onOpen,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                HugeIcon(
-                  icon: HugeIconsStrokeRounded.calendar03,
-                  color: context.ink,
-                  size: 20,
-                  strokeWidth: 2,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'CREW WEEK',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+  Widget build(BuildContext context) => CrewHeaderSurface(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (checkIns != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(pad, pad, pad, pad),
+            child: checkIns,
+          ),
+        // The tooltip keeps the old control's wording: the one place that opens
+        // the week is still named the same thing.
+        Tooltip(
+          message: 'View week',
+          child: SizedBox(
+            height: height,
+            child: InkWell(
+              key: const ValueKey('open-crew-week'),
+              onTap: onOpen,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.calendar03,
                       color: context.ink,
-                      fontSize: 14,
-                      letterSpacing: .6,
-                      fontWeight: FontWeight.w900,
+                      size: 20,
+                      strokeWidth: 2,
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'CREW WEEK',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 14,
+                          letterSpacing: .6,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.arrowRight01,
+                      color: context.muted,
+                      size: 20,
+                    ),
+                  ],
                 ),
-                HugeIcon(
-                  icon: HugeIconsStrokeRounded.arrowRight01,
-                  color: context.muted,
-                  size: 20,
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+      ],
     ),
   );
 }
@@ -806,20 +824,26 @@ class _PactCard extends StatelessWidget {
                             child: Container(
                               key: ValueKey('pact-day-${pact.id}-$day'),
                               margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: BoxDecoration(
+                              decoration: ShapeDecoration(
                                 color: done
                                     ? _doneFill
                                     : Colors.white.withValues(alpha: .35),
-                                border: Border.all(
-                                  color: _ink.withValues(
-                                    alpha: current ? .75 : 0,
+                                // The same squircle every card, button and tile
+                                // is cut to, stepped down to a cell's corner.
+                                shape: ContinuousRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    WeekPactMetrics.curveFor(
+                                      WeekPactMetrics.controlRadius,
+                                    ),
                                   ),
-                                  width: 1,
+                                  side: BorderSide(
+                                    color: _ink.withValues(
+                                      alpha: current ? .75 : 0,
+                                    ),
+                                    width: 1,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(
-                                  WeekPactMetrics.controlRadius,
-                                ),
-                                boxShadow: done
+                                shadows: done
                                     ? [
                                         BoxShadow(
                                           color: doneEdge,
@@ -1280,7 +1304,7 @@ class TodayCrewCard extends StatelessWidget {
                     ),
                   );
                 }
-                final available = math.max(0.0, space.maxWidth - 6);
+                final available = math.max(0.0, space.maxWidth);
                 final total = checked.length + pending.length;
                 final minimum = math.min(140.0, available / 2);
                 final fraction = total == 0 ? .5 : checked.length / total;
@@ -1312,7 +1336,6 @@ class TodayCrewCard extends StatelessWidget {
                             done: true,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         SizedBox(
                           key: const ValueKey('pending-tile'),
                           width: available - checkedWidth,
@@ -1876,26 +1899,33 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                key: const ValueKey('skeleton-crew-board'),
-                height: TodayCrewCard.groupHeight,
-                child: Row(
+              CrewHeaderSurface(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _crewTile(WeekPactColors.mintGreen),
-                    const SizedBox(width: 6),
-                    _crewTile(WeekPactColors.pendingCheckIns),
+                    Padding(
+                      padding: const EdgeInsets.all(CrewWeekButton.pad),
+                      child: SizedBox(
+                        key: const ValueKey('skeleton-crew-board'),
+                        height: TodayCrewCard.groupHeight,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _crewTile(WeekPactColors.mintGreen),
+                            _crewTile(WeekPactColors.pendingCheckIns),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: CrewWeekButton.height,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(children: [_line(104, 12)]),
+                      ),
+                    ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: CrewWeekButton.height,
-                child: CrewHeaderSurface(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(children: [_line(104, 12)]),
-                  ),
                 ),
               ),
               const SizedBox(height: 12),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
+import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import 'crew_fan.dart';
@@ -15,12 +16,17 @@ class CrewSwitcher extends StatefulWidget {
     required this.selectedId,
     required this.onSelected,
     this.compact = false,
+    this.loadWeek,
   });
 
   final List<PactCrew> crews;
   final String? selectedId;
   final ValueChanged<String>? onSelected;
   final bool compact;
+
+  /// Loads a crew's week, for the faces and streak on its card in the fan. The
+  /// switcher works without it; the cards then carry their names alone.
+  final Future<CrewWeek> Function(String crewId)? loadWeek;
 
   @override
   State<CrewSwitcher> createState() => _CrewSwitcherState();
@@ -54,7 +60,17 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   /// True while the fan follows a finger that has not lifted yet.
   bool _dragging = false;
   List<Rect> _cards = const [];
+
+  /// Where the switcher itself sits while the hand is out, so the fan can leave
+  /// it out of its scrim.
+  Rect? _headerRect;
   int? _highlighted;
+
+  /// Each crew's week once it has arrived, and the ones still on their way.
+  /// Kept for the switcher's life: a hand is dealt often, and a week that is a
+  /// minute old still says who is in the crew and how the streak stands.
+  final Map<String, CrewWeek> _previews = {};
+  final Set<String> _loadingPreviews = {};
 
   bool get _enabled => widget.onSelected != null && widget.crews.length > 1;
 
@@ -71,17 +87,22 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   void _openFan(Offset anchor, {required bool dragging}) {
     if (!_enabled) return;
     final screen = MediaQuery.sizeOf(context);
+    final box = context.findRenderObject() as RenderBox?;
     setState(() {
       _dragging = dragging;
+      _headerRect = box == null
+          ? null
+          : box.localToGlobal(Offset.zero) & box.size;
       _cards = CrewFanLayout.of(
         screen: screen,
         padding: MediaQuery.paddingOf(context),
-        anchor: anchor,
+        anchor: _headerRect ?? (anchor & Size.zero),
         count: widget.crews.length,
       );
       _highlighted = null;
       _open = true;
     });
+    _loadPreviews();
     _portal.show();
     _exit.value = 0;
     _closing = false;
@@ -92,6 +113,28 @@ class _CrewSwitcherState extends State<CrewSwitcher>
       _deal.forward(from: 0);
     }
     _buzz(HapticFeedback.mediumImpact);
+  }
+
+  /// Fill in the cards' faces and streaks, one crew at a time. A preview is a
+  /// nicety: a crew whose week will not load keeps its name and nothing else.
+  void _loadPreviews() {
+    final load = widget.loadWeek;
+    if (load == null) return;
+    for (final crew in widget.crews) {
+      if (_previews.containsKey(crew.id) || !_loadingPreviews.add(crew.id)) {
+        continue;
+      }
+      unawaited(() async {
+        try {
+          final week = await load(crew.id);
+          if (mounted) setState(() => _previews[crew.id] = week);
+        } catch (_) {
+          // Nothing to say and nothing to fix: the card stays as it is.
+        } finally {
+          _loadingPreviews.remove(crew.id);
+        }
+      }());
+    }
   }
 
   /// Send the cards back up, then take the overlay down once they are gone.
@@ -239,39 +282,41 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     );
   }
 
+  /// The switcher as it is drawn on the page — and, while the hand is out, over
+  /// the fan's scrim as well, so the control does not go dark with the page.
+  Widget _surface() => widget.compact
+      ? CrewHeaderSurface(child: _header())
+      : Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const CrewControlLabel('YOUR CREW'),
+            const SizedBox(height: 4),
+            DecoratedBox(
+              decoration: ShapeDecoration(
+                color: context.canvas,
+                shape: const ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(WeekPactMetrics.panelCurve),
+                  ),
+                ),
+                shadows: const [
+                  BoxShadow(
+                    color: WeekPactColors.castShadow,
+                    offset: WeekPactMetrics.raisedOffset,
+                  ),
+                ],
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: _header(),
+              ),
+            ),
+          ],
+        );
+
   @override
   Widget build(BuildContext context) {
-    final header = widget.compact
-        ? CrewHeaderSurface(child: _header())
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const CrewControlLabel('YOUR CREW'),
-              const SizedBox(height: 4),
-              DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: context.canvas,
-                  shape: const ContinuousRectangleBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(WeekPactMetrics.panelCurve),
-                    ),
-                  ),
-                  shadows: const [
-                    BoxShadow(
-                      color: WeekPactColors.castShadow,
-                      offset: WeekPactMetrics.raisedOffset,
-                    ),
-                  ],
-                ),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: _header(),
-                ),
-              ),
-            ],
-          );
-
     return OverlayPortal(
       controller: _portal,
       overlayChildBuilder: (context) => CrewFan(
@@ -283,6 +328,9 @@ class _CrewSwitcherState extends State<CrewSwitcher>
         exit: _exit,
         onPicked: _pick,
         onDismissed: _close,
+        switcher: _surface(),
+        switcherRect: _headerRect,
+        previews: _previews,
       ),
       child: RawGestureDetector(
         gestures: {
@@ -301,7 +349,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
                 },
               ),
         },
-        child: header,
+        child: _surface(),
       ),
     );
   }

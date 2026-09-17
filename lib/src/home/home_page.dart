@@ -485,7 +485,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                               312 +
                                   HomeHeader.height +
                                   CrewWeekButton.height +
-                                  8 +
+                                  CrewWeekButton.pad * 2 +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
                             ),
@@ -550,10 +550,14 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   week: week,
                                   userId: widget.userId,
                                   active: widget.active,
-                                  // The check-in tiles now sit directly under
-                                  // the header, so the panel that unfolds over
-                                  // them starts there too.
-                                  top: HomeHeader.height + 12,
+                                  // The check-in tiles sit inside the crew's
+                                  // surface, so the panel that unfolds over
+                                  // them starts inside its frame too.
+                                  top:
+                                      HomeHeader.height +
+                                      12 +
+                                      CrewWeekButton.pad,
+                                  inset: CrewWeekButton.pad,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
@@ -565,6 +569,8 @@ class _HomeDestinationState extends State<_HomeDestination>
                                                 compact: true,
                                                 crews: _crews!,
                                                 selectedId: _crew!.id,
+                                                loadWeek:
+                                                    widget.backend.fetchWeek,
                                                 onSelected: _savingPact != null
                                                     ? null
                                                     : (id) {
@@ -576,16 +582,17 @@ class _HomeDestinationState extends State<_HomeDestination>
                                             : CrewNamePlate(name: _crew!.name),
                                       ),
                                       const SizedBox(height: 12),
-                                      TodayCrewCard(
-                                        showGroups: false,
-                                        height: crewHeight,
-                                        crewName: _crew!.name,
-                                        week: week,
-                                        userId: widget.userId,
+                                      CrewWeekButton(
                                         onOpen: _openCrewWeek,
+                                        checkIns: TodayCrewCard(
+                                          showGroups: false,
+                                          height: crewHeight,
+                                          crewName: _crew!.name,
+                                          week: week,
+                                          userId: widget.userId,
+                                          onOpen: _openCrewWeek,
+                                        ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      CrewWeekButton(onOpen: _openCrewWeek),
                                       const SizedBox(height: 12),
                                       if (_saveError != null)
                                         SizedBox(

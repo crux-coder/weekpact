@@ -181,6 +181,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
               compact: true,
               crews: _crews!,
               selectedId: crew.id,
+              loadWeek: widget.loadWeek,
               onSelected: _loading ? null : _select,
             ),
             const SizedBox(height: 12),

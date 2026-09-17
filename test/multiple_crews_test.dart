@@ -269,7 +269,6 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    final before = home.requested.length;
     final gesture = await tester.startGesture(
       tester.getCenter(find.byTooltip('Switch crew')),
     );
@@ -279,7 +278,16 @@ void main() {
     await tester.pumpUi();
     await gesture.up();
     await tester.pumpUi();
-    expect(home.requested.length, before);
+    // The crew on the header is the one the hold started on. Fetches are no
+    // measure of that any more: the fan loads every crew's week for the faces
+    // and streak on its cards.
+    expect(
+      find.descendant(
+        of: find.byTooltip('Switch crew'),
+        matching: find.text('Early Birds'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Switch to Night Owls'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

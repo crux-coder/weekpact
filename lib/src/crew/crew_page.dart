@@ -552,6 +552,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             CrewSwitcher(
               compact: true,
               crews: _crews,
+              loadWeek: widget.profileBackend?.fetchWeek,
               selectedId: _loading
                   ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)
                   : _crew?.id,

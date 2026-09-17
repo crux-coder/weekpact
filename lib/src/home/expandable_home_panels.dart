@@ -20,6 +20,7 @@ class ExpandableHomePanels extends StatefulWidget {
     required this.userId,
     required this.top,
     required this.child,
+    this.inset = 0,
     this.active = true,
     this.showCrewCheckIns = false,
   });
@@ -29,6 +30,10 @@ class ExpandableHomePanels extends StatefulWidget {
   final CrewWeek week;
   final String userId;
   final double top;
+
+  /// The frame the crew's surface keeps around the tiles, so the panels line up
+  /// with the space reserved for them inside it.
+  final double inset;
   final Widget child;
   final bool active;
   final bool showCrewCheckIns;
@@ -182,8 +187,10 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     final pending = widget.week.members
         .where((m) => widget.week.checkedToday(m.id).isEmpty)
         .toList();
-    final gap = checked.isEmpty || pending.isEmpty ? 0.0 : 6.0;
-    final available = math.max(0.0, space.maxWidth - gap);
+    // The two tiles sit flush against each other: their own fills are the
+    // only line between them.
+    const gap = 0.0;
+    final available = math.max(0.0, space.maxWidth - widget.inset * 2 - gap);
     final minimum = math.min(140.0, available / 2);
     final fraction = widget.week.members.isEmpty
         ? .5
@@ -210,12 +217,12 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
       );
       final rect = Rect.lerp(
         Rect.fromLTWH(
-          done ? 0 : checkedWidth + gap,
+          widget.inset + (done ? 0 : checkedWidth + gap),
           crewTop,
           done ? checkedWidth : available - checkedWidth,
           TodayCrewCard.groupHeight,
         ),
-        Rect.fromLTWH(0, crewTop, space.maxWidth, expandedHeight),
+        Rect.fromLTWH(widget.inset, crewTop, available, expandedHeight),
         selected ? progress : 0,
       )!;
       cards[panel] = _position(
