@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-import '../home/home_surface.dart';
+import '../home/check_in_photo_frame.dart';
 import '../home/home_backend.dart';
 import '../pacts/pact_icons.dart';
 import '../theme/weekpact_theme.dart';
@@ -292,9 +292,9 @@ class _DayHeading extends StatelessWidget {
   }
 }
 
-/// A single check-in: the photo they posted, then the pact it kept and who
-/// kept it. Compact by design — the photo is a wide crop and the text sits in
-/// one bar beneath it, so a day's check-ins fit on a screen.
+/// A single check-in: who kept it and when at the top, the photo in the
+/// middle in the same squircle the check-in camera uses, and the pact and crew
+/// beneath. The card is offblack so the photo is the only bright thing on it.
 class FeedPost extends StatelessWidget {
   const FeedPost({super.key, required this.entry, this.isMine = false});
 
@@ -311,28 +311,60 @@ class FeedPost extends StatelessWidget {
     final name = isMine ? 'You' : entry.displayName;
     return AppSurface(
       borderRadius: 16,
+      fillColor: WeekPactColors.activitySurface,
+      resolveTone: false,
       builder: (context) => Semantics(
         label:
             '$name checked in · ${entry.pactTitle} · ${entry.crewName} · $time',
         child: ExcludeSemantics(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (entry.photoPath != null)
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: _Photo(
-                    key: ValueKey('feed-photo-${entry.id}'),
-                    url: entry.photoUrl,
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Row(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
                     _Avatar(entry: entry),
                     const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: WeekPactColors.cream,
+                          fontSize: 15,
+                          height: 1.2,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontFamily: 'Roboto',
+                        fontFamilyFallback: ['Arial'],
+                        color: WeekPactColors.darkMuted,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+                if (entry.photoPath != null) ...[
+                  const SizedBox(height: 12),
+                  CheckInPhotoFrame(
+                    child: _Photo(
+                      key: ValueKey('feed-photo-${entry.id}'),
+                      url: entry.photoUrl,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,23 +374,23 @@ class FeedPost extends StatelessWidget {
                             entry.pactTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: context.ink,
+                            style: const TextStyle(
+                              color: WeekPactColors.cream,
                               fontSize: 15,
                               height: 1.2,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           Text(
-                            '$name · ${entry.crewName} · $time',
+                            entry.crewName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Roboto',
-                              fontFamilyFallback: const ['Arial'],
+                              fontFamilyFallback: ['Arial'],
                               fontSize: 11,
                               height: 1.35,
-                              color: context.muted,
+                              color: WeekPactColors.darkMuted,
                             ),
                           ),
                         ],
@@ -367,13 +399,13 @@ class FeedPost extends StatelessWidget {
                     const SizedBox(width: 8),
                     HugeIcon(
                       icon: PactIcon.find(entry.iconKey).data,
-                      color: context.muted,
+                      color: WeekPactColors.darkMuted,
                       size: 18,
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -388,24 +420,29 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FlatAvatar(
     radius: 15,
-    backgroundColor: homeInk.withValues(alpha: .08),
+    backgroundColor: WeekPactColors.cream.withValues(alpha: .12),
     child: AvatarClip(
       child: entry.avatarUrl == null
-          ? Text(entry.initials, style: const TextStyle(color: homeInk))
+          ? Text(
+              entry.initials,
+              style: const TextStyle(color: WeekPactColors.cream),
+            )
           : Image.network(
               entry.avatarUrl!,
               width: 30,
               height: 30,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  Text(entry.initials, style: const TextStyle(color: homeInk)),
+              errorBuilder: (_, _, _) => Text(
+                entry.initials,
+                style: const TextStyle(color: WeekPactColors.cream),
+              ),
             ),
     ),
   );
 }
 
-/// Keeps the square photo slot filled while loading, and honest when the
-/// signed URL has expired or the image cannot be fetched.
+/// Keeps the photo slot filled while loading, and honest when the signed URL
+/// has expired or the image cannot be fetched.
 class _Photo extends StatelessWidget {
   const _Photo({super.key, required this.url});
   final String? url;
@@ -430,19 +467,19 @@ class _PhotoPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: homeInk.withValues(alpha: .06),
+    color: WeekPactColors.cream.withValues(alpha: .08),
     child: Center(
       child: failed
           ? HugeIcon(
               icon: HugeIconsStrokeRounded.image01,
-              color: homeInk.withValues(alpha: .35),
+              color: WeekPactColors.cream.withValues(alpha: .35),
               size: 26,
             )
           : const SizedBox.square(
               dimension: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Color(0x66191B19),
+                color: WeekPactColors.darkMuted,
                 semanticsLabel: 'Loading check-in photo',
               ),
             ),
@@ -462,18 +499,16 @@ class _FeedSkeleton extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: AppSurface(
             borderRadius: 16,
+            fillColor: WeekPactColors.activitySurface,
+            resolveTone: false,
             builder: (context) {
-              final bone = context.ink.withValues(alpha: .1);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: ColoredBox(color: bone),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Row(
+              final bone = WeekPactColors.cream.withValues(alpha: .1);
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       children: [
                         SkeletonBar(
                           height: 30,
@@ -482,18 +517,22 @@ class _FeedSkeleton extends StatelessWidget {
                           color: bone,
                         ),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SkeletonBar(height: 12, width: 130, color: bone),
-                            const SizedBox(height: 6),
-                            SkeletonBar(height: 9, width: 90, color: bone),
-                          ],
-                        ),
+                        SkeletonBar(height: 12, width: 110, color: bone),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    CheckInPhotoFrame(child: ColoredBox(color: bone)),
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonBar(height: 12, width: 130, color: bone),
+                        const SizedBox(height: 6),
+                        SkeletonBar(height: 9, width: 90, color: bone),
+                      ],
+                    ),
+                  ],
+                ),
               );
             },
           ),

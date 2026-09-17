@@ -5,6 +5,7 @@ import '../widgets/app_icon.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
+import '../subscriptions/pro_upgrade.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
@@ -46,12 +47,19 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
         widget.onFinished();
       }
     } catch (error) {
-      if (mounted) {
-        setState(() {
-          _accepting = false;
-          _error = _friendlyError(error);
-        });
+      if (!mounted) return;
+      setState(() => _accepting = false);
+      if (isCrewLimitError(error)) {
+        if (await showCrewLimitUpgrade(
+              context,
+              reason: CrewLimitReason.joining,
+            ) &&
+            mounted) {
+          await _accept();
+        }
+        return;
       }
+      if (mounted) setState(() => _error = _friendlyError(error));
     }
   }
 

@@ -17,6 +17,8 @@ import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import '../home/home_backend.dart';
 import 'crew_people_grid.dart';
+import '../subscriptions/pro_upgrade.dart';
+import '../subscriptions/subscription_scope.dart';
 
 const _appTimezone = String.fromEnvironment(
   'APP_TIMEZONE',
@@ -166,10 +168,42 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         widget.onCrewCreated?.call(crew);
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error));
+      if (!mounted) return;
+      // Postgres has the final say: entitlements can lapse between opening the
+      // form and submitting it, and the SDK's view can be stale.
+      if (isCrewLimitError(error)) {
+        if (await showCrewLimitUpgrade(
+              context,
+              reason: CrewLimitReason.creating,
+            ) &&
+            mounted) {
+          await _createCrew();
+          return;
+        }
+        if (mounted) setState(() => _showCreate = false);
+      } else {
+        setState(() => _error = _messageFor(error));
+      }
     } finally {
       if (mounted) setState(() => _creating = false);
     }
+  }
+
+  /// Opens the new-crew form, or explains why it cannot be opened. Someone who
+  /// upgrades from the dialog lands straight in the form.
+  Future<void> _toggleCreate() async {
+    if (_showCreate) {
+      setState(() => _showCreate = false);
+      return;
+    }
+    if (_crews.isNotEmpty && !context.isPro) {
+      final upgraded = await showCrewLimitUpgrade(
+        context,
+        reason: CrewLimitReason.creating,
+      );
+      if (!upgraded || !mounted) return;
+    }
+    setState(() => _showCreate = true);
   }
 
   Future<void> _changeMembership({CrewMember? member}) async {
@@ -452,7 +486,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               tooltip: _showCreate ? 'Cancel new crew' : 'Create another crew',
               onPressed: _creating || _changingMembership
                   ? null
-                  : () => setState(() => _showCreate = !_showCreate),
+                  : _toggleCreate,
               icon: AppIcon(
                 icon: _showCreate
                     ? HugeIconsStrokeRounded.cancel01

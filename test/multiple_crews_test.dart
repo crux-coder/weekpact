@@ -14,11 +14,14 @@ import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
+import 'package:weekpact/src/subscriptions/subscription_backend.dart';
+import 'package:weekpact/src/subscriptions/subscription_scope.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
 import 'widget_test.dart' show FakeCrewBackend;
+import 'subscription_test.dart' show FakeSubscriptionBackend;
 
 class MultipleCrews extends FakeCrewBackend {
   Completer<List<PactCrew>>? loading;
@@ -156,14 +159,23 @@ void main() {
     (tester) async {
       final backend = MultipleCrews();
       String? selected;
+      // A second crew is a Pro feature, so this flow only exists for a
+      // subscriber; crew_limit_test covers what a free account sees instead.
       await tester.pumpWidget(
         MaterialApp(
           theme: WeekPactTheme.dark,
-          home: Scaffold(
-            body: CrewPage(
-              backend: backend,
-              currentUserEmail: 'owner@example.com',
-              onCrewSelected: (id) => selected = id,
+          home: SubscriptionScope(
+            controller: SubscriptionController(
+              FakeSubscriptionBackend(
+                initial: const ProAccess(active: true, willRenew: true),
+              ),
+            ),
+            child: Scaffold(
+              body: CrewPage(
+                backend: backend,
+                currentUserEmail: 'owner@example.com',
+                onCrewSelected: (id) => selected = id,
+              ),
             ),
           ),
         ),

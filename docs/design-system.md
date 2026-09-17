@@ -5,7 +5,8 @@ The app uses solid-color raised cards, flat icons, condensed typography, compact
 ## Where to make changes
 
 - `lib/src/theme/weekpact_theme.dart`: palettes, theme configuration, and `WeekPactMetrics` for corner radii, strokes, spacing, and control sizes. `BuildContext` getters supply semantic canvas, surface, ink, muted, and accent colors.
-- `lib/src/widgets/app_components.dart`: `AppSurface`, `AppSectionCard`, `AppButton`, `AppTextField`, and `AppBottomNavigationBar`. Section cards integrate their title/selector and optional actions within the same unbroken fill, without a colored header strip.
+- `lib/src/widgets/app_components.dart`: `AppSurface`, `AppSectionCard`, `AppButton`, `AppTextField`, and `AppBottomNavigationBar`.
+- `lib/src/widgets/app_dialog.dart`: `AppDialog` and `AppDialogDismiss`. The app's own dialog, on the same raised squircle as every other surface. Its actions stack full width as real buttons rather than the cramped text links `AlertDialog` puts in a row, with the action being offered on top and the dismissal below it in `WeekPactColors.neutralInset`. Pass it to `showAppDialog`; prefer it over `AlertDialog` for anything the person is meant to choose between. Section cards integrate their title/selector and optional actions within the same unbroken fill, without a colored header strip.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
 - `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement.
 - `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces in both themes.

@@ -24,6 +24,37 @@ const supportUrl = String.fromEnvironment(
   'SUPPORT_URL',
   defaultValue: 'https://weekpact.codepeaktrail.dev/support/',
 );
+// Apple requires a subscription screen to link its terms. Their standard EULA
+// is accepted when an app has none of its own, so it is the default rather
+// than a link that would be missing at review.
+const termsUrl = String.fromEnvironment(
+  'TERMS_URL',
+  defaultValue:
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+);
+
+/// Opens one of the app's public pages, reporting failure rather than leaving
+/// a tap with no result. Shared so the paywall's required links behave exactly
+/// like the ones on the account page.
+Future<void> openPublicLink(BuildContext context, String url) async {
+  try {
+    final uri = Uri.parse(url);
+    if (uri.scheme != 'https' ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw StateError('Link unavailable');
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Couldn’t open the page. Contact codepeaktrail@gmail.com for help.',
+          ),
+        ),
+      );
+    }
+  }
+}
 
 class PublicAccountLinks extends StatelessWidget {
   const PublicAccountLinks({
@@ -34,25 +65,8 @@ class PublicAccountLinks extends StatelessWidget {
   final bool asRows;
   final bool asTiles;
 
-  Future<void> _open(BuildContext context, String url) async {
-    try {
-      final uri = Uri.parse(url);
-      if (uri.scheme != 'https' ||
-          !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw StateError('Link unavailable');
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Couldn’t open the page. Contact codepeaktrail@gmail.com for help.',
-            ),
-          ),
-        );
-      }
-    }
-  }
+  Future<void> _open(BuildContext context, String url) =>
+      openPublicLink(context, url);
 
   @override
   Widget build(BuildContext context) => asTiles

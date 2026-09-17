@@ -85,11 +85,12 @@ void main() {
     expect(find.text('Feed'), findsOneWidget);
     expect(find.text('Pact 0'), findsOneWidget);
     expect(find.text('Pact 1'), findsOneWidget);
-    expect(find.textContaining('Climbers'), findsOneWidget);
-    // The viewer's own check-in is attributed to them, others by name. Both
-    // share the byline with the crew and time.
-    expect(find.textContaining('You · Early Birds'), findsOneWidget);
-    expect(find.textContaining('Mirnes Halilovic · '), findsNWidgets(2));
+    expect(find.text('Climbers'), findsOneWidget);
+    // The viewer's own check-in is attributed to them, others by name. The
+    // name heads the card and the crew sits under the pact it kept.
+    expect(find.text('You'), findsOneWidget);
+    expect(find.text('Early Birds'), findsNWidgets(2));
+    expect(find.text('Mirnes Halilovic'), findsNWidgets(2));
     expect(find.text('You’re all caught up'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

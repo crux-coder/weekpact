@@ -3,6 +3,7 @@ import '../home/photo_check_in_sheet.dart';
 import 'package:flutter/material.dart';
 
 import '../crew/crew_backend.dart';
+import '../subscriptions/pro_upgrade.dart';
 import '../crew/crew_sharing.dart';
 import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
@@ -113,10 +114,14 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
           _step = 1;
         });
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _error = 'Could not create your crew. Please retry.');
-      }
+    } catch (error) {
+      if (!mounted) return;
+      // Reachable only for someone who already has a crew on another device.
+      setState(
+        () => _error = isCrewLimitError(error)
+            ? 'You’re already in a crew. WeekPact Pro is needed for more than one.'
+            : 'Could not create your crew. Please retry.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -10,6 +10,7 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
+import '../subscriptions/pro_upgrade.dart';
 
 class CrewInvitesPane extends StatefulWidget {
   const CrewInvitesPane({
@@ -101,7 +102,22 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         ).showSnackBar(const SnackBar(content: Text('Invitation declined.')));
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _inviteError(error));
+      if (!mounted) return;
+      // Joining a second crew is a Pro feature, so the refusal is an offer
+      // rather than an error. Upgrading accepts the invitation straight away.
+      if (isCrewLimitError(error)) {
+        if (await showCrewLimitUpgrade(
+              context,
+              reason: CrewLimitReason.joining,
+            ) &&
+            mounted) {
+          setState(() => _responding = false);
+          await _respond(accept);
+          return;
+        }
+      } else {
+        setState(() => _error = _inviteError(error));
+      }
     } finally {
       if (mounted) setState(() => _responding = false);
     }

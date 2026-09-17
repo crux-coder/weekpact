@@ -18,6 +18,7 @@ import 'auth/auth_gate.dart';
 import 'crew/crew_backend.dart';
 import 'crew/crew_selection_store.dart';
 import 'invites/invite_links.dart';
+import 'subscriptions/subscription_scope.dart';
 import 'theme/weekpact_theme.dart';
 
 class WeekPactApp extends StatefulWidget {
@@ -31,6 +32,7 @@ class WeekPactApp extends StatefulWidget {
     this.homeBackend = const MissingHomeBackend(),
     this.captureCheckInPhoto,
     this.inviteLinkSource = const NoopInviteLinkSource(),
+    this.subscriptions,
   });
 
   final AuthBackend authBackend;
@@ -41,6 +43,7 @@ class WeekPactApp extends StatefulWidget {
   final HomeBackend homeBackend;
   final CheckInPhotoCapture? captureCheckInPhoto;
   final InviteLinkSource inviteLinkSource;
+  final SubscriptionController? subscriptions;
 
   @override
   State<WeekPactApp> createState() => _WeekPactAppState();
@@ -81,6 +84,9 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       final notifications = widget.notifications;
       if (notifications != null) unawaited(notifications.refresh());
+      // A subscription can be cancelled or lapse in the App Store while the
+      // app is backgrounded, so re-read entitlements on the way back in.
+      unawaited(widget.subscriptions?.refresh());
     }
   }
 
@@ -106,9 +112,13 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
           child: child ?? const SizedBox.shrink(),
         );
         final notifications = widget.notifications;
-        return notifications == null
+        final scoped = notifications == null
             ? content
             : NotificationScope(service: notifications, child: content);
+        final subscriptions = widget.subscriptions;
+        return subscriptions == null
+            ? scoped
+            : SubscriptionScope(controller: subscriptions, child: scoped);
       },
       home: AuthGate(
         crewSelectionStore: widget.crewSelectionStore,
