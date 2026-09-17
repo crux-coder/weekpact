@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weekpact/src/crew/crew_selection_store.dart';
 import 'package:weekpact/src/crew/crew_switcher.dart';
 import 'package:weekpact/src/crew/crew_page_layout.dart';
-import 'package:weekpact/src/widgets/page_frame.dart';
+import 'package:weekpact/src/pacts/pacts_overview.dart';
 import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
@@ -96,7 +96,7 @@ class CrewHome extends DashboardBackend {
 void main() {
   for (final scale in [1.0, 2.0]) {
     testWidgets(
-      'Pacts and Crews share exact loading geometry at text scale $scale',
+      'Pacts and Crews share the loading shell at text scale $scale',
       (tester) async {
         tester.view.physicalSize = const Size(390, 844);
         tester.view.devicePixelRatio = 1;
@@ -127,27 +127,26 @@ void main() {
             onOpenCrews: () {},
           ),
         );
-        final skeletonBounds = tester.getRect(find.byType(CrewPageSkeleton));
+        // Each page stands in for its own content, so only the shared shell
+        // above the progress line has to line up: switching tabs mid-load must
+        // not shift the selector or the progress line.
+        final skeletonTop = tester.getTopLeft(find.byType(CrewPageSkeleton));
+        final selectorBounds = tester.getRect(find.byType(CrewHeaderSurface));
         final indicatorBounds = tester.getRect(
           find.byType(LinearProgressIndicator),
         );
-        List<Rect> placeholderBounds() => [
-          for (final element in find.byType(SkeletonBar).evaluate())
-            (element.findRenderObject()! as RenderBox).localToGlobal(
-                  Offset.zero,
-                ) &
-                (element.findRenderObject()! as RenderBox).size,
-        ];
-        final placeholders = placeholderBounds();
+        expect(find.byType(PactsSkeletonBody), findsOneWidget);
         await render(
           CrewPage(backend: crews, currentUserEmail: 'owner@example.com'),
         );
-        expect(tester.getRect(find.byType(CrewPageSkeleton)), skeletonBounds);
+        expect(tester.getTopLeft(find.byType(CrewPageSkeleton)), skeletonTop);
+        expect(tester.getRect(find.byType(CrewHeaderSurface)), selectorBounds);
         expect(
           tester.getRect(find.byType(LinearProgressIndicator)),
           indicatorBounds,
         );
-        expect(placeholderBounds(), placeholders);
+        expect(find.byType(CrewRosterSkeleton), findsOneWidget);
+        expect(find.byType(PactsSkeletonBody), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -207,47 +206,48 @@ void main() {
     },
   );
 
-  testWidgets('holding the header fans the crews out and the finger picks one', (
-    tester,
-  ) async {
-    final crews = MultipleCrews();
-    final pacts = CrewPacts()..crews = await crews.fetchCrews();
-    final home = CrewHome(pacts);
-    SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: HomePage(
-          user: const AuthUser(email: 'owner@example.com'),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: home,
+  testWidgets(
+    'holding the header fans the crews out and the finger picks one',
+    (tester) async {
+      final crews = MultipleCrews();
+      final pacts = CrewPacts()..crews = await crews.fetchCrews();
+      final home = CrewHome(pacts);
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: WeekPactTheme.dark,
+          home: HomePage(
+            user: const AuthUser(email: 'owner@example.com'),
+            authBackend: const MissingConfigurationAuthBackend(),
+            crewBackend: crews,
+            pactsBackend: pacts,
+            homeBackend: home,
+          ),
         ),
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.text('Switch to Night Owls'), findsNothing);
+      );
+      await tester.pumpUi();
+      expect(find.text('Switch to Night Owls'), findsNothing);
 
-    final header = find.byTooltip('Switch crew');
-    final gesture = await tester.startGesture(tester.getCenter(header));
-    // Nothing happens until the press is held.
-    await tester.pump(const Duration(milliseconds: 120));
-    expect(find.text('Switch to Night Owls'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.pumpUi();
-    expect(find.text('Night Owls').hitTestable(), findsOneWidget);
+      final header = find.byTooltip('Switch crew');
+      final gesture = await tester.startGesture(tester.getCenter(header));
+      // Nothing happens until the press is held.
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(find.text('Switch to Night Owls'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpUi();
+      expect(find.text('Night Owls').hitTestable(), findsOneWidget);
 
-    await gesture.moveTo(tester.getCenter(find.text('Night Owls')));
-    await tester.pumpUi();
-    await gesture.up();
-    await tester.pumpUi();
-    expect(home.requested.last, 'second');
-    // The hand is put away once a card is taken.
-    expect(find.text('Switch to Night Owls'), findsNothing);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
+      await gesture.moveTo(tester.getCenter(find.text('Night Owls')));
+      await tester.pumpUi();
+      await gesture.up();
+      await tester.pumpUi();
+      expect(home.requested.last, 'second');
+      // The hand is put away once a card is taken.
+      expect(find.text('Switch to Night Owls'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('releasing away from the fan keeps the crew you were on', (
     tester,

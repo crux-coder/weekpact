@@ -30,7 +30,10 @@ class CrewWeekPage extends StatefulWidget {
 }
 
 class _CrewWeekPageState extends State<CrewWeekPage> {
-  final _pages = PageController();
+  // Under a full viewport the neighbouring cards peek in at either edge, so
+  // the carousel says it can be swiped without an arrow to explain it.
+  static const _peek = .88;
+  final _pages = PageController(viewportFraction: _peek);
   CrewWeek? _week;
   String? _error;
   int _request = 0;
@@ -217,115 +220,109 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                           ),
                                         ),
                                       )
-                                    : PageView.builder(
-                                        key: const ValueKey(
-                                          'crew-pact-carousel',
-                                        ),
-                                        controller: _pages,
-                                        physics:
-                                            MediaQuery.disableAnimationsOf(
-                                              context,
-                                            )
-                                            ? const ClampingScrollPhysics()
-                                            : const _CarouselSpringPhysics(),
-                                        itemCount: week.pacts.length,
-                                        onPageChanged: (index) =>
-                                            setState(() => _index = index),
-                                        itemBuilder: (context, index) =>
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 3,
-                                                  ),
-                                              child: CrewPactWeekCard(
-                                                key: ValueKey(
-                                                  week.pacts[index].id,
-                                                ),
-                                                week: week,
-                                                pact: week.pacts[index],
-                                                tint: WeekPactColors.pactTint(
-                                                  index,
-                                                ),
-                                                members: members,
-                                                userId: widget.userId,
-                                              ),
+                                    // The carousel alone runs past the page's
+                                    // margin, so the pacts either side reach
+                                    // the screen's edges instead of stopping
+                                    // short of it.
+                                    : LayoutBuilder(
+                                        builder: (context, box) => OverflowBox(
+                                          minWidth:
+                                              box.maxWidth +
+                                              2 * WeekPactMetrics.pageInset,
+                                          maxWidth:
+                                              box.maxWidth +
+                                              2 * WeekPactMetrics.pageInset,
+                                          child: PageView.builder(
+                                            key: const ValueKey(
+                                              'crew-pact-carousel',
                                             ),
+                                            controller: _pages,
+                                            physics:
+                                                MediaQuery.disableAnimationsOf(
+                                                  context,
+                                                )
+                                                ? const ClampingScrollPhysics()
+                                                : const _CarouselSpringPhysics(),
+                                            itemCount: week.pacts.length,
+                                            onPageChanged: (index) =>
+                                                setState(() => _index = index),
+                                            itemBuilder: (context, index) =>
+                                                Padding(
+                                                  // The card's raised edge is
+                                                  // painted below its own box, and
+                                                  // the carousel clips its pages,
+                                                  // so the page leaves that edge
+                                                  // room to show.
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        5,
+                                                        0,
+                                                        5,
+                                                        WeekPactMetrics
+                                                                .controlDepth +
+                                                            1,
+                                                      ),
+                                                  child: CrewPactWeekCard(
+                                                    key: ValueKey(
+                                                      week.pacts[index].id,
+                                                    ),
+                                                    week: week,
+                                                    pact: week.pacts[index],
+                                                    tint:
+                                                        WeekPactColors.pactTint(
+                                                          index,
+                                                        ),
+                                                    members: members,
+                                                    userId: widget.userId,
+                                                  ),
+                                                ),
+                                          ),
+                                        ),
                                       ),
                               ),
                               if (week.pacts.length > 1)
                                 SizedBox(
                                   height: 44,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      IconButton(
-                                        tooltip: 'Previous pact',
-                                        onPressed: _index == 0
-                                            ? null
-                                            : () => _showPact(_index - 1),
-                                        icon: const AppIcon(
-                                          icon: HugeIconsStrokeRounded
-                                              .arrowLeft01,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      Flexible(
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Row(
-                                            children: [
-                                              for (
-                                                var i = 0;
-                                                i < week.pacts.length;
-                                                i++
-                                              )
-                                                Semantics(
-                                                  selected: i == _index,
-                                                  child: IconButton(
-                                                    tooltip:
-                                                        'Show ${week.pacts[i].title}',
-                                                    onPressed: () =>
-                                                        _showPact(i),
-                                                    icon: AnimatedContainer(
-                                                      duration: const Duration(
-                                                        milliseconds: 150,
-                                                      ),
-                                                      width: i == _index
-                                                          ? 20
-                                                          : 7,
-                                                      height: 7,
-                                                      decoration: BoxDecoration(
-                                                        color: context.ink
-                                                            .withValues(
-                                                              alpha: i == _index
-                                                                  ? 1
-                                                                  : .25,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                      ),
-                                                    ),
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        children: [
+                                          for (
+                                            var i = 0;
+                                            i < week.pacts.length;
+                                            i++
+                                          )
+                                            Semantics(
+                                              selected: i == _index,
+                                              child: IconButton(
+                                                tooltip:
+                                                    'Show ${week.pacts[i].title}',
+                                                onPressed: () => _showPact(i),
+                                                icon: AnimatedContainer(
+                                                  duration: const Duration(
+                                                    milliseconds: 150,
+                                                  ),
+                                                  width: i == _index ? 20 : 7,
+                                                  height: 7,
+                                                  decoration: BoxDecoration(
+                                                    color: context.ink
+                                                        .withValues(
+                                                          alpha: i == _index
+                                                              ? 1
+                                                              : .25,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
                                                   ),
                                                 ),
-                                            ],
-                                          ),
-                                        ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      IconButton(
-                                        tooltip: 'Next pact',
-                                        onPressed:
-                                            _index == week.pacts.length - 1
-                                            ? null
-                                            : () => _showPact(_index + 1),
-                                        icon: const AppIcon(
-                                          icon: HugeIconsStrokeRounded
-                                              .arrowRight01,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 )
                               else
@@ -424,51 +421,52 @@ class _WeekSummary extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: WeekPactDarkCard.fill,
-              borderRadius: BorderRadius.circular(
-                WeekPactMetrics.controlRadius,
-              ),
-            ),
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                const AppIcon(
-                  icon: HugeIconsStrokeRounded.fire,
-                  color: WeekPactDarkCard.muted,
-                  size: 30,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        week.streakWeeks == 0
-                            ? 'Week 1'
-                            : '${week.streakWeeks} ${week.streakWeeks == 1 ? 'week' : 'weeks'}',
-                        style: const TextStyle(
-                          color: WeekPactDarkCard.ink,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        week.streakWeeks == 0
-                            ? 'Start your first crew streak'
-                            : 'Crew streak',
-                        style: const TextStyle(
-                          color: WeekPactDarkCard.muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+          // The same squircle, outline and raised edge as the progress card
+          // beside it: a plain rounded rect read as a different family.
+          child: AppSurface(
+            fillColor: WeekPactDarkCard.fill,
+            resolveTone: false,
+            outlineColor: WeekPactDarkCard.outline,
+            builder: (_) => Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  const AppIcon(
+                    icon: HugeIconsStrokeRounded.fire,
+                    color: WeekPactDarkCard.muted,
+                    size: 30,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          week.streakWeeks == 0
+                              ? 'Week 1'
+                              : '${week.streakWeeks} ${week.streakWeeks == 1 ? 'week' : 'weeks'}',
+                          style: const TextStyle(
+                            color: WeekPactDarkCard.ink,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          week.streakWeeks == 0
+                              ? 'Start your first crew streak'
+                              : 'Crew streak',
+                          style: const TextStyle(
+                            color: WeekPactDarkCard.muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

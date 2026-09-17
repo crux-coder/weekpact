@@ -30,129 +30,195 @@ const _ink = homeInk;
 const _doneFill = WeekPactColors.cream;
 const _doneMark = WeekPactColors.doneMark;
 
-class CrewTitleBanner extends StatelessWidget {
-  static const height = 76.0;
-  const CrewTitleBanner({
+/// Home's own heading: the page's name and dot, the way every other
+/// destination announces itself, with the crew's streak on the right. The crew
+/// selector sits below it rather than beside the name.
+class HomeHeader extends StatelessWidget {
+  const HomeHeader({
     super.key,
-    required this.name,
     required this.streakWeeks,
-    this.onOpen,
-    this.selector,
+    required this.selector,
   });
-  final Widget? selector;
-  final VoidCallback? onOpen;
-  final String name;
+
+  /// The crew switcher, or a plain name plate when there is nothing to switch.
+  final Widget selector;
   final int streakWeeks;
+
+  static const titleHeight = 44.0;
+  static const gap = 12.0;
+  static const selectorHeight = 60.0;
+  static const height = titleHeight + gap + selectorHeight;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: const ValueKey('home-header'),
+    height: height,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: titleHeight,
+          child: Row(
+            children: [
+              const Expanded(
+                child: PageHeading('Home', dotColor: WeekPactColors.stone),
+              ),
+              const SizedBox(width: 10),
+              CrewStreakPill(streakWeeks: streakWeeks),
+            ],
+          ),
+        ),
+        const SizedBox(height: gap),
+        SizedBox(height: selectorHeight, child: selector),
+      ],
+    ),
+  );
+}
+
+/// A crew that cannot be switched: its name, on the selector's own surface.
+class CrewNamePlate extends StatelessWidget {
+  const CrewNamePlate({super.key, required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => CrewHeaderSurface(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const CrewControlLabel('YOUR CREW'),
+          const SizedBox(height: 4),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                name,
+                style: TextStyle(
+                  color: context.ink,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// The crew's streak, as a pill beside the page's name. A readout, not a
+/// control: the flame says what the number counts, and [CrewWeekButton] is
+/// where the week is opened.
+class CrewStreakPill extends StatelessWidget {
+  const CrewStreakPill({super.key, required this.streakWeeks});
+  final int streakWeeks;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Crew streak',
+    value: '$streakWeeks ${streakWeeks == 1 ? 'week' : 'weeks'}',
+    child: CrewHeaderSurface(
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                children: [
+                  HugeIcon(
+                    icon: HugeIconsStrokeRounded.fire,
+                    color: streakWeeks > 0
+                        ? WeekPactColors.streak
+                        : context.muted,
+                    size: 24,
+                    strokeWidth: 2,
+                  ),
+                  const SizedBox(width: 6),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: '$streakWeeks'),
+                        TextSpan(
+                          text: streakWeeks == 1 ? ' week' : ' weeks',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    key: const ValueKey('crew-header-streak'),
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 24,
+                      height: 1.1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// The way into the crew's week: a labelled row, where the streak used to be a
+/// tap nobody could see. It sits directly below the check-in tiles, so the
+/// crew's things stay together and the tiles keep the line under the header.
+class CrewWeekButton extends StatelessWidget {
+  const CrewWeekButton({super.key, required this.onOpen});
+  final VoidCallback? onOpen;
+
+  static const height = 44.0;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     height: height,
-    child: Padding(
-      key: const ValueKey('crew-title-container'),
-      padding: const EdgeInsets.only(top: 7, bottom: 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [_streak(context), const SizedBox(width: 10), _crew(context)],
-      ),
-    ),
-  );
-
-  Widget _crew(BuildContext context) => Expanded(
-    child:
-        selector ??
-        CrewHeaderSurface(
+    // The tooltip keeps the old control's wording: the one place that opens the
+    // week is still named the same thing.
+    child: Tooltip(
+      message: 'View week',
+      child: CrewHeaderSurface(
+        child: InkWell(
+          key: const ValueKey('open-crew-week'),
+          onTap: onOpen,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
               children: [
-                const CrewControlLabel('YOUR CREW'),
-                const SizedBox(height: 4),
+                HugeIcon(
+                  icon: HugeIconsStrokeRounded.calendar03,
+                  color: context.ink,
+                  size: 20,
+                  strokeWidth: 2,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      name,
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  child: Text(
+                    'CREW WEEK',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 14,
+                      letterSpacing: .6,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
+                HugeIcon(
+                  icon: HugeIconsStrokeRounded.arrowRight01,
+                  color: context.muted,
+                  size: 20,
+                ),
               ],
-            ),
-          ),
-        ),
-  );
-
-  Widget _streak(BuildContext context) => SizedBox(
-    width: 100,
-    child: CrewHeaderSurface(
-      child: Tooltip(
-        message: 'View week',
-        child: Semantics(
-          label: 'Crew streak',
-          value: '$streakWeeks ${streakWeeks == 1 ? 'week' : 'weeks'}',
-          button: onOpen != null,
-          child: InkWell(
-            onTap: onOpen,
-            child: ExcludeSemantics(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const CrewControlLabel('CREW STREAK'),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            HugeIcon(
-                              icon: HugeIconsStrokeRounded.fire,
-                              color: streakWeeks > 0
-                                  ? WeekPactColors.streak
-                                  : context.muted,
-                              size: 28,
-                              strokeWidth: 2,
-                            ),
-                            const SizedBox(width: 6),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(text: '$streakWeeks'),
-                                  TextSpan(
-                                    text: streakWeeks == 1 ? ' week' : ' weeks',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              key: const ValueKey('crew-header-streak'),
-                              style: TextStyle(
-                                color: context.ink,
-                                fontSize: 28,
-                                height: 1.1,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),
@@ -1158,150 +1224,7 @@ class _CompletedCheckIn extends StatelessWidget {
   );
 }
 
-/// The crew's freshest check-in, in the strip above the crew tiles. It is the
-/// one line on Home that changes without the viewer doing anything, so it opens
-/// the feed rather than restating what the tiles below already show.
-class LatestCheckInStrip extends StatelessWidget {
-  const LatestCheckInStrip({
-    super.key,
-    required this.week,
-    required this.userId,
-    this.now,
-    this.onOpenFeed,
-  });
-
-  final CrewWeek week;
-  final String userId;
-  final DateTime? now;
-  final VoidCallback? onOpenFeed;
-
-  /// How long ago, at the coarseness a feed reads at.
-  static String age(DateTime at, DateTime now) {
-    final elapsed = now.difference(at);
-    if (elapsed.inMinutes < 1) return 'just now';
-    if (elapsed.inMinutes < 60) return '${elapsed.inMinutes}m ago';
-    if (elapsed.inHours < 24) return '${elapsed.inHours}h ago';
-    return '${elapsed.inDays}d ago';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final activity = week.latestActivity;
-    final member = week.members
-        .where((m) => m.id == activity?.userId)
-        .firstOrNull;
-    final pact = week.pacts.where((p) => p.id == activity?.pactId).firstOrNull;
-    final hasActivity = activity != null && member != null;
-    final name = activity?.userId == userId
-        ? 'You'
-        : member == null || member.displayName.trim().isEmpty
-        ? 'A crew member'
-        : member.displayName.trim().split(RegExp(r'\s+')).first;
-    final detail = hasActivity
-        ? '${pact?.title ?? 'a pact'} · ${age(activity.createdAt, now ?? DateTime.now())}'
-        : null;
-    final message = hasActivity
-        ? '$name checked in'
-        : 'Nobody has checked in yet today';
-    final open = onOpenFeed;
-    return Semantics(
-      button: open != null,
-      label: hasActivity
-          ? 'Latest check-in: $message · $detail'
-          : 'Latest check-in: $message',
-      hint: open == null ? null : 'Open the feed',
-      child: ExcludeSemantics(
-        // Its own surface, so the crew's latest reads as a thing to open rather
-        // than a caption on the tiles below it.
-        child: CrewHeaderSurface(
-          child: InkWell(
-            onTap: open,
-            child: Padding(
-              key: const ValueKey('latest-check-in'),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  if (hasActivity) ...[
-                    FlatAvatar(
-                      radius: 13,
-                      backgroundColor: WeekPactColors.mintGreen,
-                      child: AvatarClip(
-                        child: member.avatarUrl == null
-                            ? Text(
-                                member.initials,
-                                style: const TextStyle(
-                                  color: _ink,
-                                  fontSize: 10,
-                                ),
-                              )
-                            : Image.network(
-                                member.avatarUrl!,
-                                width: 26,
-                                height: 26,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Text(
-                                  member.initials,
-                                  style: const TextStyle(
-                                    color: _ink,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      // Text.rich, not RichText: the latter ignores the ambient
-                      // text style and would fall back to the platform font.
-                      child: Text.rich(
-                        maxLines: 1,
-                        TextSpan(
-                          style: TextStyle(
-                            color: context.ink,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          children: [
-                            TextSpan(text: message),
-                            if (detail != null)
-                              TextSpan(
-                                text: '  ·  $detail',
-                                style: TextStyle(
-                                  color: context.muted,
-                                  fontFamily: WeekPactType.secondary,
-                                  fontFamilyFallback:
-                                      WeekPactType.secondaryFallback,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (open != null) ...[
-                    const SizedBox(width: 8),
-                    HugeIcon(
-                      icon: HugeIconsStrokeRounded.arrowRight01,
-                      color: context.muted,
-                      size: 18,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// Who is in today and who is not, as two tiles the viewer can open.
 class TodayCrewCard extends StatelessWidget {
   const TodayCrewCard({
     super.key,
@@ -1309,23 +1232,19 @@ class TodayCrewCard extends StatelessWidget {
     required this.userId,
     required this.onOpen,
     this.crewName = '',
-    this.height = groupHeight + headingHeight,
+    this.height = groupHeight,
     this.showGroups = true,
-    this.onOpenFeed,
     this.now,
   });
   final CrewWeek week;
   final String userId;
   final String crewName;
   final VoidCallback onOpen;
-  final VoidCallback? onOpenFeed;
   final DateTime? now;
   final double height;
   final bool showGroups;
   // A count, its caption and a row of faces — no taller than that needs.
   static const groupHeight = 86.0;
-  // The latest-check-in surface plus the gap to the tiles below it.
-  static const headingHeight = 54.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1340,18 +1259,6 @@ class TodayCrewCard extends StatelessWidget {
       height: height,
       child: Column(
         children: [
-          SizedBox(
-            height: headingHeight,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: LatestCheckInStrip(
-                week: week,
-                userId: userId,
-                now: now,
-                onOpenFeed: onOpenFeed,
-              ),
-            ),
-          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, space) {
@@ -1456,9 +1363,21 @@ class CrewCheckInTile extends StatelessWidget {
   final HomeBackend? backend;
   final String? crewId;
 
-  /// The tile's raised edge, shared by its surface, faces and overflow chip.
+  /// The tile's raised edge, shared by its surface and its outline. The faces
+  /// do not take it: they read as a flat stack, the way the crew roster's do,
+  /// and the ring alone separates them.
   static Color _tileEdge(bool done) =>
       done ? WeekPactColors.mintEdge : WeekPactColors.pendingEdge;
+
+  /// The tile's own fill, painted as a ring around each overlapping face. It
+  /// disappears against the tile and shows only where one face crosses the
+  /// next, which is the one place the stack needs a gap to be read as people
+  /// rather than as a single smear.
+  static Color _tileFill(bool done) =>
+      done ? WeekPactColors.mintGreen : WeekPactColors.pendingCheckIns;
+
+  /// The knockout between two overlapping faces.
+  static const _faceRing = 2.0;
 
   /// Beyond this the stack stops being faces and becomes a number.
   static const _maxFaces = 3;
@@ -1716,31 +1635,32 @@ class CrewCheckInTile extends StatelessWidget {
                       key: const ValueKey('crew-overflow'),
                       width: size,
                       height: size,
+                      padding: const EdgeInsets.all(_faceRing),
                       decoration: ShapeDecoration(
-                        color: WeekPactColors.cream,
-                        shape: AvatarShape(
-                          side: BorderSide(color: _ink.withValues(alpha: .25)),
-                        ),
-                        shadows: [
-                          BoxShadow(
-                            color: _tileEdge(done),
-                            offset: WeekPactMetrics.raisedOffset,
-                          ),
-                        ],
+                        color: _tileFill(done),
+                        shape: const AvatarShape(),
                       ),
-                      child: Center(
-                        child: FittedBox(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              '+$overflow',
-                              style: const TextStyle(
-                                color: _ink,
-                                fontFamily: WeekPactType.secondary,
-                                fontFamilyFallback:
-                                    WeekPactType.secondaryFallback,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
+                      child: DecoratedBox(
+                        decoration: const ShapeDecoration(
+                          color: WeekPactColors.cream,
+                          shape: AvatarShape(),
+                        ),
+                        child: Center(
+                          child: FittedBox(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Text(
+                                '+$overflow',
+                                style: const TextStyle(
+                                  color: _ink,
+                                  fontFamily: WeekPactType.secondary,
+                                  fontFamilyFallback:
+                                      WeekPactType.secondaryFallback,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ),
@@ -1800,25 +1720,26 @@ class CrewCheckInTile extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Container(
+                      padding: const EdgeInsets.all(_faceRing),
                       decoration: ShapeDecoration(
                         shape: const AvatarShape(),
-                        color: homePaper,
-                        shadows: [
-                          BoxShadow(
-                            color: _tileEdge(done),
-                            offset: WeekPactMetrics.raisedOffset,
-                          ),
-                        ],
+                        color: _tileFill(done),
                       ),
-                      child: AvatarClip(
-                        child: member.avatarUrl == null
-                            ? fallback
-                            : Image.network(
-                                member.avatarUrl!,
-                                gaplessPlayback: true,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => fallback,
-                              ),
+                      child: DecoratedBox(
+                        decoration: const ShapeDecoration(
+                          shape: AvatarShape(),
+                          color: homePaper,
+                        ),
+                        child: AvatarClip(
+                          child: member.avatarUrl == null
+                              ? fallback
+                              : Image.network(
+                                  member.avatarUrl!,
+                                  gaplessPlayback: true,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => fallback,
+                                ),
+                        ),
                       ),
                     ),
                   ),
@@ -1909,81 +1830,72 @@ class _TodaySkeletonState extends State<TodaySkeleton>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                height: CrewTitleBanner.height,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 7, bottom: 9),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: CrewHeaderSurface(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
+                height: HomeHeader.height,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: HomeHeader.titleHeight,
+                      child: Row(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _line(104, 28),
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: 108,
+                            child: CrewHeaderSurface(
+                              child: Center(child: _line(64, 20)),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _line(62, 8),
-                                const SizedBox(height: 8),
-                                _line(145, 20),
-                              ],
-                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: HomeHeader.gap),
+                    SizedBox(
+                      height: HomeHeader.selectorHeight,
+                      child: CrewHeaderSurface(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _line(62, 8),
+                              const SizedBox(height: 8),
+                              _line(145, 20),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 100,
-                        child: CrewHeaderSurface(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _line(70, 8),
-                                const SizedBox(height: 8),
-                                _line(64, 20),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 key: const ValueKey('skeleton-crew-board'),
-                height: TodayCrewCard.groupHeight + TodayCrewCard.headingHeight,
-                child: Column(
+                height: TodayCrewCard.groupHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      height: TodayCrewCard.headingHeight,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SkeletonBar(width: 132, height: 8),
-                          SkeletonBar(width: 22, height: 22),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _crewTile(WeekPactColors.mintGreen),
-                          const SizedBox(width: 6),
-                          _crewTile(WeekPactColors.pendingCheckIns),
-                        ],
-                      ),
-                    ),
+                    _crewTile(WeekPactColors.mintGreen),
+                    const SizedBox(width: 6),
+                    _crewTile(WeekPactColors.pendingCheckIns),
                   ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: CrewWeekButton.height,
+                child: CrewHeaderSurface(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(children: [_line(104, 12)]),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

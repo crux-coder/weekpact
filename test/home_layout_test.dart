@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/crew/crew_switcher.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
@@ -91,11 +92,21 @@ void main() {
           );
           expect(activePact.left, greaterThan(crewBounds.left));
           expect(activePact.right, lessThan(crewBounds.right));
-          final titleBottom = tester
-              .getBottomRight(find.byType(CrewTitleBanner))
-              .dy;
+          final titleBottom = tester.getBottomRight(find.byType(HomeHeader)).dy;
           final crewTop = tester.getTopLeft(find.byType(TodayCrewCard)).dy;
-          expect(find.byKey(const ValueKey('latest-activity')), findsNothing);
+          // Home leads with its own name and dot, the crew streak beside it,
+          // and the selector underneath — no activity strip.
+          expect(find.text('Home'), findsWidgets);
+          expect(find.byKey(const ValueKey('latest-check-in')), findsNothing);
+          final streak = tester.getRect(
+            find.byKey(const ValueKey('crew-header-streak')),
+          );
+          final heading = tester.getRect(find.text('Home').first);
+          expect(streak.left, greaterThan(heading.right));
+          expect(
+            tester.getTopLeft(find.byType(CrewSwitcher)).dy,
+            greaterThanOrEqualTo(heading.bottom),
+          );
           final todayTop = tester.getTopLeft(find.byType(TodayPactsCard)).dy;
           expect(crewTop, greaterThanOrEqualTo(titleBottom));
           expect(todayTop, greaterThanOrEqualTo(crewBounds.bottom));

@@ -4,9 +4,8 @@ import '../widgets/avatar_shape.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
-import 'crew_people_grid.dart';
+import 'crew_roster.dart';
 
 /// Shared heading geometry for every crew-scoped management screen.
 class CrewPageHeading extends StatelessWidget {
@@ -32,17 +31,24 @@ class CrewPageHeading extends StatelessWidget {
   );
 }
 
-/// Identical selector placeholder, progress line, and loading cards on Pacts and Crews.
+/// The shared loading shell: the same selector placeholder and progress line
+/// on Pacts and Crews, so switching tabs mid-load does not shift the page.
+/// Below that each page stands in for its own content — [body] — because a
+/// skeleton that shows the wrong shapes is a worse promise than none.
 class CrewPageSkeleton extends StatelessWidget {
   const CrewPageSkeleton({
     super.key,
     this.showSelector = true,
     this.label = 'Loading crews',
+    this.body,
   });
 
   final String label;
 
   final bool showSelector;
+
+  /// What is loading under the progress line. Defaults to the crew roster.
+  final Widget? body;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -78,45 +84,53 @@ class CrewPageSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
           ),
           const SizedBox(height: 16),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: SkeletonBar(width: 120, height: 16),
-          ),
-          const SizedBox(height: 12),
-          CrewPeopleGrid(
-            children: [
-              for (var i = 0; i < 4; i++)
-                AppSurface(
-                  fillColor: i == 0
-                      ? WeekPactColors.coolGrey
-                      : WeekPactColors.cream,
-                  builder: (_) => const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: SkeletonBar(
-                                height: 100,
-                                shape: AvatarShape(),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        SkeletonBar(height: 15),
-                        SizedBox(height: 8),
-                        SkeletonBar(width: 60, height: 10),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          body ?? const CrewRosterSkeleton(),
         ],
       ),
     ),
+  );
+}
+
+/// The crew page's own loading shapes: its caption, then a stack of bands.
+class CrewRosterSkeleton extends StatelessWidget {
+  const CrewRosterSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: SkeletonBar(width: 120, height: 16),
+      ),
+      const SizedBox(height: 12),
+      CrewRoster(
+        children: [
+          for (var i = 0; i < 4; i++)
+            CrewBand(
+              fillColor: i == 0
+                  ? WeekPactColors.coolGrey
+                  : WeekPactColors.cream,
+              builder: (context) => const Padding(
+                padding: EdgeInsets.fromLTRB(12, 8, 6, 8),
+                child: Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: 40,
+                      child: SkeletonBar(height: 40, shape: AvatarShape()),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(child: SkeletonBar(height: 15)),
+                    SizedBox(width: 12),
+                    SkeletonBar(width: 54, height: 10),
+                    SizedBox(width: 12),
+                    SkeletonBar(height: 30, width: 30, shape: CircleBorder()),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    ],
   );
 }

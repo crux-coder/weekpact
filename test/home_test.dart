@@ -260,14 +260,18 @@ void main() {
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    await tester.ensureVisible(find.byTooltip('View week'));
-    await tester.tap(find.byTooltip('View week'));
+    // The streak is a readout: only the labelled row opens the week.
+    await tester.tap(find.byKey(const ValueKey('crew-header-streak')));
+    await tester.pumpUi();
+    expect(find.byType(CrewWeekPage), findsNothing);
+    await tester.ensureVisible(find.text('CREW WEEK'));
+    await tester.tap(find.text('CREW WEEK'));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsOneWidget);
     expect(find.text('This week · Sep 7 – Sep 13'), findsOneWidget);
     expect(find.text('Crew progress'), findsOneWidget);
     expect(find.text('1 of 2 checked in today'), findsOneWidget);
-    await tester.tap(find.byTooltip('Next pact'));
+    await tester.tap(find.byTooltip('Show Read 20 pages'));
     await tester.pumpUi();
     expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
     expect(find.byTooltip('Sep 9 · Completed'), findsOneWidget);

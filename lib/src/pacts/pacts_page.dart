@@ -169,7 +169,10 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
       ),
       onRefresh: _refresh,
       loading: !_hasLoaded && _loading,
-      skeleton: const CrewPageSkeleton(label: 'Loading pacts'),
+      skeleton: const CrewPageSkeleton(
+        label: 'Loading pacts',
+        body: PactsSkeletonBody(),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -217,17 +220,36 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
               const CrewPageSkeleton(
                 showSelector: false,
                 label: 'Loading pacts',
+                body: PactsSkeletonBody(),
               )
             else if (_pacts != null) ...[
               YourWeekCard(week: _week!, userId: widget.userId),
               const SizedBox(height: 22),
-              Text(
-                'Your pacts',
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Your pacts',
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (_pacts!.isNotEmpty)
+                    Text(
+                      'DAYS / WEEK',
+                      style: TextStyle(
+                        color: context.muted,
+                        fontSize: 12,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 12),
               if (_pacts!.isEmpty)
@@ -255,17 +277,13 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
                   ),
                 )
               else
-                PactSquareGrid(
+                PactBarList(
                   pacts: _pacts!,
                   onEdit: crew.isOwner ? (pact) => _addPact(pact) : null,
                 ),
               if (crew.isOwner) ...[
                 const SizedBox(height: 16),
-                AppButton(
-                  label: 'ADD PACT',
-                  color: WeekPactColors.coolGrey,
-                  onPressed: _addPact,
-                ),
+                AppButton(label: 'ADD PACT', onPressed: _addPact),
               ],
             ],
           ],

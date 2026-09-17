@@ -178,56 +178,18 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                       )
                     else
                       Expanded(
-                        child: Stack(
+                        child: Column(
                           children: [
-                            Positioned.fill(
-                              left: _nameWidth,
-                              right: _countWidth,
-                              child: Row(
-                                children: [
-                                  for (var day = 0; day < 7; day++)
-                                    Expanded(
-                                      child: Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              day ==
-                                                  DateTime.parse(week.today)
-                                                      .difference(
-                                                        DateTime.parse(
-                                                          week.weekStart,
-                                                        ),
-                                                      )
-                                                      .inDays
-                                              ? context.mint.withValues(
-                                                  alpha: .4,
-                                                )
-                                              : null,
-                                          borderRadius: BorderRadius.circular(
-                                            7,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                            _CalendarHeader(week: week),
+                            for (final member in visible)
+                              Expanded(
+                                child: _MemberDays(
+                                  week: week,
+                                  pact: pact,
+                                  member: member,
+                                  isYou: member.id == widget.userId,
+                                ),
                               ),
-                            ),
-                            Column(
-                              children: [
-                                _CalendarHeader(week: week),
-                                for (final member in visible)
-                                  Expanded(
-                                    child: _MemberDays(
-                                      week: week,
-                                      pact: pact,
-                                      member: member,
-                                      isYou: member.id == widget.userId,
-                                    ),
-                                  ),
-                              ],
-                            ),
                           ],
                         ),
                       ),
@@ -347,7 +309,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
   }
 }
 
-const _nameWidth = 64.0;
+const _nameWidth = 52.0;
 const _countWidth = 48.0;
 
 class _CalendarHeader extends StatelessWidget {
@@ -368,27 +330,55 @@ class _CalendarHeader extends StatelessWidget {
                 final date = start.add(Duration(days: index));
                 final today =
                     date.toIso8601String().substring(0, 10) == week.today;
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Column(
-                    children: [
-                      Text(
+                final label = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         labels[index],
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: today ? context.ink : context.muted,
+                          fontSize: 11,
+                          height: 1.1,
+                          letterSpacing: .2,
+                          fontWeight: FontWeight.w800,
+                          color: today ? WeekPactColors.cream : context.muted,
                         ),
                       ),
-                      Text(
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         '${date.day}',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: today ? context.ink : context.muted,
+                          fontSize: 15,
+                          height: 1.2,
+                          fontWeight: today ? FontWeight.w900 : FontWeight.w700,
+                          color: today ? WeekPactColors.cream : context.muted,
                         ),
                       ),
-                    ],
+                    ),
+                  ],
+                );
+                if (!today) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 6, 2, 6),
+                    child: label,
+                  );
+                }
+                // Today is marked once, here: an ink squircle raised off the
+                // card, rather than a tint washed down the whole column, which
+                // had to be a different colour on every pact card to be seen.
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 2, 2, 4),
+                  child: AppSurface(
+                    fillColor: context.ink,
+                    resolveTone: false,
+                    borderRadius: WeekPactMetrics.controlRadius,
+                    builder: (_) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: label,
+                    ),
                   ),
                 );
               },
@@ -434,44 +424,30 @@ class _MemberDays extends StatelessWidget {
       children: [
         SizedBox(
           width: _nameWidth,
+          // The face alone, centred on the row of cells it belongs to. The
+          // name under it pushed the avatar off that line and had to be
+          // truncated to fit anyway; the tooltip still carries it.
           child: Tooltip(
             message: '$name${isYou ? ' (you)' : ''}',
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: SizedBox(
-                width: _nameWidth - 4,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: ShapeDecoration(
-                        shape: const AvatarShape(),
-                        color: context.ink.withValues(alpha: .06),
-                      ),
-                      child: member.avatarUrl?.trim().isNotEmpty == true
-                          ? Image.network(
-                              member.avatarUrl!,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              errorBuilder: (_, _, _) => fallback,
-                            )
-                          : fallback,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: ShapeDecoration(
+                    shape: const AvatarShape(),
+                    color: context.ink.withValues(alpha: .06),
+                  ),
+                  child: member.avatarUrl?.trim().isNotEmpty == true
+                      ? Image.network(
+                          member.avatarUrl!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                          errorBuilder: (_, _, _) => fallback,
+                        )
+                      : fallback,
                 ),
               ),
             ),
@@ -498,46 +474,7 @@ class _MemberDays extends StatelessWidget {
                       '$name, ${pact.title}, ${crewDateLabel(date)}: $status',
                   child: Tooltip(
                     message: '${crewDateLabel(date)} · $status',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 4,
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: done
-                                ? context.mint
-                                : today
-                                ? context.mint.withValues(alpha: .35)
-                                : context.ink.withValues(
-                                    alpha: future ? .025 : .06,
-                                  ),
-                            borderRadius: BorderRadius.circular(
-                              WeekPactMetrics.controlRadius,
-                            ),
-                          ),
-                          child: done
-                              ? const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.tick02,
-                                  size: 16,
-                                )
-                              : Container(
-                                  width: 4,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: context.muted.withValues(
-                                      alpha: future ? .18 : .35,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
+                    child: _DayCell(done: done, today: today, future: future),
                   ),
                 );
               },
@@ -564,6 +501,97 @@ class _MemberDays extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One day of one person's week, drawn as the app's raised cell: the same
+/// outline and 2px bottom edge a pact day or a button carries, so the calendar
+/// reads as a grid of pressable tiles rather than a field of pips. The cell
+/// fills its column and row instead of sitting as a small square in the
+/// middle of one, which is what left the grid full of dead space.
+class _DayCell extends StatelessWidget {
+  const _DayCell({
+    required this.done,
+    required this.today,
+    required this.future,
+  });
+  final bool done;
+  final bool today;
+  final bool future;
+
+  @override
+  Widget build(BuildContext context) {
+    // A check-in and today are raised; the rest are flat slots waiting to be
+    // filled. Today's is the whitest face on the card, so the column you can
+    // still act on stands out from the days that have already gone.
+    final face = done
+        ? context.mint
+        : today
+        ? Colors.white
+        : WeekPactColors.cream.withValues(alpha: future ? .35 : .6);
+    // The edge is the cell's own fill pushed towards black, the way every
+    // other raised surface builds its shadow, rather than a flat grey laid
+    // under it.
+    final edge = done
+        ? Color.lerp(context.mint, Colors.black, .22)!
+        : Color.lerp(Colors.white, Colors.black, .20)!;
+    return Padding(
+      // The extra two below is the raised edge's room: without it a done
+      // cell's edge would touch the cell of the next row.
+      padding: const EdgeInsets.fromLTRB(3, 3, 3, 5),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 46),
+          child: SizedBox(
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: face,
+                // The same squircle every card, button and tile is cut to,
+                // stepped down to a cell's corner.
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    WeekPactMetrics.curveFor(WeekPactMetrics.controlRadius),
+                  ),
+                  side: BorderSide(
+                    color: done
+                        ? Color.lerp(context.mint, Colors.black, .28)!
+                        : today
+                        ? Color.lerp(Colors.white, Colors.black, .28)!
+                        : context.ink.withValues(alpha: future ? .05 : .10),
+                  ),
+                ),
+                shadows: done || today
+                    ? [
+                        BoxShadow(
+                          color: edge,
+                          offset: WeekPactMetrics.raisedOffset,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Center(
+                child: done
+                    ? const HugeIcon(
+                        icon: HugeIconsStrokeRounded.tick02,
+                        size: 18,
+                      )
+                    : Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: context.muted.withValues(
+                            alpha: future ? .18 : .35,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

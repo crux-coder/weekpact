@@ -193,7 +193,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
         : pending.isEmpty
         ? available
         : (available * fraction).clamp(minimum, available - minimum);
-    final crewTop = widget.top + TodayCrewCard.headingHeight;
+    final crewTop = widget.top;
     for (final panel in [
       if (checked.isNotEmpty) _HomePanel.checked,
       if (pending.isNotEmpty || checked.isEmpty) _HomePanel.pending,

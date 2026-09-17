@@ -109,47 +109,52 @@ void main() {
   });
 
   for (final settings in [(390.0, 1.0), (320.0, 2.0)]) {
-    testWidgets('pact cards stay square and editable at $settings', (
-      tester,
-    ) async {
-      tester.view.physicalSize = Size(settings.$1, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      String? edited;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(settings.$2)),
-            child: Scaffold(
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: PactSquareGrid(
-                  pacts: DashboardPacts().pacts,
-                  onEdit: (pact) => edited = pact.id,
+    testWidgets(
+      'pact bars stack, scale with the week and stay editable at $settings',
+      (tester) async {
+        tester.view.physicalSize = Size(settings.$1, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        String? edited;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: WeekPactTheme.dark,
+            home: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(settings.$2)),
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: PactBarList(
+                    pacts: DashboardPacts().pacts,
+                    onEdit: (pact) => edited = pact.id,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      expect(tester.takeException(), isNull);
-      final first = tester.getRect(
-        find.byKey(const ValueKey('pact-management-move')),
-      );
-      final second = tester.getRect(
-        find.byKey(const ValueKey('pact-management-read')),
-      );
-      expect(first.width, first.height);
-      expect(second.width, second.height);
-      if (settings.$2 == 1) {
-        expect(first.top, second.top);
-      } else {
-        expect(second.top, greaterThan(first.bottom));
-      }
-      await tester.tap(find.byTooltip('Edit Move for 30 min'));
-      expect(edited, 'move');
-    });
+        );
+        expect(tester.takeException(), isNull);
+        final first = tester.getRect(
+          find.byKey(const ValueKey('pact-management-move')),
+        );
+        final second = tester.getRect(
+          find.byKey(const ValueKey('pact-management-read')),
+        );
+        // Every bar spans the page and they stack, whatever the text scale.
+        expect(first.width, settings.$1 - 24);
+        expect(second.width, first.width);
+        expect(second.top, greaterThanOrEqualTo(first.bottom));
+        // The tinted fill measures the pact against a seven day week.
+        final fills = tester
+            .widgetList<FractionallySizedBox>(find.byType(FractionallySizedBox))
+            .map((box) => box.widthFactor)
+            .toList();
+        expect(fills.first, 7 / 7);
+        expect(fills[1], 3 / 7);
+        await tester.tap(find.byTooltip('Edit Move for 30 min'));
+        expect(edited, 'move');
+      },
+    );
   }
 }

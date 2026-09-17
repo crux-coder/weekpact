@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
-import 'package:weekpact/src/crew/crew_people_grid.dart';
+import 'package:weekpact/src/crew/crew_roster.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
@@ -73,7 +73,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
       await tester.pumpUi();
       final member = tester
-          .widget<CrewPersonCard>(find.byType(CrewPersonCard))
+          .widget<CrewPersonBand>(find.byType(CrewPersonBand))
           .member;
       expect(member.displayName, 'Jasmin');
       expect(member.avatarUrl, 'https://example.com/avatar.png');

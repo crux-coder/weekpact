@@ -571,7 +571,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
       await tester.pumpUi();
     }
-    expect(find.text('You · Owner'), findsOneWidget);
+    expect(find.text('OWNER'), findsOneWidget);
     expect(find.text('Pending invites'), findsNothing);
     expect(find.text('INVITE SOMEONE'), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);

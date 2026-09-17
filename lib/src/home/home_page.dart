@@ -480,10 +480,12 @@ class _HomeDestinationState extends State<_HomeDestination>
                           child: SizedBox(
                             width: constraints.maxWidth,
                             height: constraints.maxHeight.clamp(
-                              // Banner, latest-check-in strip, crew tiles and a
+                              // Header, the crew week row, crew tiles and a
                               // usable pact card; shorter viewports scale down.
                               312 +
-                                  CrewTitleBanner.height +
+                                  HomeHeader.height +
+                                  CrewWeekButton.height +
+                                  8 +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
                             ),
@@ -539,9 +541,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                 if (week == null) {
                                   return const SizedBox.shrink();
                                 }
-                                const crewHeight =
-                                    TodayCrewCard.groupHeight +
-                                    TodayCrewCard.headingHeight;
+                                const crewHeight = TodayCrewCard.groupHeight;
                                 return ExpandableHomePanels(
                                   showCrewCheckIns: true,
                                   key: ValueKey(_crew!.id),
@@ -550,12 +550,16 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   week: week,
                                   userId: widget.userId,
                                   active: widget.active,
-                                  top: CrewTitleBanner.height + 12,
+                                  // The check-in tiles now sit directly under
+                                  // the header, so the panel that unfolds over
+                                  // them starts there too.
+                                  top: HomeHeader.height + 12,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      CrewTitleBanner(
+                                      HomeHeader(
+                                        streakWeeks: week.streakWeeks,
                                         selector: (_crews?.length ?? 0) > 0
                                             ? CrewSwitcher(
                                                 compact: true,
@@ -569,10 +573,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                                         _refresh(crewId: id);
                                                       },
                                               )
-                                            : null,
-                                        name: _crew!.name,
-                                        onOpen: _openCrewWeek,
-                                        streakWeeks: week.streakWeeks,
+                                            : CrewNamePlate(name: _crew!.name),
                                       ),
                                       const SizedBox(height: 12),
                                       TodayCrewCard(
@@ -582,8 +583,9 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         week: week,
                                         userId: widget.userId,
                                         onOpen: _openCrewWeek,
-                                        onOpenFeed: widget.onOpenFeed,
                                       ),
+                                      const SizedBox(height: 8),
+                                      CrewWeekButton(onOpen: _openCrewWeek),
                                       const SizedBox(height: 12),
                                       if (_saveError != null)
                                         SizedBox(

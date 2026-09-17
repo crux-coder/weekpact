@@ -5,6 +5,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../theme/weekpact_theme.dart';
 import '../home/home_backend.dart';
 import '../widgets/app_components.dart';
+import '../widgets/page_frame.dart';
 import 'pact_icons.dart';
 import '../widgets/app_icon.dart';
 import 'pacts_backend.dart';
@@ -112,157 +113,199 @@ class YourWeekCard extends StatelessWidget {
   }
 }
 
-class PactSquareGrid extends StatelessWidget {
-  const PactSquareGrid({super.key, required this.pacts, this.onEdit});
+/// The pact list as a week-load chart: every pact is a full-width track whose
+/// tinted fill spans the share of the week it claims, so the list reads as one
+/// picture of the week rather than a grid of separate tiles.
+class PactBarList extends StatelessWidget {
+  const PactBarList({super.key, required this.pacts, this.onEdit});
   final List<CrewPact> pacts;
   final ValueChanged<CrewPact>? onEdit;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, space) {
-      final columns =
-          space.maxWidth >= 340 &&
-              MediaQuery.textScalerOf(context).scale(1) <= 1.3
-          ? 2
-          : 1;
-      final side = (space.maxWidth - (columns - 1) * 12) / columns;
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (final (index, pact) in pacts.indexed)
-            SizedBox.square(
-              dimension: side,
-              child: PactManagementCard(
-                key: ValueKey('pact-management-${pact.id}'),
-                pact: pact,
-                tint: WeekPactColors.pactTint(index),
-                onEdit: onEdit == null ? null : () => onEdit!(pact),
-              ),
-            ),
-        ],
-      );
-    },
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final (index, pact) in pacts.indexed) ...[
+        if (index > 0) const SizedBox(height: 8),
+        PactBar(
+          key: ValueKey('pact-management-${pact.id}'),
+          pact: pact,
+          tint: WeekPactColors.pactTint(index),
+          onEdit: onEdit == null ? null : () => onEdit!(pact),
+        ),
+      ],
+    ],
   );
 }
 
-class PactManagementCard extends StatelessWidget {
-  const PactManagementCard({
-    super.key,
-    required this.pact,
-    this.tint,
-    this.onEdit,
-  });
+/// One pact track. The fill is the pact's own tint, measured against a seven
+/// day week; the ink stays the card ink on both the fill and the bare track, so
+/// a title that crosses the edge does not change colour halfway through.
+class PactBar extends StatelessWidget {
+  const PactBar({super.key, required this.pact, this.tint, this.onEdit});
   final CrewPact pact;
   final Color? tint;
   final VoidCallback? onEdit;
 
   @override
-  Widget build(BuildContext context) => AppSurface(
-    fillColor: tint,
-    shape: WeekPactMetrics.pactCardShape,
-    builder: (context) => Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final share = (pact.daysPerWeek / 7).clamp(0.0, 1.0);
+    return AppSurface(
+      borderRadius: WeekPactMetrics.cardCorner,
+      builder: (context) => Stack(
         children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: HugeIcon(
-                    icon: PactIcon.find(pact.iconKey).data,
-                    color: context.ink,
-                    size: 24,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (onEdit != null)
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: IconButton(
-                    tooltip: 'Edit ${pact.title}',
-                    onPressed: onEdit,
-                    padding: EdgeInsets.zero,
-                    // A filled disc, so the one icon that does something does not
-                    // read as another picture of the pact.
-                    style: IconButton.styleFrom(
-                      backgroundColor: context.ink,
-                      shape: const CircleBorder(),
-                      minimumSize: const Size(32, 32),
-                      maximumSize: const Size(32, 32),
-                    ),
-                    icon: AppIcon(
-                      icon: HugeIconsStrokeRounded.pencilEdit02,
-                      color: tint ?? context.canvas,
-                      size: 17,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Tooltip(
-                message: pact.title,
-                child: Text(
-                  pact.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    height: 1.05,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+          Positioned.fill(
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: share,
+              child: ColoredBox(color: tint ?? context.yellow),
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(height: 1, thickness: 1, color: context.border),
-          const SizedBox(height: 8),
           Semantics(
-            label: pact.schedule,
+            label: '${pact.title}. ${pact.schedule}',
             child: ExcludeSemantics(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      '${pact.daysPerWeek}',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 60),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    14,
+                    10,
+                    onEdit == null ? 14 : 4,
+                    10,
+                  ),
+                  child: Row(
+                    children: [
+                      HugeIcon(
+                        icon: PactIcon.find(pact.iconKey).data,
+                        color: context.ink,
+                        size: 22,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'days / week',
-                      style: TextStyle(
-                        color: context.muted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(width: 10),
+                      Text(
+                        '${pact.daysPerWeek}',
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 30,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Tooltip(
+                          message: pact.schedule,
+                          child: Text(
+                            pact.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.ink,
+                              fontSize: 19,
+                              height: 1.1,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (onEdit != null)
+                        IconButton(
+                          tooltip: 'Edit ${pact.title}',
+                          onPressed: onEdit,
+                          icon: AppIcon(
+                            icon: HugeIconsStrokeRounded.moreHorizontal,
+                            color: context.ink,
+                            size: 22,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
-    ),
+    );
+  }
+}
+
+/// The pacts page's own loading shapes: the week card, the list heading and a
+/// few bars, so the page does not rearrange itself the moment it loads.
+class PactsSkeletonBody extends StatelessWidget {
+  const PactsSkeletonBody({super.key});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      AppSurface(
+        fillColor: WeekPactColors.stone,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SkeletonBar(width: 150, height: 18),
+              const SizedBox(height: 16),
+              const SkeletonBar(width: 210, height: 26),
+              const SizedBox(height: 14),
+              const SkeletonBar(height: 10, radius: 999),
+              const SizedBox(height: 10),
+              const SkeletonBar(width: 170, height: 12),
+              const SizedBox(height: 18),
+              Divider(height: 1, color: context.border),
+              const SizedBox(height: 6),
+              for (var i = 0; i < 2; i++)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      SkeletonBar(width: 22, height: 22),
+                      SizedBox(width: 10),
+                      Expanded(child: SkeletonBar(height: 14)),
+                      SizedBox(width: 12),
+                      SkeletonBar(width: 40, height: 14),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 22),
+      const Row(
+        children: [
+          SkeletonBar(width: 120, height: 20),
+          Spacer(),
+          SkeletonBar(width: 84, height: 10),
+        ],
+      ),
+      const SizedBox(height: 12),
+      for (var i = 0; i < 3; i++) ...[
+        if (i > 0) const SizedBox(height: 8),
+        AppSurface(
+          borderRadius: WeekPactMetrics.cardCorner,
+          builder: (context) => ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 60),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
+              child: Row(
+                children: [
+                  SkeletonBar(width: 22, height: 22),
+                  SizedBox(width: 10),
+                  SkeletonBar(width: 22, height: 28),
+                  SizedBox(width: 12),
+                  Expanded(child: SkeletonBar(height: 16)),
+                  SizedBox(width: 12),
+                  SkeletonBar(width: 22, height: 22),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: 16),
+      const SkeletonBar(height: 48, radius: WeekPactMetrics.controlRadius),
+    ],
   );
 }

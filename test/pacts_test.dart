@@ -239,7 +239,8 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is Semantics && widget.properties.label == '3 days / week',
+            widget is Semantics &&
+            widget.properties.label == 'Go for a run. 3 days / week',
       ),
       findsOneWidget,
     );

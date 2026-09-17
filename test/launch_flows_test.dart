@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
-import 'package:weekpact/src/crew/crew_people_grid.dart';
+import 'package:weekpact/src/crew/crew_roster.dart';
 import 'package:weekpact/src/onboarding/crew_setup_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/sharing/app_share.dart';
@@ -214,16 +214,14 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    final invite = find.byType(CrewInviteTile);
-    final person = find.byType(CrewPersonCard).first;
+    final invite = find.byType(CrewInviteBand);
+    final person = find.byType(CrewPersonBand).first;
+    // The invite band closes the roster: same width, stacked under the people.
     expect(
       tester.getTopLeft(invite).dy,
-      lessThanOrEqualTo(tester.getTopLeft(person).dy),
+      greaterThan(tester.getTopLeft(person).dy),
     );
-    expect(
-      tester.getTopLeft(invite).dx,
-      lessThan(tester.getTopLeft(person).dx),
-    );
+    expect(tester.getSize(invite).width, tester.getSize(person).width);
     expect(find.text('Invite your people'), findsNothing);
     await tester.tap(invite);
     await tester.pumpUi();

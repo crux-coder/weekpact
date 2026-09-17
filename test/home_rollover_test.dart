@@ -31,7 +31,15 @@ class RolloverBackend extends DashboardBackend {
   }
 }
 
-void expectDay(WidgetTester tester, String day, {required bool checked}) {
+/// [completed] is the pact's distinct days *this week*, which is not the same
+/// question as whether today is checked: rolling 15th → 16th keeps last night's
+/// check-in inside the same week, while rolling 13th → 14th starts a new one.
+void expectDay(
+  WidgetTester tester,
+  String day, {
+  required bool checked,
+  required int completed,
+}) {
   final label = '$day, today: ${checked ? 'completed' : 'not completed'}';
   expect(
     find.byWidgetPredicate(
@@ -47,7 +55,16 @@ void expectDay(WidgetTester tester, String day, {required bool checked}) {
     find.text('Check in').hitTestable(),
     checked ? findsNothing : findsOneWidget,
   );
-  expect(find.text(checked ? '1/2' : '0/2'), findsOneWidget);
+  // The card splits the count from its denominator for the type scale, so the
+  // pair is read through the progress bar's own semantics rather than as text.
+  expect(
+    find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics &&
+          widget.properties.value == '$completed of 7 days',
+    ),
+    findsWidgets,
+  );
   expect(tester.takeException(), isNull);
 }
 
@@ -62,18 +79,24 @@ void main() {
         final backend = RolloverBackend(dates.first);
         await pumpHome(tester, backend);
         await tester.pumpUi();
-        expectDay(tester, dates.first, checked: true);
+        final sameWeek = dates.first == '2026-09-15';
+        expectDay(tester, dates.first, checked: true, completed: 1);
         final fetches = backend.fetches;
         backend.today = dates.last;
         await tester.pump(const Duration(minutes: 1));
         await tester.pumpUi();
         expect(backend.fetches, greaterThan(fetches));
-        expectDay(tester, dates.last, checked: false);
+        expectDay(
+          tester,
+          dates.last,
+          checked: false,
+          completed: sameWeek ? 1 : 0,
+        );
         expect(
           find.bySemanticsLabel('${dates.first}, today: completed'),
           findsNothing,
         );
-        if (dates.first == '2026-09-15') {
+        if (sameWeek) {
           // Yesterday stays completed in the same week, but cannot be undone as today.
           expect(
             find.byWidgetPredicate(
@@ -100,12 +123,13 @@ void main() {
       final backend = RolloverBackend('2026-09-15');
       await pumpHome(tester, backend);
       await tester.pumpUi();
-      expectDay(tester, backend.today, checked: true);
+      expectDay(tester, backend.today, checked: true, completed: 1);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       backend.today = '2026-09-16';
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpUi();
-      expectDay(tester, backend.today, checked: false);
+      // Still the same week, so yesterday's check-in stays counted.
+      expectDay(tester, backend.today, checked: false, completed: 1);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -119,7 +143,7 @@ void main() {
     backend.today = '2026-09-16';
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpUi();
-    expectDay(tester, backend.today, checked: false);
+    expectDay(tester, backend.today, checked: false, completed: 1);
     await tester.pumpWidget(const SizedBox());
   });
 }

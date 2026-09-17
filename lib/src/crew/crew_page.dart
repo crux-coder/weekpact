@@ -12,11 +12,12 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../theme/weekpact_theme.dart';
 import 'crew_invites_pane.dart';
 import '../widgets/app_components.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import '../home/home_backend.dart';
-import 'crew_people_grid.dart';
+import 'crew_roster.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../subscriptions/subscription_scope.dart';
 
@@ -216,17 +217,14 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     if (leaving && crew.isOwner && successors.isEmpty) {
       await showAppDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('You’re the only member'),
-          content: const Text(
-            'Invite another member before leaving, then choose them as the new owner.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
+        builder: (context) => const AppDialog(
+          icon: HugeIconsStrokeRounded.userGroup02,
+          iconColor: WeekPactColors.coolGrey,
+          title: 'You’re the only member',
+          message:
+              'Invite another member before leaving, then choose them as the '
+              'new owner.',
+          actions: [AppDialogDismiss(label: 'OK')],
         ),
       );
       return;
@@ -235,52 +233,88 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(leaving ? 'Leave crew?' : 'Remove member?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                leaving
-                    ? 'You’ll lose access to ${crew.name}. You’ll need a new invitation to rejoin.'
-                    : 'Remove ${member.email} from ${crew.name}? They’ll lose access and need a new invitation to rejoin.',
-              ),
-              if (leaving && crew.isOwner) ...[
-                const SizedBox(height: 16),
-                const Text('Choose the new owner:'),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  icon: const AppIcon(
-                    icon: HugeIconsStrokeRounded.arrowDown01,
-                    size: 20,
-                  ),
-                  isExpanded: true,
-                  hint: const Text('Select a member'),
-                  items: successors
-                      .map(
-                        (m) => DropdownMenuItem(
-                          value: m.userId,
-                          child: Text(m.email, overflow: TextOverflow.ellipsis),
+        builder: (context, setDialogState) => AppDialog(
+          icon: leaving
+              ? HugeIconsStrokeRounded.logout01
+              : HugeIconsStrokeRounded.userMinus01,
+          iconColor: WeekPactColors.softCoral,
+          title: leaving ? 'Leave crew?' : 'Remove member?',
+          message: leaving
+              ? 'You’ll lose access to ${crew.name}. You’ll need a new '
+                    'invitation to rejoin.'
+              : 'Remove ${member.email} from ${crew.name}? They’ll lose access '
+                    'and need a new invitation to rejoin.',
+          content: leaving && crew.isOwner
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'CHOOSE THE NEW OWNER',
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AppSurface(
+                      raised: false,
+                      borderRadius: WeekPactMetrics.controlRadius,
+                      builder: (context) => DropdownButtonFormField<String>(
+                        icon: const AppIcon(
+                          icon: HugeIconsStrokeRounded.arrowDown01,
+                          size: 20,
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setDialogState(() => successorId = value),
-                ),
-              ],
-            ],
-          ),
+                        isExpanded: true,
+                        borderRadius: BorderRadius.circular(
+                          WeekPactMetrics.controlRadius,
+                        ),
+                        hint: const Text('Select a member'),
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        decoration: const InputDecoration(
+                          // The surface owns the fill and the outline.
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                        items: successors
+                            .map(
+                              (m) => DropdownMenuItem(
+                                value: m.userId,
+                                child: Text(
+                                  m.email,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) =>
+                            setDialogState(() => successorId = value),
+                      ),
+                    ),
+                  ],
+                )
+              : null,
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('CANCEL'),
-            ),
-            TextButton(
+            AppButton(
+              label: leaving ? 'LEAVE' : 'REMOVE',
               onPressed: leaving && crew.isOwner && successorId == null
                   ? null
                   : () => Navigator.pop(context, true),
-              child: Text(leaving ? 'LEAVE' : 'REMOVE'),
+            ),
+            AppDialogDismiss(
+              label: 'CANCEL',
+              onPressed: () => Navigator.pop(context, false),
             ),
           ],
         ),
@@ -662,43 +696,48 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   }
 
   Widget _buildCrewState(BuildContext context, CrewDetails crew) {
+    final members = [for (final member in crew.members) _withProfile(member)];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'YOUR PEOPLE · ${crew.members.length}',
-          style: TextStyle(
-            color: context.muted,
-            fontSize: 14,
-            letterSpacing: 1.1,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        CrewPeopleGrid(
+        Row(
           children: [
-            if (crew.isOwner)
-              CrewInviteTile(
-                onPressed: _changingMembership ? null : _openInviteDrawer,
+            CrewAvatarStack(members: members),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${crew.name.toUpperCase()} · ${crew.members.length} ${crew.members.length == 1 ? 'PERSON' : 'PEOPLE'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: context.muted,
+                  fontSize: 12,
+                  letterSpacing: 1.1,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            for (var i = 0; i < crew.members.length; i++)
-              CrewPersonCard(
-                key: ValueKey(crew.members[i].userId),
-                member: _withProfile(crew.members[i]),
-                isCurrentUser:
-                    crew.members[i].email.toLowerCase() ==
-                    widget.currentUserEmail.toLowerCase(),
-                color:
-                    crew.members[i].email.toLowerCase() ==
-                        widget.currentUserEmail.toLowerCase()
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        CrewRoster(
+          children: [
+            for (var i = 0; i < members.length; i++)
+              CrewPersonBand(
+                key: ValueKey(members[i].userId),
+                member: members[i],
+                isCurrentUser: _isCurrentUser(members[i]),
+                color: _isCurrentUser(members[i])
                     ? WeekPactColors.coolGrey
-                    : (i.isEven ? WeekPactColors.stone : WeekPactColors.cream),
+                    : WeekPactColors.cream,
                 onRemove:
-                    crew.isOwner &&
-                        !crew.members[i].isOwner &&
-                        !_changingMembership
+                    crew.isOwner && !members[i].isOwner && !_changingMembership
                     ? () => _changeMembership(member: crew.members[i])
                     : null,
+              ),
+            if (crew.isOwner)
+              CrewInviteBand(
+                onPressed: _changingMembership ? null : _openInviteDrawer,
               ),
           ],
         ),
@@ -715,6 +754,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       ],
     );
   }
+
+  bool _isCurrentUser(CrewMember member) =>
+      member.email.toLowerCase() == widget.currentUserEmail.toLowerCase();
 }
 
 class _InviteDrawer extends StatelessWidget {

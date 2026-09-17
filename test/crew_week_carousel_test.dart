@@ -124,22 +124,18 @@ void main() {
       await _pump(tester, backend);
       expect(find.text('33%'), findsOneWidget);
       expect(find.byTooltip('Refresh crew activity'), findsNothing);
-      expect(find.text('12 / 36'), findsOneWidget);
+      expect(find.text('12 / 36'), findsWidgets);
       expect(backend.fetches, 1);
       expect(find.text('6 / 15', findRichText: true), findsOneWidget);
-      expect(find.byTooltip('Sep 17 · Completed'), findsOneWidget);
+      expect(find.byTooltip('Sep 17 · Completed'), findsWidgets);
       expect(find.textContaining('@'), findsNothing);
-      expect(
-        tester
-            .widget<IconButton>(
-              find.byWidgetPredicate(
-                (w) => w is IconButton && w.tooltip == 'Previous pact',
-              ),
-            )
-            .onPressed,
-        isNull,
-      );
+      // The dots are the only control; swiping is advertised by the next
+      // card peeking in rather than by arrows.
+      expect(find.byTooltip('Previous pact'), findsNothing);
+      expect(find.byTooltip('Next pact'), findsNothing);
       final carousel = find.byKey(const ValueKey('crew-pact-carousel'));
+      // The pact either side of the selected one is on screen, just clipped.
+      expect(find.text('Gym'), findsOneWidget);
       await tester.drag(carousel, const Offset(-330, 0));
       await tester.pumpUi();
       expect(find.text('Gym').hitTestable(), findsOneWidget);
@@ -151,19 +147,9 @@ void main() {
       await tester.pumpUi();
       expect(backend.fetches, 2);
       expect(find.text('Gym').hitTestable(), findsOneWidget);
-      await tester.tap(find.byTooltip('Next pact'));
+      await tester.tap(find.byTooltip('Show Read'));
       await tester.pumpUi();
       expect(find.text('Read').hitTestable(), findsOneWidget);
-      expect(
-        tester
-            .widget<IconButton>(
-              find.byWidgetPredicate(
-                (w) => w is IconButton && w.tooltip == 'Next pact',
-              ),
-            )
-            .onPressed,
-        isNull,
-      );
       await tester.drag(carousel, const Offset(-330, 0));
       await tester.pumpUi();
       expect(find.text('Read').hitTestable(), findsOneWidget);
