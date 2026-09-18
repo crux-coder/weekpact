@@ -233,9 +233,11 @@ class _CrewMemberListState extends State<CrewMemberList>
     );
     return Padding(
       key: ValueKey('crew-check-in-person-${member.id}'),
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        // The name and its action read against the face beside them, so the
+        // row centres on the avatar rather than hanging from its top edge.
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           AvatarClip(
             child: SizedBox.square(
@@ -308,33 +310,58 @@ class _CrewMemberListState extends State<CrewMemberList>
         : state?.status == CrewNudgeStatus.checkedIn
         ? 'They have already checked in today.'
         : 'This person cannot receive a nudge right now.';
+    // Only a nudge you can actually send is an object: graphite, outlined and
+    // sitting on its own edge. The other states are what the row has to say
+    // about that person, so they stay flat words.
+    final solid = ready || busy;
+    final button = TextButton(
+      key: ValueKey('nudge-${member.id}'),
+      onPressed: ready && !_loading && !_loadFailed && !busy
+          ? () => _send(member.id)
+          : null,
+      style: TextButton.styleFrom(
+        foregroundColor: homePaper,
+        disabledForegroundColor: solid
+            ? homePaper.withValues(alpha: .7)
+            : WeekPactColors.mutedLight,
+        backgroundColor: solid ? WeekPactColors.graphite : Colors.transparent,
+        disabledBackgroundColor: solid
+            ? WeekPactColors.graphite
+            : Colors.transparent,
+        minimumSize: const Size(64, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        textStyle: const TextStyle(
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: solid
+            ? WeekPactMetrics.buttonShape.copyWith(
+                side: const BorderSide(color: WeekPactColors.graphiteEdge),
+              )
+            : WeekPactMetrics.buttonShape,
+      ),
+      child: Text(label),
+    );
     return Tooltip(
       message: hint,
       child: Semantics(
         liveRegion: true,
-        child: TextButton(
-          key: ValueKey('nudge-${member.id}'),
-          onPressed: ready && !_loading && !_loadFailed && !busy
-              ? () => _send(member.id)
-              : null,
-          style: TextButton.styleFrom(
-            foregroundColor: WeekPactColors.doneMark,
-            disabledForegroundColor: WeekPactColors.mutedLight,
-            backgroundColor: ready && !busy
-                ? WeekPactColors.mintGreen
-                : Colors.transparent,
-            minimumSize: const Size(64, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            textStyle: const TextStyle(
-              fontFamily: WeekPactType.secondary,
-              fontFamilyFallback: WeekPactType.secondaryFallback,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-            shape: WeekPactMetrics.buttonShape,
-          ),
-          child: Text(label),
-        ),
+        child: solid
+            ? DecoratedBox(
+                decoration: const ShapeDecoration(
+                  shape: WeekPactMetrics.buttonShape,
+                  shadows: [
+                    BoxShadow(
+                      color: WeekPactColors.graphiteEdge,
+                      offset: WeekPactMetrics.raisedOffset,
+                    ),
+                  ],
+                ),
+                child: button,
+              )
+            : button,
       ),
     );
   }

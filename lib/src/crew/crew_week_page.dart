@@ -12,6 +12,7 @@ import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/page_frame.dart';
 import 'crew_pact_week_card.dart';
 
 class CrewWeekPage extends StatefulWidget {
@@ -176,11 +177,11 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                             ],
                             if (week == null)
                               Expanded(
-                                child: Center(
-                                  child: _refreshing
-                                      ? const CircularProgressIndicator()
-                                      : const Text('Your crew’s week'),
-                                ),
+                                child: _refreshing
+                                    ? const _CrewWeekSkeleton()
+                                    : const Center(
+                                        child: Text('Your crew’s week'),
+                                      ),
                               )
                             else ...[
                               _WeekSummary(week: week),
@@ -519,4 +520,115 @@ class _TodaySummary extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The crew week while it loads: the same blocks in the same places as the
+/// page it becomes, so nothing jumps when the week arrives.
+class _CrewWeekSkeleton extends StatefulWidget {
+  const _CrewWeekSkeleton();
+
+  @override
+  State<_CrewWeekSkeleton> createState() => _CrewWeekSkeletonState();
+}
+
+class _CrewWeekSkeletonState extends State<_CrewWeekSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  late final _opacity = Tween<double>(
+    begin: .65,
+    end: 1,
+  ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse.stop();
+      _pulse.value = 1;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  /// A card-shaped placeholder: the squircle the real surfaces use, so the
+  /// loading page has the same silhouette as the loaded one.
+  Widget get _card => const SkeletonBar(
+    height: double.infinity,
+    shape: WeekPactMetrics.pactCardShape,
+  );
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Loading your crew’s week',
+    liveRegion: true,
+    child: ExcludeSemantics(
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _opacity,
+          child: Column(
+            key: const ValueKey('crew-week-skeleton'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Crew progress and the streak, side by side.
+              SizedBox(
+                height: 92,
+                child: Row(
+                  children: [
+                    Expanded(child: _card),
+                    const SizedBox(width: 10),
+                    Expanded(child: _card),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const SkeletonBar(width: 132, height: 22),
+                  const Spacer(),
+                  const SkeletonBar(width: 38, height: 16),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // The pact carousel's active card, inset the way its page is.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    5,
+                    0,
+                    5,
+                    WeekPactMetrics.controlDepth + 1,
+                  ),
+                  child: _card,
+                ),
+              ),
+              SizedBox(
+                height: 44,
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < 3; i++)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 5),
+                          child: SkeletonBar(width: 8, height: 8),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

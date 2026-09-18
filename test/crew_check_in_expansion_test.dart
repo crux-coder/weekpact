@@ -173,7 +173,12 @@ void main() {
         find.byKey(const ValueKey('checked-members-list')),
         findsOneWidget,
       );
-      await tester.tap(find.byTooltip('Collapse members'));
+      // The open panel has no close control of its own: tapping the darkened
+      // home behind it is what closes it.
+      final backdrop = find.byKey(const ValueKey('crew-panel-backdrop'));
+      await tester.tapAt(
+        tester.getBottomLeft(backdrop) + const Offset(20, -20),
+      );
       await tester.pumpUi();
       expect(find.byKey(const ValueKey('checked-members-list')), findsNothing);
       expect(tester.takeException(), isNull);

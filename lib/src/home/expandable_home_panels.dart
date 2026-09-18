@@ -1,8 +1,9 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../theme/weekpact_theme.dart';
 
 import 'home_backend.dart';
 
@@ -51,12 +52,28 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
         reverseDuration: const Duration(milliseconds: 280),
       )..addStatusListener((status) {
         if (status == AnimationStatus.dismissed && mounted) {
+          _hideScrim();
           setState(() => _panel = null);
         }
       });
+  /// How dark the rest of home goes behind an open panel.
+  static const _scrimOpacity = .38;
+
   _HomePanel? _panel;
   bool _expanded = false;
   final _focus = FocusNode();
+
+  /// The scrim and the open panel are painted in the root overlay, so the dark
+  /// reaches the whole screen rather than stopping at this widget's box — the
+  /// page's padding, the safe areas and the navigation bar are all outside it.
+  /// The panel follows this link, which carries the box's offset and scale, so
+  /// it still lands exactly where its tile sits.
+  final _link = LayerLink();
+  final _portal = OverlayPortalController();
+
+  /// Where the open panel sits inside this box, so the scrim can leave a hole
+  /// for it. Laid out with the cards, on every frame of the unfold.
+  Rect? _openRect;
 
   @override
   void didUpdateWidget(covariant ExpandableHomePanels oldWidget) {
@@ -72,6 +89,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
       _expanded = false;
       _panel = null;
       _animation.reset();
+      _hideScrim();
       _focus.unfocus();
     }
     if (!widget.active && oldWidget.active) _collapse();
@@ -84,6 +102,10 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     super.dispose();
   }
 
+  void _hideScrim() {
+    if (_portal.isShowing) _portal.hide();
+  }
+
   void _toggle(_HomePanel panel) {
     if (_expanded && _panel == panel) {
       _collapse();
@@ -93,6 +115,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
       _expanded = true;
       _panel = panel;
     });
+    if (!_portal.isShowing) _portal.show();
     _focus.requestFocus();
     if (MediaQuery.disableAnimationsOf(context)) {
       _animation.value = 1;
@@ -106,6 +129,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
     setState(() => _expanded = false);
     if (MediaQuery.disableAnimationsOf(context)) {
       _animation.value = 0;
+      _hideScrim();
     } else {
       _animation.reverse();
     }
@@ -129,43 +153,70 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
                 _animation.value,
               );
               final cards = _cards(context, space, progress);
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      ignoring: _panel != null,
-                      child: ExcludeSemantics(
-                        excluding: _panel != null,
-                        child: ImageFiltered(
-                          key: const ValueKey('home-panels-background'),
-                          enabled: progress > 0,
-                          imageFilter: ImageFilter.blur(
-                            sigmaX: 6 * progress,
-                            sigmaY: 6 * progress,
-                          ),
-                          child: widget.child,
-                        ),
-                      ),
-                    ),
-                  ),
-                  for (final entry in cards.entries)
-                    if (entry.key != _panel) entry.value,
-                  if (_panel != null)
+              return CompositedTransformTarget(
+                link: _link,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
                     Positioned.fill(
-                      child: Semantics(
-                        label: 'Collapse crew check-ins',
-                        button: true,
-                        child: GestureDetector(
-                          key: const ValueKey('crew-panel-backdrop'),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: _collapse,
-                          child: const ColoredBox(color: Colors.transparent),
+                      child: IgnorePointer(
+                        ignoring: _panel != null,
+                        child: ExcludeSemantics(
+                          excluding: _panel != null,
+                          child: KeyedSubtree(
+                            key: const ValueKey('home-panels-background'),
+                            child: widget.child,
+                          ),
                         ),
                       ),
                     ),
-                  if (_panel != null) cards[_panel]!,
-                ],
+                    for (final entry in cards.entries)
+                      if (entry.key != _panel) entry.value,
+                    // The scrim is painted in the root overlay: inside this
+                    // box it would stop at the page's padding, the safe areas
+                    // and the navigation bar. It follows this widget's layer,
+                    // so it can cut the open panel out of itself and leave the
+                    // panel lit where it actually sits, and it takes no
+                    // pointers — the backdrop below still handles the tap that
+                    // closes it, and the rest of the app stays reachable.
+                    OverlayPortal(
+                      overlayLocation: OverlayChildLocation.rootOverlay,
+                      controller: _portal,
+                      overlayChildBuilder: (context) => IgnorePointer(
+                        child: CompositedTransformFollower(
+                          link: _link,
+                          targetAnchor: Alignment.topLeft,
+                          followerAnchor: Alignment.topLeft,
+                          child: SizedBox(
+                            width: space.maxWidth,
+                            height: space.maxHeight,
+                            child: CustomPaint(
+                              painter: _PanelScrim(
+                                hole: _openRect,
+                                opacity: _scrimOpacity * progress,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: const SizedBox.shrink(),
+                    ),
+                    if (_panel != null)
+                      Positioned.fill(
+                        child: Semantics(
+                          label: 'Collapse crew check-ins',
+                          button: true,
+                          child: GestureDetector(
+                            key: const ValueKey('crew-panel-backdrop'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _collapse,
+                            child: const ColoredBox(color: Colors.transparent),
+                          ),
+                        ),
+                      ),
+                    if (_panel != null) cards[_panel]!,
+                  ],
+                ),
               );
             },
           ),
@@ -225,6 +276,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
         Rect.fromLTWH(widget.inset, crewTop, available, expandedHeight),
         selected ? progress : 0,
       )!;
+      if (panel == _panel) _openRect = rect;
       cards[panel] = _position(
         panel,
         rect,
@@ -259,16 +311,51 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
         ignoring: obscured,
         child: ExcludeSemantics(
           excluding: obscured,
-          child: ImageFiltered(
-            enabled: obscured && progress > 0,
-            imageFilter: ImageFilter.blur(
-              sigmaX: 6 * progress,
-              sigmaY: 6 * progress,
-            ),
-            child: child,
-          ),
+          child: child,
         ),
       ),
     );
   }
+}
+
+/// Darkens everything the overlay can reach except the open panel, which it
+/// cuts out of itself so the panel keeps its own colour.
+class _PanelScrim extends CustomPainter {
+  const _PanelScrim({required this.hole, required this.opacity});
+
+  final Rect? hole;
+  final double opacity;
+
+  /// Enough slack to cover the page's padding, the status bar and the
+  /// navigation bar, whatever this box's own size happens to be.
+  static const _bleed = 2000.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0) return;
+    final covered = Path()
+      ..addRect(
+        Rect.fromLTRB(
+          -_bleed,
+          -_bleed,
+          size.width + _bleed,
+          size.height + _bleed,
+        ),
+      );
+    final rect = hole;
+    canvas.drawPath(
+      rect == null
+          ? covered
+          : Path.combine(
+              PathOperation.difference,
+              covered,
+              WeekPactMetrics.pactCardShape.getOuterPath(rect),
+            ),
+      Paint()..color = Colors.black.withValues(alpha: opacity),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PanelScrim old) =>
+      old.hole != hole || old.opacity != opacity;
 }

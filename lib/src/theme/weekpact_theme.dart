@@ -120,6 +120,11 @@ abstract final class WeekPactColors {
   /// The one green for a completed check-in, on cards and on the nudge button.
   static const doneMark = Color(0xFF3F7A57);
 
+  /// Graphite: the small dark action sitting on a light surface — the nudge
+  /// button's face, with its own lifted edge underneath.
+  static const graphite = Color(0xFF3B413F);
+  static const graphiteEdge = Color(0xFF6B726F);
+
   /// The streak flame, once the streak has started.
   static const streak = Color(0xFFFF9138);
 

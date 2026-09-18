@@ -422,8 +422,17 @@ class CrewControlLabel extends StatelessWidget {
 
 /// Compact Home header surface, with labels and controls inside its raised face.
 class CrewHeaderSurface extends StatelessWidget {
-  const CrewHeaderSurface({super.key, required this.child});
+  const CrewHeaderSurface({
+    super.key,
+    required this.child,
+    this.curve = WeekPactMetrics.panelCurve,
+  });
   final Widget child;
+
+  /// The surface's corner. A surface that frames cards of its own takes a
+  /// larger one, so its corner stays outside theirs instead of cutting across
+  /// them; on its own it keeps the panel curve.
+  final double curve;
 
   @override
   Widget build(BuildContext context) {
@@ -434,10 +443,8 @@ class CrewHeaderSurface extends StatelessWidget {
         : Color.lerp(context.canvas, context.ink, .07)!;
     return DecoratedBox(
       decoration: ShapeDecoration(
-        shape: const ContinuousRectangleBorder(
-          borderRadius: BorderRadius.all(
-            Radius.circular(WeekPactMetrics.panelCurve),
-          ),
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(curve)),
         ),
         shadows: [
           BoxShadow(
@@ -449,7 +456,7 @@ class CrewHeaderSurface extends StatelessWidget {
       child: Material(
         color: face,
         shape: ContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(WeekPactMetrics.panelCurve),
+          borderRadius: BorderRadius.circular(curve),
           side: BorderSide(color: Color.lerp(face, context.ink, .12)!),
         ),
         clipBehavior: Clip.antiAlias,

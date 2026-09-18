@@ -485,7 +485,8 @@ class _HomeDestinationState extends State<_HomeDestination>
                               312 +
                                   HomeHeader.height +
                                   CrewWeekButton.height +
-                                  CrewWeekButton.pad * 2 +
+                                  CrewWeekButton.pad +
+                                  CrewWeekButton.rowGap +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
                             ),

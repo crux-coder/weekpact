@@ -183,17 +183,28 @@ class CrewWeekButton extends StatelessWidget {
   /// The frame the surface keeps around the tiles: enough to read as a
   /// container, not enough to become a margin.
   static const pad = 6.0;
-  static const height = 44.0;
+  static const height = 38.0;
+
+  /// The gap under the tiles. Shorter than the frame's own padding, so the row
+  /// reads as part of the same surface as the cards rather than a strip parked
+  /// beneath them.
+  static const rowGap = 1.0;
+
+  /// The frame's own corner. The tiles inside keep the card curve, so this one
+  /// steps up by the padding between them and stays concentric with theirs
+  /// instead of cutting across them.
+  static const frameCurve = WeekPactMetrics.cardCurve + pad;
 
   @override
   Widget build(BuildContext context) => CrewHeaderSurface(
+    curve: frameCurve,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (checkIns != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(pad, pad, pad, pad),
+            padding: const EdgeInsets.fromLTRB(pad, pad, pad, rowGap),
             child: checkIns,
           ),
         // The tooltip keeps the old control's wording: the one place that opens
@@ -903,8 +914,8 @@ class _PactCard extends StatelessWidget {
                                       child: done
                                           ? const HugeIcon(
                                               icon: HugeIconsStrokeRounded
-                                                  .checkmarkCircle02,
-                                              color: _doneMark,
+                                                  .tickDouble03,
+                                              color: _ink,
                                               size: 12,
                                             )
                                           : const SizedBox.shrink(),
@@ -1176,7 +1187,7 @@ class _CompletedCheckIn extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const HugeIcon(
-                    icon: HugeIconsStrokeRounded.checkmarkCircle02,
+                    icon: HugeIconsStrokeRounded.tickDouble03,
                     color: _doneMark,
                     size: 24,
                   ),
@@ -1465,6 +1476,28 @@ class CrewCheckInTile extends StatelessWidget {
             outlineColor: _tileEdge(done),
             child: Stack(
               children: [
+                // A tap hint, floating over the tile's own content so the
+                // count and the faces keep the space they had. Each tile takes
+                // the corner it shares with the other, so the pair reads as
+                // one control with its handles meeting in the middle.
+                if (!showDetails)
+                  Positioned(
+                    right: done ? 8 : null,
+                    left: done ? null : 8,
+                    bottom: 7,
+                    child: Opacity(
+                      opacity: (1 - expansion).clamp(0.0, 1.0) * .55,
+                      child: const SizedBox.square(
+                        dimension: 6,
+                        child: DecoratedBox(
+                          decoration: ShapeDecoration(
+                            color: _ink,
+                            shape: CircleBorder(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1494,16 +1527,6 @@ class CrewCheckInTile extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (showDetails)
-                                IconButton(
-                                  tooltip: 'Collapse members',
-                                  onPressed: onOpen,
-                                  icon: const HugeIcon(
-                                    icon: HugeIconsStrokeRounded.arrowUp01,
-                                    size: 16,
-                                    color: WeekPactColors.mutedLight,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -1900,12 +1923,18 @@ class _TodaySkeletonState extends State<TodaySkeleton>
               ),
               const SizedBox(height: 12),
               CrewHeaderSurface(
+                curve: CrewWeekButton.frameCurve,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(CrewWeekButton.pad),
+                      padding: const EdgeInsets.fromLTRB(
+                        CrewWeekButton.pad,
+                        CrewWeekButton.pad,
+                        CrewWeekButton.pad,
+                        CrewWeekButton.rowGap,
+                      ),
                       child: SizedBox(
                         key: const ValueKey('skeleton-crew-board'),
                         height: TodayCrewCard.groupHeight,
