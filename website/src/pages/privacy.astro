@@ -1,11 +1,14 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
+import HugeIcon from '../components/HugeIcon.astro';
 ---
-<SiteLayout title="Privacy policy · WeekPact" description="How WeekPact uses your account information, crew activity and optional notifications.">
-  <main id="main" class="container legal-page">
-    <p class="eyebrow">YOUR ACCOUNT &amp; DATA</p>
-    <h1>Privacy policy.</h1>
-    <p>Last updated: 15 September 2026</p>
+<SiteLayout tint="var(--coral)" title="Privacy policy · WeekPact" description="How WeekPact uses your account information, crew activity and optional notifications.">
+  <main id="main" class="container reading">
+    <article class="surface surface--card reading-card">
+      <span class="icon-tile" style="--fill:var(--coral)"><HugeIcon name="shield01" size={26} /></span>
+      <p class="eyebrow">Your account &amp; data</p>
+      <h1>Privacy policy<span class="dot" style="color:var(--coral)">.</span></h1>
+      <p class="updated">Last updated: 15 September 2026</p>
     <p>WeekPact is an independently operated app for shared pacts and weekly check-ins. For privacy questions or requests, contact <a href="mailto:codepeaktrail@gmail.com">codepeaktrail@gmail.com</a>. “WeekPact,” “we” and “us” refer to the app’s operator.</p>
     <h2>Information we use</h2>
     <ul>
@@ -30,5 +33,6 @@ import SiteLayout from '../layouts/SiteLayout.astro';
     <p>Undoing a check-in schedules its photo for deletion. Unsubmitted uploads are removed by a background cleanup process after 24 hours. Photos associated with deleted pacts or crews are also scheduled for deletion. Information is otherwise retained while needed to operate your account and the service. Backups, security logs and support correspondence may remain for their applicable retention periods or where legally required; these are not restored into an active account as part of ordinary use. Contact us for questions about retained records. Leaving a crew alone does not delete your account or historical check-ins.</p>
     <h2>Changes and contact</h2>
     <p>We will update this page when our practices change and revise the date above. For help with your account or this policy, email <a href="mailto:codepeaktrail@gmail.com">codepeaktrail@gmail.com</a>.</p>
+    </article>
   </main>
 </SiteLayout>

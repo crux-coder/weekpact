@@ -88,6 +88,72 @@ A dashed outline traces the same continuous squircle as the surface it sits on
 
 Also 1px outlines, 12px page insets, and 48px primary controls. Preserve scroll access for longer forms and large text. Respect reduced-motion settings for finite transitions.
 
+## Transactional email
+
+Two templates carry the system outside the app: `supabase/templates/confirmation.html`
+(the auth confirmation, wired up in `supabase/config.toml`) and
+`supabase/functions/invite-crew-member/template.ts` (the crew invitation). Both
+are the same page: the charcoal canvas, the wordmark above it, and one cream
+card holding everything else. Card ink is dark, captions are the same
+uppercase letterspaced eyebrow the app uses, and the display face is
+`'Roboto Condensed','Arial Narrow'` with Roboto for body copy. There is no
+header strip and no attached title tab — the eyebrow sits inside the card's own
+unbroken fill.
+
+Colours are the app's, written as hex because email has no theme: cream
+`#F5F6F5` card on `darkCanvas`, ink `#191B19`, muted `#51564F` on the card and
+`#B8BEB5` on the canvas. Every raised box takes a 1px outline and a solid 2px
+bottom edge (3px for the card) mixed from its own fill the way `AppSurface`
+does — `Color.lerp(fill, black, .28)` for the outline and `.24` for the edge —
+so mint `#8CDCAC` carries `#659E7C`/`#6AA783` and sky `#8AC9EC` carries
+`#6391AA`/`#6999B3`. Corners are 18px for the card and 11px for panels,
+buttons and the icon. No blurred shadows and no background gradients.
+
+The primary action is mint on both, so the button reads the same wherever it
+arrives. An accent panel is for content the reader has to take in — the crew
+name on an invitation, in the Crews sky — not for repeating something they
+already know.
+
+Neither template loads an image, and neither should. Most clients block remote
+images until the reader allows them, so an app icon in the header is absent on
+first open for a large share of people — the wordmark is live HTML text, in the
+display face with the destination's tint on its full stop, and reads the same
+for everyone. Email also has no asset bundle, so any image means a hosted URL
+and a deploy standing between a template change and a correct send. Keep the
+brand mark as text.
+
+## Website
+
+`website/` is the third surface, and it carries the same system rather than a
+look of its own. `src/styles/global.css` holds it: the app's colours as custom
+properties (`--canvas` #2B302C, `--cream`, the ten `pactPalette` tints, the
+charcoal card as `--dark-*`), the two faces (`WeekPact` is RobotoCondensed and
+the default, `WeekPactText` is Roboto for body copy, captions and numerals),
+and four corners matching `WeekPactMetrics`.
+
+One recipe raises every box. A `.surface` is given its `--fill` and derives its
+own outline and edge the way `AppSurface` does — `color-mix(in srgb, #000 28%,
+var(--fill))` for the 1px outline and `24%` for the solid offset edge, which is
+`Color.lerp(fill, black, .28)`/`.24` written for CSS. `.surface--card` steps
+the edge to 3px, `.surface--dark` takes `WeekPactDarkCard`'s closed set, and
+`.button`, `.nav-cta` and `.icon-tile` use the same derivation. There are no
+blurred shadows and no background gradients. Corners are continuous squircles
+through `corner-shape: squircle` where the browser draws them and plain rounded
+rects everywhere else, so the shape degrades rather than breaking.
+
+`src/components/HugeIcon.astro` carries the same Hugeicons Stroke Rounded 1.1.7
+glyphs the app draws with, inlined as path data at build time so a page ships
+only the marks it uses. A name on the site means the same mark it means in
+`AppIcon`.
+
+The wordmark's full stop is tinted per page, the way `PageHeading`'s is: the
+layout takes a `tint` prop — mint on the landing page, sky on the invitation
+and open-app handoffs, butter on Support, coral on Privacy and 404 — and every
+`.dot` on the page reads it. The handoff pages are deliberately the same page as
+the crew invitation email: charcoal canvas, wordmark above it, one cream card
+holding everything else, sky icon panel and mint primary action. Changing one
+means changing the other.
+
 ## Verification
 
 `flutter test` covers authentication, onboarding, pacts, crews, invitations, account actions, carousel behavior, avatar caching, and responsive home layouts; `widget_test.dart` asserts the app keeps one theme and offers no appearance setting. `test/design_preview_test.dart` visits all main destinations against both palettes — the shipping charcoal one and the light one used for card scope — so a change is checked against both. Run it with `--dart-define=CAPTURE_DESIGN=true` to save the rendered previews under `/tmp/weekpact-{light,dark}-{home,feed,pacts,crews,account}.png`.

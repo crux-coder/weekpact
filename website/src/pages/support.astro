@@ -1,10 +1,13 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
+import HugeIcon from '../components/HugeIcon.astro';
 ---
-<SiteLayout title="Support · WeekPact" description="Get help with WeekPact sign-in, password recovery, invitations and account deletion.">
-  <main id="main" class="container legal-page">
-    <p class="eyebrow">WE’RE HERE TO HELP</p>
-    <h1>WeekPact support.</h1>
+<SiteLayout tint="var(--butter)" title="Support · WeekPact" description="Get help with WeekPact sign-in, password recovery, invitations and account deletion.">
+  <main id="main" class="container reading">
+    <article class="surface surface--card reading-card">
+      <span class="icon-tile" style="--fill:var(--butter)"><HugeIcon name="customerService" size={26} /></span>
+      <p class="eyebrow">We’re here to help</p>
+      <h1>WeekPact support<span class="dot" style="color:var(--butter)">.</span></h1>
     <p>Need a hand? Email <a href="mailto:codepeaktrail@gmail.com">codepeaktrail@gmail.com</a>. Include your device, app version and what happened. Never send your password, reset link or invitation token.</p>
     <h2>I forgot my password</h2>
     <p>On the login screen, choose “Forgot password or need a confirmation email?”, enter your account email, then choose “Send reset link”. Open the email on the same device and app installation where you requested it, choose a new password and sign in again. Check your spam folder if it does not arrive.</p>
@@ -18,6 +21,7 @@ import SiteLayout from '../layouts/SiteLayout.astro';
     <h2>How do I change notifications?</h2>
     <p>Use Account → Notifications in the app. If notifications are blocked at the device level, enable them in your device settings. You can use WeekPact without push notifications.</p>
     <h2>Still stuck?</h2>
-    <p><a class="button" href="mailto:codepeaktrail@gmail.com">Email support</a></p>
+    <p><a class="button" href="mailto:codepeaktrail@gmail.com"><HugeIcon name="mail01" size={20} /> Email support</a></p>
+    </article>
   </main>
 </SiteLayout>

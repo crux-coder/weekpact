@@ -6,7 +6,7 @@ Deno.test('invitation preserves HTTPS token and explains review and inbox fallba
   for (const content of [html, text]) {
     if (!content.includes(url) || !content.includes('Crews → Invites') || !content.includes('accept or decline')) throw new Error('Missing invitation handoff content');
   }
-  if (!html.includes('VIEW INVITATION') || !html.includes('Opening this link does not join')) throw new Error('Missing review semantics');
+  if (!html.includes('View invitation') || !html.includes('Opening this link does not join')) throw new Error('Missing review semantics');
 });
 
 Deno.test('invitation escapes dynamic content and link attributes', () => {

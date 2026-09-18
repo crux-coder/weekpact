@@ -1,18 +1,35 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
+import HugeIcon from '../components/HugeIcon.astro';
 import '../styles/home.css';
+
+const features = [
+  { tint: 'var(--mint)', icon: 'camera01', title: 'Check in together', copy: 'A photo marks the day done. Your crew sees it, and the week fills in for everyone at once.' },
+  { tint: 'var(--sky)', icon: 'fire', title: 'Build a crew streak', copy: 'Weeks you all show up stack into a streak the whole crew owns, not just you.' },
+  { tint: 'var(--butter)', icon: 'handsClapping', title: 'Cheer each other on', copy: 'Clap for a check-in, nudge the people still on the fence. Small company, big difference.' },
+] as const;
+
+const steps = [
+  { tint: 'var(--lemon)', icon: 'userGroup', title: 'Find your people', copy: 'Start a crew and invite your friends. A little company goes a long way.' },
+  { tint: 'var(--mint)', icon: 'target01', title: 'Make it yours', copy: 'Choose a small commitment and a weekly rhythm that fits your life.' },
+  { tint: 'var(--sky)', icon: 'calendar03', title: 'Show up together', copy: 'Check in, give a little encouragement, and celebrate the week you made.' },
+] as const;
 ---
 <SiteLayout home title="WeekPact — Good habits. Great company." description="Make a weekly pact with your people. Check in, cheer each other on, and keep showing up together.">
   <main id="main">
-    <section class="launch-hero container" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <h1 id="hero-title">Good habits.<br /><span>Great company.</span></h1>
-        <p class="launch-lead">Make a weekly pact with your people. Check in, cheer each other on, and keep showing up together.</p>
-        <div class="launch-actions"><a class="button" href="/open/">Start your crew <span aria-hidden="true">↗</span></a><a href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a></div>
-        <p class="hero-caption">Small steps. Shared wins.<span></span></p>
+    <section class="hero container" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">A weekly pact with your people</p>
+        <h1 id="hero-title"><span>Good habits<span class="dot">.</span></span><br /><span>Great company<span class="dot">.</span></span></h1>
+        <p class="hero-lead">Make a weekly pact with your people. Check in, cheer each other on, and keep showing up together.</p>
+        <div class="hero-actions">
+          <a class="button" href="/open/">Start your crew <HugeIcon name="arrowUpRight01" size={20} /></a>
+          <a class="text-link" href="#how-it-works">See how it works <HugeIcon name="arrowDown01" size={19} /></a>
+        </div>
+        <p class="hero-proof caption"><HugeIcon name="sparkles" size={17} /> Small steps. Shared wins.<span class="rule"></span></p>
       </div>
       <div class="phone-stage">
-        <div class="iphone" aria-label="WeekPact running on an iPhone, with a fictional example crew">
+        <div class="phone" aria-label="WeekPact running on an iPhone, with a fictional example crew">
           <div class="phone-screen">
             <img id="app-screen" src="/screenshots/home.png" width="1170" height="2532" alt="The current WeekPact home screen: Early Birds crew, recent check-in, crew streak, and today's pacts." fetchpriority="high" />
             <span class="phone-time" aria-hidden="true">9:41</span><span class="island" aria-hidden="true"></span><span class="phone-status" aria-hidden="true">▮▮▮ ▰</span>
@@ -22,19 +39,49 @@ import '../styles/home.css';
           <button type="button" data-screen="home" aria-pressed="true">Your week</button>
           <button type="button" data-screen="crew" aria-pressed="false">Your crew</button>
         </div>
-        <p class="demo-caption">Real app screens · Example crew</p>
+        <p class="demo-caption caption">Real app screens · Example crew</p>
       </div>
     </section>
-    <section class="launch-how" id="how-it-works" aria-labelledby="how-title">
-      <div class="container"><h2 id="how-title">A little pact. A better week.</h2>
-        <ol class="launch-steps">
-          <li><span>01</span><h3>Find your people</h3><p>Start a crew and invite your friends. A little company goes a long way.</p></li>
-          <li><span>02</span><h3>Make it yours</h3><p>Choose a small commitment and a weekly rhythm that fits your life.</p></li>
-          <li><span>03</span><h3>Show up together</h3><p>Check in, give a little encouragement, and celebrate the week you made.</p></li>
-        </ol>
+
+    <section class="features container" aria-labelledby="features-title">
+      <p class="eyebrow">Inside the app</p>
+      <h2 id="features-title">What a week looks like<span class="dot">.</span></h2>
+      <div class="feature-grid">
+        {features.map(feature => (
+          <article class="surface surface--card feature" style={`--fill:${feature.tint}`}>
+            <span class="icon-tile"><HugeIcon name={feature.icon} size={26} /></span>
+            <h3>{feature.title}</h3>
+            <p>{feature.copy}</p>
+          </article>
+        ))}
       </div>
     </section>
-    <section class="launch-close container"><h2>Your next good week<br />starts together.</h2><p>Bring your people. Make a little progress together.</p><a class="button" href="/open/">Start your crew <span aria-hidden="true">↗</span></a></section>
+
+    <section class="how container" id="how-it-works" aria-labelledby="how-title">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">A little pact<span class="dot">.</span> A better week<span class="dot" style="color:var(--sky)">.</span></h2>
+      <p class="how-lead">Three short steps, and the rest is just showing up.</p>
+      <ol class="steps">
+        {steps.map((step, index) => (
+          <li class="surface surface--card step" style={`--fill:${step.tint}`}>
+            <div class="step-head">
+              <span class="step-number">{String(index + 1).padStart(2, '0')}</span>
+              <HugeIcon name={step.icon} size={26} />
+            </div>
+            <h3>{step.title}</h3>
+            <p>{step.copy}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="close container" aria-labelledby="close-title">
+      <div class="surface surface--dark surface--card close-card">
+        <h2 id="close-title">Your next good week<br />starts together<span class="dot">.</span></h2>
+        <p>Bring your people. Make a little progress together.</p>
+        <a class="button" href="/open/">Start your crew <HugeIcon name="arrowUpRight01" size={20} /></a>
+      </div>
+    </section>
   </main>
 </SiteLayout>
 <script>

@@ -1,29 +1,37 @@
-@font-face{font-family:Roboto;src:url('/fonts/Roboto-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:Roboto;src:url('/fonts/Roboto-Medium.ttf') format('truetype');font-weight:500 700;font-style:normal;font-display:swap}
-body.handoff-theme{--canvas:#191b19;--surface:#f3f5f2;--ink:#f3f5f2;--muted:#afb5ae;--mint:#d0e5ba;--yellow:#f4d88f;background:var(--canvas);color:var(--ink)}
-.handoff-theme .wordmark span{color:var(--mint)}
-.handoff-theme .site-header nav,.handoff-theme .site-footer nav,.handoff-theme .site-footer p{font-family:Roboto,Arial,sans-serif;font-size:14px}
-.handoff-theme .site-footer{background:transparent;border-top:1px solid #ffffff12}
-.handoff-theme .handoff{padding-block:48px 64px;min-height:0;align-items:center}
-.handoff-theme .handoff-wrap{width:min(100%,520px)}
-.handoff-label{display:block;margin-bottom:12px;color:var(--muted);font:500 11px/1.4 Roboto,Arial,sans-serif;letter-spacing:2px}
-.handoff-theme .handoff-card{border:0;border-radius:8px;background:var(--surface);color:#191b19;box-shadow:0 5px 18px #0003}
-.handoff-theme .handoff-heading{background:none;border:0;padding:28px 28px 0;position:relative}
-.handoff-icon{display:grid;place-items:center;width:56px;height:56px;background:var(--mint);border-radius:8px;margin-bottom:24px}
-.handoff-theme .handoff h1{font-size:48px;line-height:1.02;letter-spacing:-1px;max-width:390px}
-.title-dot{color:#708961}
-.handoff-theme .handoff-body{padding:18px 28px 28px}
-.handoff-theme .handoff-description{font:400 16px/1.6 Roboto,Arial,sans-serif;color:#626762;margin-bottom:26px}
-.handoff-theme .button{background:#191b19;color:#f3f5f2;border:0;box-shadow:none;border-radius:8px;min-height:50px;font-size:18px;font-weight:700;gap:12px;transition:background .15s}
-.handoff-theme .button:hover{background:#303630}
-.handoff-theme .button:active{transform:none}
-.handoff-theme .install-help{border:0;margin-top:28px;padding:0;font:400 14px/1.65 Roboto,Arial,sans-serif;color:var(--muted)}
-.install-help h2{font:500 11px/1.4 Roboto,Arial,sans-serif;letter-spacing:2px;margin-bottom:10px;color:var(--ink)}
-.handoff-theme .install-help strong{font-weight:500;color:var(--ink)}
-.handoff-theme .access-note{font:400 13px/1.6 Roboto,Arial,sans-serif;color:var(--muted)}
-.handoff-theme .install-links a{color:var(--mint);font-size:14px}
-.handoff-theme .open-feedback,.handoff-theme .notice{font:400 14px/1.6 Roboto,Arial,sans-serif;background:#e5e9e1;border:0;border-radius:8px;color:#454c42;padding:14px}
-.handoff-theme .handoff-footnote{font:400 12px/1.6 Roboto,Arial,sans-serif;color:var(--muted);margin-top:24px;padding:0;text-align:left}
-.handoff-theme :focus-visible{outline-color:#d0e5ba}
-.handoff-card :focus-visible{outline-color:#596f4c}
-@media(max-width:600px){.handoff-theme .container{width:calc(100% - 32px)}.handoff-theme .site-header{padding-block:22px;gap:16px}.handoff-theme .handoff{padding-block:24px 40px}.handoff-theme .handoff-heading{padding:24px 22px 0}.handoff-theme .handoff-body{padding:16px 22px 24px}.handoff-theme .handoff h1{font-size:40px}.handoff-icon{width:52px;height:52px;margin-bottom:22px}.handoff-theme .site-header nav{font-size:13px}.handoff-theme .site-footer .footer-content{gap:18px}}
+/* The invitation and open-app pages: the same page the crew invitation email
+   is — charcoal canvas, the wordmark above it, one cream card holding
+   everything else. Keeping them alike means a link looks the same wherever it
+   arrives. */
+
+.handoff{display:flex;justify-content:center;padding-block:32px 72px}
+.handoff-wrap{width:min(100%,540px)}
+.handoff-label{display:block;margin-bottom:12px}
+.handoff-card{padding:32px 32px 34px}
+.handoff-icon{--fill:var(--sky);width:56px;height:56px}
+.handoff h1{font-size:clamp(36px,5.6vw,48px);margin-top:24px;max-width:11ch}
+.handoff h1 .dot{color:var(--sky)}
+.handoff-description{font-size:16px;line-height:1.65;margin-block:16px 26px}
+.open-feedback,.notice{
+  --fill:var(--inset);
+  margin-top:18px;padding:14px 16px;font-size:14px;line-height:1.6;
+  color:var(--muted);background:var(--fill);
+  border:1px solid color-mix(in srgb,#000 28%,var(--fill));
+  border-radius:var(--r-control);
+}
+
+.install-help{margin-top:30px}
+.install-help h2{font-size:11px}
+.install-help>p{margin-top:12px;font-size:14px;line-height:1.7;color:var(--canvas-muted)}
+.install-help strong{color:var(--canvas-ink);font-weight:500}
+.install-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
+.install-links .button{--fill:var(--dark-fill);color:var(--canvas-ink);border-color:var(--dark-outline);box-shadow:0 var(--depth) 0 var(--dark-outline);font-size:15px;min-height:44px;padding:10px 16px;gap:10px}
+.access-note{margin-top:14px}
+.handoff-footnote{margin-top:24px;text-align:center}
+
+@media(max-width:600px){
+  .handoff{padding-block:16px 48px}
+  .handoff-card{padding:24px 22px 26px;border-radius:var(--r-panel)}
+  .handoff h1{max-width:100%}
+  .install-links{flex-direction:column}
+  .install-links .button{width:100%}
+}

@@ -23,44 +23,47 @@ export function renderCrewInvite(
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">
 <title>Your WeekPact crew invitation</title>
 <style>
-body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}table{border-spacing:0}a{color:#090909}
-@media screen and (max-width:600px){.outer{padding:28px 16px!important}.content{padding:28px 22px!important}.headline{font-size:36px!important;line-height:40px!important}.crew{font-size:25px!important}.footer{padding:24px 12px!important}}
+body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}table{border-spacing:0}a{color:#191B19}
+@media screen and (max-width:600px){.outer{padding:28px 14px!important}.content{padding:26px 20px 24px!important}.headline{font-size:34px!important;line-height:36px!important}.value{font-size:26px!important;line-height:30px!important}.cta{font-size:14px!important;padding:14px 16px!important}.footer{padding:26px 14px 0!important}}
 </style>
 </head>
-<body style="margin:0;padding:0;width:100%;background-color:#F8F5EC;color:#090909;font-family:Arial,Helvetica,sans-serif;">
-<div style="display:none;font-size:1px;color:#F8F5EC;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">You’re invited to ${crew}. Review the crew and its pacts in WeekPact.</div>
-<table role="presentation" width="100%" bgcolor="#F8F5EC" style="background-color:#F8F5EC;background-image:linear-gradient(#eae7de 1px,transparent 1px),linear-gradient(90deg,#eae7de 1px,transparent 1px);background-size:28px 28px;">
-<tr><td class="outer" align="center" style="padding:44px 24px;">
+<body style="margin:0;padding:0;width:100%;background-color:#2B302C;color:#F3F5F2;font-family:Roboto,Arial,Helvetica,sans-serif;">
+<div style="display:none;font-size:1px;color:#2B302C;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">You&#8217;re invited to ${crew}. Review the crew and its pacts in WeekPact.</div>
+<table role="presentation" width="100%" bgcolor="#2B302C" style="background-color:#2B302C;">
+<tr><td class="outer" align="center" style="padding:40px 20px;">
 <!--[if mso]><table role="presentation" width="560"><tr><td><![endif]-->
 <table role="presentation" width="100%" style="max-width:560px;">
-<tr><td style="padding:0 0 26px;">
-<table role="presentation"><tr><td bgcolor="#BFE3B2" style="background-color:#BFE3B2;border:1.5px solid #090909;border-radius:10px;padding:8px 12px;font-size:25px;line-height:28px;font-weight:900;box-shadow:2px 3px 0 #090909;">W<span style="color:#B83363;">.</span></td><td style="padding-left:13px;font-size:25px;letter-spacing:-1px;font-weight:900;">WeekPact<span style="color:#B83363;">.</span></td></tr></table>
+<tr><td style="padding:0 0 22px;">
+<p style="margin:0;color:#F3F5F2;font-family:'Roboto Condensed','Arial Narrow',Arial,sans-serif;font-size:27px;line-height:31px;letter-spacing:-.6px;font-weight:700;">WeekPact<span style="color:#8AC9EC;">.</span></p>
 </td></tr>
-<tr><td bgcolor="#FFFCF3" style="background-color:#FFFCF3;border:1.5px solid #090909;border-radius:10px;box-shadow:2px 3px 0 #090909;">
+<tr><td bgcolor="#F5F6F5" style="background-color:#F5F6F5;border:1px solid #B0B1B0;border-radius:18px;box-shadow:0 3px 0 #BABBBA;">
 <table role="presentation" width="100%">
-<tr><td bgcolor="#FFEFAE" style="background-color:#FFEFAE;border-radius:8px 8px 0 0;border-bottom:1.5px solid #090909;padding:17px 28px;font-size:11px;line-height:18px;font-weight:800;letter-spacing:2px;">BETTER TOGETHER &nbsp; / &nbsp; CREW INVITATION</td></tr>
-<tr><td class="content" style="padding:36px 34px 34px;">
-<h1 class="headline" style="margin:0 0 18px;font-family:'Arial Narrow',Arial,Helvetica,sans-serif;font-size:46px;line-height:49px;letter-spacing:-2px;font-weight:900;">Your crew<br>is waiting.</h1>
-<p style="margin:0 0 27px;font-size:16px;line-height:26px;color:#55534D;">Good habits. Great company. You’ve been invited to join a crew on WeekPact and keep showing up together.</p>
-<table role="presentation" width="100%"><tr><td bgcolor="#BFE3B2" style="background-color:#BFE3B2;border:1.5px solid #090909;border-radius:12px;padding:20px 22px;box-shadow:2px 3px 0 #090909;">
-<p style="margin:0 0 8px;font-size:10px;line-height:15px;letter-spacing:2px;font-weight:800;">YOUR INVITATION TO</p>
-<p class="crew" style="margin:0;font-size:29px;line-height:36px;letter-spacing:-1px;font-weight:800;overflow-wrap:anywhere;word-break:break-word;">${crew}</p>
+<tr><td class="content" style="padding:32px 30px 30px;">
+<p style="margin:0 0 14px;color:#51564F;font-size:10px;line-height:15px;letter-spacing:1.6px;font-weight:700;text-transform:uppercase;">Crew invitation</p>
+<h1 class="headline" style="margin:0 0 14px;color:#191B19;font-family:'Roboto Condensed','Arial Narrow',Arial,sans-serif;font-size:42px;line-height:44px;letter-spacing:-1px;font-weight:700;">Your crew<br>is waiting.</h1>
+<p style="margin:0 0 24px;color:#51564F;font-size:16px;line-height:25px;">Good habits. Great company. You&#8217;ve been invited to join a crew on WeekPact and keep showing up together.</p>
+<table role="presentation" width="100%"><tr><td bgcolor="#8AC9EC" style="background-color:#8AC9EC;border:1px solid #6391AA;border-radius:11px;padding:16px 18px;box-shadow:0 2px 0 #6999B3;">
+<p style="margin:0 0 6px;color:#191B19;font-size:10px;line-height:15px;letter-spacing:1.6px;font-weight:700;text-transform:uppercase;">Your invitation to</p>
+<p class="value" style="margin:0;color:#191B19;font-family:'Roboto Condensed','Arial Narrow',Arial,sans-serif;font-size:30px;line-height:34px;letter-spacing:-.6px;font-weight:700;overflow-wrap:anywhere;word-break:break-word;">${crew}</p>
 </td></tr></table>
-<p style="margin:28px 0 22px;font-size:14px;line-height:23px;color:#55534D;">Sign in or create an account with<br><strong style="color:#090909;overflow-wrap:anywhere;">${recipient}</strong>.</p>
-<table role="presentation" width="100%"><tr><td align="center" bgcolor="#FF999B" style="background-color:#FF999B;border:1.5px solid #090909;border-radius:10px;box-shadow:2px 3px 0 #090909;mso-padding-alt:18px 24px;">
-<a href="${link}" style="display:block;padding:11px 20px;color:#090909;text-decoration:none;font-size:15px;line-height:20px;font-weight:800;letter-spacing:1px;border-radius:8px;">VIEW INVITATION &nbsp; &#8594;</a>
+<p style="margin:24px 0 18px;color:#51564F;font-size:14px;line-height:22px;">Sign in or create an account with<br><strong style="color:#191B19;overflow-wrap:anywhere;">${recipient}</strong>.</p>
+<table role="presentation" width="100%"><tr><td align="center" bgcolor="#8CDCAC" style="background-color:#8CDCAC;border:1px solid #659E7C;border-radius:11px;box-shadow:0 2px 0 #6AA783;mso-padding-alt:15px 20px;">
+<a class="cta" href="${link}" style="display:block;padding:15px 20px;color:#191B19;text-decoration:none;font-size:15px;line-height:18px;font-weight:700;letter-spacing:.6px;border-radius:10px;">View invitation &nbsp;&#8594;</a>
 </td></tr></table>
-<p style="margin:21px 0 0;text-align:center;font-size:12px;line-height:18px;color:#74716A;">Review the members and pacts in WeekPact, then accept or decline. Opening this link does not join the crew. Valid for 7 days.</p>
-<table role="presentation" width="100%"><tr><td style="padding-top:28px;"><div style="border-top:1px solid #DDD9CE;font-size:1px;line-height:1px;">&nbsp;</div></td></tr></table>
-<p style="margin:20px 0 0;font-size:14px;line-height:22px;color:#55534D;">Already have WeekPact? Open the app and go to <strong style="color:#090909;">Crews → Invites</strong> to find this invitation.</p>
-<p style="margin:20px 0 7px;font-size:12px;line-height:19px;color:#74716A;">Button not working? Copy and paste this link:</p>
-<p style="margin:0;font-size:11px;line-height:18px;word-break:break-all;overflow-wrap:anywhere;"><a href="${link}" style="color:#B83363;text-decoration:underline;">${link}</a></p>
+<p style="margin:16px 0 0;text-align:center;color:#51564F;font-size:12px;line-height:18px;">Review the members and pacts in WeekPact, then accept or decline. Opening this link does not join the crew. Valid for 7 days.</p>
+<table role="presentation" width="100%"><tr><td style="padding-top:26px;"><div style="border-top:1px solid #DFE0DF;font-size:1px;line-height:1px;">&nbsp;</div></td></tr></table>
+<p style="margin:20px 0 0;color:#51564F;font-size:14px;line-height:22px;">Already have WeekPact? Open the app and go to <strong style="color:#191B19;">Crews → Invites</strong> to find this invitation.</p>
+<p style="margin:18px 0 6px;color:#51564F;font-size:12px;line-height:18px;">Button not working? Copy and paste this link:</p>
+<p style="margin:0;font-size:11px;line-height:18px;word-break:break-all;overflow-wrap:anywhere;"><a href="${link}" style="color:#3F7A57;text-decoration:underline;">${link}</a></p>
 </td></tr></table>
 </td></tr>
-<tr><td class="footer" align="center" style="padding:30px 24px 0;"><p style="margin:0 0 8px;font-size:12px;line-height:18px;font-weight:800;letter-spacing:1px;">SMALL STEPS. SHARED WINS.</p><p style="margin:0;font-size:11px;line-height:18px;color:#74716A;">Not expecting an invitation? You can safely ignore this email.</p></td></tr>
+<tr><td class="footer" align="center" style="padding:28px 20px 0;">
+<p style="margin:0 0 6px;color:#F3F5F2;font-family:'Roboto Condensed','Arial Narrow',Arial,sans-serif;font-size:13px;line-height:18px;font-weight:700;letter-spacing:.6px;">Small steps. Shared wins.</p>
+<p style="margin:0;color:#B8BEB5;font-size:11px;line-height:18px;">Not expecting an invitation? You can safely ignore this email.</p>
+</td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table>

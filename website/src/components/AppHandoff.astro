@@ -1,35 +1,33 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
-import Arrow from './Arrow.astro';
-import HugeIcon from './HugeIcon.astro';
+import HugeIcon from '../components/HugeIcon.astro';
 import '../styles/handoff.css';
 import { readSiteConfig } from '../lib/config.mjs';
 interface Props { invite?: boolean; }
 const { invite = false } = Astro.props;
 const config = readSiteConfig();
 ---
-<SiteLayout title={invite ? 'Your crew invitation — WeekPact' : 'Open WeekPact'} description="Open WeekPact to connect with your crew." privatePage dark>
+<SiteLayout title={invite ? 'Your crew invitation — WeekPact' : 'Open WeekPact'} description="Open WeekPact to connect with your crew." privatePage tint="var(--sky)">
   <main id="main" class="handoff container" data-handoff data-mode={invite ? 'invite' : 'open'}>
     <div class="handoff-wrap">
-      <span class="handoff-label">{invite ? 'CREW INVITATION' : 'OPEN WEEKPACT'}</span>
-      <section class="handoff-card" aria-labelledby="handoff-title">
-        <div class="handoff-heading"><div class="handoff-icon"><HugeIcon name="userGroup" size={32} /></div><h1 id="handoff-title">{invite ? 'Your crew is waiting' : 'A good week starts here'}<span class="title-dot">.</span></h1></div>
-        <div class="handoff-body">
-          <p class="handoff-description" id="handoff-description">{invite ? 'Open WeekPact to review the crew and accept your invitation.' : 'Open WeekPact to check in with your crew.'}</p>
-          <a id="open-app" class="button" href="weekpact://invite">Open WeekPact <Arrow /></a>
-          <p class="open-feedback" id="open-feedback" role="status" hidden>If WeekPact didn’t open, install the app or open it manually. Then come back to this link and tap Open WeekPact again.</p>
-          <noscript><p class="notice">Enable JavaScript to pass your invitation to the app. For email invitations, you can also find the invite under Crews → Invites.</p></noscript>
-        </div>
+      <span class="handoff-label eyebrow">{invite ? 'Crew invitation' : 'Open WeekPact'}</span>
+      <section class="surface surface--card handoff-card" aria-labelledby="handoff-title">
+        <span class="icon-tile handoff-icon"><HugeIcon name="userGroup" size={28} /></span>
+        <h1 id="handoff-title">{invite ? 'Your crew is waiting' : 'A good week starts here'}<span class="dot">.</span></h1>
+        <p class="handoff-description" id="handoff-description">{invite ? 'Open WeekPact to review the crew and accept your invitation.' : 'Open WeekPact to check in with your crew.'}</p>
+        <a id="open-app" class="button button--wide" href="weekpact://invite">Open WeekPact <HugeIcon name="arrowRight01" size={20} /></a>
+        <p class="open-feedback" id="open-feedback" role="status" hidden>If WeekPact didn’t open, install the app or open it manually. Then come back to this link and tap Open WeekPact again.</p>
+        <noscript><p class="notice">Enable JavaScript to pass your invitation to the app. For email invitations, you can also find the invite under Crews → Invites.</p></noscript>
       </section>
-          <div class="install-help">
-            <h2>NEW TO WEEKPACT?</h2>
-            <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong>. If you received an email invitation, use that email address.</p>
-            {(config.iosInstallUrl || config.androidInstallUrl) ? <div class="install-links">
-              {config.iosInstallUrl && <a class="text-link" href={config.iosInstallUrl} rel="noreferrer">Get WeekPact for iPhone <Arrow /></a>}
-              {config.androidInstallUrl && <a class="text-link" href={config.androidInstallUrl} rel="noreferrer">Get WeekPact for Android <Arrow /></a>}
-            </div> : <p class="access-note">Need the app? Ask your crew owner for the installation link.</p>}
-          </div>
-      <p class="handoff-footnote">{invite ? 'Joining is your choice. You’ll accept the invitation in the app.' : 'Your crew and your pacts, all in one place.'}</p>
+      <div class="install-help">
+        <h2 class="eyebrow">New to WeekPact?</h2>
+        <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong>. If you received an email invitation, use that email address.</p>
+        {(config.iosInstallUrl || config.androidInstallUrl) ? <div class="install-links">
+          {config.iosInstallUrl && <a class="button" href={config.iosInstallUrl} rel="noreferrer"><HugeIcon name="apple" size={19} /> Get it for iPhone</a>}
+          {config.androidInstallUrl && <a class="button" href={config.androidInstallUrl} rel="noreferrer"><HugeIcon name="android" size={19} /> Get it for Android</a>}
+        </div> : <p class="access-note caption">Need the app? Ask your crew owner for the installation link.</p>}
+      </div>
+      <p class="handoff-footnote caption">{invite ? 'Joining is your choice. You’ll accept the invitation in the app.' : 'Your crew and your pacts, all in one place.'}</p>
     </div>
   </main>
 </SiteLayout>
