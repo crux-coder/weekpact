@@ -448,6 +448,30 @@ batch per page.
 Focused checks: `flutter test test/feed_test.dart` and
 `node tool/test_check_in_feed_database.mjs` (with `PGLITE_MODULE` set if needed).
 
+### Claps
+
+Apply `20260918120000_add_check_in_claps.sql` before releasing the updated app. It
+adds the `check_in_claps` table, the `set_check_in_clap` RPC, and replaces
+`check_in_feed` so every page carries each post's clap count and whether the
+viewer clapped it. No existing data changes.
+
+A clap is one crew member applauding one check-in: at most one per member per
+check-in, allowed only from inside a crew the member belongs to, and re-checked
+on the server rather than trusted from the feed page. Both directions are
+idempotent, so a repeated tap settles on the state asked for. Claps are removed
+with the check-in they applaud and with the account that gave them. Clients
+never write the table directly.
+
+In the feed, double-tapping a post claps for it: the card gives slightly, a
+clap swells over the photo on a card of its own, and the phone buzzes. The tally
+at the foot of the post turns yellow once you have clapped; tapping it takes the
+clap back. A double tap on a post already clapped replays the burst and
+leaves the clap alone. Every clap gesture buzzes exactly once. The tally moves
+before the write lands and goes back if the write fails.
+
+Focused checks: `flutter test test/feed_claps_test.dart` and
+`node tool/test_check_in_claps_database.mjs` (with `PGLITE_MODULE` set if needed).
+
 ### Photo check-ins
 
 New check-ins open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after

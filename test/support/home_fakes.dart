@@ -69,6 +69,13 @@ class DashboardBackend implements HomeBackend {
     int limit = 20,
   }) async => [];
   @override
+  Future<int> setClap({
+    required String pactId,
+    required String userId,
+    required String day,
+    required bool clapped,
+  }) async => clapped ? 1 : 0;
+  @override
   Future<CrewWeek> fetchWeek(String crewId) async {
     fetches++;
     if (failLoad) throw StateError('offline');

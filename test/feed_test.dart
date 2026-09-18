@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,8 @@ FeedEntry entry(
   String crew = 'Early Birds',
   String? photoPath = 'photo.png',
   String name = 'Mirnes Halilovic',
+  int claps = 0,
+  bool clapped = false,
 }) => FeedEntry(
   pactId: 'pact-$index',
   userId: 'member-$index',
@@ -29,6 +32,8 @@ FeedEntry entry(
   ),
   displayName: name,
   photoPath: photoPath,
+  clapCount: claps,
+  clapped: clapped,
 );
 
 class FeedBackend extends DashboardBackend {
@@ -37,7 +42,12 @@ class FeedBackend extends DashboardBackend {
 
   final List<FeedEntry> feed;
   final cursors = <FeedEntry?>[];
+  final claps = <String, int>{};
+
+  /// Every clap write asked for, as the post's id and the state requested.
+  final clapWrites = <(String, bool)>[];
   bool fail = false;
+  bool failClap = false;
   Completer<List<FeedEntry>>? pending;
 
   @override
@@ -51,6 +61,21 @@ class FeedBackend extends DashboardBackend {
         )
         .take(limit)
         .toList();
+  }
+
+  @override
+  Future<int> setClap({
+    required String pactId,
+    required String userId,
+    required String day,
+    required bool clapped,
+  }) async {
+    final id = '$pactId/$userId/$day';
+    clapWrites.add((id, clapped));
+    if (failClap) throw StateError('offline');
+    final before =
+        claps[id] ?? feed.firstWhere((entry) => entry.id == id).clapCount;
+    return claps[id] = math.max(0, before + (clapped ? 1 : -1));
   }
 }
 

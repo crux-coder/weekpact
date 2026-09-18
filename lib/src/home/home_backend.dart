@@ -93,6 +93,8 @@ class FeedEntry {
     this.photoUrl,
     this.avatarPath,
     this.avatarUrl,
+    this.clapCount = 0,
+    this.clapped = false,
   });
 
   final String pactId;
@@ -109,6 +111,11 @@ class FeedEntry {
   final String? avatarPath;
   final String? avatarUrl;
 
+  /// How many crew members applauded this check-in, and whether the viewer is
+  /// one of them.
+  final int clapCount;
+  final bool clapped;
+
   /// Stable across pages, so list items keep their state while more load.
   String get id => '$pactId/$userId/$day';
 
@@ -124,7 +131,12 @@ class FeedEntry {
         .toUpperCase();
   }
 
-  FeedEntry withUrls({String? photoUrl, String? avatarUrl}) => FeedEntry(
+  FeedEntry copyWith({
+    String? photoUrl,
+    String? avatarUrl,
+    int? clapCount,
+    bool? clapped,
+  }) => FeedEntry(
     pactId: pactId,
     userId: userId,
     crewId: crewId,
@@ -138,6 +150,8 @@ class FeedEntry {
     photoUrl: photoUrl ?? this.photoUrl,
     avatarPath: avatarPath,
     avatarUrl: avatarUrl ?? this.avatarUrl,
+    clapCount: clapCount ?? this.clapCount,
+    clapped: clapped ?? this.clapped,
   );
 
   factory FeedEntry.fromJson(Map<String, dynamic> row) => FeedEntry(
@@ -152,6 +166,8 @@ class FeedEntry {
     displayName: row['display_name'] as String? ?? 'Crew member',
     photoPath: row['photo_path'] as String?,
     avatarPath: row['avatar_path'] as String?,
+    clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
+    clapped: row['viewer_clapped'] as bool? ?? false,
   );
 }
 
@@ -288,6 +304,16 @@ abstract interface class HomeBackend {
 
   /// Check-ins from every crew the signed-in member belongs to, newest first.
   Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20});
+
+  /// Adds or removes the viewer's clap on one check-in and returns the check-in's
+  /// clap count afterwards. Both directions are idempotent, so a repeated tap
+  /// settles on the state asked for rather than toggling twice.
+  Future<int> setClap({
+    required String pactId,
+    required String userId,
+    required String day,
+    required bool clapped,
+  });
   Future<void> saveCheckIns({
     required String crewId,
     required String today,
@@ -391,12 +417,33 @@ class SupabaseHomeBackend implements HomeBackend {
     );
     return entries
         .map(
-          (entry) => entry.withUrls(
+          (entry) => entry.copyWith(
             photoUrl: photos[entry.photoPath],
             avatarUrl: avatars[entry.avatarPath],
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<int> setClap({
+    required String pactId,
+    required String userId,
+    required String day,
+    required bool clapped,
+  }) async {
+    final row = Map<String, dynamic>.from(
+      await client.rpc(
+        'set_check_in_clap',
+        params: {
+          'target_pact_id': pactId,
+          'target_check_in_user': userId,
+          'target_day': day,
+          'clapped': clapped,
+        },
+      ),
+    );
+    return (row['clap_count'] as num).toInt();
   }
 
   Future<Map<String, String>> _signed(
@@ -554,6 +601,13 @@ class MissingHomeBackend implements HomeBackend {
   @override
   Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20}) =>
       Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> setClap({
+    required String pactId,
+    required String userId,
+    required String day,
+    required bool clapped,
+  }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewWeek> fetchWeek(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));

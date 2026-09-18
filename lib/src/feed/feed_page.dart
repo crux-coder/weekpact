@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/page_frame.dart';
+import 'clap_control.dart';
 
 /// Check-ins from every crew the member belongs to, newest first, as a photo
 /// feed. Paging is keyed on the last entry, so new posts never shift a page.
@@ -86,6 +88,54 @@ class _FeedPageState extends State<FeedPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadNearEnd();
     });
+  }
+
+  /// Claps or unclaps one post. The tally moves first and the write follows,
+  /// so the tap lands immediately; a failure puts the post back as it was.
+  Future<void> _clap(FeedEntry entry, bool clapped) async {
+    final index = _entries.indexWhere((e) => e.id == entry.id);
+    if (index < 0 || _entries[index].clapped == clapped) return;
+    final before = _entries[index];
+    _replace(
+      entry.id,
+      before.copyWith(
+        clapped: clapped,
+        clapCount: math.max(0, before.clapCount + (clapped ? 1 : -1)),
+      ),
+    );
+    unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
+    try {
+      final count = await widget.backend.setClap(
+        pactId: entry.pactId,
+        userId: entry.userId,
+        day: entry.day,
+        clapped: clapped,
+      );
+      if (!mounted) return;
+      // The server's count includes claps from other members since the page
+      // was read, so it replaces the guess rather than adding to it.
+      final at = _entries.indexWhere((e) => e.id == entry.id);
+      if (at >= 0) {
+        _replace(
+          entry.id,
+          _entries[at].copyWith(clapCount: count, clapped: clapped),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _replace(entry.id, before);
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(clapped ? 'Could not clap.' : 'Could not unclap.'),
+        ),
+      );
+    }
+  }
+
+  void _replace(String id, FeedEntry entry) {
+    final index = _entries.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    setState(() => _entries[index] = entry);
   }
 
   /// Returns null when the read failed; state carries the error either way.
@@ -171,6 +221,7 @@ class _FeedPageState extends State<FeedPage> {
                         key: ValueKey('feed-post-${entry.id}'),
                         entry: entry,
                         isMine: entry.userId == widget.userId,
+                        onClap: (clapped) => _clap(entry, clapped),
                       ),
                     ),
                   ],
@@ -295,20 +346,111 @@ class _DayHeading extends StatelessWidget {
 /// A single check-in: who kept it and when at the top, the photo in the
 /// middle in the same squircle the check-in camera uses, and the pact and crew
 /// beneath. The card is offblack so the photo is the only bright thing on it.
-class FeedPost extends StatelessWidget {
-  const FeedPost({super.key, required this.entry, this.isMine = false});
+///
+/// Double-tapping the post claps for it; the tally at the foot takes the clap
+/// back. A double tap on a post already clapped replays the burst and leaves
+/// the one clap where it is, so the gesture never quietly undoes itself.
+class FeedPost extends StatefulWidget {
+  const FeedPost({
+    super.key,
+    required this.entry,
+    this.isMine = false,
+    this.onClap,
+  });
 
   final FeedEntry entry;
   final bool isMine;
 
+  /// Asked to clap (true) or take the clap back (false). Null means the post
+  /// cannot be clapped at all.
+  final void Function(bool clapped)? onClap;
+
+  @override
+  State<FeedPost> createState() => _FeedPostState();
+}
+
+class _FeedPostState extends State<FeedPost>
+    with SingleTickerProviderStateMixin {
+  late final _burst = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+
+  /// The card gives a little under the double tap while the clap swells over
+  /// it — enough to feel answered, not enough to shove its neighbours.
+  late final _pop = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: .985,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 30,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: .985,
+        end: 1.012,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
+      weight: 35,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.012,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 35,
+    ),
+  ]).animate(CurvedAnimation(parent: _burst, curve: const Interval(0, .6)));
+
+  @override
+  void dispose() {
+    _burst.dispose();
+    super.dispose();
+  }
+
+  void _doubleTap() {
+    final onClap = widget.onClap;
+    if (onClap == null) return;
+    if (!MediaQuery.disableAnimationsOf(context)) _burst.forward(from: 0);
+    if (!widget.entry.clapped) {
+      // The clap itself buzzes as it is written, so only the double tap that
+      // changes nothing has to buzz for itself.
+      onClap(true);
+    } else {
+      unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
+    }
+  }
+
+  /// Everything but the tally answers the double tap, including a photo-free
+  /// check-in's text. The tally stays outside it, so tapping the tally lands
+  /// at once rather than waiting out the double-tap window.
+  Widget _clappable(Widget child) => GestureDetector(
+    onDoubleTap: widget.onClap == null ? null : _doubleTap,
+    behavior: HitTestBehavior.opaque,
+    child: child,
+  );
+
   @override
   Widget build(BuildContext context) {
+    final entry = widget.entry;
     final date = entry.createdAt.toLocal();
     final time = MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(date),
       alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
     );
-    final name = isMine ? 'You' : entry.displayName;
+    final name = widget.isMine ? 'You' : entry.displayName;
+    return ScaleTransition(
+      scale: _pop,
+      child: _card(context, entry: entry, name: name, time: time),
+    );
+  }
+
+  Widget _card(
+    BuildContext context, {
+    required FeedEntry entry,
+    required String name,
+    required String time,
+  }) {
     return AppSurface(
       borderRadius: 16,
       fillColor: WeekPactDarkCard.fill,
@@ -316,97 +458,132 @@ class FeedPost extends StatelessWidget {
       builder: (context) => Semantics(
         label:
             '$name checked in · ${entry.pactTitle} · ${entry.crewName} · $time',
-        child: ExcludeSemantics(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    _Avatar(entry: entry),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: WeekPactDarkCard.ink,
-                          fontSize: 15,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        fontFamily: WeekPactType.secondary,
-                        fontFamilyFallback: WeekPactType.secondaryFallback,
-                        color: WeekPactDarkCard.muted,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-                if (entry.photoPath != null) ...[
-                  const SizedBox(height: 12),
-                  CheckInPhotoFrame(
-                    child: _Photo(
-                      key: ValueKey('feed-photo-${entry.id}'),
-                      url: entry.photoUrl,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _clappable(
+                ExcludeSemantics(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            entry.pactTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: WeekPactDarkCard.ink,
-                              fontSize: 15,
-                              height: 1.2,
-                              fontWeight: FontWeight.w700,
+                          _Avatar(entry: entry),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: WeekPactDarkCard.ink,
+                                fontSize: 15,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
-                            entry.crewName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            time,
                             style: const TextStyle(
                               fontFamily: WeekPactType.secondary,
                               fontFamilyFallback:
                                   WeekPactType.secondaryFallback,
+                              color: WeekPactDarkCard.muted,
                               fontSize: 11,
                               height: 1.35,
-                              color: WeekPactDarkCard.muted,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    HugeIcon(
-                      icon: PactIcon.find(entry.iconKey).data,
-                      color: WeekPactDarkCard.muted,
-                      size: 18,
-                    ),
-                  ],
+                      if (entry.photoPath != null) ...[
+                        const SizedBox(height: 12),
+                        CheckInPhotoFrame(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              _Photo(
+                                key: ValueKey('feed-photo-${entry.id}'),
+                                url: entry.photoUrl,
+                              ),
+                              ClapBurst(animation: _burst),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _clappable(
+                      ExcludeSemantics(
+                        child: Row(
+                          children: [
+                            // The pact's icon leads its own name, the way the
+                            // avatar leads the author's.
+                            HugeIcon(
+                              icon: PactIcon.find(entry.iconKey).data,
+                              color: WeekPactDarkCard.muted,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    entry.pactTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: WeekPactDarkCard.ink,
+                                      fontSize: 15,
+                                      height: 1.2,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    entry.crewName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: WeekPactType.secondary,
+                                      fontFamilyFallback:
+                                          WeekPactType.secondaryFallback,
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      color: WeekPactDarkCard.muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  ClapButton(
+                    key: ValueKey('feed-clap-${entry.id}'),
+                    count: entry.clapCount,
+                    clapped: entry.clapped,
+                    onPressed: widget.onClap == null
+                        ? null
+                        : () => widget.onClap!(!entry.clapped),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
