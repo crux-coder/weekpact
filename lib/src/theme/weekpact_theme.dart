@@ -138,6 +138,11 @@ abstract final class WeekPactColors {
 
   /// A cast shadow on the canvas, where no card colour is available to mix from.
   static const castShadow = Color(0x40000000);
+
+  /// The wash over the page behind a sheet or a dialog. Deep enough that the
+  /// surface in front reads as lifted off the page rather than laid on it, and
+  /// that the page underneath stops competing for the eye.
+  static const barrier = Color(0xB3191B19);
 }
 
 /// The app's two faces. RobotoCondensed is the display face and the theme

@@ -206,50 +206,7 @@ void main() {
     },
   );
 
-  testWidgets(
-    'holding the header fans the crews out and the finger picks one',
-    (tester) async {
-      final crews = MultipleCrews();
-      final pacts = CrewPacts()..crews = await crews.fetchCrews();
-      final home = CrewHome(pacts);
-      SharedPreferences.setMockInitialValues({});
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: HomePage(
-            user: const AuthUser(email: 'owner@example.com'),
-            authBackend: const MissingConfigurationAuthBackend(),
-            crewBackend: crews,
-            pactsBackend: pacts,
-            homeBackend: home,
-          ),
-        ),
-      );
-      await tester.pumpUi();
-      expect(find.text('Switch to Night Owls'), findsNothing);
-
-      final header = find.byTooltip('Switch crew');
-      final gesture = await tester.startGesture(tester.getCenter(header));
-      // Nothing happens until the press is held.
-      await tester.pump(const Duration(milliseconds: 120));
-      expect(find.text('Switch to Night Owls'), findsNothing);
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpUi();
-      expect(find.text('Night Owls').hitTestable(), findsOneWidget);
-
-      await gesture.moveTo(tester.getCenter(find.text('Night Owls')));
-      await tester.pumpUi();
-      await gesture.up();
-      await tester.pumpUi();
-      expect(home.requested.last, 'second');
-      // The hand is put away once a card is taken.
-      expect(find.text('Switch to Night Owls'), findsNothing);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
-
-  testWidgets('releasing away from the fan keeps the crew you were on', (
+  testWidgets('a held finger is not a pull and leaves the hand away', (
     tester,
   ) async {
     final crews = MultipleCrews();
@@ -272,15 +229,15 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.byTooltip('Switch crew')),
     );
-    await tester.pump(const Duration(milliseconds: 320));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpUi();
-    await gesture.moveTo(const Offset(20, 20));
+    expect(find.text('Switch to Night Owls'), findsNothing);
+    // Pushing the card up is not a pull either — the page keeps that drag.
+    await gesture.moveBy(const Offset(0, -60));
     await tester.pumpUi();
+    expect(find.text('Switch to Night Owls'), findsNothing);
     await gesture.up();
     await tester.pumpUi();
-    // The crew on the header is the one the hold started on. Fetches are no
-    // measure of that any more: the fan loads every crew's week for the faces
-    // and streak on its cards.
     expect(
       find.descendant(
         of: find.byTooltip('Switch crew'),
@@ -288,7 +245,81 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Switch to Night Owls'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the hand deals the crew you are on at the top', (tester) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    SharedPreferences.setMockInitialValues({
+      'selected_crew:owner@example.com': 'second',
+    });
+    final preferences = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          crewSelectionStore: CrewSelectionStore(preferences),
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: CrewHome(pacts),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    await tester.tap(find.byTooltip('Switch crew'));
+    await tester.pumpUi();
+    // 'Night Owls' is the crew on the header, so its card is the one that
+    // lands directly under the switcher.
+    final owls = tester.getRect(find.text('Night Owls').last);
+    final birds = tester.getRect(find.text('Early Birds').last);
+    expect(owls.top, lessThan(birds.top));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a pull deals the hand and leaves it out to choose from', (
+    tester,
+  ) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final store = CrewSelectionStore(preferences);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          crewSelectionStore: store,
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: CrewHome(pacts),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    // Anywhere on the card pulls, not only the grip at its foot.
+    final pull = await tester.startGesture(
+      tester.getCenter(find.byTooltip('Switch crew')),
+    );
+    await pull.moveBy(const Offset(0, 40));
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsWidgets);
+    // Letting go of the pull is not an answer: the hand stays dealt, and the
+    // cards that landed under the finger are not picked by lifting it.
+    await pull.up();
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsWidgets);
+    expect(store.read('owner@example.com'), isNot('second'));
+    await tester.tap(find.text('Night Owls').last);
+    await tester.pumpUi();
+    expect(store.read('owner@example.com'), 'second');
+    expect(find.text('Night Owls'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

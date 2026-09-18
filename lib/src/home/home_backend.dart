@@ -411,7 +411,8 @@ class SupabaseHomeBackend implements HomeBackend {
       entries.map((entry) => entry.photoPath).nonNulls.toSet().toList(),
     );
     final avatars = await _feedAvatars.resolve(
-      scope: '${client.auth.currentUser?.id}:feed',
+      account: client.auth.currentUser?.id,
+      key: 'feed',
       paths: entries.map((entry) => entry.avatarPath).nonNulls.toSet().toList(),
       sign: (missing, lifetime) => _signed('avatars', missing, lifetime),
     );
@@ -493,7 +494,8 @@ class SupabaseHomeBackend implements HomeBackend {
         .map((m) => m.avatarPath!)
         .toList();
     final urls = await _avatarUrls.resolve(
-      scope: '${client.auth.currentUser?.id}:$crewId',
+      account: client.auth.currentUser?.id,
+      key: crewId,
       paths: paths,
       sign: (missing, lifetime) async {
         final signed = await client.storage

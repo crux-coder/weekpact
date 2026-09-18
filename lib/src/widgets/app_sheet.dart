@@ -14,7 +14,7 @@ Future<T?> showAppSheet<T>({
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    barrierColor: WeekPactColors.black.withValues(alpha: .55),
+    barrierColor: WeekPactColors.barrier,
     constraints: BoxConstraints.tightFor(
       width: MediaQuery.sizeOf(context).width,
     ),
@@ -98,5 +98,6 @@ Future<T?> showAppDialog<T>({
   required WidgetBuilder builder,
 }) => showDialog<T>(
   context: context,
+  barrierColor: WeekPactColors.barrier,
   builder: (context) => AppSurfaceTheme(builder: builder),
 );

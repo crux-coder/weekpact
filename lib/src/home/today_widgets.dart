@@ -46,7 +46,7 @@ class HomeHeader extends StatelessWidget {
 
   static const titleHeight = 44.0;
   static const gap = 12.0;
-  static const selectorHeight = 60.0;
+  static const selectorHeight = CrewSwitcher.height;
   static const height = titleHeight + gap + selectorHeight;
 
   @override

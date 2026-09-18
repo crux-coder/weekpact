@@ -71,7 +71,6 @@ class CrewFan extends StatelessWidget {
     super.key,
     required this.crews,
     required this.selectedId,
-    required this.highlighted,
     required this.cards,
     required this.animation,
     required this.exit,
@@ -84,7 +83,6 @@ class CrewFan extends StatelessWidget {
 
   final List<PactCrew> crews;
   final String? selectedId;
-  final int? highlighted;
   final List<Rect> cards;
   final Animation<double> animation;
 
@@ -210,7 +208,6 @@ class CrewFan extends StatelessWidget {
     final rect = cards[index];
     final crew = crews[index];
     final current = crew.id == selectedId;
-    final active = index == highlighted;
     final progress = _progress(index);
     return Positioned(
       left: rect.left,
@@ -226,7 +223,6 @@ class CrewFan extends StatelessWidget {
             child: _CrewFanCard(
               crew: crew,
               current: current,
-              active: active,
               preview: previews[crew.id],
               onTap: () => onPicked(index),
             ),
@@ -237,14 +233,31 @@ class CrewFan extends StatelessWidget {
   }
 }
 
-class _CrewFanCard extends StatelessWidget {
+class _CrewFanCard extends StatefulWidget {
   const _CrewFanCard({
     required this.crew,
     required this.current,
-    required this.active,
     required this.preview,
     required this.onTap,
   });
+
+  final PactCrew crew;
+  final bool current;
+
+  /// The crew's week, once it is in. Null while it loads, or when the caller
+  /// has no way to load one.
+  final CrewWeek? preview;
+  final VoidCallback onTap;
+
+  @override
+  State<_CrewFanCard> createState() => _CrewFanCardState();
+}
+
+class _CrewFanCardState extends State<_CrewFanCard> {
+  /// True while a finger is down on this card. Picking is a tap now, so the
+  /// card answers for its own press rather than being told it is the one under
+  /// a finger crossing the hand.
+  bool _pressed = false;
 
   /// The app's own card language rather than a sticker: a flat fill, a hairline
   /// outline mixed from that fill and the short raised edge every surface
@@ -259,23 +272,18 @@ class _CrewFanCard extends StatelessWidget {
 
   /// A finger covers most of a card, so the cue is the shadow it throws and a
   /// brighter face — not a colour swap that would be hidden under the thumb.
-  static const _fillActive = Color(0xFF3A3F3A);
-  static const _fillCurrentActive = Color(0xFFA8E9C2);
+  static const _fillPressed = Color(0xFF3A3F3A);
+  static const _fillCurrentPressed = Color(0xFFA8E9C2);
 
   /// Depth at rest and under a finger. The card shifts by exactly the growth,
   /// so its shadow stays pinned and only the gap beneath it opens up — far less
   /// travel than the 12px between one card and the next.
   static const _depth = WeekPactMetrics.raisedOffset;
-  static const _depthActive = Offset(0, 5);
+  static const _depthPressed = Offset(0, 5);
 
-  final PactCrew crew;
-  final bool current;
-  final bool active;
-
-  /// The crew's week, once it is in. Null while it loads, or when the caller
-  /// has no way to load one.
-  final CrewWeek? preview;
-  final VoidCallback onTap;
+  PactCrew get crew => widget.crew;
+  bool get current => widget.current;
+  CrewWeek? get preview => widget.preview;
 
   int get _streak => preview?.streakWeeks ?? 0;
 
@@ -324,12 +332,12 @@ class _CrewFanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
-    final depth = active ? _depthActive : _depth;
+    final depth = _pressed ? _depthPressed : _depth;
     final ink = current ? _inkCurrent : _ink;
     final edge = current ? _edgeCurrent : _edge;
     final fill = current
-        ? (active ? _fillCurrentActive : _fillCurrent)
-        : (active ? _fillActive : _fill);
+        ? (_pressed ? _fillCurrentPressed : _fillCurrent)
+        : (_pressed ? _fillPressed : _fill);
     final members = preview?.members ?? const <WeekMember>[];
     return Semantics(
       button: true,
@@ -340,7 +348,10 @@ class _CrewFanCard extends StatelessWidget {
           : '${members.length} ${members.length == 1 ? 'member' : 'members'}, '
                 '$_streakWords',
       child: GestureDetector(
-        onTap: onTap,
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedContainer(
           duration: still ? Duration.zero : const Duration(milliseconds: 110),
           curve: Curves.easeOut,
