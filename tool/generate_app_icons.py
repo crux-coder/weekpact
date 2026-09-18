@@ -29,7 +29,7 @@ for destination, size in outputs.items():
 with tempfile.TemporaryDirectory() as temporary:
     padded = Path(temporary) / 'maskable.png'
     resize(padded, 768)
-    subprocess.run(['sips', '-p', '1024', '1024', '--padColor', '191D19', str(padded)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(['sips', '-p', '1024', '1024', '--padColor', '163228', str(padded)], check=True, stdout=subprocess.DEVNULL)
     for size in (192,512):
         destination = ROOT / f'web/icons/Icon-maskable-{size}.png'
         resize(destination, size, padded)

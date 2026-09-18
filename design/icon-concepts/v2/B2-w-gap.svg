@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <path id="back2" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front2" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack2" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back2" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back2" stroke-width="116"/>
+      <use href="#front2" stroke-width="132"/>
+    </g>
+    <use href="#back2" stroke="#191B19" stroke-width="116"/>
+    <use href="#front2" stroke="#8AC9EC" stroke-width="188" mask="url(#onlyBack2)"/>
+    <use href="#front2" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg>

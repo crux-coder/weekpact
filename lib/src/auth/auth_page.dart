@@ -148,11 +148,22 @@ class _AuthPageState extends State<AuthPage> {
                   children: [
                     Row(
                       children: [
-                        Image.asset(
-                          'assets/branding/weekpact-icon.png',
-                          width: 44,
-                          height: 44,
-                          excludeFromSemantics: true,
+                        // The asset is the full-bleed platform icon, so the
+                        // home-screen corner is cut here rather than baked in.
+                        ClipPath(
+                          clipper: const ShapeBorderClipper(
+                            shape: ContinuousRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(22),
+                              ),
+                            ),
+                          ),
+                          child: Image.asset(
+                            'assets/branding/weekpact-icon.png',
+                            width: 44,
+                            height: 44,
+                            excludeFromSemantics: true,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Flexible(

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="75 190 1091 885" role="img" aria-label="W mark">
+  <title>W mark</title>
+  <defs>
+    <path id="w" d="M 170 575 L 368 960 L 555 558 L 745 960 L 1035 285"/>
+  </defs>
+
+  <!-- mint offset layer -->
+  <use href="#w" fill="none" stroke="#4FE3B0" stroke-width="190" stroke-linecap="round" stroke-linejoin="round"
+       transform="translate(36 20)"/>
+
+  <!-- gold mid layer -->
+  <use href="#w" fill="none" stroke="#C6A52E" stroke-width="190" stroke-linecap="round" stroke-linejoin="round"
+       transform="translate(15 9)"/>
+
+  <!-- main yellow -->
+  <use href="#w" fill="none" stroke="#F7DE55" stroke-width="190" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

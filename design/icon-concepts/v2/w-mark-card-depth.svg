@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="75 190 1091 912" role="img" aria-label="W mark">
+  <title>W mark</title>
+  <!-- The v1 silhouette, with AppSurface's depth instead of the mint offset:
+       a solid edge straight down of lerp(fill, black, .24), and the outline
+       of lerp(fill, black, .28). Fill is pactPalette lemon. -->
+  <defs>
+    <path id="w" d="M 170 575 L 368 960 L 555 558 L 745 960 L 1035 285"/>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#w" stroke="#B09E44" stroke-width="212" transform="translate(0 27)"/>
+    <use href="#w" stroke="#A79641" stroke-width="212"/>
+    <use href="#w" stroke="#E8D05A" stroke-width="190"/>
+  </g>
+</svg>

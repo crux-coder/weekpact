@@ -1,0 +1,490 @@
+<!doctype html>
+<meta charset="utf-8"><title>WeekPact icon concepts v2</title>
+<style>
+  body { margin:0; padding:48px; background:#ECEDEA; color:#191B19;
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,sans-serif; }
+  h1 { font-size:28px; margin:0 0 8px; }
+  .lede { margin:0 0 40px; max-width:62ch; color:#4a504a; }
+  .grid { display:grid; gap:28px; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); }
+  .card { background:#F5F6F5; border:2px solid #191B19; border-radius:24px; padding:24px; }
+  .hero { display:flex; justify-content:center; margin-bottom:20px; }
+  .sizes { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
+  .s { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .s span { font-size:11px; color:#6b716b; }
+  .wrap { padding:10px; border-radius:12px; }
+  .light { background:#DDDFD7; } .dark { background:#2B302C; }
+  .ico { display:block; }
+  .squircle { clip-path: inset(0 round 22.5%); }
+  .circle { clip-path: circle(50%); }
+  h2 { font-size:18px; margin:20px 0 6px; }
+  p { margin:0 0 12px; color:#4a504a; font-size:14px; }
+  code { font-size:12px; color:#6b716b; }
+</style>
+<h1>WeekPact icon concepts &mdash; v2</h1>
+<p class="lede">Card recipe throughout: fill, a <code>lerp(fill, black, .28)</code> outline, a solid <code>.24</code> offset edge and continuous squircle corners, with a dark fill lightening by <code>.12</code> instead. Every one is full bleed: the colour runs to the edge and the platform does the
+rounding, so no margin ships inside the icon. Judge them at 40&nbsp;px, and check the
+iOS/Android mask row &mdash; a circular mask eats the corners.</p>
+<div class="grid"><section class="card">
+  <div class="hero"><svg class="ico squircle" viewBox="0 0 1024 1024" width="220" height="220">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div>
+  <div class="sizes">
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="120" height="120">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>120</span></div>
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="60" height="60">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>60</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="40" height="40">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>40</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>iOS</span></div><div class="s"><div class="wrap dark"><svg class="ico circle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- The card face is the icon: lemon fill to the edge, the W in ink on top. -->
+  <rect width="1024" height="1024" fill="#E8D05A"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#353635" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#191B19" stroke="#353635" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>Android</span></div>
+  </div>
+  <h2>Card face</h2>
+  <p>The icon is the card: lemon fill to the edge, the W in ink on it, exactly the pairing the Check in button already uses.</p>
+  <code>F3-w-on-card.svg</code>
+</section><section class="card">
+  <div class="hero"><svg class="ico squircle" viewBox="0 0 1024 1024" width="220" height="220">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div>
+  <div class="sizes">
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="120" height="120">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>120</span></div>
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="60" height="60">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>60</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="40" height="40">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>40</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>iOS</span></div><div class="s"><div class="wrap dark"><svg class="ico circle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- One W, drawn as a card: lemon fill, derived outline, solid offset edge. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(39.5,-17.1) scale(0.9074)">
+    <g>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 118.7 273.6 C 90.5 285.5 80.6 310.1 92.5 338.2 L 331.2 901.8 C 343.1 930.0 359.9 931.1 375.5 904.8 L 511.7 673.6 C 527.2 647.2 545.6 647.6 560.1 674.5 L 695.2 926.4 C 709.6 953.4 724.5 952.1 734.3 923.2 L 951.0 282.0 C 960.8 253.0 949.1 229.3 920.1 219.5 L 863.9 200.5 C 834.9 190.7 811.2 202.4 801.4 231.4 L 701.3 527.4 C 691.5 556.4 676.6 557.6 662.2 530.7 L 566.5 352.4 C 552.1 325.4 533.7 325.1 518.2 351.4 L 398.6 554.3 C 383.1 580.6 366.3 579.5 354.4 551.4 L 238.0 276.6 C 226.1 248.4 201.5 238.5 173.3 250.4 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>Android</span></div>
+  </div>
+  <h2>Card mark</h2>
+  <p>Canvas full bleed, the W itself drawn as a card — lemon fill, derived outline, solid offset edge.</p>
+  <code>F1-w-card.svg</code>
+</section><section class="card">
+  <div class="hero"><svg class="ico squircle" viewBox="0 0 1024 1024" width="220" height="220">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div>
+  <div class="sizes">
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="120" height="120">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>120</span></div>
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="60" height="60">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>60</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="40" height="40">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>40</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>iOS</span></div><div class="s"><div class="wrap dark"><svg class="ico circle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- Two ticks, each its own card, the smaller behind — the pact card stack. -->
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g stroke-linejoin="round">
+    <g transform="translate(38.9,-6.2) scale(0.9042)">
+    <g>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#6AA783" transform="translate(0,22)"/>
+      <path d="M 114.8 291.0 C 90.1 301.8 81.6 323.6 92.4 348.3 L 337.2 907.5 C 348.0 932.2 361.9 932.5 373.6 908.2 L 610.8 420.2 C 622.6 395.9 615.0 373.8 590.7 362.0 L 541.3 338.0 C 517.0 326.2 494.9 333.8 483.1 358.1 L 380.4 569.5 C 368.6 593.8 354.7 593.5 343.9 568.8 L 222.5 291.4 C 211.7 266.7 189.9 258.2 165.2 269.0 Z" fill="#8CDCAC" stroke="#659E7C" stroke-width="9"/>
+    </g>
+    <g>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#B09E44" transform="translate(0,22)"/>
+      <path d="M 449.5 560.1 C 425.9 579.5 423.3 605.9 442.7 629.5 L 670.4 906.8 C 689.8 930.4 708.4 927.4 719.4 898.9 L 953.9 289.1 C 964.9 260.6 954.1 236.4 925.6 225.4 L 866.4 202.6 C 837.9 191.6 813.7 202.4 802.7 230.9 L 668.0 581.1 C 657.1 609.6 638.4 612.6 619.0 589.0 L 567.9 526.7 C 548.5 503.1 522.1 500.5 498.5 519.9 Z" fill="#E8D05A" stroke="#A79641" stroke-width="9"/>
+    </g>
+    </g>
+  </g>
+</svg></div><span>Android</span></div>
+  </div>
+  <h2>Card stack</h2>
+  <p>Two ticks, each its own card, the smaller mint one behind. The overlap reads the way the pact card stack does.</p>
+  <code>F2-w-card-stack.svg</code>
+</section><section class="card">
+  <div class="hero"><svg class="ico squircle" viewBox="0 0 1024 1024" width="220" height="220">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div>
+  <div class="sizes">
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="120" height="120">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div><span>120</span></div>
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="60" height="60">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div><span>60</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="40" height="40">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div><span>40</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div><span>iOS</span></div><div class="s"><div class="wrap dark"><svg class="ico circle" viewBox="0 0 1024 1024" width="96" height="96">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg></div><span>Android</span></div>
+  </div>
+  <h2>Round caps</h2>
+  <p>The previous cut, kept for comparison: pill terminals and no card treatment.</p>
+  <code>E2-w-charcoal-solid.svg</code>
+</section><section class="card">
+  <div class="hero"><svg class="ico squircle" viewBox="0 0 1024 1024" width="220" height="220">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div>
+  <div class="sizes">
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="120" height="120">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div><span>120</span></div>
+    <div class="s"><div class="wrap light"><svg class="ico squircle" viewBox="0 0 1024 1024" width="60" height="60">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div><span>60</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="40" height="40">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div><span>40</span></div>
+    <div class="s"><div class="wrap dark"><svg class="ico squircle" viewBox="0 0 1024 1024" width="96" height="96">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div><span>iOS</span></div><div class="s"><div class="wrap dark"><svg class="ico circle" viewBox="0 0 1024 1024" width="96" height="96">
+  <defs>
+    <path id="back" d="M 150 372 L 352 716 L 580 388"/>
+    <path id="front" d="M 470 560 L 654 724 L 868 276"/>
+    <mask id="onlyBack" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <use href="#back" fill="none" stroke="#fff" stroke-width="116"
+           stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#8AC9EC"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#484848" transform="translate(0,26)">
+      <use href="#back" stroke-width="116"/>
+      <use href="#front" stroke-width="132"/>
+    </g>
+    <use href="#back" stroke="#191B19" stroke-width="116"/>
+    <use href="#front" stroke="#F5F6F5" stroke-width="188" mask="url(#onlyBack)"/>
+    <use href="#front" stroke="#191B19" stroke-width="132"/>
+  </g>
+</svg></div><span>Android</span></div>
+  </div>
+  <h2>Sky — cream band</h2>
+  <p>The first colourway.</p>
+  <code>B-w-monogram.svg</code>
+</section></div>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- One solid W whose last stroke keeps rising, so the tick is in the letterform
+       rather than laid over it. Mint offset edge, no crossing to resolve. -->
+  <defs>
+    <path id="solidW" d="M 140 318 L 366 726 L 556 404 L 700 726 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="164">
+    <use href="#solidW" stroke="#8CDCAC" transform="translate(0,30)"/>
+    <use href="#solidW" stroke="#E8D05A"/>
+  </g>
+</svg>

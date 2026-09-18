@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- The app canvas, full bleed. Lemon mark, mint offset edge: the same solid bottom
+       edge every surface carries, in the brand's primary-action colour. Two ticks, the
+       smaller one behind; the crossing is a seam of canvas, not a break. -->
+  <defs>
+    <path id="backE" d="M 140 318 L 360 726 L 566 392"/>
+    <path id="frontE" d="M 480 566 L 668 730 L 892 246"/>
+  </defs>
+  <rect width="1024" height="1024" fill="#2B302C"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#backE" stroke="#8CDCAC" stroke-width="158" transform="translate(0,30)"/>
+    <use href="#backE" stroke="#E8D05A" stroke-width="158"/>
+    <use href="#frontE" stroke="#2B302C" stroke-width="206"/>
+    <use href="#frontE" stroke="#8CDCAC" stroke-width="178" transform="translate(0,30)"/>
+    <use href="#frontE" stroke="#E8D05A" stroke-width="178"/>
+  </g>
+</svg>
