@@ -434,13 +434,16 @@ class CrewHeaderSurface extends StatelessWidget {
   /// them; on its own it keeps the panel curve.
   final double curve;
 
+  /// The surface's own fill. Recessed against the canvas by the same amount in
+  /// either theme, so the header keeps its relationship when the canvas colour
+  /// changes. Exposed so what sits inside the surface can borrow it.
+  static Color faceColor(BuildContext context) => context.isDark
+      ? Color.lerp(context.canvas, Colors.black, .3)!
+      : Color.lerp(context.canvas, context.ink, .07)!;
+
   @override
   Widget build(BuildContext context) {
-    // Recessed against the canvas by the same amount in either theme, so the
-    // header keeps its relationship when the canvas colour changes.
-    final face = context.isDark
-        ? Color.lerp(context.canvas, Colors.black, .3)!
-        : Color.lerp(context.canvas, context.ink, .07)!;
+    final face = faceColor(context);
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: ContinuousRectangleBorder(

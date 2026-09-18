@@ -55,6 +55,11 @@ void main() {
       ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
       ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
     await regular.load();
+    final text = FontLoader('Roboto')
+      ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/Roboto-Medium.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
+    await text.load();
     final material = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await material.load();
@@ -96,6 +101,7 @@ void main() {
 
     await capture('home');
     await tester.tap(find.byKey(const ValueKey('pending-tile')));
+    await tester.pumpUi();
     await tester.pumpUi();
     await capture('crew');
     expect(tester.takeException(), isNull);

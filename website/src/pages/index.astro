@@ -31,7 +31,7 @@ const steps = [
       <div class="phone-stage">
         <div class="phone" aria-label="WeekPact running on an iPhone, with a fictional example crew">
           <div class="phone-screen">
-            <img id="app-screen" src="/screenshots/home.png" width="1170" height="2532" alt="The current WeekPact home screen: Early Birds crew, recent check-in, crew streak, and today's pacts." fetchpriority="high" />
+            <img id="app-screen" src="/screenshots/home.png" width="1170" height="2532" alt="The current WeekPact home screen: the Early Birds crew, who has checked in this week, a three-week streak, and the pact cards for the week." fetchpriority="high" />
             <span class="phone-time" aria-hidden="true">9:41</span><span class="island" aria-hidden="true"></span><span class="phone-status" aria-hidden="true">▮▮▮ ▰</span>
           </div>
         </div>
@@ -94,7 +94,7 @@ const steps = [
       const selected = button.dataset.screen ?? 'home';
       if (screen) {
         screen.src = `/screenshots/${selected}.png`;
-        screen.alt = selected === 'crew' ? 'The expanded crew list with full names and motivating Nudge buttons.' : "The current WeekPact home screen: Early Birds crew, recent check-in, crew streak, and today's pacts.";
+        screen.alt = selected === 'crew' ? 'The expanded crew list with full names and motivating Nudge buttons.' : "The current WeekPact home screen: the Early Birds crew, who has checked in this week, a three-week streak, and the pact cards for the week.";
       }
     });
   });

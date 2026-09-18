@@ -41,7 +41,11 @@
   --streak:#ff9138;
   --done:#3f7a57;
 
-  /* Corners. Four, as in the app, and a screen reaches for one of them. */
+  /* Corners. Four, as in the app, and a screen reaches for one of them.
+     These are the corners as plain rounded rects — `controlRadius` and
+     `cardCorner`. The @supports block below swaps the three squircle corners
+     for the larger numbers the same corner needs once it is drawn as one
+     (`cardCurve`, `panelCurve`), which is what `curveFor` does in the app. */
   --r-control:8px;
   --r-panel:14px;
   --r-card:20px;
@@ -102,15 +106,22 @@ svg{flex-shrink:0;vertical-align:middle}
 .surface .muted,.surface p{color:var(--muted)}
 .surface--dark .muted,.surface--dark p{color:var(--dark-muted)}
 
-/* Continuous corners where the browser can draw them, plain rounded rects
-   everywhere else. */
+/* ---- Continuous corners ----------------------------------------------
+   The squircle is the brand's corner, so every box takes it rather than a
+   chosen few. Redefining the corner tokens themselves means each box keeps
+   asking for the corner it already asked for — including the ones restated
+   inside media queries — and lands on the app's own curve. Browsers that
+   cannot draw the shape keep the plain radii, so it degrades, not breaks. */
 @supports (corner-shape:squircle){
-  .surface,.button,.icon-tile,.nav-cta{corner-shape:squircle}
-  .surface{border-radius:calc(var(--r-card) * 1.2)}
-  .surface--panel{border-radius:calc(var(--r-panel) * 1.2)}
-  .button,.nav-cta{border-radius:calc(var(--r-button) * 1.2)}
-  .icon-tile{border-radius:calc(var(--r-panel) * 1.2)}
+  :root{
+    --r-card:40px;   /* cardCurve */
+    --r-panel:24px;  /* panelCurve */
+    --r-button:24px; /* SquircleButtonBorder, which caps its curve at 24 */
+  }
+  .surface,.button,.icon-tile,.nav-cta,.wordmark img{corner-shape:squircle}
 }
+/* `--r-control` is deliberately absent above: a control, a cell or a flat
+   panel is a rounded rect of `controlRadius` in the app too, and stays one. */
 
 /* A flat glyph on its own small raised panel — the app's `RaisedIcon`. */
 .icon-tile{
@@ -156,7 +167,7 @@ svg{flex-shrink:0;vertical-align:middle}
 .site-header{display:flex;align-items:center;justify-content:space-between;gap:30px;padding-block:26px}
 .wordmark{display:inline-flex;align-items:center;gap:10px;font-size:30px;font-weight:700;letter-spacing:-.035em;line-height:1;text-decoration:none;white-space:nowrap}
 .wordmark img{display:block;flex:none;width:36px;height:36px;border-radius:9px}
-@supports (corner-shape:squircle){.wordmark img{corner-shape:squircle;border-radius:12px}}
+@supports (corner-shape:squircle){.wordmark img{border-radius:14px}}
 .site-header nav{display:flex;align-items:center;gap:26px;font-family:WeekPactText,Arial,sans-serif;font-size:15px}
 .site-header nav a{text-decoration:none}
 .site-header nav a:not(.nav-cta):hover{text-decoration:underline}
@@ -174,6 +185,7 @@ svg{flex-shrink:0;vertical-align:middle}
 .footer-content{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;padding-block:26px}
 .site-footer .wordmark{font-size:21px}
 .site-footer .wordmark img{width:26px;height:26px;border-radius:7px}
+@supports (corner-shape:squircle){.site-footer .wordmark img{border-radius:10px}}
 .site-footer nav{display:flex;gap:20px}
 .site-footer nav a,.site-footer p{font-family:WeekPactText,Arial,sans-serif;font-size:13px;color:var(--canvas-muted)}
 

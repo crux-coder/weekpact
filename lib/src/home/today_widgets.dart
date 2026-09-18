@@ -1413,6 +1413,9 @@ class CrewCheckInTile extends StatelessWidget {
   /// The knockout between two overlapping faces.
   static const _faceRing = 2.0;
 
+  /// The bore of the tap hint punched through each tile.
+  static const _holeSize = 6.0;
+
   /// Beyond this the stack stops being faces and becomes a number.
   static const _maxFaces = 3;
   static const _faceSize = 34.0;
@@ -1486,16 +1489,8 @@ class CrewCheckInTile extends StatelessWidget {
                     left: done ? null : 8,
                     bottom: 7,
                     child: Opacity(
-                      opacity: (1 - expansion).clamp(0.0, 1.0) * .55,
-                      child: const SizedBox.square(
-                        dimension: 6,
-                        child: DecoratedBox(
-                          decoration: ShapeDecoration(
-                            color: _ink,
-                            shape: CircleBorder(),
-                          ),
-                        ),
-                      ),
+                      opacity: (1 - expansion).clamp(0.0, 1.0),
+                      child: _tapHole(context),
                     ),
                   ),
                 Column(
@@ -1559,6 +1554,35 @@ class CrewCheckInTile extends StatelessWidget {
       ),
     ),
   );
+
+  /// The tap hint, drawn as a hole bored through the tile: the crew week
+  /// surface the tiles sit in shows through the bore, the tile's own material
+  /// darkens its top wall, and a lit rim sits under its bottom lip — the
+  /// inverse of the raised edge every other surface carries, so the light
+  /// still comes from above.
+  Widget _tapHole(BuildContext context) {
+    final bore = CrewHeaderSurface.faceColor(context);
+    return SizedBox.square(
+      dimension: _holeSize,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: const CircleBorder(),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color.lerp(bore, Colors.black, .45)!, bore],
+            stops: const [0, .7],
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color.lerp(_tileFill(done), Colors.white, .6)!,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   /// Collapsed, the tile leads with the count and lets faces fill the rest.
   /// Nobody on this side means the count would be a zero nobody asked for, so

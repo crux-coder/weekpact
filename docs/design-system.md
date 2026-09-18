@@ -139,7 +139,16 @@ the edge to 3px, `.surface--dark` takes `WeekPactDarkCard`'s closed set, and
 `.button`, `.nav-cta` and `.icon-tile` use the same derivation. There are no
 blurred shadows and no background gradients. Corners are continuous squircles
 through `corner-shape: squircle` where the browser draws them and plain rounded
-rects everywhere else, so the shape degrades rather than breaking.
+rects everywhere else, so the shape degrades rather than breaking. The squircle
+is the brand's corner, so every box takes it — cards, buttons, tiles, the
+wordmark's icon, the screen switcher and the mock handset alike, not a chosen
+few. The `@supports` block redefines the corner tokens rather than restating
+radii per selector, so a box keeps asking for the corner it already asked for
+(including the ones restated inside media queries) and lands on the app's own
+curve: `--r-card` becomes `cardCurve` (40), `--r-panel` and `--r-button` become
+`panelCurve` (24), matching `SquircleButtonBorder`'s cap. `--r-control` is
+deliberately left out — a control, a cell or a flat panel is a rounded rect of
+`controlRadius` on the web the same as it is in the app.
 
 `src/components/HugeIcon.astro` carries the same Hugeicons Stroke Rounded 1.1.7
 glyphs the app draws with, inlined as path data at build time so a page ships
