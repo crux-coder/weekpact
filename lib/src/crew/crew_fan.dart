@@ -56,6 +56,12 @@ abstract final class CrewFanLayout {
     ];
   }
 
+  /// How far the hand travels on its way in: from above the screen down to
+  /// the foot of the last card. A pull follows this distance, so the finger
+  /// and the cards it is dragging move as one.
+  static double drop(List<Rect> cards) =>
+      cards.isEmpty ? 0 : cards.last.bottom + 24;
+
   /// The card under [point], or null when the finger is off the hand.
   static int? hit(List<Rect> cards, Offset point) {
     for (var i = cards.length - 1; i >= 0; i--) {
@@ -79,6 +85,7 @@ class CrewFan extends StatelessWidget {
     this.switcher,
     this.switcherRect,
     this.previews = const {},
+    this.scrubbing = false,
   });
 
   final List<PactCrew> crews;
@@ -100,6 +107,11 @@ class CrewFan extends StatelessWidget {
   /// Each crew's week, by crew id, once it has loaded: the faces and the streak
   /// a card shows. A crew that has none yet keeps its name alone.
   final Map<String, CrewWeek> previews;
+
+  /// True while a finger is dragging the hand down. The cards then track that
+  /// finger one to one instead of riding the spring, so the deal moves at the
+  /// speed of the hand pulling it.
+  final bool scrubbing;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +152,7 @@ class CrewFan extends StatelessWidget {
   /// sitting above the first. Held this way it stays hidden behind its
   /// neighbour (cards paint in reverse) and slides out from under it.
   List<double> _offsets() {
-    final distance = cards.last.bottom + 24;
+    final distance = CrewFanLayout.drop(cards);
     if (exit.value > 0) {
       // Leaving, the stack travels as one: same distance for every card, so the
       // spacing that held on the way in cannot close up on the way out.
@@ -198,10 +210,24 @@ class CrewFan extends StatelessWidget {
   );
 
   /// 0 above the screen, 1 landed, a little past 1 at the top of the bounce.
+  ///
+  /// A dragged hand is linear: the card has to keep pace with the finger, and
+  /// a spring would run ahead of it and bounce under it.
   double _progress(int index) {
     final count = crews.length;
     final time = animation.value * _window(count) - index * _beat(count);
-    return time <= 0 ? 0 : _spring.x(time);
+    if (time <= 0) return 0;
+    return scrubbing ? math.min(1, time / _settle) : _spring.x(time);
+  }
+
+  /// The animation value that leaves the hand [pixels] down from where it
+  /// started — the point the finger has dragged the top card to.
+  static double pulled(double pixels, List<Rect> cards, int count) {
+    final distance = CrewFanLayout.drop(cards);
+    if (distance <= 0) return 1;
+    final window = _window(count);
+    if (window <= 0) return 1;
+    return ((pixels / distance) * (_settle / window)).clamp(0.0, 1.0);
   }
 
   Widget _card(BuildContext context, int index, double dy) {

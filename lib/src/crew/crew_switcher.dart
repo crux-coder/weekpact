@@ -42,6 +42,13 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   /// pulled rather than dragged, long enough that a tap's wobble misses it.
   static const _pullThreshold = 4.0;
 
+  /// How much of the hand has to be out for a lifted finger to finish the
+  /// deal, or how fast it has to be leaving. Short of both, the hand goes back.
+  /// A quarter of the way is enough: the hand is long, and asking for half of
+  /// it would make opening a drag rather than a pull.
+  static const _pullCommit = .25;
+  static const _flickVelocity = 320.0;
+
   /// The grip's row: the pill, with room around it for a finger.
   static const _gripBand = 16.0;
   final _portal = OverlayPortalController();
@@ -100,13 +107,49 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   /// drag never reaches the threshold, so it leaves scrolling alone.
   double _pull = 0;
 
+  /// True while the cards are on the finger: the deal is being scrubbed by
+  /// hand, not played. A tap never scrubs — it plays the drop straight
+  /// through.
+  bool _scrubbing = false;
+
   void _pullUpdate(DragUpdateDetails details) {
-    if (_open) return;
     _pull += details.delta.dy;
-    if (_pull > _pullThreshold) _openFan(details.globalPosition);
+    if (!_open) {
+      if (_pull <= _pullThreshold) return;
+      // The hand comes out on this same update, so the first frame already
+      // shows the cards as far down as the finger has come.
+      _openFan(details.globalPosition, scrub: true);
+    }
+    if (!_scrubbing) return;
+    // The cards sit where the finger has dragged them to, pixel for pixel.
+    _deal.value = CrewFan.pulled(
+      _pull - _pullThreshold,
+      _cards,
+      widget.crews.length,
+    );
   }
 
-  void _openFan(Offset anchor) {
+  /// A lifted finger either finishes the deal from where it left the cards, or
+  /// hands them back. Either way the animation carries on from that point
+  /// rather than restarting.
+  void _pullEnd(double velocity) {
+    _pull = 0;
+    if (!_scrubbing) return;
+    if (_deal.value >= _pullCommit || velocity >= _flickVelocity) {
+      // The settle stays on the finger's own mapping — switching back to the
+      // spring here would jump the cards down at the handover. The rest of the
+      // drop simply runs at the deal's pace for the distance that is left.
+      _deal.animateTo(
+        1,
+        duration: CrewFan.dealDuration(widget.crews.length) * (1 - _deal.value),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    _close();
+  }
+
+  void _openFan(Offset anchor, {bool scrub = false}) {
     if (!_enabled) return;
     final screen = MediaQuery.sizeOf(context);
     final box = context.findRenderObject() as RenderBox?;
@@ -127,8 +170,12 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     _exit.value = 0;
     _closing = false;
     _deal.duration = CrewFan.dealDuration(widget.crews.length);
-    if (MediaQuery.disableAnimationsOf(context)) {
+    final still = MediaQuery.disableAnimationsOf(context);
+    _scrubbing = scrub && !still;
+    if (still) {
       _deal.value = 1;
+    } else if (_scrubbing) {
+      _deal.value = 0;
     } else {
       _deal.forward(from: 0);
     }
@@ -164,6 +211,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
       _hide();
       return;
     }
+    _scrubbing = false;
     setState(() => _closing = true);
     _exit.forward(from: 0).whenComplete(() {
       if (mounted && _closing) _hide();
@@ -177,6 +225,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     setState(() {
       _open = false;
       _closing = false;
+      _scrubbing = false;
     });
   }
 
@@ -320,6 +369,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
         switcher: _surface(),
         switcherRect: _headerRect,
         previews: _previews,
+        scrubbing: _scrubbing,
       ),
       // The pull works anywhere on the card, not only on the grip: the whole
       // face is the drawer front, and the grip only says which way it opens.
@@ -336,8 +386,9 @@ class _CrewSwitcherState extends State<CrewSwitcher>
                       recognizer.dragStartBehavior = DragStartBehavior.down;
                       recognizer.onStart = (_) => _pull = 0;
                       recognizer.onUpdate = _pullUpdate;
-                      recognizer.onEnd = (_) => _pull = 0;
-                      recognizer.onCancel = () => _pull = 0;
+                      recognizer.onEnd = (details) =>
+                          _pullEnd(details.primaryVelocity ?? 0);
+                      recognizer.onCancel = () => _pullEnd(0);
                     }),
               }
             : const {},

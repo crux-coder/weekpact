@@ -281,6 +281,38 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('a pull that stops short hands the cards back', (tester) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: CrewHome(pacts),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    final pull = await tester.startGesture(
+      tester.getCenter(find.byTooltip('Switch crew')),
+    );
+    await pull.moveBy(const Offset(0, 30));
+    await tester.pump();
+    expect(find.text('Night Owls'), findsWidgets);
+    // Too little of the hand is out to leave it dealt, and the finger is not
+    // flicking, so letting go puts the cards away again.
+    await pull.up();
+    await tester.pumpUi();
+    expect(find.text('Switch to Night Owls'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('a pull deals the hand and leaves it out to choose from', (
     tester,
   ) async {
@@ -307,7 +339,20 @@ void main() {
     final pull = await tester.startGesture(
       tester.getCenter(find.byTooltip('Switch crew')),
     );
+    // The cards follow the finger: a little way down the hand is only part
+    // dealt, and going back up takes it with them.
     await pull.moveBy(const Offset(0, 40));
+    await tester.pump();
+    // The top card is the crew on the header, and it keeps pace with the
+    // finger: another hundred pixels of pull moves it a hundred pixels, not a
+    // multiple of them. (The cards behind it deal on their own stagger.)
+    final dealt = tester.getRect(find.text('Early Birds').last);
+    await pull.moveBy(const Offset(0, 100));
+    await tester.pump();
+    expect(
+      tester.getRect(find.text('Early Birds').last).top - dealt.top,
+      closeTo(100, 0.5),
+    );
     await tester.pumpUi();
     expect(find.text('Night Owls'), findsWidgets);
     // Letting go of the pull is not an answer: the hand stays dealt, and the
