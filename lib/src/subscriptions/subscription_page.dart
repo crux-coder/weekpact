@@ -99,7 +99,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       context: context,
       builder: (context) => AppDialog(
         icon: HugeIconsStrokeRounded.cancel01,
-        iconColor: WeekPactColors.softCoral,
+        iconColor: WeekPactColors.sand,
         title: 'Cancel in the App Store',
         message:
             'Apple handles cancellation, so this opens your subscription '
@@ -158,7 +158,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 icon: HugeIconsStrokeRounded.cancel01,
                 title: 'Cancel subscription',
                 body: _cancelBody(access),
-                tint: WeekPactColors.softCoral,
+                tint: WeekPactColors.sand,
                 // The status card already says it is ending; cancelling twice
                 // is not something to offer.
                 onTap: access.cancelled ? null : () => _cancel(access),
@@ -287,7 +287,7 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color) = switch (access) {
       ProAccess(active: false) => ('EXPIRED', WeekPactColors.neutralInset),
-      ProAccess(cancelled: true) => ('ENDING', WeekPactColors.softCoral),
+      ProAccess(cancelled: true) => ('ENDING', WeekPactColors.sand),
       _ => ('ACTIVE', WeekPactColors.mintGreen),
     };
     return AppSurface(

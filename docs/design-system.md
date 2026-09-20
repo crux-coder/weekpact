@@ -32,7 +32,7 @@ and over, 600 below it; a small-caps eyebrow or a caption is 500; body is 400.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
 - `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement. `PageHeading`'s
   full stop is the destination's own tint, so a tab is recognisable before its
-  title is read: Feed mint, Pacts butter, Crews sky, Account coral. Every
+  title is read: Feed sea glass, Pacts foam, Crews tide, Account sand. Every
   destination passes its own `dotColor`; the default covers one-off pages
   outside the nav, such as an invitation.
 - `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces on any tint.
@@ -40,8 +40,8 @@ and over, 600 below it; a small-caps eyebrow or a caption is 500; body is 400.
 ## Theme behavior
 
 The app has one theme. It is set at the root (`theme`/`themeMode` in `app.dart`)
-and nothing changes it at runtime: a charcoal canvas (`darkCanvas`, #2B302C)
-with light canvas text and navigation, carrying bright cards. Card content is
+and nothing changes it at runtime: a petrol charcoal canvas (`darkCanvas`,
+#222A2B) with light canvas text and navigation, carrying pale marine cards. Card content is
 always dark, on every tint.
 
 `WeekPactTheme.light` still exists, but it is not a second theme the app can be
@@ -54,12 +54,17 @@ preference; `widget_test.dart` asserts both. Changing the app's one theme means
 editing the two root lines in `app.dart`, and the Android splash, iOS launch
 screen and web chrome have to be changed to match by hand.
 
-`pactPalette` carries bright colour — lemon, mint, sky, coral,
-lavender, peach, lime, aqua, orchid, butter — held light enough that near-black
-card ink clears 8.5:1 against every entry; keep new tints in that band. Its
-companions follow the same family: `stone` is butter, `coolGrey` sky, `mintGreen`
-mint, `softCoral` coral. `pendingCheckIns` stays muted grey, since reading as
-*not done* is its job.
+`pactPalette` is one harbour — sea glass, tide, petrol mist, kelp, harbour
+blue, foam, buoy sand, slate teal, squall, salt — desaturated and held light
+enough that near-black card ink clears 9:1 against every entry; keep new tints
+in that band and in that family. Its companions come from the same water:
+`stone` is foam, `coolGrey` tide, `mintGreen` sea glass. `sand` and `brass` are
+the palette's only warm notes, and they are deliberate — they carry the Account
+dot, a subscription that is ending and a clap the viewer gave, so those read as
+themselves rather than as one more card colour. `streak` is the one hot colour
+in the app, and answers to nothing else. `pendingCheckIns` stays plain grey with
+none of the palette's blue-green in it: against a marine card set, waiting has
+to read as absence of colour rather than as a paler sea.
 There are exactly two card languages, and `WeekPactDarkCard` in
 `weekpact_theme.dart` is the second one. Most of the app is a pale card with
 dark ink. Three content-heavy surfaces invert that — the Feed, the paywall and
@@ -151,7 +156,7 @@ brand mark as text.
 
 `website/` is the third surface, and it carries the same system rather than a
 look of its own. `src/styles/global.css` holds it: the app's colours as custom
-properties (`--canvas` #2B302C, `--cream`, the ten `pactPalette` tints, the
+properties (`--canvas`, `--cream`, the ten `pactPalette` tints, the
 charcoal card as `--dark-*`), the two faces (`WeekPact` is RobotoCondensed and
 the default, `WeekPactText` is Roboto for body copy, captions and numerals),
 and four corners matching `WeekPactMetrics`.
@@ -283,7 +288,7 @@ recessed frame holding the week over the day. A raised squircle card headlines
 it with the week — its icon, `CREW PROGRESS · THIS WEEK`, the percentage on the
 same line and the bar under them — reading `CrewWeek.percentCrew`, which caps
 each pact at its own weekly target, in the crew week page's own two states:
-butter while the week is being kept, mint once it is. The label names its span
+foam while the week is being kept, sea glass once it is. The label names its span
 because the rows underneath cover a different one; a block holding both a week
 and a day says which is which on each.
 

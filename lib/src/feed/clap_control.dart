@@ -12,7 +12,7 @@ const clapIcon = HugeIconsStrokeRounded.handsClapping;
 
 /// The colour a clap the viewer gave is drawn in. Unclapped claps stay muted,
 /// so a post the viewer applauded reads at a glance.
-const clapInk = WeekPactColors.softYellow;
+const clapInk = WeekPactColors.brass;
 
 /// The clap tally on a feed post, and the way to take a clap back.
 ///

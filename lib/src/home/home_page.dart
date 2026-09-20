@@ -80,7 +80,7 @@ class _HomePageState extends State<HomePage> {
     AppNavigationItem(
       label: 'Account',
       icon: HugeIconsStrokeRounded.userAccount,
-      color: WeekPactColors.softCoral,
+      color: WeekPactColors.sand,
     ),
   ];
 

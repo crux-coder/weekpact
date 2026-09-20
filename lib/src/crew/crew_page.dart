@@ -237,7 +237,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           icon: leaving
               ? HugeIconsStrokeRounded.logout01
               : HugeIconsStrokeRounded.userMinus01,
-          iconColor: WeekPactColors.softCoral,
+          iconColor: WeekPactColors.sand,
           title: leaving ? 'Leave crew?' : 'Remove member?',
           message: leaving
               ? 'You’ll lose access to ${crew.name}. You’ll need a new '

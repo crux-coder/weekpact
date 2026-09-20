@@ -38,7 +38,7 @@ void main() {
                     ),
                     AppButton(
                       label: 'ADD PACT',
-                      color: WeekPactColors.softCoral,
+                      color: WeekPactColors.sand,
                       onPressed: () {},
                     ),
                   ],

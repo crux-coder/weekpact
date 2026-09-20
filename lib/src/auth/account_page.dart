@@ -73,7 +73,7 @@ class _AccountPageState extends State<AccountPage> {
         .map((part) => part.trim().characters.first.toUpperCase())
         .join();
     return PageFrame(
-      header: const PageHeading('Account', dotColor: WeekPactColors.softCoral),
+      header: const PageHeading('Account', dotColor: WeekPactColors.sand),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -56,8 +56,9 @@ abstract final class WeekPactMetrics {
 }
 
 abstract final class WeekPactColors {
-  // Cool neutral, so waiting reads as its own state rather than washed-out mint.
-  static const pendingCheckIns = Color(0xFFC4CDD4);
+  // Plain grey, with none of the palette's blue-green in it: the whole card set
+  // is marine now, so waiting has to read as absence of colour, not a paler sea.
+  static const pendingCheckIns = Color(0xFFC6CACB);
   static const success = Color(0xFF4C8C5D);
   static const warning = Color(0xFFC48A42);
   static const outlineInk = Color(0xFF161C23);
@@ -66,41 +67,47 @@ abstract final class WeekPactColors {
   static const lime = Color(0xFFBBDC99);
   static const salmon = Color(0xFFFF836F);
   static const black = Color(0xFF191B19);
-  static const cream = Color(0xFFF5F6F5);
-  static const lightCanvas = Color(0xFFECEDEA);
-  static const darkCanvas = Color(0xFF2B302C);
-  static const darkSurface = Color(0xFF282D28);
-  static const darkInk = Color(0xFFF3F5F2);
-  static const darkBorder = Color(0xFF747E70);
+  static const cream = Color(0xFFF0F5F4);
+  static const lightCanvas = Color(0xFFE4EBEA);
+  static const darkCanvas = Color(0xFF222A2B);
+  static const darkSurface = Color(0xFF202829);
+  static const darkInk = Color(0xFFEDF3F2);
+  static const darkBorder = Color(0xFF67797C);
   static const darkShadow = darkBorder;
-  static const darkMuted = Color(0xFFB8BEB5);
+  static const darkMuted = Color(0xFFAAB8B9);
   static const darkYellow = Color(0xFF49412B);
   static const darkMint = Color(0xFF304531);
   static const darkCoral = Color(0xFF523732);
   static const darkPink = Color(0xFF483743);
   static const darkAccent = coolGrey;
   static const darkError = Color(0xFFFFA8AE);
-  static const softYellow = Color(0xFFF4D88F);
-  static const mintGreen = Color(0xFF8CDCAC);
+  static const mintGreen = Color(0xFFA8D2CC);
   static const bubblegumPink = Color(0xFFEAC7D4);
-  static const pinkInk = Color(0xFF505550);
-  static const softCoral = Color(0xFFF9BBA8);
-  static const stone = Color(0xFFEFD98D);
-  static const coolGrey = Color(0xFFA7D6F0);
-  static const neutralInset = Color(0xFFDDDFD7);
-  static const activitySurface = Color(0xFF292A29);
+  static const pinkInk = Color(0xFF475556);
+  /// The palette's two warm notes, and the only ones: the sand on the quay and
+  /// the brass on the boats. They carry the roles a marine tint cannot — the
+  /// Account dot, a subscription that is ending, a clap the viewer gave — so
+  /// those read as themselves rather than as one more card colour.
+  static const sand = Color(0xFFE0D9C0);
+  static const brass = Color(0xFFE6D7A6);
+
+  static const stone = Color(0xFFCDE0DC);
+  static const coolGrey = Color(0xFF9FCBD9);
+  static const neutralInset = Color(0xFFD7E0DF);
+  static const activitySurface = Color(0xFF1F2627);
   // Card tints carry real colour, held light enough for near-black card ink.
+  // One harbour: sea glass through to the sand on the quay.
   static const pactPalette = <Color>[
-    Color(0xFFE8D05A), // Lemon.
-    Color(0xFF8CDCAC), // Mint.
-    Color(0xFF8AC9EC), // Sky.
-    Color(0xFFF9A08A), // Coral.
-    Color(0xFFBCA9EE), // Lavender.
-    Color(0xFFF7C382), // Peach.
-    Color(0xFFC4E07A), // Lime.
-    Color(0xFF89D7D2), // Aqua.
-    Color(0xFFE3A8D6), // Orchid.
-    Color(0xFFEFD98D), // Butter.
+    Color(0xFFA8D2CC), // Sea glass.
+    Color(0xFF9FCBD9), // Tide.
+    Color(0xFFB4C9D4), // Petrol mist.
+    Color(0xFFB9CDB8), // Kelp.
+    Color(0xFFA6C0D6), // Harbour blue.
+    Color(0xFFCDE0DC), // Foam.
+    Color(0xFFE0D9C0), // Buoy sand.
+    Color(0xFFABC4C7), // Slate teal.
+    Color(0xFFBFCEDD), // Squall.
+    Color(0xFFDAE4E4), // Salt.
   ];
 
   /// A pact's card colour, by its position in the crew's pact list. Home, the
@@ -108,33 +115,36 @@ abstract final class WeekPactColors {
   /// wherever it appears.
   static Color pactTint(int index) => pactPalette[index % pactPalette.length];
 
-  static const mutedLight = Color(0xFF51564F);
+  static const mutedLight = Color(0xFF46535A);
   static const error = Color(0xFFC94F59);
 
   // Edges and outlines for the two crew check-in tile states. One value per
   // state, shared by the tile's outline, its raised edge, the faces and the
   // overflow chip, so a tile reads as a single object.
-  static const mintEdge = Color(0xFF5F9774);
-  static const pendingEdge = Color(0xFFADB5BC);
+  static const mintEdge = Color(0xFF6D9188);
+  static const pendingEdge = Color(0xFFA3A9AA);
 
   /// The one green for a completed check-in, on cards and on the nudge button.
-  static const doneMark = Color(0xFF3F7A57);
+  /// Deeper and bluer than the sea glass tint, so done reads as a mark rather
+  /// than as another card colour.
+  static const doneMark = Color(0xFF3F7A6B);
 
   /// Graphite: the small dark action sitting on a light surface — the nudge
   /// button's face, with its own lifted edge underneath.
-  static const graphite = Color(0xFF3B413F);
-  static const graphiteEdge = Color(0xFF6B726F);
+  static const graphite = Color(0xFF363F40);
+  static const graphiteEdge = Color(0xFF66716F);
 
-  /// The streak flame, once the streak has started.
-  static const streak = Color(0xFFFF9138);
+  /// The streak flame, once the streak has started. The one warm signal that
+  /// answers to nothing else in the palette.
+  static const streak = Color(0xFFE08A45);
 
   /// The dark check-in button's outline and raised edge: black lifted just
   /// enough to separate the face from its own shadow.
   static const inkEdge = Color(0xFF484848);
 
-  /// The selected navigation tile on a dark canvas: muted warm off-white
-  /// rather than bright white.
-  static const navSelected = Color(0xFFD8D3C8);
+  /// The selected navigation tile on a dark canvas: muted off-white, cooled
+  /// toward the canvas rather than bright white.
+  static const navSelected = Color(0xFFCCD8D6);
 
   /// A cast shadow on the canvas, where no card colour is available to mix from.
   static const castShadow = Color(0x40000000);
@@ -200,7 +210,7 @@ abstract final class WeekPactTheme {
   }) {
     final dark = brightness == Brightness.dark;
     final surface = WeekPactColors.cream;
-    final outline = const Color(0xFFD9DDD5);
+    final outline = const Color(0xFFD5DDDC);
     final inputBorder = OutlineInputBorder(
       borderSide: BorderSide(color: outline, width: WeekPactMetrics.border),
       borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
@@ -369,8 +379,7 @@ extension WeekPactThemeX on BuildContext {
 
   /// Resolve fixed accent colors carried by navigation and other view models.
   Color tone(Color color) {
-    if (color == WeekPactColors.softYellow ||
-        color == WeekPactColors.softCoral) {
+    if (color == WeekPactColors.brass || color == WeekPactColors.sand) {
       return WeekPactColors.stone;
     }
     if (color == WeekPactColors.bubblegumPink ||
