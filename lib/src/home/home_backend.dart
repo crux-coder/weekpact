@@ -253,6 +253,16 @@ class CrewWeek {
       .map((i) => i.day)
       .toSet()
       .length;
+  /// Everyone who has kept [pactId] today, the crew included.
+  ///
+  /// The week already carries every check-in it has, each naming its pact, its
+  /// person and its day — [days] and [checkedToday] just fold that list two
+  /// other ways. Nothing is fetched for this.
+  Set<String> keptToday(String pactId) => checkIns
+      .where((i) => i.pactId == pactId && i.day == today)
+      .map((i) => i.userId)
+      .toSet();
+
   Set<String> checkedToday(String userId) => checkIns
       .where((i) => i.userId == userId && i.day == today)
       .map((i) => i.pactId)

@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
@@ -17,6 +18,7 @@ class CrewSwitcher extends StatefulWidget {
     required this.onSelected,
     this.compact = false,
     this.loadWeek,
+    this.curve = WeekPactMetrics.panelCurve,
   });
 
   final List<PactCrew> crews;
@@ -24,13 +26,25 @@ class CrewSwitcher extends StatefulWidget {
   final ValueChanged<String>? onSelected;
   final bool compact;
 
+  /// The control's corner.
+  ///
+  /// [WeekPactMetrics.panelCurve] is what a switcher standing on its own
+  /// takes, and the fan's cards keep it whatever this is — they are small
+  /// cards in their own right, not part of this surface.
+  ///
+  /// A page that stacks the switcher in a column of its own blocks passes
+  /// that column's corner instead. Home does: the switcher sits directly above
+  /// the crew panel at the same width, and two stacked blocks that share an
+  /// edge have to share a corner or the pair reads as a mistake.
+  final double curve;
+
   /// Loads a crew's week, for the faces and streak on its card in the fan. The
   /// switcher works without it; the cards then carry their names alone.
   final Future<CrewWeek> Function(String crewId)? loadWeek;
 
-  /// The control's height. Public, so a header that hands the switcher a fixed
-  /// slot hands it one the grip's pull band actually fits inside.
-  static const height = 70.0;
+  /// The control's height. Public, so a header that hands the switcher a
+  /// fixed slot hands it one the label and the name actually fit inside.
+  static const height = 60.0;
 
   @override
   State<CrewSwitcher> createState() => _CrewSwitcherState();
@@ -38,19 +52,6 @@ class CrewSwitcher extends StatefulWidget {
 
 class _CrewSwitcherState extends State<CrewSwitcher>
     with TickerProviderStateMixin {
-  /// A pull this far down deals the hand. Short enough that the fan feels
-  /// pulled rather than dragged, long enough that a tap's wobble misses it.
-  static const _pullThreshold = 4.0;
-
-  /// How much of the hand has to be out for a lifted finger to finish the
-  /// deal, or how fast it has to be leaving. Short of both, the hand goes back.
-  /// A quarter of the way is enough: the hand is long, and asking for half of
-  /// it would make opening a drag rather than a pull.
-  static const _pullCommit = .25;
-  static const _flickVelocity = 320.0;
-
-  /// The grip's row: the pill, with room around it for a finger.
-  static const _gripBand = 16.0;
   final _portal = OverlayPortalController();
 
   /// The deal runs a beat longer for each extra crew, so every card keeps the
@@ -103,64 +104,19 @@ class _CrewSwitcherState extends State<CrewSwitcher>
   void _buzz(Future<void> Function() haptic) =>
       unawaited(haptic().catchError((Object _) {}));
 
-  /// How far the finger has come down before the hand is dealt. An upward
-  /// drag never reaches the threshold, so it leaves scrolling alone.
-  double _pull = 0;
-
-  /// True while the cards are on the finger: the deal is being scrubbed by
-  /// hand, not played. A tap never scrubs — it plays the drop straight
-  /// through.
-  bool _scrubbing = false;
-
-  void _pullUpdate(DragUpdateDetails details) {
-    _pull += details.delta.dy;
-    if (!_open) {
-      if (_pull <= _pullThreshold) return;
-      // The hand comes out on this same update, so the first frame already
-      // shows the cards as far down as the finger has come.
-      _openFan(details.globalPosition, scrub: true);
-    }
-    if (!_scrubbing) return;
-    // The cards sit where the finger has dragged them to, pixel for pixel.
-    _deal.value = CrewFan.pulled(
-      _pull - _pullThreshold,
-      _cards,
-      widget.crews.length,
-    );
-  }
-
-  /// A lifted finger either finishes the deal from where it left the cards, or
-  /// hands them back. Either way the animation carries on from that point
-  /// rather than restarting.
-  void _pullEnd(double velocity) {
-    _pull = 0;
-    if (!_scrubbing) return;
-    if (_deal.value >= _pullCommit || velocity >= _flickVelocity) {
-      // The settle stays on the finger's own mapping — switching back to the
-      // spring here would jump the cards down at the handover. The rest of the
-      // drop simply runs at the deal's pace for the distance that is left.
-      _deal.animateTo(
-        1,
-        duration: CrewFan.dealDuration(widget.crews.length) * (1 - _deal.value),
-        curve: Curves.easeOut,
-      );
-      return;
-    }
-    _close();
-  }
-
-  void _openFan(Offset anchor, {bool scrub = false}) {
-    if (!_enabled) return;
-    final screen = MediaQuery.sizeOf(context);
+  /// Deals the hand under the control. The cards take the switcher's own rect,
+  /// so the fan reads as this control unfolded rather than as a menu that
+  /// happens to be near it.
+  void _openFan() {
     final box = context.findRenderObject() as RenderBox?;
+    if (!_enabled || box == null) return;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
     setState(() {
-      _headerRect = box == null
-          ? null
-          : box.localToGlobal(Offset.zero) & box.size;
+      _headerRect = rect;
       _cards = CrewFanLayout.of(
-        screen: screen,
+        screen: MediaQuery.sizeOf(context),
         padding: MediaQuery.paddingOf(context),
-        anchor: _headerRect ?? (anchor & Size.zero),
+        anchor: rect,
         count: widget.crews.length,
       );
       _open = true;
@@ -170,12 +126,8 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     _exit.value = 0;
     _closing = false;
     _deal.duration = CrewFan.dealDuration(widget.crews.length);
-    final still = MediaQuery.disableAnimationsOf(context);
-    _scrubbing = scrub && !still;
-    if (still) {
+    if (MediaQuery.disableAnimationsOf(context)) {
       _deal.value = 1;
-    } else if (_scrubbing) {
-      _deal.value = 0;
     } else {
       _deal.forward(from: 0);
     }
@@ -211,7 +163,6 @@ class _CrewSwitcherState extends State<CrewSwitcher>
       _hide();
       return;
     }
-    _scrubbing = false;
     setState(() => _closing = true);
     _exit.forward(from: 0).whenComplete(() {
       if (mounted && _closing) _hide();
@@ -225,7 +176,6 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     setState(() {
       _open = false;
       _closing = false;
-      _scrubbing = false;
     });
   }
 
@@ -237,18 +187,7 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     widget.onSelected?.call(crew.id);
   }
 
-  void _tapped() {
-    if (_open) {
-      _close();
-      return;
-    }
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    _openFan(
-      box.localToGlobal(box.size.centerLeft(Offset.zero)) +
-          Offset(box.size.width / 2, box.size.height - 8),
-    );
-  }
+  void _tapped() => _open ? _close() : _openFan();
 
   @override
   void didUpdateWidget(covariant CrewSwitcher oldWidget) {
@@ -269,49 +208,65 @@ class _CrewSwitcherState extends State<CrewSwitcher>
       child: Semantics(
         button: true,
         expanded: _open,
-        hint: _enabled ? 'Pull down to fan out your crews' : null,
+        hint: _enabled ? 'Fans out your crews' : null,
         child: InkWell(
           onTap: _enabled ? _tapped : null,
-          borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+          // The ink follows the surface's own corner. It used to be a plain
+          // `controlRadius` rounded rect under a continuous squircle.
+          customBorder: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(widget.curve),
+          ),
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: SizedBox(
             height: CrewSwitcher.height,
             child: Padding(
-              padding: EdgeInsets.only(
-                left: widget.compact ? 10 : 4,
-                right: widget.compact ? 10 : 4,
-                top: 8,
-                bottom: 2,
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.compact ? 10 : 4,
+                vertical: 8,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              // The mark sits beside the whole control rather than beside the
+              // name, so it is centred on the card's own face — the label
+              // above the name would otherwise push it low.
+              child: Row(
                 children: [
-                  if (widget.compact) ...[
-                    const CrewControlLabel('YOUR CREW'),
-                    const SizedBox(height: 2),
-                  ],
                   Expanded(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        selected?.name ?? 'Your crew',
-                        style: TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w700,
-                          color: context.ink,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (widget.compact) ...[
+                          const CrewControlLabel('YOUR CREW'),
+                          const SizedBox(height: 2),
+                        ],
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              selected?.name ?? 'Your crew',
+                              style: TextStyle(
+                                fontSize: 25,
+                                fontWeight: FontWeight.w600,
+                                color: context.ink,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  if (widget.crews.length > 1)
-                    SizedBox(
-                      height: _gripBand,
-                      child: Center(
-                        child: _FanGrip(open: _open, colour: context.ink),
-                      ),
+                  // The control opens on a tap, so it carries a mark saying
+                  // so: the menu glyph, which is what the tap produces — the
+                  // crews, one under another.
+                  if (_enabled) ...[
+                    const SizedBox(width: 6),
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.menu01,
+                      color: context.muted,
+                      size: _markSize,
+                      strokeWidth: 2,
                     ),
+                  ],
                 ],
               ),
             ),
@@ -321,10 +276,13 @@ class _CrewSwitcherState extends State<CrewSwitcher>
     );
   }
 
+  /// The mark's glyph, at the size the crew week card gives its own chevron.
+  static const _markSize = 26.0;
+
   /// The switcher as it is drawn on the page — and, while the hand is out, over
   /// the fan's scrim as well, so the control does not go dark with the page.
   Widget _surface() => widget.compact
-      ? CrewHeaderSurface(child: _header())
+      ? CrewHeaderSurface(curve: widget.curve, child: _header())
       : Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -334,10 +292,8 @@ class _CrewSwitcherState extends State<CrewSwitcher>
             DecoratedBox(
               decoration: ShapeDecoration(
                 color: context.canvas,
-                shape: const ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(WeekPactMetrics.panelCurve),
-                  ),
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(widget.curve)),
                 ),
                 shadows: const [
                   BoxShadow(
@@ -369,68 +325,10 @@ class _CrewSwitcherState extends State<CrewSwitcher>
         switcher: _surface(),
         switcherRect: _headerRect,
         previews: _previews,
-        scrubbing: _scrubbing,
       ),
-      // The pull works anywhere on the card, not only on the grip: the whole
-      // face is the drawer front, and the grip only says which way it opens.
-      child: RawGestureDetector(
-        gestures: _enabled
-            ? {
-                VerticalDragGestureRecognizer:
-                    GestureRecognizerFactoryWithHandlers<
-                      VerticalDragGestureRecognizer
-                    >(VerticalDragGestureRecognizer.new, (recognizer) {
-                      // The pull is measured from the finger's own landing, so
-                      // a quick flick arrives as movement to read rather than
-                      // as slack the recogniser has already eaten.
-                      recognizer.dragStartBehavior = DragStartBehavior.down;
-                      recognizer.onStart = (_) => _pull = 0;
-                      recognizer.onUpdate = _pullUpdate;
-                      recognizer.onEnd = (details) =>
-                          _pullEnd(details.primaryVelocity ?? 0);
-                      recognizer.onCancel = () => _pullEnd(0);
-                    }),
-              }
-            : const {},
-        child: _surface(),
-      ),
+      child: _surface(),
     );
   }
-}
-
-/// The pull at the foot of the switcher: a drawer grip, so the control reads
-/// as something to pull open rather than something to read an instruction off.
-/// It slackens while the hand is out, since the pull has already been spent.
-class _FanGrip extends StatelessWidget {
-  const _FanGrip({required this.open, required this.colour});
-  final bool open;
-  final Color colour;
-
-  /// Wide enough to read as the card's own handle rather than a tick under the
-  /// name — the pull is the whole card, and this says so.
-  static const _width = 96.0;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 4,
-    child: TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: open ? 1 : 0),
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, _) => Center(
-        child: Container(
-          width: _width - 28 * value,
-          height: 4,
-          decoration: BoxDecoration(
-            color: colour.withValues(alpha: .38 - .2 * value),
-            borderRadius: WeekPactMetrics.pill,
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 class CrewControlLabel extends StatelessWidget {
@@ -451,7 +349,7 @@ class CrewControlLabel extends StatelessWidget {
           fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 10,
           letterSpacing: 2,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
       ),
     ),

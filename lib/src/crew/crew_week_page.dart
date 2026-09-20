@@ -151,7 +151,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                               style: const TextStyle(
                                 fontSize: 34,
                                 height: 1.15,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -193,7 +193,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                       'Crew pacts',
                                       style: TextStyle(
                                         fontSize: 23,
-                                        fontWeight: FontWeight.w900,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
@@ -202,7 +202,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                       '${_index + 1} / ${week.pacts.length}',
                                       style: TextStyle(
                                         color: context.muted,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                 ],
@@ -407,13 +407,13 @@ class _WeekSummary extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 34,
                       height: 1,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 5),
                   const Text(
                     'Crew progress',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -450,7 +450,7 @@ class _WeekSummary extends StatelessWidget {
                           style: const TextStyle(
                             color: WeekPactDarkCard.ink,
                             fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -501,7 +501,7 @@ class _TodaySummary extends StatelessWidget {
                     '$count of ${week.members.length} checked in today',
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 3),

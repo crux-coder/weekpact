@@ -127,7 +127,7 @@ void main() {
     await _pump(tester, const HomeCrewPanel.loading());
     final loading = tester.getRect(find.byType(HomeCrewPanel));
     expect(find.text('CREW PROGRESS · THIS WEEK'), findsNothing);
-    expect(find.text('TODAY'), findsNothing);
+    expect(find.text('in today'), findsNothing);
     await _pump(
       tester,
       HomeCrewPanel(
@@ -154,12 +154,11 @@ void main() {
         }, checkedToday: const {'other'}),
       ),
     );
-    expect(find.text('TODAY'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
     expect(find.text('/2'), findsOneWidget);
     expect(find.text('in today'), findsOneWidget);
     expect(
-      tester.getRect(find.text('TODAY')).top,
+      tester.getRect(find.text('in today')).top,
       greaterThan(
         tester.getRect(find.byKey(const ValueKey('open-crew-week'))).top,
       ),
@@ -202,7 +201,7 @@ void main() {
     // rather than the day's rows under it.
     expect(
       tester.getRect(find.byKey(const ValueKey('open-crew-week'))).bottom,
-      lessThan(tester.getRect(find.text('TODAY')).top),
+      lessThan(tester.getRect(find.text('in today')).top),
     );
     // Nothing to open before the week has arrived.
     await _pump(tester, const HomeCrewPanel.loading());

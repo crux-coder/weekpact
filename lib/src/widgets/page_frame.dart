@@ -96,7 +96,7 @@ class PageHeading extends StatelessWidget {
       color: context.ink,
       fontSize: 32,
       height: 1.1,
-      fontWeight: FontWeight.w900,
+      fontWeight: FontWeight.w700,
       letterSpacing: -.5,
     );
     return Row(

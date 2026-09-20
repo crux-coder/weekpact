@@ -31,7 +31,7 @@ class WelcomeCard extends StatelessWidget {
               style: TextStyle(
                 color: context.muted,
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 1,
               ),
             ),
@@ -43,7 +43,7 @@ class WelcomeCard extends StatelessWidget {
               color: context.ink,
               fontSize: 36,
               height: 1.05,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),

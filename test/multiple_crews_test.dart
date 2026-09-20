@@ -230,8 +230,9 @@ void main() {
     );
     await launch();
     await tester.pumpUi();
-    // Home carries no crew selector, so the crew is switched from Pacts and
-    // Home is expected to have followed it when you come back.
+    // The crew is switched from Pacts here, and Home is expected to have
+    // followed it when you come back — Home carries a switcher of its own,
+    // which the test below drives.
     await tester.tap(find.text('Pacts').last);
     await tester.pumpUi();
     await tester.tap(find.byTooltip('Switch crew'));
@@ -276,6 +277,85 @@ void main() {
     await tester.pumpUi();
     expect(home.requested.last, 'crew');
     expect(store.read('owner@example.com'), 'crew');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the switcher opens on a tap, and only on a tap', (tester) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    final home = CrewHome(pacts);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          crewSelectionStore: CrewSelectionStore(preferences),
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: home,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    final switcher = find.byType(CrewSwitcher);
+    // A pull down the control's face is no longer a gesture it answers: the
+    // crews stay in the hand and only the crew on the page is named.
+    await tester.drag(switcher, const Offset(0, 220));
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsNothing);
+    await tester.tap(switcher);
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsWidgets);
+    // A second tap on the control sends the hand back. The fan redraws the
+    // switcher over its own scrim, so the tap lands on the scrim rather than
+    // on the control behind it — either way, the hand leaves.
+    await tester.tap(switcher, warnIfMissed: false);
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home switches crews from its own selector', (tester) async {
+    final crews = MultipleCrews();
+    final pacts = CrewPacts()..crews = await crews.fetchCrews();
+    final home = CrewHome(pacts);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final store = CrewSelectionStore(preferences);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          crewSelectionStore: store,
+          user: const AuthUser(email: 'owner@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: pacts,
+          homeBackend: home,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('home-crew-switcher')), findsOneWidget);
+    expect(find.text('Early Birds'), findsWidgets);
+    await tester.tap(find.byTooltip('Switch crew'));
+    await tester.pumpUi();
+    await tester.tap(find.text('Night Owls').last);
+    await tester.pumpUi();
+    // The week follows the switch, and the choice is kept for the other
+    // destinations and for the next run.
+    expect(home.requested.last, 'second');
+    expect(store.read('owner@example.com'), 'second');
+    expect(find.text('Night Owls'), findsWidgets);
+    // The control keeps its slot in the heading through the switch, rather
+    // than going down with the page while the new week loads.
+    expect(find.byKey(const ValueKey('home-crew-switcher')), findsOneWidget);
+    await tester.tap(find.text('Pacts').last);
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

@@ -172,7 +172,7 @@ class _AuthPageState extends State<AuthPage> {
                             style: TextStyle(
                               color: context.ink,
                               fontSize: 28,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -310,7 +310,7 @@ class _AuthPageState extends State<AuthPage> {
                           _isLogin
                               ? 'New here?  CREATE ACCOUNT'
                               : 'Already in?  LOG IN',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ),
                     ),

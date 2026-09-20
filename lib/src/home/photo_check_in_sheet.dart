@@ -164,7 +164,7 @@ class _PhotoCheckInSheetState extends State<PhotoCheckInSheet> {
                   widget.pactTitle,
                   style: const TextStyle(
                     fontSize: 26,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

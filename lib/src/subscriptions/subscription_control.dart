@@ -67,7 +67,7 @@ class _SubscriptionControlState extends State<SubscriptionControl> {
         ),
         title: Text(
           isPro ? 'WeekPact Pro' : 'Upgrade to Pro',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
         ),
         subtitle: Text(_subtitle(access), style: const TextStyle(fontSize: 13)),
         trailing: AppIcon(

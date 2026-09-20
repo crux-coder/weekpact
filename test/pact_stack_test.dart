@@ -7,11 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/today_widgets.dart';
+import 'package:weekpact/src/home/home_surface.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
+import 'support/fonts.dart';
 import 'support/home_fakes.dart';
 
 void main() {
+  // The default test font has square, fixed metrics, so a title that wraps in
+  // the app can sit on one line here. Anything measuring the fit needs the
+  // real face.
+  setUpAll(loadAppFont);
+
   for (final reducedMotion in [false, true]) {
     testWidgets(
       'single card releases edge pull with reduced motion $reducedMotion',
@@ -69,6 +76,82 @@ void main() {
       },
     );
   }
+
+  testWidgets('a long pact name shrinks to fit rather than being cut', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const long =
+        'Walk the dog around the park before work and again after dinner';
+    final backend = DashboardBackend();
+    backend.pacts.pacts = [
+      backend.pacts.pacts.first,
+      CrewPact(
+        id: 'long',
+        crewId: 'crew',
+        title: long,
+        frequency: PactFrequency.daily,
+        daysPerWeek: 7,
+        iconKey: 'yoga',
+      ),
+    ];
+    final week = await backend.fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(12),
+            child: TodayPactsCard(
+              week: week,
+              userId: '',
+              savingPact: null,
+              onToggle: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+
+    double sizeOf(String title) => tester
+        .widget<Text>(find.text(title).hitTestable())
+        .style!
+        .fontSize!;
+
+    final short = sizeOf('Move for 30 min');
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(-320, 0),
+    );
+    await tester.pumpUi();
+    final shrunk = sizeOf(long);
+    // The short name keeps the card's display size; the long one steps down
+    // to hold the whole promise, and never past the floor.
+    expect(short, 25);
+    expect(shrunk, lessThan(short));
+    // _FittedTitle.minFontSize: below this a title stops being a headline.
+    expect(shrunk, greaterThanOrEqualTo(15.0));
+    // Whole points, so two cards in a stack stay on one type scale.
+    expect(shrunk, shrunk.roundToDouble());
+    // Shrinking is what keeps the name whole: it is not also cut.
+    expect(find.text(long).hitTestable(), findsOneWidget);
+    // Four lines, and the name is laid out across more than two of them —
+    // a two-line cap would have had to shrink much further or ellipsise.
+    final title = tester.widget<Text>(find.text(long).hitTestable());
+    expect(title.maxLines, 4);
+    final painter = TextPainter(
+      text: TextSpan(text: long, style: title.style),
+      textDirection: TextDirection.ltr,
+      maxLines: 4,
+    )..layout(maxWidth: tester.getSize(find.text(long).hitTestable()).width);
+    expect(painter.computeLineMetrics().length, greaterThan(2));
+    painter.dispose();
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a day that is kept is raised, the rest stay flat', (
     tester,
@@ -173,40 +256,19 @@ void main() {
               .opacity,
           closeTo(0, .001),
         );
-        // The strip left behind carries the same icon-over-score readout as
-        // the strip stacked on the right of the front card.
+        // The card left behind carries nothing: its icon goes with the rest
+        // of its face, at the card's one icon size rather than a strip's.
         final outgoingIcon = tester.getRect(
           find.byKey(ValueKey('pact-icon-${previousPact.id}')),
         );
         final frontIcon = tester.getRect(
           find.byKey(ValueKey('pact-icon-${pact.id}')),
         );
-        expect(outgoingIcon.width, lessThan(frontIcon.width));
-        expect(outgoingIcon.left, greaterThan(previous.left));
-        expect(outgoingIcon.right, lessThan(previous.right));
-        final outgoingScore = find.byKey(
-          ValueKey('pact-peek-score-${previousPact.id}'),
-        );
-        expect(outgoingScore, findsOneWidget);
-        expect(
-          tester
-              .widget<Opacity>(
-                find.descendant(
-                  of: outgoingScore,
-                  matching: find.byType(Opacity),
-                ),
-              )
-              .opacity,
-          closeTo(1, .001),
-        );
-        expect(
-          tester.getRect(outgoingScore).top,
-          greaterThan(outgoingIcon.bottom - 1),
-        );
+        expect(outgoingIcon.width, closeTo(frontIcon.width, .01));
+        // The outgoing card parks right out of the box, so the stack shows
+        // one card and the sliver of the next.
         expect(previous.left, lessThan(stack.left));
-        expect(previous.right, greaterThan(stack.left + 10));
-        // The outgoing card parks one narrow gap short of the front card.
-        expect(card.left - previous.right, closeTo(12, 1));
+        expect(previous.right, lessThanOrEqualTo(stack.left + 1));
         expect(previous.top, closeTo(card.top, 1));
         expect(previous.bottom, closeTo(card.bottom, 1));
         expect(
@@ -281,7 +343,7 @@ void main() {
   });
 
   testWidgets(
-    'icons grow at the top-right anchor and active content fills the card',
+    'the icon rides its card at the top-right anchor as the stack scales',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -320,8 +382,8 @@ void main() {
       final button = tester.getRect(
         find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
       );
-      expect(button.left, closeTo(card.left + 18, 1));
-      expect(button.right, closeTo(card.right - 18, 1));
+      expect(button.left, closeTo(card.left + homeCardInset.left, 1));
+      expect(button.right, closeTo(card.right - homeCardInset.right, 1));
       final dashes = tester.getRect(
         find.byKey(const ValueKey('pact-progress-move')).hitTestable(),
       );
@@ -344,8 +406,11 @@ void main() {
       final activeIconBounds = tester.getRect(
         nearestCopy(tester, const ValueKey('pact-icon-move')),
       );
-      expect(activeIconBounds.top, closeTo(card.top + 12, 1));
-      expect(activeIconBounds.right, closeTo(card.right - 12, 1));
+      expect(activeIconBounds.top, closeTo(card.top + homeCardInset.top, 1));
+      expect(
+        activeIconBounds.right,
+        closeTo(card.right - homeCardInset.right, 1),
+      );
       expect(find.text('Read 20 pages').hitTestable(), findsNothing);
       expect(find.text('Stretch').hitTestable(), findsNothing);
       final gesture = await tester.startGesture(card.center);
@@ -593,16 +658,17 @@ void main() {
       expect(behind.right, greaterThan(front.right));
       expect(behind.top, greaterThan(front.top));
       expect(behind.bottom, lessThan(front.bottom));
-      final previewIcon = tester.getRect(
-        nearestCopy(tester, const ValueKey('pact-icon-read')),
+      // The card behind carries nothing but its tint: its face, icon and all,
+      // is faded right out, and only the strip past the front card shows.
+      expect(
+        tester
+            .widget<Opacity>(
+              nearestCopy(tester, const ValueKey('pact-content-opacity-read')),
+            )
+            .opacity,
+        closeTo(0, .001),
       );
-      expect(previewIcon.left, greaterThan(front.right));
-      expect(previewIcon.right, lessThan(behind.right));
       expect(find.text('Read 20 pages').hitTestable(), findsNothing);
-      final activeIcon = tester.getRect(
-        nearestCopy(tester, const ValueKey('pact-icon-move')),
-      );
-      expect(previewIcon.width, lessThan(activeIcon.width));
       expect(behind.width, lessThan(front.width));
       await tester.tap(find.byTooltip('Pact 2 of 2'));
       await tester.pumpUi();
@@ -616,11 +682,14 @@ void main() {
         closeTo(0, .001),
       );
       expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+      // Brought forward, the card's face is back — icon and all.
       expect(
         tester
-            .getRect(nearestCopy(tester, const ValueKey('pact-icon-read')))
-            .width,
-        greaterThan(previewIcon.width),
+            .widget<Opacity>(
+              nearestCopy(tester, const ValueKey('pact-content-opacity-read')),
+            )
+            .opacity,
+        closeTo(1, .001),
       );
       expect(haptics, ['HapticFeedbackType.mediumImpact']);
       await tester.tap(find.byTooltip('Pact 2 of 2'));
@@ -691,7 +760,23 @@ void main() {
       expect(find.text('1 of 14'), findsNothing);
       expect(find.byTooltip('Pact 5 of 14'), findsOneWidget);
       expect(find.byTooltip('Pact 6 of 14'), findsNothing);
-      expect(find.textContaining(RegExp(r'^\+\d+$')), findsOneWidget);
+      // The crew card collapses its roster to a count, and so does each pact
+      // card's own face row — they are separate "+N"s, so each is checked
+      // where it belongs rather than by counting them across the screen.
+      expect(
+        find.descendant(
+          of: find.byType(TodayCrewCard),
+          matching: find.textContaining(RegExp(r'^\+\d+$')),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(TodayPactsCard),
+          matching: find.text('+15').hitTestable(),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

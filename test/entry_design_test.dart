@@ -10,6 +10,7 @@ import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/onboarding/onboarding_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
+import 'support/fonts.dart';
 import 'support/pump_ui.dart';
 import 'widget_test.dart' show FakeAuthBackend;
 
@@ -26,10 +27,7 @@ void main() {
       addTearDown(backend.dispose);
       const boundaryKey = ValueKey('entry-capture');
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
-        final font = FontLoader('RobotoCondensed')
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
-        await tester.runAsync(() => font.load());
+        await tester.runAsync(loadAppFont);
         final icons = FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await tester.runAsync(() => icons.load());

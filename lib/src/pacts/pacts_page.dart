@@ -199,7 +199,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
                       style: TextStyle(
                         color: context.ink,
                         fontSize: 26,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -232,11 +232,12 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
                 children: [
                   Expanded(
                     child: Text(
-                      'Your pacts',
+                      'Pacts',
+                      key: const ValueKey('pacts-heading'),
                       style: TextStyle(
                         color: context.ink,
                         fontSize: 25,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -247,7 +248,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
                         color: context.muted,
                         fontSize: 12,
                         letterSpacing: 1.1,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                 ],
@@ -264,7 +265,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
                           'Small steps start here.',
                           style: TextStyle(
                             fontSize: 23,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -294,7 +295,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
               _error!,
               style: TextStyle(
                 color: context.errorInk,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
               ),
             ),
             TextButton(onPressed: _refresh, child: const Text('TRY AGAIN')),
@@ -398,7 +399,7 @@ class PactEditorState extends State<PactEditor> {
                     style: TextStyle(
                       color: context.ink,
                       fontSize: 26,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -439,7 +440,7 @@ class PactEditorState extends State<PactEditor> {
               'PACT NAME',
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
                 letterSpacing: .4,
               ),
             ),
@@ -496,7 +497,7 @@ class PactEditorState extends State<PactEditor> {
             const SizedBox(height: 22),
             const Text(
               'REPEAT EACH WEEK',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+              style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: .5),
             ),
             const SizedBox(height: 10),
             Wrap(

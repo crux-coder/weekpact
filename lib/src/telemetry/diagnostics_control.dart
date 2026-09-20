@@ -27,7 +27,7 @@ class _DiagnosticsControlState extends State<DiagnosticsControl> {
         secondary: const AppIcon(icon: HugeIconsStrokeRounded.file02, size: 26),
         title: const Text(
           'Share crash reports',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
           'Optional diagnostics',

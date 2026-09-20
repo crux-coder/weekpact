@@ -1,5 +1,7 @@
 import '../telemetry/diagnostics_control.dart';
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../widgets/app_icon.dart';
@@ -7,6 +9,7 @@ import '../widgets/app_icon.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'auth_backend.dart';
+import 'avatar_picker.dart';
 import 'profile_editor.dart';
 import 'account_actions.dart';
 import '../onboarding/profile_avatar.dart';
@@ -25,25 +28,40 @@ class AccountPage extends StatefulWidget {
     required this.backend,
     required this.signingOut,
     required this.onSignOut,
+    this.pickAvatar,
   });
   final AuthUser user;
   final AuthBackend backend;
   final bool signingOut;
   final VoidCallback onSignOut;
+
+  /// Injected by tests, which have no gallery for the native picker to open.
+  final AvatarPicker? pickAvatar;
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
 
 class _AccountPageState extends State<AccountPage> {
   AuthUser? _edited;
+  // The photo the editor just uploaded. The avatar downloads the stored one
+  // once, so a fresh pick has to be handed back rather than re-fetched.
+  Uint8List? _avatar;
 
   Future<void> _edit() async {
-    final updated = await showAppSheet<AuthUser>(
+    final updated = await showAppSheet<ProfileEdit>(
       context: context,
-      builder: (_) =>
-          ProfileEditor(user: _edited ?? widget.user, backend: widget.backend),
+      builder: (_) => ProfileEditor(
+        user: _edited ?? widget.user,
+        backend: widget.backend,
+        pickAvatar: widget.pickAvatar,
+      ),
     );
-    if (mounted && updated != null) setState(() => _edited = updated);
+    if (mounted && updated != null) {
+      setState(() {
+        _edited = updated.user;
+        _avatar = updated.avatar ?? _avatar;
+      });
+    }
   }
 
   @override
@@ -71,6 +89,7 @@ class _AccountPageState extends State<AccountPage> {
                     size: 88,
                     initials: initials,
                     backgroundColor: WeekPactColors.mintGreen,
+                    photo: _avatar,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -78,7 +97,7 @@ class _AccountPageState extends State<AccountPage> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -106,7 +125,7 @@ class _AccountPageState extends State<AccountPage> {
                         'Edit profile',
                         style: TextStyle(
                           fontSize: 17,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -151,7 +170,7 @@ class _AccountPageState extends State<AccountPage> {
                 widget.signingOut ? 'Logging out…' : 'Log out',
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               trailing: AppIcon(
@@ -191,7 +210,7 @@ class _NotificationControl extends StatelessWidget {
       ),
       title: const Text(
         'Notifications',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
       ),
       activeTrackColor: WeekPactColors.coolGrey,
       activeThumbColor: WeekPactColors.black,

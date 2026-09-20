@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The today strip — is it still earning its block?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#2B302C; --ink:#191B19; --paper:#ECEDEA; --cream:#F5F6F5;
+    --dark-ink:#F3F5F2; --dark-muted:#B8BEB5;
+    --face:#1E221F; --line:#4A4D4B;           /* CrewHeaderSurface, dark */
+    --pending:#C4CDD4; --mint:#8CDCAC; --mint-edge:#5F9774;
+    --stone:#EFD98D; --streak:#FF9138; --ink-edge:#484848;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:48px 24px 120px;background:#101310;color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1500px;margin:0 auto}
+  h1{font-size:29px;font-weight:700;letter-spacing:-.5px;margin:0 0 12px}
+  .lede{color:var(--dark-muted);max-width:76ch;line-height:1.65;font-size:15px;margin:0 0 8px}
+  .note{color:#7d857b;max-width:76ch;line-height:1.65;font-size:13.5px;margin:0 0 10px}
+  .note b{color:var(--dark-muted);font-weight:600}
+  .note.last{margin-bottom:36px}
+  code{font-size:.92em;background:#1c211c;padding:1px 5px;border-radius:4px}
+
+  .owns{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 34px}
+  .owns div{background:#171A17;border:1px solid #262b26;border-radius:12px;padding:10px 14px;
+    font-size:12.5px;color:#9ba299;line-height:1.5;max-width:270px}
+  .owns b{display:block;color:var(--dark-ink);font-weight:600;font-size:13px;margin-bottom:2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(398px,1fr));gap:22px}
+  .cell{background:#171A17;border:1px solid #262b26;border-radius:22px;padding:20px;
+    display:flex;flex-direction:column}
+  .cellHead{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .cellHead h2{font-size:17px;font-weight:600;margin:0;letter-spacing:-.2px}
+  .key{font-size:10px;font-weight:700;letter-spacing:1.2px;color:#101310;
+    background:var(--dark-muted);padding:3px 7px;border-radius:5px}
+  .key.pick{background:var(--mint)}
+  .key.now{background:#3c443c;color:var(--dark-muted)}
+  .cell>p{color:#9ba299;font-size:13px;line-height:1.6;margin:0 0 6px}
+  .loses{color:#6e756c;font-size:12px;line-height:1.55;margin:0 0 16px}
+  .loses b{color:#9ba299;font-weight:500}
+  .keeps{color:var(--mint)}
+
+  .stage{background:var(--canvas);border-radius:16px;padding:12px;width:360px;
+    max-width:100%;margin:auto auto 0}
+
+  /* the crew panel the strip lives in */
+  .panel{background:var(--face);border:1px solid var(--line);border-radius:24px;padding:6px}
+  .weekcard{background:var(--stone);border:1px solid #B3A369;box-shadow:0 3px 0 #B6A56B;
+    border-radius:18px;padding:11px 12px;color:var(--ink);margin-bottom:6px}
+  .weekcard .lbl{font-size:10px;font-weight:600;letter-spacing:1.3px;opacity:.72}
+  .weekcard .rowb{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .weekcard .track{flex:1;height:7px;border-radius:99px;background:rgba(25,27,25,.2)}
+  .weekcard .track i{display:block;height:100%;width:4%;border-radius:99px;background:var(--ink)}
+  .weekcard .pct{font-size:13px;font-weight:700}
+
+  /* THE STRIP */
+  .strip{padding-left:6px;color:var(--dark-ink)}
+  .caps{display:flex;align-items:center;height:12px;padding-right:6px;
+    font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--dark-muted)}
+  .caps .sp{flex:1}
+  .body{height:38px;display:flex;align-items:center;margin-top:8px}
+  .score{display:flex;align-items:baseline}
+  .score b{font-size:28px;font-weight:700;line-height:1}
+  .score i{font-size:15px;font-weight:600;font-style:normal;color:var(--dark-muted)}
+  .score span{font-size:11px;font-weight:500;color:var(--dark-muted);margin-left:5px}
+  .seats{margin-left:auto;display:flex}
+  .seats u{width:34px;height:34px;border-radius:50%;margin-left:-8px;text-decoration:none;
+    display:flex;align-items:center;justify-content:center;border:2px solid var(--face);
+    background:var(--pending);color:var(--ink);font-size:12px;font-weight:600}
+  .seats u:first-child{margin-left:0}
+  .seats u.in{background:var(--mint)}
+  .grip{height:14px;display:flex;align-items:center;justify-content:center}
+  .grip s{width:56px;height:4px;border-radius:99px;background:#5d655c;text-decoration:none}
+
+  .thin .body{height:26px}
+  .noseats .seats{display:none}
+
+  /* D — folded into the week row */
+  .fold{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dark-muted);
+    padding:8px 6px 4px}
+  .fold b{color:var(--dark-ink);font-weight:600;font-size:13px}
+  .fold .dot{width:3px;height:3px;border-radius:99px;background:#5d655c}
+
+  /* E — roll-up bar */
+  .rollup{margin-top:8px;height:38px;display:flex;align-items:center;gap:10px}
+  .rollup .track{flex:1;height:10px;border-radius:99px;background:rgba(243,245,242,.13)}
+  .rollup .track i{display:block;height:100%;width:29%;border-radius:99px;background:var(--mint)}
+  .rollup .n{font-size:13px;font-weight:600;color:var(--dark-muted);white-space:nowrap}
+
+  /* F — header clock */
+  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 2px}
+  .hdr h3{margin:0;font-size:26px;font-weight:700;letter-spacing:-.4px}
+  .hdr h3 em{color:var(--stone);font-style:normal}
+  .hdr .pill{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--face);
+    border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:12px;
+    font-weight:600;color:var(--dark-muted)}
+  .hdr .pill b{color:var(--dark-ink)}
+  .card-mini{background:var(--stone);border:1px solid #B3A369;box-shadow:0 3px 0 #B6A56B;
+    border-radius:18px;padding:12px;color:var(--ink);margin-top:10px}
+  .card-mini .t{font-size:19px;font-weight:700}
+  .card-mini .r{display:flex;align-items:flex-end;margin-top:14px}
+  .card-mini .n{font-size:40px;font-weight:700;line-height:1}
+  .card-mini .n em{font-size:20px;font-style:normal;color:rgba(25,27,25,.6)}
+  .card-mini .f{margin-left:auto;display:flex}
+  .card-mini .f u{width:28px;height:28px;border-radius:50%;margin-left:-7px;text-decoration:none;
+    display:flex;align-items:center;justify-content:center;border:2px solid var(--stone);
+    background:rgba(25,27,25,.14);color:rgba(25,27,25,.6);font-size:10px;font-weight:600}
+  .card-mini .f u:first-child{margin-left:0}
+  .card-mini .f u.in{background:var(--paper);color:var(--ink)}
+
+  .verdict{margin-top:42px;background:#171A17;border:1px solid #262b26;border-radius:22px;padding:24px 26px}
+  .verdict h2{margin:0 0 14px;font-size:19px;font-weight:600}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th{text-align:left;color:#7d857b;font-weight:500;font-size:11px;letter-spacing:1.1px;
+    text-transform:uppercase;padding:0 14px 10px 0;border-bottom:1px solid #262b26}
+  td{padding:12px 14px 12px 0;color:#9ba299;line-height:1.55;border-bottom:1px solid #1e221e;
+    vertical-align:top}
+  td:first-child{color:var(--dark-ink);font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>The today strip</h1>
+<p class="lede">Partly, yes — but not all of it, and the overlap is smaller than it looks.</p>
+<p class="note">The strip and the pact card answer <b>different questions</b>. The strip's
+<code>_done(member)</code> is <code>week.checkedToday(member.id).isNotEmpty</code> — has this person
+kept <i>anything</i> today. The pact card's faces are per pact, and only for the card at the front
+of the deck. On a crew with one pact they say exactly the same thing; on a crew with four they do
+not, and the strip is the only place the day rolls up.</p>
+<p class="note last">Before cutting it, note what would go with it:</p>
+
+<div class="owns">
+  <div><b>5H LEFT</b>The day's clock. Nothing else on Home says how long is left, and it is the
+    whole pressure behind a nudge.</div>
+  <div><b>The nudge</b>The strip is a drawer front. Pulling it open is the only way into
+    <code>CrewMemberList</code> and the only place in the app you can nudge someone.</div>
+  <div><b>The roll-up</b>Who is in across every pact, not just the one showing. Four pacts means
+    four swipes to learn the same thing from the cards.</div>
+</div>
+
+<div class="grid">
+
+  <!-- NOW -->
+  <div class="cell">
+    <div class="cellHead"><span class="key now">NOW</span><h2>What ships</h2></div>
+    <p>72px: a label line, the score, three seats, and a grip. The seats are the part the pact
+      cards now repeat.</p>
+    <p class="loses">For comparison only.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+        <div class="strip">
+          <div class="caps">TODAY<span class="sp"></span>5H LEFT</div>
+          <div class="body">
+            <div class="score"><b>0</b><i>/3</i><span>in today</span></div>
+            <div class="seats"><u>JM</u><u>AK</u><u>TS</u></div>
+          </div>
+          <div class="grip"><s></s></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A -->
+  <div class="cell">
+    <div class="cellHead"><span class="key pick">A</span><h2>Drop the seats, keep the line</h2></div>
+    <p>Cut exactly the duplicated part and nothing else. The score still rolls the day up across
+      every pact, the clock still runs, the drawer still opens. 38px of faces gone.</p>
+    <p class="loses"><b>Loses:</b> <span class="keeps">nothing the pact cards do not already
+      show.</span> The block gets plainer, and the grip does more of the work of saying there is
+      a crew behind it.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+        <div class="strip noseats">
+          <div class="caps">TODAY<span class="sp"></span>5H LEFT</div>
+          <div class="body"><div class="score"><b>0</b><i>/3</i><span>in today</span></div></div>
+          <div class="grip"><s></s></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="cell">
+    <div class="cellHead"><span class="key pick">B</span><h2>Seats become who is out</h2></div>
+    <p>Stop repeating and start complementing. The pact card says who is in; the strip shows only
+      the people the day is still waiting on — which is exactly the list you would nudge, and the
+      drawer behind it is where you nudge them.</p>
+    <p class="loses"><b>Loses:</b> the reassurance of seeing who <i>has</i> been in. Goes empty
+      when the crew is all in — which is arguably the right reward.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+        <div class="strip">
+          <div class="caps">STILL WAITING ON<span class="sp"></span>5H LEFT</div>
+          <div class="body">
+            <div class="score"><b>2</b><i>/3</i><span>not in yet</span></div>
+            <div class="seats"><u>AK</u><u>TS</u></div>
+          </div>
+          <div class="grip"><s></s></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="cell">
+    <div class="cellHead"><span class="key">C</span><h2>One thin line</h2></div>
+    <p>The smallest thing that keeps the clock and the drawer: one 26px row, no label line, no
+      seats. It stops being a panel and becomes a footer on the crew block.</p>
+    <p class="loses"><b>Loses:</b> the <code>TODAY</code> eyebrow, and with it the block's own
+      heading. Roughly 40px back to the pact stack.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+        <div class="strip thin noseats">
+          <div class="body">
+            <div class="score" style="align-items:center">
+              <b style="font-size:17px">0</b><i>/3</i><span>in today · 5H LEFT</span>
+            </div>
+          </div>
+          <div class="grip"><s></s></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="cell">
+    <div class="cellHead"><span class="key">D</span><h2>Fold it into the week row</h2></div>
+    <p>No separate strip at all. The day's numbers join the crew-progress card that is already
+      there, as a second line under the bar.</p>
+    <p class="loses"><b>Loses:</b> the drawer, so <b>the nudge needs a new home</b> — most likely
+      the crew week page. That is the real cost, and it is not small.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard" style="margin-bottom:0">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+          <div class="rowb" style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(25,27,25,.14)">
+            <div style="font-size:12px;font-weight:600;opacity:.72">0 of 3 in today</div>
+            <div style="margin-left:auto;font-size:10px;font-weight:600;letter-spacing:1.2px;opacity:.6">5H LEFT</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E -->
+  <div class="cell">
+    <div class="cellHead"><span class="key">E</span><h2>Make it a different fact</h2></div>
+    <p>Not <i>who</i> is in — the cards have that — but <i>how much</i> of the crew's day is done:
+      every person's every pact, as one bar. The strip stops competing with the cards and starts
+      summarising them.</p>
+    <p class="loses"><b>Loses:</b> nothing, but it adds a third progress bar to Home after the
+      week card and the pact card. Risks being the least-read number on the page.</p>
+    <div class="stage">
+      <div class="panel">
+        <div class="weekcard">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+        <div class="strip">
+          <div class="caps">TODAY<span class="sp"></span>5H LEFT</div>
+          <div class="rollup">
+            <div class="track"><i></i></div>
+            <div class="n">2 of 7 check-ins</div>
+          </div>
+          <div class="grip"><s></s></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F -->
+  <div class="cell">
+    <div class="cellHead"><span class="key">F</span><h2>Delete it</h2></div>
+    <p>The clock moves to Home's heading, beside the streak. Nudging moves onto the pact card's
+      own faces — tap someone who is out and you nudge them, which is where you were already
+      looking when you noticed they were out.</p>
+    <p class="loses"><b>Loses:</b> the roll-up across pacts, and a whole block of Home. Biggest
+      change by far — it makes the card faces interactive, which is a feature, not a trim.</p>
+    <div class="stage">
+      <div class="hdr">
+        <h3>Home<em>.</em></h3>
+        <div class="pill">5H LEFT</div>
+        <div class="pill">🔥 <b>0</b></div>
+      </div>
+      <div class="panel">
+        <div class="weekcard" style="margin-bottom:0">
+          <div class="lbl">CREW PROGRESS · THIS WEEK</div>
+          <div class="rowb"><div class="track"><i></i></div><div class="pct">4%</div></div>
+        </div>
+      </div>
+      <div class="card-mini">
+        <div class="t">Move for 30 min</div>
+        <div class="r">
+          <div class="n">0<em> / 7</em></div>
+          <div class="f"><u class="in">JM</u><u>AK</u><u>TS</u></div>
+        </div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:1px;opacity:.5;margin-top:8px">
+          TAP A FACE TO NUDGE
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="verdict">
+  <h2>Picking one</h2>
+  <table>
+    <tr><th>Option</th><th>Removes</th><th>Keeps clock</th><th>Keeps nudge</th><th>Keeps roll-up</th></tr>
+    <tr><td>A · Drop the seats</td><td>The duplicated faces, 38px</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>B · Seats are who is out</td><td>The duplication, not the faces</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>C · One thin line</td><td>Faces and the eyebrow, ~40px</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>D · Fold into the week row</td><td>The whole strip, ~72px</td><td>Yes</td><td><b>No</b></td><td>Yes</td></tr>
+    <tr><td>E · A different fact</td><td>The faces only</td><td>Yes</td><td>Yes</td><td>Changes it to a ratio</td></tr>
+    <tr><td>F · Delete it</td><td>The block, ~72px</td><td>Moves to header</td><td>Moves to cards</td><td><b>No</b></td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

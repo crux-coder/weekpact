@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/auth/auth_backend.dart';
-import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
-import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/home/recent_activity.dart';
-import 'package:weekpact/src/home/today_widgets.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -133,58 +129,8 @@ void main() {
     await _pumpCard(tester, week: _weekWith(await backend.fetchWeek('crew')));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('activity-empty')), findsOneWidget);
+    expect(find.text('LATEST ACTIVITY'), findsOneWidget);
     expect(find.text('No check-ins yet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
-
-  for (final size in [const Size(390, 844), const Size(320, 568)]) {
-    testWidgets('home places activity under the pacts at $size', (
-      tester,
-    ) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final backend = DashboardBackend();
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: HomePage(
-            user: const AuthUser(email: 'person@example.com'),
-            authBackend: const MissingConfigurationAuthBackend(),
-            crewBackend: const MissingCrewBackend(),
-            pactsBackend: backend.pacts,
-            homeBackend: backend,
-          ),
-        ),
-      );
-      await tester.pumpUi();
-      final section = find.byType(RecentActivityCard);
-      // Home does not scroll, so a short screen keeps the stack whole and
-      // drops what would sit under it.
-      if (size.height < 700) {
-        expect(section, findsNothing);
-        expect(tester.takeException(), isNull);
-        return;
-      }
-      expect(section, findsOneWidget);
-      expect(
-        tester.getTopLeft(section).dy,
-        greaterThanOrEqualTo(
-          tester.getBottomRight(find.byType(TodayPactsCard)).dy,
-        ),
-      );
-      expect(
-        tester.getBottomRight(section).dy,
-        lessThanOrEqualTo(
-          tester.getTopLeft(find.byKey(const ValueKey('nav-home'))).dy,
-        ),
-      );
-      // The card itself hands over to the feed tab.
-      await tester.tap(find.byKey(const ValueKey('activity-card')));
-      await tester.pumpUi();
-      expect(find.text('Feed'), findsWidgets);
-      expect(tester.takeException(), isNull);
-    });
-  }
 }

@@ -12,6 +12,7 @@ import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 
+import 'support/fonts.dart';
 import 'support/home_fakes.dart';
 
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -43,14 +44,7 @@ void main() {
       );
       const capture = ValueKey('design-capture');
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
-        final font = FontLoader('RobotoCondensed')
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
-        await tester.runAsync(() => font.load());
-        final supportingFont = FontLoader('Roboto')
-          ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
-        await tester.runAsync(() => supportingFont.load());
+        await tester.runAsync(loadAppFont);
         final icons = FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await tester.runAsync(() => icons.load());

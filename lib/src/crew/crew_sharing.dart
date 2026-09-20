@@ -123,7 +123,7 @@ class _CrewShareControlsState extends State<CrewShareControls> {
       if (widget.showHeading) ...[
         const Text(
           'Invite your people',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
       ],
@@ -155,7 +155,7 @@ class _CrewShareControlsState extends State<CrewShareControls> {
         const Text(
           'Scan to join your crew',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         Center(

@@ -148,7 +148,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
             _error!,
             style: TextStyle(
               color: context.errorInk,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
           TextButton(
@@ -185,7 +185,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
       const Text(
         'No invites yet',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
       ),
       const SizedBox(height: 12),
     ],
@@ -212,7 +212,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                         invite.name,
                         style: const TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -229,7 +229,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                       const SizedBox(height: 12),
                       const Text(
                         'VIEW CREW',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -266,7 +266,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
         style: TextStyle(
           color: context.ink,
           fontSize: 30,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
       const SizedBox(height: 8),
@@ -358,7 +358,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
                 pact.title,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
@@ -392,7 +392,7 @@ class CrewInvitesPaneState extends State<CrewInvitesPane> {
           'This invitation has expired. Ask the owner for a new one.',
           style: TextStyle(
             color: context.errorInk,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

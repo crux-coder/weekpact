@@ -15,9 +15,9 @@ import 'home_backend.dart';
 
 import 'package:flutter/material.dart';
 
+import '../crew/crew_switcher.dart';
 import '../pacts/pacts_backend.dart';
 import '../pacts/pacts_page.dart';
-import 'recent_activity.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
@@ -245,10 +245,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// The height the pact stack keeps for itself before Home will place anything
-/// under it: less than this and the card is too short to read.
-const _pactStackFloor = 240.0;
-
 class _HomeDestination extends StatefulWidget {
   const _HomeDestination({
     super.key,
@@ -430,6 +426,29 @@ class _HomeDestinationState extends State<_HomeDestination>
     }
   }
 
+  /// The crew switcher, as Pacts and Crews carry it: the same compact control
+  /// under the page's own heading, so switching crews is the one gesture
+  /// wherever you are. Null until the crews are in — there is nothing to
+  /// switch between yet, and the heading stands alone until there is.
+  Widget? _selector() {
+    final crews = _crews;
+    if (crews == null || crews.isEmpty) return null;
+    return CrewSwitcher(
+      key: const ValueKey('home-crew-switcher'),
+      compact: true,
+      // Home stacks the switcher on the crew panel at the same width, so it
+      // takes the corner that column is cut to rather than the standalone
+      // control's own.
+      curve: CrewWeekButton.frameCurve,
+      crews: crews,
+      selectedId: _crew?.id ?? widget.selectedCrewId,
+      loadWeek: widget.backend.fetchWeek,
+      // A switch mid-save would save the check-in against the crew being
+      // left, so the control waits for the write to land.
+      onSelected: _savingPact != null ? null : widget.onCrewSelected,
+    );
+  }
+
   Future<void> _openCrewWeek() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -478,23 +497,31 @@ class _HomeDestinationState extends State<_HomeDestination>
                       builder: (context, constraints) {
                         // Preserve a complete, non-scrolling composition even when
                         // safe areas or landscape leave less than its minimum height.
+                        final pageHeight = constraints.maxHeight.clamp(
+                          // Heading and its switcher, the crew panel and a
+                          // usable pact card; shorter viewports scale down.
+                          312 +
+                              HomeHeader.height +
+                              HomeCrewPanel.height +
+                              (_saveError == null ? 0 : 40),
+                          double.infinity,
+                        );
                         return FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.topCenter,
                           child: SizedBox(
                             width: constraints.maxWidth,
-                            height: constraints.maxHeight.clamp(
-                              // Heading, the crew panel and a usable pact
-                              // card; shorter viewports scale down.
-                              312 +
-                                  HomeHeader.headingHeight +
-                                  HomeCrewPanel.height +
-                                  (_saveError == null ? 0 : 40),
-                              double.infinity,
-                            ),
+                            height: pageHeight,
                             child: Builder(
                               builder: (context) {
-                                if (loading) return const TodaySkeleton();
+                                final selector = _selector();
+                                if (loading) {
+                                  // The switcher stays mounted through a
+                                  // switch, so the hand it is putting away
+                                  // finishes its flight rather than blinking
+                                  // out with the page under it.
+                                  return TodaySkeleton(selector: selector);
+                                }
                                 if (_error != null) {
                                   return Center(
                                     child: Column(
@@ -523,7 +550,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                           style: TextStyle(
                                             color: context.ink,
                                             fontSize: 24,
-                                            fontWeight: FontWeight.w900,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                         const SizedBox(height: 20),
@@ -556,7 +583,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   // a panel to line up with.
                                   showCrewCheckIns: false,
                                   top:
-                                      HomeHeader.headingHeight +
+                                      HomeHeader.height +
                                       12 +
                                       CrewWeekButton.pad,
                                   inset: CrewWeekButton.pad,
@@ -564,7 +591,10 @@ class _HomeDestinationState extends State<_HomeDestination>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      HomeHeader(streakWeeks: week.streakWeeks),
+                                      HomeHeader(
+                                        streakWeeks: week.streakWeeks,
+                                        selector: selector,
+                                      ),
                                       const SizedBox(height: 12),
                                       HomeCrewPanel(
                                         key: const ValueKey('home-crew-panel'),
@@ -602,7 +632,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                                         color: context.ink,
                                                         fontSize: 24,
                                                         fontWeight:
-                                                            FontWeight.w900,
+                                                            FontWeight.w700,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 12),
@@ -618,53 +648,15 @@ class _HomeDestinationState extends State<_HomeDestination>
                                                 ),
                                               )
                                             : LayoutBuilder(
-                                                builder: (context, space) {
-                                                  // Home never scrolls, so the
-                                                  // activity line is only worth
-                                                  // its height where the stack
-                                                  // can give that up and still
-                                                  // read as a card. A short
-                                                  // screen keeps the stack
-                                                  // whole instead.
-                                                  final section =
-                                                      12 +
-                                                      RecentActivityCard.heightOf(
-                                                        context,
-                                                      );
-                                                  final room =
-                                                      space.maxHeight -
-                                                          section >=
-                                                      _pactStackFloor;
-                                                  return Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
-                                                    children: [
-                                                      TodayPactsCard(
-                                                        height: room
-                                                            ? space.maxHeight -
-                                                                  section
-                                                            : space.maxHeight,
-                                                        horizontalBleed: 12,
-                                                        week: week,
-                                                        userId: widget.userId,
-                                                        savingPact: _savingPact,
-                                                        onToggle: _togglePact,
-                                                      ),
-                                                      if (room) ...[
-                                                        const SizedBox(
-                                                          height: 12,
-                                                        ),
-                                                        RecentActivityCard(
-                                                          week: week,
-                                                          userId: widget.userId,
-                                                          onOpenFeed:
-                                                              widget.onOpenFeed,
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  );
-                                                },
+                                                builder: (context, space) =>
+                                                    TodayPactsCard(
+                                                      height: space.maxHeight,
+                                                      horizontalBleed: 12,
+                                                      week: week,
+                                                      userId: widget.userId,
+                                                      savingPact: _savingPact,
+                                                      onToggle: _togglePact,
+                                                    ),
                                               ),
                                       ),
                                     ],

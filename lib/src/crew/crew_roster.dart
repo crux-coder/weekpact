@@ -4,7 +4,6 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../widgets/app_icon.dart';
 
-import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -111,7 +110,7 @@ class CrewAvatarStack extends StatelessWidget {
                           style: const TextStyle(
                             color: WeekPactColors.black,
                             fontSize: 13,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -143,7 +142,7 @@ class CrewFace extends StatelessWidget {
         _name == 'Crew member' ? '?' : _name.characters.first.toUpperCase(),
         style: TextStyle(
           fontSize: fontSize,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: WeekPactColors.black,
         ),
       ),
@@ -195,7 +194,7 @@ class CrewPersonBand extends StatelessWidget {
       color: context.muted,
       fontSize: 11,
       letterSpacing: .8,
-      fontWeight: FontWeight.w800,
+      fontWeight: FontWeight.w600,
     ),
   );
 
@@ -226,7 +225,7 @@ class CrewPersonBand extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 19,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -240,28 +239,18 @@ class CrewPersonBand extends StatelessWidget {
             // them runs under the button.
             const SizedBox(width: 12),
             SizedBox.square(
-              dimension: 30,
+              dimension: _bandSlot,
               child: onRemove == null
                   ? null
-                  // A raised disc with a person-minus glyph: the one control on
-                  // the band says what it does, where three dots said only
-                  // that something was hidden behind them. It carries the same
-                  // outline and edge as every other surface, so it reads as a
-                  // button sitting on the band.
-                  : AppSurface(
-                      fillColor: context.ink,
-                      resolveTone: false,
-                      shape: const CircleBorder(),
-                      builder: (_) => IconButton(
-                        tooltip: 'Remove $_name',
-                        onPressed: onRemove,
-                        padding: EdgeInsets.zero,
-                        icon: AppIcon(
-                          icon: HugeIconsStrokeRounded.userMinus01,
-                          color: color,
-                          size: 15,
-                        ),
-                      ),
+                  // A person-minus glyph: the one control on the band says
+                  // what it does, where three dots said only that something
+                  // was hidden behind them.
+                  : BandGlyph(
+                      icon: HugeIconsStrokeRounded.userMinus01,
+                      face: context.ink,
+                      glyph: color,
+                      tooltip: 'Remove $_name',
+                      onPressed: onRemove,
                     ),
             ),
           ],
@@ -284,24 +273,11 @@ class CrewInviteBand extends StatelessWidget {
     builder: (context) => InkWell(
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+        // The same right edge a person band keeps, so the plus lands in the
+        // column the remove buttons stand in rather than opposite them.
+        padding: const EdgeInsets.fromLTRB(16, 8, 6, 8),
         child: Row(
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                color: WeekPactColors.cream,
-                shape: BoxShape.circle,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(9),
-                child: HugeIcon(
-                  icon: HugeIconsStrokeRounded.add01,
-                  size: 22,
-                  color: WeekPactColors.black,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'INVITE SOMEONE',
@@ -309,8 +285,18 @@ class CrewInviteBand extends StatelessWidget {
                   color: WeekPactColors.cream,
                   fontSize: 17,
                   letterSpacing: .4,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // The band itself is the button, so the glyph is only its face.
+            const SizedBox.square(
+              dimension: _bandSlot,
+              child: BandGlyph(
+                icon: HugeIconsStrokeRounded.add01,
+                face: WeekPactColors.cream,
+                glyph: WeekPactColors.black,
               ),
             ),
           ],
@@ -318,4 +304,44 @@ class CrewInviteBand extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// The square at the end of a band. Every one is the same size on the same
+/// squircle, so a remove and an invite read as one control repeated down the
+/// roster rather than two shapes that happen to sit in the same corner.
+const _bandSlot = 36.0;
+
+class BandGlyph extends StatelessWidget {
+  const BandGlyph({
+    super.key,
+    required this.icon,
+    required this.face,
+    required this.glyph,
+    this.tooltip,
+    this.onPressed,
+  });
+
+  final List<List<dynamic>> icon;
+
+  /// The square's fill, and the colour its outline and raised edge are mixed
+  /// from — not the band's, so the control sits on the band rather than in it.
+  final Color face;
+  final Color glyph;
+  final String? tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = Center(
+      child: AppIcon(icon: icon, color: glyph, size: 20),
+    );
+    final square = AppSurface(
+      fillColor: face,
+      resolveTone: false,
+      shape: WeekPactMetrics.buttonShape,
+      builder: (_) =>
+          onPressed == null ? mark : InkWell(onTap: onPressed, child: mark),
+    );
+    return tooltip == null ? square : Tooltip(message: tooltip!, child: square);
+  }
 }

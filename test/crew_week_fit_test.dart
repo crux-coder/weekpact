@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_pact_week_card.dart';
 import 'package:weekpact/src/crew/crew_week_page.dart';
@@ -9,6 +6,7 @@ import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
+import 'support/fonts.dart';
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -67,25 +65,8 @@ _CrewBackend _backend() => _CrewBackend()
     ),
   ];
 
-/// The app's real faces. The default test font has square, fixed metrics, so a
-/// layout that overflows with RobotoCondensed can still fit in a test.
-Future<void> _loadFonts() async {
-  for (final family in ['RobotoCondensed', 'Roboto']) {
-    final loader = FontLoader(family);
-    for (final weight in ['Regular', 'Bold']) {
-      final file = File('assets/fonts/$family-$weight.ttf');
-      if (file.existsSync()) {
-        loader.addFont(
-          Future.value(file.readAsBytesSync().buffer.asByteData()),
-        );
-      }
-    }
-    await loader.load();
-  }
-}
-
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadAppFont);
 
   for (final (size, inset, scale, members) in [
     (const Size(558, 603), 0.0, 1.0, 3),

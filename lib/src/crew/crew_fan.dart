@@ -18,17 +18,11 @@ import '../widgets/avatar_shape.dart';
 abstract final class CrewFanLayout {
   static const cardHeight = 76.0;
   static const _gap = 12.0;
-  static const _sideInset = 16.0;
 
   /// The hand hangs off the switcher rather than off the finger: it opens
   /// directly under the control it belongs to, the same gap a card keeps from
   /// its neighbour.
   static const _gapBelowSwitcher = _gap;
-
-  /// Full bleed: a card is as wide as the screen allows, so a finger anywhere
-  /// along it still leaves the crew name and its state in view.
-  static double cardWidth(Size screen) =>
-      math.max(0.0, screen.width - _sideInset * 2);
 
   /// One rectangle per crew, in global coordinates, ordered like [crews].
   ///
@@ -41,8 +35,6 @@ abstract final class CrewFanLayout {
     required int count,
   }) {
     if (count == 0) return const [];
-    final width = anchor.width > 0 ? anchor.width : cardWidth(screen);
-    final left = anchor.width > 0 ? anchor.left : _sideInset;
     final top = anchor.bottom + _gapBelowSwitcher;
     // Tighten the spacing rather than run off the bottom when a crew list grows.
     final room = screen.height - padding.bottom - 12 - top;
@@ -52,13 +44,12 @@ abstract final class CrewFanLayout {
     );
     return [
       for (var i = 0; i < count; i++)
-        Rect.fromLTWH(left, top + step * i, width, cardHeight),
+        Rect.fromLTWH(anchor.left, top + step * i, anchor.width, cardHeight),
     ];
   }
 
   /// How far the hand travels on its way in: from above the screen down to
-  /// the foot of the last card. A pull follows this distance, so the finger
-  /// and the cards it is dragging move as one.
+  /// the foot of the last card.
   static double drop(List<Rect> cards) =>
       cards.isEmpty ? 0 : cards.last.bottom + 24;
 
@@ -85,7 +76,6 @@ class CrewFan extends StatelessWidget {
     this.switcher,
     this.switcherRect,
     this.previews = const {},
-    this.scrubbing = false,
   });
 
   final List<PactCrew> crews;
@@ -107,11 +97,6 @@ class CrewFan extends StatelessWidget {
   /// Each crew's week, by crew id, once it has loaded: the faces and the streak
   /// a card shows. A crew that has none yet keeps its name alone.
   final Map<String, CrewWeek> previews;
-
-  /// True while a finger is dragging the hand down. The cards then track that
-  /// finger one to one instead of riding the spring, so the deal moves at the
-  /// speed of the hand pulling it.
-  final bool scrubbing;
 
   @override
   Widget build(BuildContext context) {
@@ -210,24 +195,11 @@ class CrewFan extends StatelessWidget {
   );
 
   /// 0 above the screen, 1 landed, a little past 1 at the top of the bounce.
-  ///
-  /// A dragged hand is linear: the card has to keep pace with the finger, and
-  /// a spring would run ahead of it and bounce under it.
   double _progress(int index) {
     final count = crews.length;
     final time = animation.value * _window(count) - index * _beat(count);
     if (time <= 0) return 0;
-    return scrubbing ? math.min(1, time / _settle) : _spring.x(time);
-  }
-
-  /// The animation value that leaves the hand [pixels] down from where it
-  /// started — the point the finger has dragged the top card to.
-  static double pulled(double pixels, List<Rect> cards, int count) {
-    final distance = CrewFanLayout.drop(cards);
-    if (distance <= 0) return 1;
-    final window = _window(count);
-    if (window <= 0) return 1;
-    return ((pixels / distance) * (_settle / window)).clamp(0.0, 1.0);
+    return _spring.x(time);
   }
 
   Widget _card(BuildContext context, int index, double dy) {
@@ -352,7 +324,7 @@ class _CrewFanCardState extends State<_CrewFanCard> {
     fontFamilyFallback: WeekPactType.secondaryFallback,
     fontSize: 10,
     letterSpacing: 1.4,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w500,
   );
 
   @override
@@ -412,7 +384,7 @@ class _CrewFanCardState extends State<_CrewFanCard> {
                       style: TextStyle(
                         color: ink,
                         fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -524,6 +496,6 @@ class _CrewFaces extends StatelessWidget {
     fontFamily: WeekPactType.secondary,
     fontFamilyFallback: WeekPactType.secondaryFallback,
     fontSize: 12,
-    fontWeight: FontWeight.w900,
+    fontWeight: FontWeight.w600,
   );
 }

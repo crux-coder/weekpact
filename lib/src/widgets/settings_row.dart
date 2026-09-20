@@ -21,7 +21,7 @@ class SettingsRow extends StatelessWidget {
     leading: AppIcon(icon: icon, size: 23),
     title: Text(
       label,
-      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
     ),
     trailing: const AppIcon(
       icon: HugeIconsStrokeRounded.arrowRight01,

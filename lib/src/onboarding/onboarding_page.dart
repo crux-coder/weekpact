@@ -3,14 +3,13 @@ import '../widgets/avatar_shape.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import 'dart:ui' as ui;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../auth/auth_backend.dart';
+import '../auth/avatar_picker.dart';
 import '../auth/account_actions.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -27,7 +26,7 @@ class OnboardingPage extends StatefulWidget {
   final AuthBackend backend;
   final AuthUser user;
   final ValueChanged<AuthUser> onCompleted;
-  final Future<Uint8List?> Function()? pickAvatar;
+  final AvatarPicker? pickAvatar;
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
@@ -53,51 +52,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
-  Future<Uint8List> _preparePhoto(XFile file) async {
-    if (await file.length() > 20 * 1024 * 1024) {
-      throw StateError('Choose a photo smaller than 20 MB.');
-    }
-    final bytes = await file.readAsBytes();
-    // Re-encode a bounded image so storage receives PNG bytes without photo metadata.
-    final descriptor = await ui.ImmutableBuffer.fromUint8List(bytes);
-    final imageDescriptor = await ui.ImageDescriptor.encoded(descriptor);
-    try {
-      final maxSide = imageDescriptor.width > imageDescriptor.height
-          ? imageDescriptor.width
-          : imageDescriptor.height;
-      final scale = maxSide > 512 ? 512 / maxSide : 1.0;
-      final codec = await imageDescriptor.instantiateCodec(
-        targetWidth: (imageDescriptor.width * scale).round().clamp(1, 512),
-        targetHeight: (imageDescriptor.height * scale).round().clamp(1, 512),
-      );
-      try {
-        final frame = await codec.getNextFrame();
-        try {
-          final data = await frame.image.toByteData(
-            format: ui.ImageByteFormat.png,
-          );
-          if (data == null || data.lengthInBytes > 5 * 1024 * 1024) {
-            throw StateError('Choose a smaller photo.');
-          }
-          return data.buffer.asUint8List();
-        } finally {
-          frame.image.dispose();
-        }
-      } finally {
-        codec.dispose();
-      }
-    } finally {
-      imageDescriptor.dispose();
-      descriptor.dispose();
-    }
-  }
-
   Future<void> _recoverPhoto() async {
     try {
       final result = await ImagePicker().retrieveLostData();
       if (result.exception != null) throw result.exception!;
       if (result.files?.isNotEmpty == true) {
-        final bytes = await _preparePhoto(result.files!.first);
+        final bytes = await prepareAvatarPhoto(result.files!.first);
         if (mounted) {
           setState(() {
             _avatar = bytes;
@@ -122,19 +82,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       _error = null;
     });
     try {
-      Uint8List? bytes;
-      if (widget.pickAvatar != null) {
-        bytes = await widget.pickAvatar!();
-      } else {
-        final file = await ImagePicker().pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 512,
-          maxHeight: 512,
-          imageQuality: 85,
-          requestFullMetadata: false,
-        );
-        if (file != null) bytes = await _preparePhoto(file);
-      }
+      final bytes = await (widget.pickAvatar ?? pickAvatarPhoto)();
       if (mounted && bytes != null) setState(() => _avatar = bytes);
     } catch (_) {
       if (mounted) {
@@ -209,7 +157,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           'WeekPact.',
                           style: TextStyle(
                             fontSize: 28,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: context.ink,
                           ),
                         ),
@@ -446,7 +394,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         style: TextStyle(
           fontSize: 20,
           color: context.ink,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
       ),
       const SizedBox(width: 16),
@@ -459,7 +407,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               style: TextStyle(
                 fontSize: 20,
                 color: context.ink,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             Text(

@@ -271,7 +271,7 @@ void main() {
     await tester.pumpUi();
 
     expect(find.text('Pacts'), findsWidgets);
-    expect(find.text('Your pacts'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pacts-heading')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
@@ -356,7 +356,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.text('Your pacts'), findsNothing);
+    expect(find.byKey(const ValueKey('pacts-heading')), findsNothing);
     expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
     expect(find.text('Check in').hitTestable(), findsOneWidget);
     await tester.tap(
@@ -684,12 +684,15 @@ class FakeAuthBackend implements AuthBackend {
     _controller.add(null);
   }
 
+  Uint8List? savedAvatar;
+
   @override
   Future<AuthUser> completeOnboarding({
     required String firstName,
     required String lastName,
     Uint8List? avatar,
   }) async {
+    if (avatar != null) savedAvatar = avatar;
     _user = AuthUser(
       email: _user!.email,
       firstName: firstName,

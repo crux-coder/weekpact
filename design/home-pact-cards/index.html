@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home pact cards — ideas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Straight from weekpact_theme.dart */
+    --canvas:#2B302C; --ink:#191B19; --paper:#ECEDEA; --cream:#F5F6F5;
+    --muted:#51564F; --dark-ink:#F3F5F2; --dark-muted:#B8BEB5;
+    --ink-edge:#484848; --done-mark:#3F7A57; --streak:#FF9138;
+    --lemon:#E8D05A; --mint:#8CDCAC; --sky:#8AC9EC; --coral:#F9A08A;
+    --lavender:#BCA9EE; --peach:#F7C382; --lime:#C4E07A; --aqua:#89D7D2;
+    --orchid:#E3A8D6; --butter:#EFD98D;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; padding:48px 24px 120px; background:#101310; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,BlinkMacSystemFont,sans-serif; font-weight:400;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:1560px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { margin:0 0 8px; color:var(--dark-muted); max-width:74ch; line-height:1.65; font-size:15px; }
+  .note { margin:0 0 40px; color:#7d857b; max-width:74ch; line-height:1.65; font-size:13.5px; }
+  .note b { color:var(--dark-muted); font-weight:600; }
+  .eyebrow { font-size:11px; font-weight:500; letter-spacing:1.6px; text-transform:uppercase;
+    color:#7d857b; margin:0 0 14px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(392px,1fr)); gap:22px; }
+  .cell { background:#171A17; border:1px solid #262b26; border-radius:22px; padding:20px 20px 22px;
+    display:flex; flex-direction:column; }
+  .cell.wide { grid-column:span 2; }
+  @media (max-width:880px){ .cell.wide { grid-column:span 1; } }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; letter-spacing:-.2px; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#101310;
+    background:var(--dark-muted); padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--mint); }
+  .cell > p { color:#9ba299; font-size:13px; line-height:1.6; margin:0 0 6px; }
+  .cost { color:#6e756c; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .cost b { color:#9ba299; font-weight:500; }
+  /* Phone scale, honestly: 360pt screen less the 12px page insets = a 336px card. */
+  .stage { background:var(--canvas); border-radius:16px; padding:16px 12px 18px; margin-top:auto;
+    width:360px; max-width:100%; margin-left:auto; margin-right:auto; }
+  .stage + .stage { margin-top:12px; }
+  .stageLabel { font-size:10px; font-weight:500; letter-spacing:1.4px; text-transform:uppercase;
+    color:#7f887d; margin:0 0 10px; padding-left:2px; }
+  .sectionHead { display:flex; justify-content:space-between; align-items:baseline;
+    color:var(--dark-ink); font-size:14px; font-weight:500; margin:0 0 8px; padding:0 2px; }
+  .sectionHead span:last-child { color:var(--dark-muted); font-size:12px; }
+  .dots { display:flex; gap:6px; justify-content:center; margin-top:12px; }
+  .dots i { width:6px; height:6px; border-radius:99px; background:#5d655c; display:block; }
+  .dots i.on { width:18px; background:var(--dark-ink); }
+
+  /* ---- the card chassis: 1px outline mixed .28 to black, solid 3px bottom edge at .24 ---- */
+  .card {
+    --edge: color-mix(in srgb, var(--t) 76%, #000);
+    --line: color-mix(in srgb, var(--t) 72%, #000);
+    background:var(--t); color:var(--ink); border:1px solid var(--line);
+    border-radius:18px; box-shadow:0 3px 0 var(--edge); position:relative;
+  }
+  .lemon{--t:var(--lemon)} .mint{--t:var(--mint)} .sky{--t:var(--sky)}
+  .coral{--t:var(--coral)} .lavender{--t:var(--lavender)} .peach{--t:var(--peach)}
+  .lime{--t:var(--lime)} .butter{--t:var(--butter)} .aqua{--t:var(--aqua)}
+
+  /* the sliver of the next card in the deck */
+  .deck { position:relative; padding-right:14px; }
+  .deck > .peek { position:absolute; right:0; top:8px; bottom:11px; width:26px;
+    border-radius:18px; background:var(--p); border:1px solid color-mix(in srgb,var(--p) 72%,#000);
+    box-shadow:0 3px 0 color-mix(in srgb,var(--p) 76%,#000); z-index:0; }
+  .deck > .card { position:relative; z-index:1; }
+
+  .ic { display:block; }
+  .ic svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.9;
+    stroke-linecap:round; stroke-linejoin:round; }
+
+  /* shared bits */
+  .ttl { font-size:22px; font-weight:700; letter-spacing:-.3px; line-height:1.15; }
+  .cap { font-size:13px; font-weight:500; opacity:.62; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:8px; height:48px;
+    background:var(--ink); color:var(--paper); border:1px solid var(--ink-edge);
+    border-radius:18px; box-shadow:0 2px 0 var(--ink-edge); font-size:16px; font-weight:600; }
+  .btn .ic { width:20px; height:20px; }
+  .done { display:flex; align-items:center; height:48px; background:var(--cream);
+    border:1px solid var(--edge); border-radius:18px; box-shadow:0 2px 0 var(--edge);
+    padding-left:12px; gap:8px; font-size:14px; font-weight:500; color:var(--ink); }
+  .done .ic { width:21px; height:21px; color:var(--done-mark); flex:none; }
+  .done .undo { margin-left:auto; border-left:1px solid rgba(25,27,25,.1); height:20px;
+    display:flex; align-items:center; padding:0 18px 0 18px; font-size:12px; font-weight:500;
+    text-decoration:underline; opacity:.8; }
+
+  /* segments */
+  .segs { display:flex; gap:5px; }
+  .segs i { flex:1; height:16px; border-radius:8px; background:rgba(25,27,25,.20); display:block; }
+  .segs i.on { background:var(--ink); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge); }
+
+  /* ============ A. ONE FACT ============ */
+  .A .card { padding:16px 18px 14px; display:flex; flex-direction:column; gap:0; height:200px; }
+  .A .row { display:flex; align-items:flex-start; gap:12px; }
+  .A .row .ic { width:26px; height:26px; margin-top:2px; opacity:.85; flex:none; }
+  .A .mid { margin-top:auto; display:flex; flex-direction:column; gap:9px; }
+  .A .tally { font-size:13px; font-weight:500; opacity:.62; display:flex; justify-content:space-between; }
+  .A .tally b { font-weight:600; opacity:1; }
+
+  /* ============ B. THE NUMBER ============ */
+  .B .card { padding:16px 18px 14px; display:flex; flex-direction:column; height:200px; }
+  .B .row { display:flex; justify-content:space-between; align-items:flex-start; }
+  .B .row .ic { width:24px; height:24px; opacity:.8; }
+  .B .big { margin-top:auto; margin-bottom:12px; display:flex; align-items:baseline; gap:8px; }
+  .B .n { font-size:62px; font-weight:700; line-height:.9; letter-spacing:-2px; }
+  .B .of { font-size:15px; font-weight:500; opacity:.6; padding-bottom:4px; }
+
+  /* ============ C. RING ============ */
+  .C .card { padding:14px 16px; display:flex; align-items:center; gap:14px; height:96px; }
+  .C .ring { width:60px; height:60px; position:relative; flex:none; }
+  .C .ring svg { width:60px; height:60px; transform:rotate(-90deg); }
+  .C .ring .trk { fill:none; stroke:rgba(25,27,25,.18); stroke-width:5; }
+  .C .ring .val { fill:none; stroke:var(--ink); stroke-width:5; stroke-linecap:round; }
+  .C .ring .ic { position:absolute; inset:0; margin:auto; width:24px; height:24px;
+    display:flex; align-items:center; justify-content:center; }
+  .C .txt { flex:1; min-width:0; }
+  .C .txt .ttl { font-size:19px; }
+  .C .tap { width:52px; height:52px; flex:none; border-radius:18px; background:var(--ink);
+    color:var(--paper); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge);
+    display:flex; align-items:center; justify-content:center; }
+  .C .tap .ic { width:24px; height:24px; }
+  .C .tap.ok { background:var(--cream); color:var(--done-mark); border-color:var(--edge);
+    box-shadow:0 2px 0 var(--edge); }
+  .C .stack { display:flex; flex-direction:column; gap:11px; }
+
+  /* ============ D. ROWS ============ */
+  .D .rows { display:flex; flex-direction:column; gap:9px; }
+  .D .card { padding:12px 12px 12px 14px; display:flex; align-items:center; gap:12px; height:66px; }
+  .D .chip { width:36px; height:36px; border-radius:12px; background:rgba(25,27,25,.13);
+    display:flex; align-items:center; justify-content:center; flex:none; }
+  .D .chip .ic { width:20px; height:20px; }
+  .D .txt { flex:1; min-width:0; }
+  .D .txt .ttl { font-size:17px; font-weight:600; }
+  .D .txt .cap { font-size:12px; }
+  .D .pips { display:flex; gap:3px; margin-top:5px; }
+  .D .pips i { width:14px; height:5px; border-radius:99px; background:rgba(25,27,25,.22); }
+  .D .pips i.on { background:var(--ink); }
+  .D .tap { width:40px; height:40px; flex:none; border-radius:14px; background:var(--ink);
+    color:var(--paper); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge);
+    display:flex; align-items:center; justify-content:center; }
+  .D .tap .ic { width:20px; height:20px; }
+  .D .tap.ok { background:var(--cream); color:var(--done-mark);
+    border-color:var(--edge); box-shadow:0 2px 0 var(--edge); }
+
+  /* ============ E. THE CARD IS THE BUTTON ============ */
+  .E .card { padding:18px; display:flex; flex-direction:column; height:164px; cursor:pointer; }
+  .E .row { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .E .row .ic { width:26px; height:26px; opacity:.85; flex:none; }
+  .E .mid { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+  .E .hint { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:500;
+    opacity:.55; }
+  .E .hint .ic { width:17px; height:17px; }
+  .E .card.ok { background:var(--cream); --t:var(--cream); }
+  .E .card.ok .stamp { position:absolute; top:16px; right:16px; width:30px; height:30px;
+    color:var(--done-mark); }
+  .E .card.ok .hint { color:var(--done-mark); opacity:1; }
+  .E .card.ok .segs i.on { background:var(--done-mark); border-color:color-mix(in srgb,var(--done-mark) 70%,#000);
+    box-shadow:0 2px 0 color-mix(in srgb,var(--done-mark) 70%,#000); }
+  .E .card.ok .segs i { background:rgba(25,27,25,.14); }
+
+  /* ============ F. WEEK STRIP ============ */
+  .F .card { padding:16px 18px 14px; display:flex; flex-direction:column; height:200px; }
+  .F .row { display:flex; justify-content:space-between; align-items:flex-start; }
+  .F .row .ic { width:24px; height:24px; opacity:.8; }
+  .F .week { margin-top:auto; margin-bottom:12px; display:flex; gap:5px; }
+  .F .week div { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .F .week .lbl { font-size:10px; font-weight:500; letter-spacing:.6px; opacity:.5; }
+  .F .week .box { width:100%; height:30px; border-radius:10px; background:rgba(25,27,25,.15);
+    display:flex; align-items:center; justify-content:center; }
+  .F .week .box .ic { width:15px; height:15px; color:var(--paper); }
+  .F .week .on .box { background:var(--ink); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge); }
+  .F .week .now .box { background:transparent; border:2px solid var(--ink); box-shadow:none; }
+  /* Today, already kept: the fill stays so the tick is legible, the ring says "today". */
+  .F .week .on.now .box { background:var(--ink); border:2px solid var(--ink);
+    outline:2px solid var(--ink); outline-offset:2px; box-shadow:none; }
+  .F .week .now .lbl { opacity:1; font-weight:600; }
+  .F .week .off .box { opacity:.45; }
+
+  /* footer */
+  .verdict { margin-top:44px; background:#171A17; border:1px solid #262b26; border-radius:22px;
+    padding:24px 26px; }
+  .verdict h2 { margin:0 0 14px; font-size:19px; font-weight:600; }
+  .verdict table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  .verdict th { text-align:left; color:#7d857b; font-weight:500; font-size:11px; letter-spacing:1.2px;
+    text-transform:uppercase; padding:0 14px 10px 0; border-bottom:1px solid #262b26; }
+  .verdict td { padding:12px 14px 12px 0; color:#9ba299; line-height:1.55;
+    border-bottom:1px solid #1e221e; vertical-align:top; }
+  .verdict td:first-child { color:var(--dark-ink); font-weight:600; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Home pact cards</h1>
+<p class="lede">Six ways to cut the front card down. Same chassis every time — the tint, the 1px
+outline mixed <code>.28</code> to black, the solid 3px bottom edge, an 18px corner, Rubik in
+400/500/600/700. Nothing here asks for data Home does not already load.</p>
+<p class="note">What the card does today: title, icon, <b>84pt “3 / 5”</b>, <b>a segment per day</b>,
+and a full-width button — in 200px. The number and the bar are the same fact told twice, and the
+icon floats in a corner attached to nothing. Every idea below removes something rather than
+rearranging it.</p>
+
+<div class="grid">
+
+  <!-- ============================ A ============================ -->
+  <div class="cell A">
+    <div class="cellHead"><span class="key pick">A</span><h2>One fact</h2></div>
+    <p>Drop the giant number. The segments already <em>are</em> the count — one box per promised day,
+      filled for days kept — so let them carry it and give the space back to the title.</p>
+    <p class="cost"><b>Cost:</b> none. Pure subtraction from what ships today.</p>
+    <div class="stage">
+      <p class="stageLabel">Pending · Checked in</p>
+      <div class="deck" style="--p:var(--mint)">
+        <div class="peek"></div>
+        <div class="card lemon">
+          <div class="row">
+            <div class="ttl">Morning run</div>
+            <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M13 9.5 9.5 12l2 3.5-1 5.5M13 9.5l3.5 1.5 1 3.5M13 9.5 8 8 5.5 11"/><path d="m11.5 15.5-4 1.5"/></svg></div>
+          </div>
+          <div class="mid">
+            <div class="tally"><span><b>3</b> of 5 days</span><span>2 to go</span></div>
+            <div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+          </div>
+        </div>
+      </div>
+      <div class="dots"><i class="on"></i><i></i><i></i></div>
+    </div>
+    <div class="stage">
+      <div class="deck" style="--p:var(--sky)">
+        <div class="peek"></div>
+        <div class="card mint">
+          <div class="row">
+            <div class="ttl">Read 20 pages</div>
+            <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2Z"/><path d="M12 6.5v13"/></svg></div>
+          </div>
+          <div class="mid">
+            <div class="tally"><span><b>4</b> of 4 days</span><span>Week kept</span></div>
+            <div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="done"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span>Checked in today<span class="undo">Undo</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ B ============================ -->
+  <div class="cell B">
+    <div class="cellHead"><span class="key">B</span><h2>The number</h2></div>
+    <p>The opposite cut: keep the number, lose the bar. One figure, one caption, one button —
+      the card has exactly three things on it and the number owns the middle.</p>
+    <p class="cost"><b>Cost:</b> <em>which</em> days is gone; only the count survives. Reads well on a
+      5-day pact, thin on a 7-day one.</p>
+    <div class="stage">
+      <p class="stageLabel">Pending · Checked in</p>
+      <div class="deck" style="--p:var(--coral)">
+        <div class="peek"></div>
+        <div class="card sky">
+          <div class="row">
+            <div class="ttl">Cold shower</div>
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c3 4.5 5 7 5 9.5A5 5 0 0 1 7 12.5C7 10 9 7.5 12 3Z"/></svg></div>
+          </div>
+          <div class="big"><span class="n">3</span><span class="of">of 5 days this week</span></div>
+          <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+        </div>
+      </div>
+      <div class="dots"><i></i><i class="on"></i><i></i></div>
+    </div>
+    <div class="stage">
+      <div class="deck" style="--p:var(--lime)">
+        <div class="peek"></div>
+        <div class="card coral">
+          <div class="row">
+            <div class="ttl">Gym</div>
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+          </div>
+          <div class="big"><span class="n">2</span><span class="of">of 3 days this week</span></div>
+          <div class="done"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span>Checked in today<span class="undo">Undo</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ C ============================ -->
+  <div class="cell C">
+    <div class="cellHead"><span class="key">C</span><h2>Ring row</h2></div>
+    <p>The icon stops floating: it sits inside its own progress ring, which is the count. At 96px
+      the card is short enough that the deck dissolves — three pacts stack on Home at once and
+      nobody has to swipe to find out a pact exists.</p>
+    <p class="cost"><b>Cost:</b> the ring reads as a fraction, not as days; four-plus pacts still
+      need scroll or a deck. Biggest structural change here.</p>
+    <div class="stage">
+      <div class="sectionHead"><span>YOUR PACTS</span><span>3 of 4 kept today</span></div>
+      <div class="stack">
+        <div class="card lemon">
+          <div class="ring">
+            <svg viewBox="0 0 60 60"><circle class="trk" cx="30" cy="30" r="25"/><circle class="val" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="63"/></svg>
+            <span class="ic"><svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M13 9.5 9.5 12l2 3.5-1 5.5M13 9.5l3.5 1.5 1 3.5M13 9.5 8 8 5.5 11"/><path d="m11.5 15.5-4 1.5"/></svg></span>
+          </div>
+          <div class="txt"><div class="ttl">Morning run</div><div class="cap">3 of 5 days</div></div>
+          <div class="tap"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span></div>
+        </div>
+        <div class="card mint">
+          <div class="ring">
+            <svg viewBox="0 0 60 60"><circle class="trk" cx="30" cy="30" r="25"/><circle class="val" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="0"/></svg>
+            <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2Z"/><path d="M12 6.5v13"/></svg></span>
+          </div>
+          <div class="txt"><div class="ttl">Read 20 pages</div><div class="cap">4 of 4 days · kept</div></div>
+          <div class="tap ok"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span></div>
+        </div>
+        <div class="card lavender">
+          <div class="ring">
+            <svg viewBox="0 0 60 60"><circle class="trk" cx="30" cy="30" r="25"/><circle class="val" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="105"/></svg>
+            <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c3 4.5 5 7 5 9.5A5 5 0 0 1 7 12.5C7 10 9 7.5 12 3Z"/></svg></span>
+          </div>
+          <div class="txt"><div class="ttl">Cold shower</div><div class="cap">1 of 3 days</div></div>
+          <div class="tap"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ D ============================ -->
+  <div class="cell D">
+    <div class="cellHead"><span class="key">D</span><h2>Rows</h2></div>
+    <p>The most minimal thing on this page: 66px a pact, the tint as a stripe rather than a field,
+      the count as pips under the title. Five pacts fit where one card sits today, and the whole
+      week is answerable in one glance.</p>
+    <p class="cost"><b>Cost:</b> the colour block goes, and with it most of the card's character.
+      Efficient; less WeekPact.</p>
+    <div class="stage">
+      <div class="sectionHead"><span>YOUR PACTS</span><span>2 of 5 kept today</span></div>
+      <div class="rows">
+        <div class="card lemon">
+          <div class="chip"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M13 9.5 9.5 12l2 3.5-1 5.5M13 9.5l3.5 1.5 1 3.5M13 9.5 8 8 5.5 11"/><path d="m11.5 15.5-4 1.5"/></svg></span></div>
+          <div class="txt"><div class="ttl">Morning run</div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+          <div class="tap"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span></div>
+        </div>
+        <div class="card mint">
+          <div class="chip"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2Z"/><path d="M12 6.5v13"/></svg></span></div>
+          <div class="txt"><div class="ttl">Read 20 pages</div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+          <div class="tap ok"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span></div>
+        </div>
+        <div class="card sky">
+          <div class="chip"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3c3 4.5 5 7 5 9.5A5 5 0 0 1 7 12.5C7 10 9 7.5 12 3Z"/></svg></span></div>
+          <div class="txt"><div class="ttl">Cold shower</div>
+            <div class="pips"><i class="on"></i><i></i><i></i></div></div>
+          <div class="tap"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span></div>
+        </div>
+        <div class="card coral">
+          <div class="chip"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></span></div>
+          <div class="txt"><div class="ttl">Gym</div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i></i></div></div>
+          <div class="tap ok"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span></div>
+        </div>
+        <div class="card butter">
+          <div class="chip"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.4-7 10-7 10Z"/></svg></span></div>
+          <div class="txt"><div class="ttl">Call someone</div>
+            <div class="pips"><i></i><i></i></div></div>
+          <div class="tap"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ E ============================ -->
+  <div class="cell E">
+    <div class="cellHead"><span class="key pick">E</span><h2>The card is the button</h2></div>
+    <p>Remove the button, not the number: the whole card is the tap target, and the state <em>is</em>
+      the fill. Pending is the tint; kept flips it to cream with a green mark — the same cue
+      <code>_CompletedCheckIn</code> uses today, at card scale. The cleanest face of the six.</p>
+    <p class="cost"><b>Cost:</b> one card-wide gesture has to serve check-in, undo <em>and</em>
+      opening the pact — needs a long-press or a small edit affordance, and photo check-ins
+      complicate it.</p>
+    <div class="stage">
+      <p class="stageLabel">Pending · Checked in</p>
+      <div class="deck" style="--p:var(--aqua)">
+        <div class="peek"></div>
+        <div class="card lavender">
+          <div class="row">
+            <div class="ttl">Morning run</div>
+            <div class="ic"><svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M13 9.5 9.5 12l2 3.5-1 5.5M13 9.5l3.5 1.5 1 3.5M13 9.5 8 8 5.5 11"/><path d="m11.5 15.5-4 1.5"/></svg></div>
+          </div>
+          <div class="mid">
+            <div class="cap">3 of 5 days this week</div>
+            <div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            <div class="hint"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Tap to check in</div>
+          </div>
+        </div>
+      </div>
+      <div class="dots"><i class="on"></i><i></i><i></i></div>
+    </div>
+    <div class="stage">
+      <div class="deck" style="--p:var(--peach)">
+        <div class="peek"></div>
+        <div class="card ok" style="--t:var(--cream)">
+          <span class="stamp ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span>
+          <div class="row"><div class="ttl">Morning run</div></div>
+          <div class="mid">
+            <div class="cap">4 of 5 days this week</div>
+            <div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            <div class="hint">Kept today · tap to undo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ F ============================ -->
+  <div class="cell F">
+    <div class="cellHead"><span class="key">F</span><h2>Week strip</h2></div>
+    <p>Same footprint as today, one better fact. Seven weekdays instead of N anonymous segments:
+      kept days are filled, today is outlined, days outside the pact sit faded. It answers
+      <em>“did I skip Monday?”</em>, which the count never can.</p>
+    <p class="cost"><b>Cost:</b> Home has <code>week.days()</code> but the card needs per-day
+      check-ins, not a total. Also the busiest of the six — it undoes some of the minimalism.</p>
+    <div class="stage">
+      <p class="stageLabel">Pending · Checked in</p>
+      <div class="deck" style="--p:var(--lemon)">
+        <div class="peek"></div>
+        <div class="card peach">
+          <div class="row">
+            <div class="ttl">Morning run</div>
+            <div class="ic"><svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M13 9.5 9.5 12l2 3.5-1 5.5M13 9.5l3.5 1.5 1 3.5M13 9.5 8 8 5.5 11"/><path d="m11.5 15.5-4 1.5"/></svg></div>
+          </div>
+          <div class="week">
+            <div class="on"><span class="lbl">M</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="on"><span class="lbl">T</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div><span class="lbl">W</span><span class="box"></span></div>
+            <div class="on"><span class="lbl">T</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="now"><span class="lbl">F</span><span class="box"></span></div>
+            <div class="off"><span class="lbl">S</span><span class="box"></span></div>
+            <div class="off"><span class="lbl">S</span><span class="box"></span></div>
+          </div>
+          <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+        </div>
+      </div>
+      <div class="dots"><i class="on"></i><i></i><i></i></div>
+    </div>
+    <div class="stage">
+      <div class="deck" style="--p:var(--orchid)">
+        <div class="peek"></div>
+        <div class="card aqua">
+          <div class="row">
+            <div class="ttl">Read 20 pages</div>
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 4 4.5v13c4 0 6.5.5 8 2 1.5-1.5 4-2 8-2v-13c-4 0-6.5.5-8 2Z"/><path d="M12 6.5v13"/></svg></div>
+          </div>
+          <div class="week">
+            <div class="on"><span class="lbl">M</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="on"><span class="lbl">T</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="on"><span class="lbl">W</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="on"><span class="lbl">T</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="on now"><span class="lbl">F</span><span class="box"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+            <div class="off"><span class="lbl">S</span><span class="box"></span></div>
+            <div class="off"><span class="lbl">S</span><span class="box"></span></div>
+          </div>
+          <div class="done"><span class="ic"><svg viewBox="0 0 24 24"><path d="m2 13 4 4L14 8"/><path d="m11 16 1.5 1.5L22 8"/></svg></span>Checked in today<span class="undo">Undo</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="verdict">
+  <h2>Picking one</h2>
+  <table>
+    <tr><th>Design</th><th>What it removes</th><th>New data needed</th><th>Change size</th></tr>
+    <tr><td>A · One fact</td><td>The 84pt number</td><td>None</td><td>Small — delete a widget, resize the title</td></tr>
+    <tr><td>B · The number</td><td>The segment bar</td><td>None</td><td>Small</td></tr>
+    <tr><td>C · Ring row</td><td>The deck itself</td><td>None</td><td>Large — Home's layout, not just the card</td></tr>
+    <tr><td>D · Rows</td><td>The colour block</td><td>None</td><td>Large</td></tr>
+    <tr><td>E · Card is the button</td><td>The button</td><td>None</td><td>Medium — gesture rework, photo check-ins</td></tr>
+    <tr><td>F · Week strip</td><td>Nothing (swaps the bar)</td><td>Per-day check-ins</td><td>Medium — needs backend data on Home</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

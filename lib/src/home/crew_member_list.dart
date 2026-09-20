@@ -18,6 +18,7 @@ class CrewMemberList extends StatefulWidget {
     this.backend,
     this.crewId,
     this.onDark = false,
+    this.head = 0,
   });
   final List<WeekMember> members;
   final bool done;
@@ -29,6 +30,22 @@ class CrewMemberList extends StatefulWidget {
   /// rows then take the dark card's ink and the nudge button inverts: a pale
   /// face on the dark border, since graphite on a dark panel is a shadow.
   final bool onDark;
+
+  /// The rows' margin from the list's own edges, which the hairline over them
+  /// takes too so the two line up.
+  static const inset = 12.0;
+
+  /// Room over the first face, carrying a hairline at its top.
+  ///
+  /// A list opening straight out of the thing above it needs a line saying
+  /// where one ends and the other begins, and air under that line so the
+  /// first face is not pressed against it. Zero where the list is already
+  /// inside a titled surface of its own.
+  ///
+  /// The caller sets it, because the caller is sizing the box: a drawer that
+  /// runs exactly as far as its rows have to know this is in them, or it
+  /// clips its last name.
+  final double head;
 
   @override
   State<CrewMemberList> createState() => _CrewMemberListState();
@@ -183,12 +200,38 @@ class _CrewMemberListState extends State<CrewMemberList>
               ],
             ),
           ),
+        if (widget.head > 0)
+          SizedBox(
+            height: widget.head,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                // Inset to the rows' own margin, so the line starts where the
+                // faces start and stops where the nudge buttons stop. A rule
+                // running the full width would cut the drawer in two instead
+                // of grouping what is under it.
+                padding: const EdgeInsets.symmetric(
+                  horizontal: CrewMemberList.inset,
+                ),
+                child: Container(
+                  key: const ValueKey('crew-member-list-rule'),
+                  height: 1,
+                  color: _ink.withValues(alpha: .12),
+                ),
+              ),
+            ),
+          ),
         Expanded(
           child: ListView.builder(
             key: ValueKey(
               widget.done ? 'checked-members-list' : 'pending-members-list',
             ),
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            padding: const EdgeInsets.fromLTRB(
+              CrewMemberList.inset,
+              0,
+              CrewMemberList.inset,
+              8,
+            ),
             itemCount: widget.members.length,
             itemBuilder: (context, index) =>
                 _member(context, widget.members[index]),
@@ -199,9 +242,13 @@ class _CrewMemberListState extends State<CrewMemberList>
   }
 
   Widget _member(BuildContext context, WeekMember member) {
-    final name = member.displayName.trim().isEmpty
+    final full = member.displayName.trim();
+    // A crew is small and on first-name terms, and the row has a nudge button
+    // to leave space for. The whole name stays in the tooltip and in what a
+    // screen reader reads.
+    final name = full.isEmpty
         ? 'Crew member'
-        : member.displayName.trim();
+        : full.split(RegExp(r'\s+')).first;
     final initials = Center(
       child: Text(
         member.initials,
@@ -210,7 +257,7 @@ class _CrewMemberListState extends State<CrewMemberList>
           fontFamily: WeekPactType.secondary,
           fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 14,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -222,14 +269,23 @@ class _CrewMemberListState extends State<CrewMemberList>
     final details = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          name,
-          style: TextStyle(
-            color: _ink,
-            fontFamily: WeekPactType.secondary,
-            fontFamilyFallback: WeekPactType.secondaryFallback,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        Tooltip(
+          message: full.isEmpty ? name : full,
+          child: Semantics(
+            label: full.isEmpty ? name : full,
+            excludeSemantics: true,
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _ink,
+                fontFamily: WeekPactType.secondary,
+                fontFamilyFallback: WeekPactType.secondaryFallback,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
         if (_failed.contains(member.id))
@@ -349,7 +405,7 @@ class _CrewMemberListState extends State<CrewMemberList>
           fontFamily: WeekPactType.secondary,
           fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 12,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
         shape: WeekPactMetrics.buttonShape,
       ),

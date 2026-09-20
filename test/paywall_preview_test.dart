@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/subscriptions/paywall_page.dart';
 import 'package:weekpact/src/subscriptions/subscription_backend.dart';
@@ -15,6 +14,7 @@ import 'package:weekpact/src/subscriptions/subscription_scope.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'subscription_test.dart' show FakeSubscriptionBackend;
+import 'support/fonts.dart';
 import 'support/pump_ui.dart';
 
 final screens = <String, Widget>{
@@ -43,14 +43,7 @@ void main() {
       const capture = ValueKey('capture');
       const capturing = bool.fromEnvironment('CAPTURE_DESIGN');
       if (capturing) {
-        final condensed = FontLoader('RobotoCondensed')
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
-        await tester.runAsync(() => condensed.load());
-        final roboto = FontLoader('Roboto')
-          ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
-        await tester.runAsync(() => roboto.load());
+        await tester.runAsync(loadAppFont);
       }
       await tester.pumpWidget(
         MaterialApp(

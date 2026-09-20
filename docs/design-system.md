@@ -1,19 +1,32 @@
 # WeekPact visual system
 
-The app uses solid-color raised cards, flat icons, condensed typography, compact spacing, and saturated mid-tone card tints on a neutral canvas. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
+The app uses solid-color raised cards, flat icons, Rubik type, compact spacing, and saturated mid-tone card tints on a neutral canvas. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
 
 ## Where to make changes
 
 - `lib/src/theme/weekpact_theme.dart`: palettes, theme configuration, and `WeekPactMetrics` for corner radii, strokes, spacing, and control sizes. `BuildContext` getters supply semantic canvas, surface, ink, muted, and accent colors. `WeekPactType`
-  names the two faces: RobotoCondensed is the display face and the theme
-  default, and `WeekPactType.secondary` (with `secondaryFallback`) is the wider
-  companion for body copy, captions and numerals — use it rather than writing
-  the family strings at a call site. State colours are named too, so a screen
+  names the face: Rubik, set as the theme's default and the whole of the app's
+  type — display, body copy, captions and numerals alike.
+  `WeekPactType.primary` is that family and `WeekPactType.secondary` (with
+  `secondaryFallback`) is the same one under the caption's name, kept so the
+  small-caps labels and numerals keep saying which role they are and a second
+  face could return without rewriting them. Use these rather than writing the
+  family strings at a call site. State colours are named too, so a screen
   never spells one as a hex literal: `mintEdge` and `pendingEdge` for the two
   crew tile states, `doneMark` for a completed check-in, `streak` for a running
   flame, `inkEdge` for the dark check-in button, `navSelected` for the selected
   nav tile, and `castShadow` where a shadow falls on the canvas with no card
   colour to mix from.
+Four weights, and only four: **400** body, **500** label, **600** emphasis,
+**700** display. Those are the weights `pubspec.yaml` ships, and
+`type_policy_test.dart` fails the build on anything heavier in `lib/`. The app
+used to ask for w800 and w900 everywhere, which cost nothing while the face was
+RobotoCondensed — it shipped 400 and 700, so the heavy weights quietly rounded
+down. Rubik ships them for real, and a page set in 900 shouts: the weight
+stopped carrying hierarchy because everything had it. Size and colour separate
+things here; weight is the last resort, not the first. A headline is 700 at 20pt
+and over, 600 below it; a small-caps eyebrow or a caption is 500; body is 400.
+
 - `lib/src/widgets/app_components.dart`: `AppSurface`, `AppSectionCard`, `AppButton`, `AppTextField`, and `AppBottomNavigationBar`.
 - `lib/src/widgets/app_dialog.dart`: `AppDialog` and `AppDialogDismiss`. The app's own dialog, on the same raised squircle as every other surface. Its actions stack full width as real buttons rather than the cramped text links `AlertDialog` puts in a row, with the action being offered on top and the dismissal below it in `WeekPactColors.neutralInset`. Pass it to `showAppDialog`; prefer it over `AlertDialog` for anything the person is meant to choose between. Section cards integrate their title/selector and optional actions within the same unbroken fill, without a colored header strip.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
@@ -51,10 +64,8 @@ There are exactly two card languages, and `WeekPactDarkCard` in
 `weekpact_theme.dart` is the second one. Most of the app is a pale card with
 dark ink. Three content-heavy surfaces invert that — the Feed, the paywall and
 the subscription page — because the photos and the pricing carry the colour
-there and a pale card would compete with them; Crew week's streak panel and
-Home's activity card use the same fill, and the activity card is built as that
-panel is: a face where it puts its flame, a line in the card's own weight and a
-muted caption under it. Take `fill`, `outline`, `ink` and
+there and a pale card would compete with them; Crew week's streak panel uses
+the same fill. Take `fill`, `outline`, `ink` and
 `muted` from `WeekPactDarkCard` together, as a closed set: never put pale-card
 ink (`black`, `mutedLight`) on that fill, and never put dark-card ink on a pact
 tint. Do not add a third card language, and do not introduce pink card variants.
@@ -75,7 +86,15 @@ of them rather than a new number:
   caller restating both. `pactCardShape` is `cardCurve` prebuilt.
 - `panelCurve` (24) — a smaller raised panel, header or tile, so the curve
   stays proportional to the box instead of swallowing it. The crew switcher
-  header, the crew fan cards, the invites pane and the navigation highlight.
+  standing on its own, the crew fan cards, the invites pane and the navigation
+  highlight.
+
+  A corner belongs to the column a block stands in, not only to the kind of
+  block it is. `CrewSwitcher` therefore takes a `curve`, defaulting to this
+  one: Home stacks it directly on the crew panel at the same width, and passes
+  that column's `CrewWeekButton.frameCurve` so the pair shares an edge and a
+  corner. Two stacked blocks of one width cut to different corners read as a
+  mistake, whatever each one is on its own.
 - `buttonShape` — every button. A button that draws its own
   `RoundedRectangleBorder` is a bug.
 
@@ -256,8 +275,10 @@ Home’s compact crew header has two solid raised containers with labels inside:
 crew selection on the left and a narrower streak summary on the right. Use
 `CrewHeaderSurface` for their shared 2px edge, outline, and squircle corners.
 
-Home carries neither. Its heading stands alone — the page's name and dot with
-the crew streak beside it — and the crew block under it is `HomeCrewPanel`: a
+Home carries neither pair. Its heading is the page's name and dot with the
+crew streak beside it, and the crew switcher in the slot under them — the same
+compact `CrewSwitcher` Pacts and Crews carry, so switching crews is one gesture
+wherever you are. Under that the crew block is `HomeCrewPanel`: a
 recessed frame holding the week over the day. A raised squircle card headlines
 it with the week — its icon, `CREW PROGRESS · THIS WEEK`, the percentage on the
 same line and the bar under them — reading `CrewWeek.percentCrew`, which caps
@@ -276,24 +297,59 @@ there is a week to open.
 
 Under the card the block names today, and only today, in one line whatever
 the crew's size — `CrewTodayStrip` in `lib/src/home/crew_today_strip.dart`. A
-`TODAY` label, then the day as a score (`2/5 in today`) with today's check-ins
-beside it as faces, hard right against the block's edge — so the day reads left
-to right as a number and then the people behind it. The faces are the crew who
-are in and only those: mint, lifted on a `mintEdge`, with a tick badge. Past
-`maxFaces` the rest of them become one `+N`, and nobody who has yet to check in
-appears at all — the score already counts them, and the drawer is where they
-are read. A row per person would have grown the block with the crew and spent a
-page that cannot scroll on people you are not waiting for.
+`TODAY` label with what the day has left to run at the other end of that same
+line (`6H LEFT`, counting in minutes once the day is nearly out), then the day
+as a score (`2/5 in today`) with today's check-ins
+beside it as seats, hard right against the block's edge — so the day reads left
+to right as a number and then the people behind it.
 
-The whole roster is a pull away. The strip is a drawer front: it wears the
-same grip `CrewSwitcher` puts at the foot of its own card — the 96px pill that
-slackens as the drawer comes out — and the same pull, measured from where the
-finger landed in global pixels, running the drawer open under it pixel for
+The row is seats, not a guest list. A crew mate who is in wears their face —
+mint, lifted on a `mintEdge`, with a tick badge. One the day is still waiting
+on is an empty seat (`_GhostFace`): the avatar shape in `pendingCheckIns` with
+a plain user glyph, held back to `_GhostFace.weight`, and **not** their own
+face greyed out. An empty seat says a check-in is owed without naming who owes
+it, and it gives the row something to say on a morning when nobody is in yet —
+the space to the right of the score would otherwise sit empty until the first
+check-in. The seats are sorted with the check-ins first, so the row fills from
+the left as the day is kept and a face never moves once it is in. Past
+`maxFaces` the rest of the crew become one `+N`, at the seat's own weight
+rather than the face's: mint is what a kept day looks like, and the count has
+the least to say of anything in the row.
+
+They overlap. A seat steps `faceStep` past the one before it — less than a
+face — and each carries the block's own face at its edge (`_Seat.ring`), which
+is invisible against the block and shows only where one seat crosses the next.
+The stack is painted from the right, so the check-ins at the head of the row
+keep their faces and their ticks above the seats behind them, and the seats are
+flat: a raised edge under a stack reads as a shadow cast on the face behind it,
+which is why the check-in tile's and the roster's stacks drop theirs too. The
+seat row finishes hard on the block's right edge, under the progress card above
+it. The label line over it does not: `CrewTodayStrip.leftInset` is taken on
+both of its sides, so `TODAY` and the time left sit the same distance off the
+block's edges and read as a pair. Seats are objects, and they line up with the
+card above; captions are text, and text against a corner reads as a mistake. A row per person would have grown the
+block with the crew and spent a page that cannot scroll on people you are not
+waiting for; the drawer is where the crew is read by name.
+
+The countdown is a nudge, not a clock: it belongs to the label rather than to
+the score, which a second caption beside it would crowd, and it goes once the
+whole crew is in — there is nothing left for the time to be left for. The
+crew's day ends at midnight in the crew's timezone, and `crew_week_snapshot`
+carries that day as a date rather than as a clock, so `CrewTodayStrip.timeLeft`
+reads the device's own midnight and says nothing at all when the device's date
+and the crew's have parted — a member abroad, or the minutes either side of a
+rollover. A wrong countdown is worse than none. It refreshes on Home's
+minute timer, with the rest of the week.
+
+The whole roster is a pull away. The strip is a drawer front: a 96px pill that
+slackens as the drawer comes out says so, and the pull — measured from where
+the finger landed in global pixels — runs the drawer open under it pixel for
 pixel. It commits past a quarter out or on a flick, hands back below that, and
-a tap plays the pull straight through either way. It answers with the
-switcher's own two beats: a light impact when the pull catches and the drawer
-first comes out, a medium one when it lands. Do not put a chevron on it: the
-grip is how this app says *pull*, and the two pulls should feel alike.
+a tap plays the pull straight through either way. It answers in two beats: a
+light impact when the pull catches and the drawer first comes out, a medium one
+when it lands. Do not put a chevron on it: this is the app's one pull, and the
+grip is how it says so — a mark at the edge would say *tap*, which is what the
+switcher above it does.
 
 The drawer is the block carried further down, not a card laid over the page.
 It keeps the block's face, comes out at the block's full width (`bleed`),
@@ -319,12 +375,32 @@ holds a fixed slice of a page that never scrolls, so larger system text is laid
 out at the room it wants and scaled back into its slot rather than growing
 one.
 
-The crew switcher itself is unchanged and still opens from Pacts and Crews;
-`CrewSwitcher`, `CrewNamePlate`, `CrewWeekButton`, `TodayCrewCard` and
-`CrewCheckInTile` are all still here and unedited, simply not built by Home.
+The crew switcher is the same control on every screen that carries one — Home
+hands it `HomeHeader`'s own `selector` slot (`HomeHeader.height` is the title,
+the gap and `CrewSwitcher.height`), compact, as Pacts and Crews build it.
+
+It opens on a tap, and only on a tap. There is no pull, no grip and no drag
+mapping: the hand is dealt on the spring, and a second tap or a tap outside
+sends it back. The mark at its right is `menu01` at the size the crew week card
+gives its chevron, centred on the control's own face rather than on the name —
+the menu glyph, since what the tap produces is a list of crews. It is there only when there is more than one crew to switch to.
+`CrewSwitcher.height` is 60: the label and the name, with no pull band under
+them, which is also the height `CrewPageSkeleton` holds for the control while
+the crews load.
+`CrewNamePlate`, `CrewWeekButton`, `TodayCrewCard` and `CrewCheckInTile` are
+all still here and unedited, simply not built by Home, as is
+`RecentActivityCard`, which the switcher replaced.
 `ExpandableHomePanels` is still Home's host but has nothing to unfold
 (`showCrewCheckIns` is false), so the check-in tiles and their nudges are off
 the page for now.
+
+The switcher rides the loading page rather than going down with it:
+`TodaySkeleton` takes a `selector`, and Home hands it the live control as soon
+as the crews are in, so choosing a crew neither cuts the hand's flight short
+nor moves the control it was pulled from while the new week loads. Before the
+crews arrive the skeleton draws that slot itself, at the same height. The
+control is dead while a check-in is saving — a switch mid-write would save it
+against the crew being left.
 
 Buttons use `WeekPactMetrics.buttonShape` for squircle faces, outlines, and
 raised edges. Preserve the existing tap areas and flat icon glyphs.
@@ -334,11 +410,22 @@ its own heading and the row of dots: there is no ceiling on the card's height.
 Home has no scrollbar to absorb a shortfall, so a fixed maximum there shows up
 as dead floor under the stack.
 
+The stack shows one card and a sliver. `TodayPactsCard.peekOf` is how much of
+the next card shows past the front one — enough to say there is another card,
+and no more — and the front card takes the rest of the width. The sliver
+carries nothing: no icon, no score, no animation of its own. A card you cannot
+act on has nothing to say, and a readout on a strip is read off the corner of
+the card in front of it, which is where the eye is. A card's icon fades in and
+out with the rest of its face, and the card sliding out parks right past the
+edge of the box rather than leaving a second sliver on the left, which at this
+width reads as an artefact of the page's padding. `TodaySkeleton` draws the
+same shape: a wide card and an empty sliver.
+
 Pact icons are decorative: render the glyph alone, without a background, outline,
 or elevation. Label the Home pact section “YOUR PACTS” to reflect weekly progress. Unchecked dates have no status circles; future dates remain readable at 65%
 ink opacity. The streak flame is muted at zero and
-orange once the streak starts. Offset the Home pact stack 12px left while
-preserving card widths and preview strips.
+orange once the streak starts. The Home pact stack is centred on the crew block
+above it, front card and sliver together.
 
 The strip above the crew tiles carries `LatestCheckInStrip` — the crew's freshest
 check-in (“Mirnes checked in · Move for 30 min · 12m ago”) with the member's

@@ -56,7 +56,9 @@ void main() {
         final board = tester.getRect(
           find.byKey(const ValueKey('skeleton-crew-panel')),
         );
-        expect(card.center.dx, closeTo(board.center.dx - 12, 1));
+        // The skeleton's card sits where the real one does: centred on the
+        // block above it, at the same inset either side.
+        expect(card.center.dx, closeTo(board.center.dx, 1));
         if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
           final boundary = tester.renderObject<RenderRepaintBoundary>(
             find.byKey(const ValueKey('skeleton-capture')),

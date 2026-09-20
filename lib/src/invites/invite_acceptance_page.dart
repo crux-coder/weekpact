@@ -119,7 +119,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
                       color: context.ink,
                       fontSize: 38,
                       height: 1.05,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: -.7,
                     ),
                   ),

@@ -108,7 +108,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                 style: const TextStyle(
                                   fontSize: 32,
                                   height: 1.1,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -116,7 +116,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                 '${pact.daysPerWeek} ${pact.daysPerWeek == 1 ? 'day' : 'days'} per person this week',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w500,
                                   color: context.muted,
                                 ),
                               ),
@@ -147,7 +147,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                             style: const TextStyle(
                               fontSize: 42,
                               height: 1,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           TextSpan(
@@ -156,7 +156,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                             style: const TextStyle(
                               fontSize: 28,
                               height: 1,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -168,7 +168,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                         fontSize: 10,
                         letterSpacing: 1.5,
                         color: context.muted,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -253,7 +253,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   height: 1.1,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 3),
@@ -281,7 +281,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                   style: const TextStyle(
                                     fontSize: 26,
                                     height: 1,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 Text(
@@ -341,7 +341,7 @@ class _CalendarHeader extends StatelessWidget {
                           fontSize: 11,
                           height: 1.1,
                           letterSpacing: .2,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: today ? WeekPactColors.cream : context.muted,
                         ),
                       ),
@@ -353,7 +353,7 @@ class _CalendarHeader extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           height: 1.2,
-                          fontWeight: today ? FontWeight.w900 : FontWeight.w700,
+                          fontWeight: today ? FontWeight.w600 : FontWeight.w700,
                           color: today ? WeekPactColors.cream : context.muted,
                         ),
                       ),
@@ -417,7 +417,7 @@ class _MemberDays extends StatelessWidget {
     final fallback = Center(
       child: Text(
         member.initials,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
     );
     return Row(
@@ -493,7 +493,7 @@ class _MemberDays extends StatelessWidget {
                   '${week.days(pact.id, member.id)} / ${pact.daysPerWeek}',
                   style: const TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

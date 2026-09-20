@@ -154,7 +154,7 @@ class _PaywallPageState extends State<PaywallPage> {
                   color: WeekPactDarkCard.ink,
                   fontSize: 38,
                   height: 1.05,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
@@ -193,7 +193,7 @@ class _PaywallPageState extends State<PaywallPage> {
                   style: const TextStyle(
                     color: WeekPactColors.darkError,
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -273,7 +273,7 @@ class _Plan extends StatelessWidget {
         color: ink,
         fontSize: 12,
         letterSpacing: 1.6,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
       ),
     );
     final price = Text(
@@ -282,7 +282,7 @@ class _Plan extends StatelessWidget {
         color: ink,
         fontSize: 24,
         height: 1.1,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       ),
     );
     final detail = Text(
@@ -364,7 +364,7 @@ class _Plan extends StatelessWidget {
                       color: _ink,
                       fontSize: 11,
                       letterSpacing: 1,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -425,7 +425,7 @@ class _Benefit extends StatelessWidget {
                 style: const TextStyle(
                   color: WeekPactDarkCard.ink,
                   fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 2),

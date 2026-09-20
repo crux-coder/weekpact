@@ -10,6 +10,7 @@ import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
+import 'support/fonts.dart';
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -231,13 +232,10 @@ void main() {
       tester,
     ) async {
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
-        final fonts = FontLoader('RobotoCondensed')
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Regular.ttf'))
-          ..addFont(rootBundle.load('assets/fonts/RobotoCondensed-Bold.ttf'));
         final icons = FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await tester.runAsync(() async {
-          await fonts.load();
+          await loadAppFont();
           await icons.load();
         });
       }

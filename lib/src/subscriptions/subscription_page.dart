@@ -132,7 +132,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         elevation: 0,
         title: const Text(
           'Subscription',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
       ),
       body: SafeArea(
@@ -231,7 +231,7 @@ class _StatusCard extends StatelessWidget {
                   style: const TextStyle(
                     color: _ink,
                     fontSize: 24,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -302,7 +302,7 @@ class _Badge extends StatelessWidget {
             color: _ink,
             fontSize: 11,
             letterSpacing: 1,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -371,7 +371,7 @@ class _Action extends StatelessWidget {
                           style: const TextStyle(
                             color: WeekPactDarkCard.ink,
                             fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -416,7 +416,7 @@ class _Heading extends StatelessWidget {
       color: WeekPactDarkCard.muted,
       fontSize: 11,
       letterSpacing: 2,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w500,
     ),
   );
 }

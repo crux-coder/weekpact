@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pact card — the right of the count</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas:#2B302C; --ink:#191B19; --paper:#ECEDEA; --cream:#F5F6F5;
+    --dark-ink:#F3F5F2; --dark-muted:#B8BEB5;
+    --ink-edge:#484848; --done-mark:#3F7A57; --streak:#FF9138;
+    --mint:#8CDCAC; --lemon:#E8D05A; --sky:#8AC9EC; --coral:#F9A08A;
+    --lavender:#BCA9EE; --butter:#EFD98D;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:48px 24px 120px; background:#101310; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1500px; margin:0 auto; }
+  h1 { font-size:29px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { color:var(--dark-muted); max-width:76ch; line-height:1.65; font-size:15px; margin:0 0 8px; }
+  .note { color:#7d857b; max-width:76ch; line-height:1.65; font-size:13.5px; margin:0 0 36px; }
+  .note b { color:var(--dark-muted); font-weight:600; }
+  code { font-size:.92em; background:#1c211c; padding:1px 5px; border-radius:4px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(398px,1fr)); gap:22px; }
+  .cell { background:#171A17; border:1px solid #262b26; border-radius:22px; padding:20px 20px 22px;
+    display:flex; flex-direction:column; }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; letter-spacing:-.2px; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#101310;
+    background:var(--dark-muted); padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--mint); }
+  .cell > p { color:#9ba299; font-size:13px; line-height:1.6; margin:0 0 6px; }
+  .cost { color:#6e756c; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .cost b { color:#9ba299; font-weight:500; }
+  .free { color:var(--mint); font-weight:500; }
+
+  .stage { background:var(--canvas); border-radius:16px; padding:14px 12px;
+    width:360px; max-width:100%; margin:auto auto 0; }
+
+  /* --- the card, to the real metrics in today_widgets.dart --- */
+  .card {
+    --t:var(--mint);
+    --edge:color-mix(in srgb,var(--t) 76%,#000);
+    --line:color-mix(in srgb,var(--t) 72%,#000);
+    background:var(--t); color:var(--ink); border:1px solid var(--line);
+    border-radius:18px; box-shadow:0 3px 0 var(--edge); padding:12px;
+    display:flex; flex-direction:column;
+  }
+  .ttl { font-size:25px; font-weight:700; line-height:1.15; letter-spacing:-.3px; }
+  .head { display:flex; align-items:flex-start; gap:12px; }
+  .head .ic { width:36px; height:36px; flex:none; }
+  .ic svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.9;
+    stroke-linecap:round; stroke-linejoin:round; }
+
+  /* the count block and the zone beside it */
+  .mid { display:flex; align-items:flex-end; gap:14px; margin-top:26px; }
+  .count { flex:none; }
+  .n { display:flex; align-items:baseline; gap:6px; }
+  .n b { font-size:76px; font-weight:700; line-height:1; letter-spacing:-2px; }
+  .n i { font-size:38px; font-weight:700; line-height:1; font-style:normal;
+    color:color-mix(in srgb,var(--ink) 60%,transparent); }
+  .cap { font-size:18px; font-weight:500; line-height:1.22;
+    color:color-mix(in srgb,var(--ink) 60%,transparent); }
+  /* THE ZONE — everything below fills this box, 100px tall beside the count */
+  .zone { flex:1; min-width:0; height:100px; display:flex; }
+
+  .bar { display:flex; gap:5px; margin-top:10px; }
+  .bar i { flex:1; height:16px; border-radius:8px; background:color-mix(in srgb,var(--ink) 20%,transparent); }
+  .bar i.on { background:var(--ink); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge); }
+  .btn { display:flex; align-items:center; justify-content:center; gap:9px; height:48px;
+    margin-top:26px; background:var(--ink); color:var(--paper); border:1px solid var(--ink-edge);
+    border-radius:18px; box-shadow:0 2px 0 var(--ink-edge); font-size:17px; font-weight:600; }
+  .btn .ic { width:21px; height:21px; }
+
+  /* ===== A. crew faces ===== */
+  .A .zone { flex-direction:column; align-items:flex-end; justify-content:flex-end; gap:8px; }
+  .faces { display:flex; }
+  .faces span { width:34px; height:34px; border-radius:50%; margin-left:-9px;
+    border:2px solid var(--t); display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:600; color:var(--cream); background:#5c6a5f; }
+  .faces span:first-child { margin-left:0; }
+  .faces span.out { background:color-mix(in srgb,var(--ink) 16%,transparent); color:color-mix(in srgb,var(--ink) 50%,transparent); }
+  .faces span.me { background:var(--ink); }
+  .zlab { font-size:13px; font-weight:500; color:color-mix(in srgb,var(--ink) 60%,transparent); }
+
+  /* ===== B. week strip ===== */
+  .B .zone { align-items:flex-end; justify-content:flex-end; }
+  .week { display:flex; gap:4px; }
+  .week div { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .week .l { font-size:10px; font-weight:500; letter-spacing:.4px;
+    color:color-mix(in srgb,var(--ink) 50%,transparent); }
+  .week .b { width:22px; height:26px; border-radius:7px;
+    background:color-mix(in srgb,var(--ink) 16%,transparent); display:flex;
+    align-items:center; justify-content:center; }
+  .week .b .ic { width:13px; height:13px; color:var(--paper); }
+  .week .on .b { background:var(--ink); }
+  .week .now .b { background:transparent; box-shadow:inset 0 0 0 2px var(--ink); }
+  .week .now .l { color:var(--ink); font-weight:600; }
+  .week .off .b { opacity:.45; }
+
+  /* ===== C. to go ===== */
+  .C .zone { align-items:flex-end; justify-content:flex-end; text-align:right; }
+  .togo { line-height:1.1; }
+  .togo b { display:block; font-size:34px; font-weight:700; letter-spacing:-1px;
+    color:color-mix(in srgb,var(--ink) 60%,transparent); }
+  .togo span { font-size:14px; font-weight:500; color:color-mix(in srgb,var(--ink) 50%,transparent); }
+
+  /* ===== D. ring ===== */
+  .D .zone { align-items:flex-end; justify-content:flex-end; }
+  .ring { width:86px; height:86px; position:relative; }
+  .ring svg { width:86px; height:86px; transform:rotate(-90deg); }
+  .ring .t { fill:none; stroke:color-mix(in srgb,var(--ink) 16%,transparent); stroke-width:9; }
+  .ring .v { fill:none; stroke:var(--ink); stroke-width:9; stroke-linecap:round; }
+  .ring em { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-style:normal; font-size:15px; font-weight:600; }
+
+  /* ===== E. watermark ===== */
+  .E .card { position:relative; overflow:hidden; }
+  .E .mark { position:absolute; right:-26px; bottom:92px; width:168px; height:168px;
+    color:var(--ink); opacity:.13; pointer-events:none; }
+  .E .mark svg { stroke-width:1.2; }
+
+  /* ===== F. nothing ===== */
+  .F .zone { align-items:flex-end; justify-content:flex-end; }
+  .F .mid { margin-top:0; }
+  .F .spacer { height:26px; }
+
+  .verdict { margin-top:42px; background:#171A17; border:1px solid #262b26;
+    border-radius:22px; padding:24px 26px; }
+  .verdict h2 { margin:0 0 14px; font-size:19px; font-weight:600; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th { text-align:left; color:#7d857b; font-weight:500; font-size:11px; letter-spacing:1.1px;
+    text-transform:uppercase; padding:0 14px 10px 0; border-bottom:1px solid #262b26; }
+  td { padding:12px 14px 12px 0; color:#9ba299; line-height:1.55;
+    border-bottom:1px solid #1e221e; vertical-align:top; }
+  td:first-child { color:var(--dark-ink); font-weight:600; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>The space right of the count</h1>
+<p class="lede">Six things to put beside <code>0 / 2</code>. Everything else on the card — the name,
+the count, the bar, the button — is exactly as it ships, so only the one box is in question.</p>
+<p class="note">All six are <b class="free">free</b>. <code>CrewWeek.checkIns</code> is every
+check-in in the week, carrying <code>pactId</code>, <code>userId</code> and <code>day</code>, and
+<code>members</code> is the whole roster — so <i>which days you kept</i> and <i>who else is in
+today</i> are both already on the card, just never read. The one thing that is not free is a
+per-pact streak: <code>streakWeeks</code> is the crew's, not the pact's.</p>
+
+<div class="grid">
+
+  <!-- A -->
+  <div class="cell A">
+    <div class="cellHead"><span class="key pick">A</span><h2>Who else is in</h2></div>
+    <p>The crewmates who have kept <em>this</em> pact today, as faces, with the ones still out
+      greyed. It is the only option that puts another person on the card — which is the whole
+      reason the pact is in a crew and not a notes app.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data.</span> Avatars are already loaded
+      and cached for the crew strip. Reads thin in a crew of one.</p>
+    <div class="stage">
+      <div class="card">
+        <div class="head">
+          <div class="ttl">Gym</div>
+          <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+        </div>
+        <div class="mid">
+          <div class="count">
+            <div class="n"><b>0</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+          <div class="zone">
+            <div class="faces">
+              <span class="me">JM</span><span>AK</span><span class="out">TS</span><span class="out">+2</span>
+            </div>
+            <div class="zlab">2 of 5 in today</div>
+          </div>
+        </div>
+        <div class="bar"><i></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="cell B">
+    <div class="cellHead"><span class="key pick">B</span><h2>Which days</h2></div>
+    <p>Seven day cells: kept filled, today ringed, days already gone left pale. The bar under the
+      count says <em>how many</em>; this says <em>which</em> — and answers “did I skip Monday
+      again?”, which no count can.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data.</span> But it sits directly above
+      the segment bar saying a near-identical thing, so one of the two probably has to go.</p>
+    <div class="stage">
+      <div class="card">
+        <div class="head">
+          <div class="ttl">Gym</div>
+          <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+        </div>
+        <div class="mid">
+          <div class="count">
+            <div class="n"><b>0</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+          <div class="zone">
+            <div class="week">
+              <div class="off"><span class="l">M</span><span class="b"></span></div>
+              <div class="on"><span class="l">T</span><span class="b"><span class="ic"><svg viewBox="0 0 24 24"><path d="m5 12 5 5L19 7"/></svg></span></span></div>
+              <div class="off"><span class="l">W</span><span class="b"></span></div>
+              <div class="now"><span class="l">T</span><span class="b"></span></div>
+              <div><span class="l">F</span><span class="b"></span></div>
+              <div><span class="l">S</span><span class="b"></span></div>
+              <div><span class="l">S</span><span class="b"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="bar"><i></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="cell C">
+    <div class="cellHead"><span class="key">C</span><h2>What is left</h2></div>
+    <p>The count from the other end. <code>0 / 2</code> is what you have done; this is what the
+      week still wants — and it is the number that decides whether you go today.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data</span>, and the least of any
+      option. It is also the thinnest: it is arithmetic on two numbers already on the card.</p>
+    <div class="stage">
+      <div class="card">
+        <div class="head">
+          <div class="ttl">Gym</div>
+          <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+        </div>
+        <div class="mid">
+          <div class="count">
+            <div class="n"><b>0</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+          <div class="zone">
+            <div class="togo"><b>2 to go</b><span>4 days left in the week</span></div>
+          </div>
+        </div>
+        <div class="bar"><i></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="cell D">
+    <div class="cellHead"><span class="key">D</span><h2>Ring</h2></div>
+    <p>A ring carrying the same fraction as the number, weighted as a shape rather than a figure.
+      It balances the count optically and fills the box cleanly.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data</span>, but it is the third time
+      the card states one fact — number, ring, bar. Weight, not information.</p>
+    <div class="stage">
+      <div class="card">
+        <div class="head">
+          <div class="ttl">Gym</div>
+          <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+        </div>
+        <div class="mid">
+          <div class="count">
+            <div class="n"><b>1</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+          <div class="zone">
+            <div class="ring">
+              <svg viewBox="0 0 86 86"><circle class="t" cx="43" cy="43" r="36"/><circle class="v" cx="43" cy="43" r="36" stroke-dasharray="226" stroke-dashoffset="113"/></svg>
+              <em>50%</em>
+            </div>
+          </div>
+        </div>
+        <div class="bar"><i class="on"></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E -->
+  <div class="cell E">
+    <div class="cellHead"><span class="key">E</span><h2>Icon as watermark</h2></div>
+    <p>Say nothing, but stop the space reading as a mistake: the pact's own icon, oversized and
+      let down into the tint, bleeding off the right edge. The card gets a face per pact.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data.</span> It is decoration — the box
+      stops looking empty without becoming useful. Needs clipping, and competes with the small
+      icon up top unless that one goes.</p>
+    <div class="stage">
+      <div class="card">
+        <span class="mark ic"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></span>
+        <div class="head"><div class="ttl">Gym</div></div>
+        <div class="mid">
+          <div class="count">
+            <div class="n"><b>0</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+          <div class="zone"></div>
+        </div>
+        <div class="bar"><i></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F -->
+  <div class="cell F">
+    <div class="cellHead"><span class="key">F</span><h2>Close it up</h2></div>
+    <p>The other answer: the box is empty because it does not need to exist. Pull the count up
+      under the name and let the card end where its content does — the stack gets shorter and
+      more of Home's crew panel shows above it.</p>
+    <p class="cost"><b>Cost:</b> <span class="free">no new data.</span> Home sizes the stack to
+      the space it has, so a shorter card means deciding what takes the space instead.</p>
+    <div class="stage">
+      <div class="card">
+        <div class="head">
+          <div class="ttl">Gym</div>
+          <div class="ic" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="mid" style="margin-top:0">
+          <div class="count">
+            <div class="n"><b>0</b><i>/ 2</i></div>
+            <div class="cap">days this week</div>
+          </div>
+        </div>
+        <div class="bar"><i></i><i></i></div>
+        <div class="btn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></span>Check in</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="verdict">
+  <h2>Picking one</h2>
+  <table>
+    <tr><th>Option</th><th>What it adds</th><th>Data</th><th>Worry</th></tr>
+    <tr><td>A · Who else is in</td><td>Another person on the card</td><td>Free — <code>checkIns</code> + <code>members</code></td><td>Thin in a crew of one</td></tr>
+    <tr><td>B · Which days</td><td><em>Which</em> days, not how many</td><td>Free — <code>checkIns[].day</code></td><td>Says nearly what the bar below it says</td></tr>
+    <tr><td>C · What is left</td><td>The number that decides today</td><td>Free — arithmetic</td><td>Thinnest; no new fact</td></tr>
+    <tr><td>D · Ring</td><td>Optical balance</td><td>Free</td><td>Third telling of one fact</td></tr>
+    <tr><td>E · Watermark</td><td>A face per pact</td><td>Free</td><td>Decoration, not information</td></tr>
+    <tr><td>F · Close it up</td><td>Nothing — removes the box</td><td>Free</td><td>Home has to spend the height elsewhere</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

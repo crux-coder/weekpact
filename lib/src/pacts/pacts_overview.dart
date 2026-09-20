@@ -33,7 +33,7 @@ class YourWeekCard extends StatelessWidget {
           children: [
             const Text(
               'Your week so far',
-              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
             if (target == 0)
@@ -48,7 +48,7 @@ class YourWeekCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 28,
                   height: 1.15,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 14),
@@ -87,7 +87,7 @@ class YourWeekCard extends StatelessWidget {
                           pact.title,
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -99,7 +99,7 @@ class YourWeekCard extends StatelessWidget {
                             '${pact.title}: ${week.days(pact.id, userId).clamp(0, pact.daysPerWeek)} of ${pact.daysPerWeek} check-ins',
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -187,7 +187,7 @@ class PactBar extends StatelessWidget {
                           color: context.ink,
                           fontSize: 30,
                           height: 1,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -202,7 +202,7 @@ class PactBar extends StatelessWidget {
                               color: context.ink,
                               fontSize: 19,
                               height: 1.1,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),

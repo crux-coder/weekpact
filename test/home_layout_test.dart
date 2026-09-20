@@ -32,6 +32,61 @@ class LargeCrewBackend extends DashboardBackend {
 }
 
 void main() {
+  testWidgets('the switcher is cut to the same corner as the blocks under it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = LargeCrewBackend();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'person@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: const MissingCrewBackend(),
+          pactsBackend: backend.pacts,
+          homeBackend: backend,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+
+    /// The corner a block actually paints, not the one it was handed.
+    double cornerOf(Key key) {
+      final surface = tester.widget<CrewHeaderSurface>(
+        find
+            .descendant(
+              of: find.byKey(key),
+              matching: find.byType(CrewHeaderSurface),
+            )
+            .first,
+      );
+      return surface.curve;
+    }
+
+    final switcher = cornerOf(const ValueKey('home-crew-switcher'));
+    final panel = cornerOf(const ValueKey('home-crew-panel'));
+    // Two blocks of one width, stacked, sharing an edge: they share a corner
+    // or the pair reads as a mistake. The switcher used to keep the
+    // standalone control's `panelCurve` while the panel took the column's,
+    // which is half the radius at the same width.
+    expect(switcher, panel);
+    expect(switcher, CrewWeekButton.frameCurve);
+    expect(CrewWeekButton.frameCurve, greaterThan(WeekPactMetrics.panelCurve));
+    // And they really are the same width, which is what makes it show.
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-crew-switcher'))).width,
+      closeTo(
+        tester.getSize(find.byKey(const ValueKey('home-crew-panel'))).width,
+        1,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   for (final size in [
     const Size(390, 844),
     const Size(320, 568),
@@ -91,10 +146,11 @@ void main() {
           final titleBottom = tester.getBottomRight(find.byType(HomeHeader)).dy;
           final crewTop = crewBounds.top;
           // Home leads with its own name and dot and the crew streak beside
-          // it — no selector under them, and no activity strip.
+          // it, and carries the crew switcher under them as Pacts and Crews
+          // do — no activity strip.
           expect(find.text('Home'), findsWidgets);
           expect(find.byKey(const ValueKey('latest-check-in')), findsNothing);
-          expect(find.byType(CrewSwitcher), findsNothing);
+          expect(find.byType(CrewSwitcher), findsOneWidget);
           final streak = tester.getRect(
             find.byKey(const ValueKey('crew-header-streak')),
           );
@@ -127,7 +183,7 @@ void main() {
           );
           await tester.pumpUi();
           expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-          expect(find.text('Your pacts'), findsNothing);
+          expect(find.byKey(const ValueKey('pacts-heading')), findsNothing);
           expect(find.text('1 of 2'), findsNothing);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox());

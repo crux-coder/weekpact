@@ -119,7 +119,7 @@ class AppSectionCard extends StatelessWidget {
                         style: TextStyle(
                           color: context.ink,
                           fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                           letterSpacing: .3,
                         ),
                       )
@@ -182,9 +182,9 @@ class AppButton extends StatelessWidget {
             disabledForegroundColor: effectiveForeground,
             shape: WeekPactMetrics.buttonShape,
             textStyle: const TextStyle(
-              fontFamily: 'RobotoCondensed',
+              fontFamily: WeekPactType.primary,
               fontSize: 15,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
             ),
           ),
@@ -365,7 +365,7 @@ class AppBottomNavigationBar extends StatelessWidget {
                                           fontFamilyFallback:
                                               WeekPactType.secondaryFallback,
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                           color: Color.lerp(
                                             context.ink,
                                             context.canvas,
@@ -430,7 +430,7 @@ class AppTextField extends StatelessWidget {
             label!,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),
@@ -449,7 +449,7 @@ class AppTextField extends StatelessWidget {
             style: TextStyle(
               color: context.fieldInk,
               fontSize: 17,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               hintText: hint,
@@ -485,7 +485,7 @@ class AppTextField extends StatelessWidget {
                     ),
               errorStyle: TextStyle(
                 color: context.errorInk,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
             ),

@@ -1,0 +1,8 @@
+# The preview test renders PNGs of Home's pact card into design/homepage/ so
+# the card can be looked at, not only asserted on. It is a design tool, not a
+# check, so the default run skips it:
+#
+#     flutter test test/pact_card_preview_test.dart --tags preview --run-skipped
+tags:
+  preview:
+    skip: "render-only; run with --tags preview"

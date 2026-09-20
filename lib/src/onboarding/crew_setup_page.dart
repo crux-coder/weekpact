@@ -234,7 +234,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                     style: TextStyle(
                       color: context.ink,
                       fontSize: 36,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -303,7 +303,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                               _pact?.title ?? 'Your first pact',
                               style: const TextStyle(
                                 fontSize: 25,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 12),

@@ -36,7 +36,7 @@ class _PactIconPickerState extends State<PactIconPicker> {
               const Expanded(
                 child: Text(
                   'CHOOSE AN ICON',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
                 ),
               ),
               IconButton(

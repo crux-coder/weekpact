@@ -72,7 +72,7 @@ class AppDialog extends StatelessWidget {
                   color: context.ink,
                   fontSize: 27,
                   height: 1.1,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (message != null) ...[

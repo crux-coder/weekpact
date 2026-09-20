@@ -145,11 +145,18 @@ abstract final class WeekPactColors {
   static const barrier = Color(0xB3191B19);
 }
 
-/// The app's two faces. RobotoCondensed is the display face and the theme
-/// default; this is its wider companion for body copy, captions and numerals.
-/// Use these rather than repeating the family strings at a call site.
+/// The app's face. Rubik is the whole of it — display, body copy, captions and
+/// numerals alike — and it is the theme's default, so a call site only names a
+/// family when it is spelling out the one it already has.
+///
+/// [secondary] is kept because the small-caps labels, captions and numerals
+/// name it, and what they are asking for is the face the caption sets in. It
+/// is the same family as the display face now; it stays a name of its own so
+/// those call sites keep saying which role they are, and so a second face can
+/// come back without rewriting all of them.
 abstract final class WeekPactType {
-  static const secondary = 'Roboto';
+  static const primary = 'Rubik';
+  static const secondary = primary;
   static const secondaryFallback = <String>['Arial'];
 }
 
@@ -206,7 +213,7 @@ abstract final class WeekPactTheme {
     );
     final base = ThemeData(
       useMaterial3: true,
-      fontFamily: 'RobotoCondensed',
+      fontFamily: WeekPactType.primary,
       brightness: brightness,
       scaffoldBackgroundColor: background,
       colorScheme:
@@ -303,7 +310,7 @@ abstract final class WeekPactTheme {
         focusedErrorBorder: inputErrorBorder,
       ),
       chipTheme: base.chipTheme.copyWith(
-        labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+        labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w500),
         checkmarkColor: foreground,
         backgroundColor: surface,
         side: BorderSide(color: outline, width: WeekPactMetrics.fineBorder),
@@ -317,7 +324,7 @@ abstract final class WeekPactTheme {
         backgroundColor: foreground,
         contentTextStyle: TextStyle(
           color: background,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

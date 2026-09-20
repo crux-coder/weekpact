@@ -67,7 +67,7 @@ class ClapButton extends StatelessWidget {
                     color: color,
                     fontSize: 13,
                     height: 1.2,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

@@ -253,7 +253,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                       style: TextStyle(
                         color: context.ink,
                         fontSize: 13,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: .4,
                       ),
                     ),
@@ -274,7 +274,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                         style: TextStyle(
                           color: context.ink,
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: const InputDecoration(
                           // The surface owns the fill and the outline.
@@ -443,7 +443,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                       'Invites',
                       style: TextStyle(
                         fontSize: 26,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -459,7 +459,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 const SizedBox(height: 16),
                 const Text(
                   'Sent',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 for (final invite in _crew!.pendingInvites)
                   _InviteRow(
@@ -579,7 +579,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: context.errorInk,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
               ),
             ),
             if (!_hasLoaded) ...[
@@ -610,7 +610,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 children: [
                   const Text(
                     'Start your crew',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 20),
                   AppTextField(
@@ -626,7 +626,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     style: TextStyle(
                       color: context.ink,
                       fontSize: 13,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: .4,
                     ),
                   ),
@@ -658,7 +658,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                             style: TextStyle(
                               color: context.ink,
                               fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -714,7 +714,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   color: context.muted,
                   fontSize: 12,
                   letterSpacing: 1.1,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -780,7 +780,7 @@ class _InviteDrawer extends StatelessWidget {
                 style: TextStyle(
                   color: context.ink,
                   fontSize: 24,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -831,7 +831,7 @@ class _InviteRow extends StatelessWidget {
                   style: TextStyle(
                     color: context.ink,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -840,7 +840,7 @@ class _InviteRow extends StatelessWidget {
                   style: TextStyle(
                     color: context.ink,
                     fontSize: 10,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: .3,
                   ),
                 ),
@@ -860,7 +860,7 @@ class _InviteRow extends StatelessWidget {
             ),
             child: const Text(
               'REVOKE',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
