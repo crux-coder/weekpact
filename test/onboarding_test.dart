@@ -14,7 +14,6 @@ class ProfileBackend extends FakeAuthBackend {
   AuthUser profile = const AuthUser(id: 'user-id', email: 'new@example.com');
   bool fail = false;
   int saves = 0;
-  Uint8List? savedAvatar;
   @override
   AuthUser get currentUser => profile;
   @override
