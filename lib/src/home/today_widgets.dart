@@ -22,26 +22,27 @@ import '../widgets/page_frame.dart';
 import '../widgets/edge_bounce.dart';
 import 'home_backend.dart';
 import 'crew_member_list.dart';
+import 'crew_today_strip.dart';
 
 const _ink = homeInk;
 
 /// A completed day or check-in: a cream inset with a green mark, legible on
 /// every card tint. The raised edge is mixed per card from its own colour.
 const _doneFill = WeekPactColors.cream;
+
+/// One day of the week, on the pact card's progress bar.
+const _segmentHeight = 16.0;
 const _doneMark = WeekPactColors.doneMark;
 
 /// Home's own heading: the page's name and dot, the way every other
 /// destination announces itself, with the crew's streak on the right. The crew
 /// selector sits below it rather than beside the name.
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({
-    super.key,
-    required this.streakWeeks,
-    required this.selector,
-  });
+  const HomeHeader({super.key, required this.streakWeeks, this.selector});
 
   /// The crew switcher, or a plain name plate when there is nothing to switch.
-  final Widget selector;
+  /// Null leaves the heading on its own, at [headingHeight].
+  final Widget? selector;
   final int streakWeeks;
 
   static const titleHeight = 44.0;
@@ -49,31 +50,357 @@ class HomeHeader extends StatelessWidget {
   static const selectorHeight = CrewSwitcher.height;
   static const height = titleHeight + gap + selectorHeight;
 
+  /// The heading and its streak alone, with nothing under them.
+  static const headingHeight = titleHeight;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-    key: const ValueKey('home-header'),
-    height: height,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: titleHeight,
-          child: Row(
+  Widget build(BuildContext context) {
+    final title = SizedBox(
+      height: titleHeight,
+      child: Row(
+        children: [
+          const Expanded(
+            child: PageHeading('Home', dotColor: WeekPactColors.stone),
+          ),
+          const SizedBox(width: 10),
+          CrewStreakPill(streakWeeks: streakWeeks),
+        ],
+      ),
+    );
+    final below = selector;
+    return SizedBox(
+      key: const ValueKey('home-header'),
+      height: below == null ? headingHeight : height,
+      child: below == null
+          ? title
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                title,
+                const SizedBox(height: gap),
+                SizedBox(height: selectorHeight, child: below),
+              ],
+            ),
+    );
+  }
+}
+
+/// The crew block's slot on Home, held empty: the surface, corner and height
+/// the crew week card had, with nothing in it. Here so the space is kept and
+/// laid out while what goes in it is worked out.
+class HomeCrewPanel extends StatelessWidget {
+  const HomeCrewPanel({
+    super.key,
+    required this.week,
+    this.userId = '',
+    this.onOpenWeek,
+    this.backend,
+    this.crewId,
+    this.active = true,
+  });
+
+  /// The loading state: the same frame, card and day line, with their lines
+  /// not yet filled in, so nothing on the page moves when the week arrives.
+  const HomeCrewPanel.loading({super.key})
+    : week = null,
+      userId = '',
+      onOpenWeek = null,
+      backend = null,
+      crewId = null,
+      active = true;
+
+  final CrewWeek? week;
+  final String userId;
+
+  /// Opens the crew week. The progress card is the way in — it is the week
+  /// the page shows, at a glance — so the card carries the chevron and takes
+  /// the tap rather than a row of its own.
+  final VoidCallback? onOpenWeek;
+
+  /// The day line's nudges, and the crew they are sent in.
+  final HomeBackend? backend;
+  final String? crewId;
+
+  /// False while Home is off screen, which closes an open day panel.
+  final bool active;
+
+  /// The frame the panel keeps around its contents, as the crew week surface
+  /// kept one around its tiles.
+  static const pad = CrewWeekButton.pad;
+
+  /// The progress card: a headline, so it takes only the height its own two
+  /// lines need and leaves the rest of the block to the crew.
+  static const cardHeight = 64.0;
+  static const _cardGap = 8.0;
+
+  /// The block's height. Fixed whatever the crew's size, because the day is
+  /// one line of faces rather than a row per person.
+  static const height = pad * 2 + cardHeight + _cardGap + CrewTodayStrip.height;
+
+  /// The card's own inset. Wider than the frame around it, so the label and
+  /// the bar sit off the card's edge rather than against it.
+  static const _cardInset = EdgeInsets.fromLTRB(12, 11, 12, 11);
+
+  /// The day line's inset, left and right, so a face lines up inside the
+  /// card's corner above it.
+  static const _rowInset = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final crew = week;
+    final percent = crew?.percentCrew;
+    // The crew week's own progress card reads the same way: mint once the
+    // week is kept, butter while it is still being kept.
+    final tint = percent != null && percent >= 100
+        ? WeekPactColors.mintGreen
+        : WeekPactColors.stone;
+    return SizedBox(
+      height: height,
+      child: CrewHeaderSurface(
+        curve: CrewWeekButton.frameCurve,
+        child: Padding(
+          padding: const EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Expanded(
-                child: PageHeading('Home', dotColor: WeekPactColors.stone),
+              SizedBox(
+                height: cardHeight,
+                child: HomeSurface(
+                  tint: tint,
+                  shape: WeekPactMetrics.pactCardShape,
+                  radius: WeekPactMetrics.cardCorner,
+                  raised: true,
+                  // The inset sits inside the tap rather than around it, so
+                  // the whole card face answers the finger.
+                  child: Tooltip(
+                    message: 'View week',
+                    child: InkWell(
+                      key: const ValueKey('open-crew-week'),
+                      onTap: percent == null ? null : onOpenWeek,
+                      child: Padding(
+                        padding: _cardInset,
+                        child: _scaled(
+                          (context) => percent == null
+                              ? _loadingCard(context)
+                              : _progress(context, percent),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
-              CrewStreakPill(streakWeeks: streakWeeks),
+              const SizedBox(height: _cardGap),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: _rowInset),
+                child: crew == null
+                    ? _loadingDay(context)
+                    : CrewTodayStrip(
+                        week: crew,
+                        userId: userId,
+                        backend: backend,
+                        crewId: crewId,
+                        active: active,
+                        // The drawer comes out at the block's own width and
+                        // finishes on the block's own corner.
+                        bleed: pad + _rowInset,
+                        curve: CrewWeekButton.frameCurve,
+                      ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: gap),
-        SizedBox(height: selectorHeight, child: selector),
+      ),
+    );
+  }
+
+  /// Home does not scroll, so larger system text is laid out at the room it
+  /// wants and scaled back into its slot rather than growing one.
+  Widget _scaled(WidgetBuilder child) => LayoutBuilder(
+    builder: (context, box) {
+      final scale = math.max(1.0, MediaQuery.textScalerOf(context).scale(1));
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: math.max(1.0, box.maxWidth) * scale,
+          height: math.max(1.0, box.maxHeight) * scale,
+          child: child(context),
+        ),
+      );
+    },
+  );
+
+  /// The week as a headline: its label and the percentage on one line, the
+  /// bar under them, and the icon that says what is being counted.
+  Widget _progress(BuildContext context, int percent) => Semantics(
+    container: true,
+    button: onOpenWeek != null,
+    label: 'Crew progress',
+    value: "$percent per cent of this week's check-ins",
+    hint: onOpenWeek == null ? null : 'Opens the crew week',
+    onTap: onOpenWeek,
+    child: ExcludeSemantics(
+      child: Row(
+        children: [
+          const HugeIcon(
+            icon: HugeIconsStrokeRounded.chartLineData01,
+            color: _ink,
+            size: 22,
+            strokeWidth: 2,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    const Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'CREW PROGRESS · THIS WEEK',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 14,
+                            height: 1.1,
+                            letterSpacing: .6,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: '$percent'),
+                          const TextSpan(
+                            text: '%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      key: const ValueKey('crew-progress-percent'),
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 19,
+                        height: 1.1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                LinearProgressIndicator(
+                  value: percent / 100,
+                  minHeight: 9,
+                  borderRadius: WeekPactMetrics.pill,
+                  color: _ink,
+                  backgroundColor: _ink.withValues(alpha: .18),
+                ),
+              ],
+            ),
+          ),
+          if (onOpenWeek != null) ...[
+            const SizedBox(width: 6),
+            // Big enough to be the card's own handle rather than a mark on
+            // it: the card is the way into the week, and this says so.
+            HugeIcon(
+              icon: HugeIconsStrokeRounded.arrowRight01,
+              color: context.muted,
+              size: _chevronSize,
+              strokeWidth: 2,
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+
+  /// The chevron's glyph, and the room the loading card keeps for it so the
+  /// bar under it does not move once the week arrives.
+  static const _chevronSize = 30.0;
+
+  Widget _loadingCard(BuildContext context) => Row(
+    children: [
+      const SkeletonBar(width: 22, height: 22, color: _skeletonInk),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: SkeletonBar(width: 122, height: 13, color: _skeletonInk),
+            ),
+            const SizedBox(height: 7),
+            Container(
+              height: 9,
+              decoration: const ShapeDecoration(
+                color: _skeletonInk,
+                shape: RoundedRectangleBorder(
+                  borderRadius: WeekPactMetrics.pill,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      if (onOpenWeek != null) const SizedBox(width: 6 + _chevronSize),
+    ],
+  );
+
+  /// The day line before the week has arrived: the same two rows, unfilled.
+  Widget _loadingDay(BuildContext context) => SizedBox(
+    height: CrewTodayStrip.height,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(
+          height: CrewTodayStrip.labelHeight,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SkeletonBar(width: 56, height: 8),
+          ),
+        ),
+        const SizedBox(height: CrewTodayStrip.labelGap),
+        SizedBox(
+          height: CrewTodayStrip.stripHeight,
+          child: Row(
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: SkeletonBar(width: 104, height: 22),
+              ),
+              const Spacer(),
+              for (var face = 0; face < 3; face++)
+                const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: SkeletonBar(
+                    width: CrewTodayStrip.faceSize,
+                    height: CrewTodayStrip.faceSize,
+                    shape: AvatarShape(),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     ),
   );
 }
+
+/// Skeleton lines on Home's pale panels, which keep dark content whatever the
+/// canvas is doing.
+const _skeletonInk = Color(0x24191B19);
 
 /// A crew that cannot be switched: its name, on the selector's own surface.
 class CrewNamePlate extends StatelessWidget {
@@ -318,16 +645,22 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     );
   }
 
+  /// The section's own heading, and the row of dots under the stack. What is
+  /// left between them is the card's.
+  static const _headingHeight = 24.0;
+  static const _dotsHeight = 24.0;
+
   @override
   Widget build(BuildContext context) {
     final pacts = _pacts;
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    final height = widget.height ?? (370 + math.max(0.0, scale - 1) * 200);
-    final cardHeight = math.max(
-      80.0,
-      math.min(height - 48, 410 + math.max(0.0, scale - 1) * 200),
-    );
+    final height = widget.height ?? (248 + math.max(0.0, scale - 1) * 200);
+    // The card takes everything the heading and the dots do not. It used to
+    // stop at a fixed ceiling, which left the page short under it once Home
+    // had room to spare.
+    final footer = pacts.length > 1 ? _dotsHeight : 0.0;
+    final cardHeight = math.max(80.0, height - _headingHeight - footer);
     final visibleDots = math.min(5, pacts.length);
     final start = math.max(0, math.min(_index - 2, pacts.length - visibleDots));
     return SizedBox(
@@ -336,7 +669,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 24,
+            height: _headingHeight,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -385,8 +718,9 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                 final width = space.maxWidth - reserve * 2;
                 final viewportWidth =
                     space.maxWidth + widget.horizontalBleed * 2;
-                final previousTravel =
-                    (viewportWidth + width) / 2 - peek * .65 - 2;
+                // Park the outgoing card just short of the front card's
+                // left edge, so its strip reads as one stack, not two.
+                final previousTravel = width + 12;
                 return OverflowBox(
                   minWidth: space.maxWidth + widget.horizontalBleed * 2,
                   maxWidth: space.maxWidth + widget.horizontalBleed * 2,
@@ -443,26 +777,26 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                               }
                               return transforms < 2;
                             });
-                            final depth = ((1 - stackScale) / .1).clamp(
-                              0.0,
-                              3.0,
-                            );
+                            // The stack only scales the cards behind the
+                            // front one, so the card sliding out reads its
+                            // strip progress from how far it has travelled.
+                            final depth = stackScale >= 1
+                                ? (-stackX / viewportWidth).clamp(0.0, 1.0)
+                                : ((1 - stackScale) / .1).clamp(0.0, 3.0);
                             // The swiper scales around the right edge. Cancel its
                             // native offset so each rear card exposes one strip.
                             return Transform.translate(
                               key: ValueKey('pact-slide-stack-$index'),
                               offset: stackScale >= 1
-                                  // Stop the outgoing card with a narrow strip
-                                  // still visible at the left edge of the viewport.
+                                  // The front card rests dead centre (stackX is
+                                  // 0 there) and slides out to `previousTravel`.
                                   ? Offset(
                                       stackX *
-                                              (previousTravel / viewportWidth -
-                                                  1) -
-                                          12,
+                                          (previousTravel / viewportWidth - 1),
                                       0,
                                     )
                                   : Offset(
-                                      (depth * peek - stackX - 12) / stackScale,
+                                      (depth * peek - stackX) / stackScale,
                                       (depth * 6 -
                                               (cardHeight - 20) *
                                                   (1 - stackScale) /
@@ -488,11 +822,6 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                                             .contains(pacts[index].id),
                                         child: _PactCard(
                                           depth: depth,
-                                          contentOpacity:
-                                              1 -
-                                              .8 *
-                                                  (-stackX / viewportWidth)
-                                                      .clamp(0.0, 1.0),
                                           previewWidth: peek,
                                           stackScale: stackScale,
                                           key: ValueKey(pacts[index].id),
@@ -648,12 +977,10 @@ class _PactCard extends StatelessWidget {
     required this.busy,
     required this.onToggle,
     this.depth = 0,
-    this.contentOpacity = 1,
     this.previewWidth = 40,
     this.stackScale = 1,
   });
   final double depth;
-  final double contentOpacity;
   final double previewWidth;
   final double stackScale;
   final CrewPact pact;
@@ -665,7 +992,6 @@ class _PactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checked = week.checkedToday(userId).contains(pact.id);
-    final start = DateTime.parse(week.weekStart);
     final completed = week.days(pact.id, userId);
     // Completion reads as a cream inset with a green mark, so the cue works on
     // every card tint instead of fighting the warm ones. Its edge is mixed from
@@ -681,10 +1007,13 @@ class _PactCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          // What the card's content stands in before it is scaled to the
+          // height Home gives it. One number for every card, whatever state
+          // it is in: two cards in the same stack have to scale alike.
           final minimumHeight =
-              382 +
+              268 +
               math.max(0.0, MediaQuery.textScalerOf(context).scale(1) - 1) *
-                  340;
+                  228;
           final shrink =
               constraints.maxHeight /
               math.max(minimumHeight, constraints.maxHeight);
@@ -726,7 +1055,10 @@ class _PactCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Expanded(
                       child: Align(
-                        alignment: Alignment.topLeft,
+                        // The count and its bar sit centred in what the title
+                        // and the button leave them, so a card that stands
+                        // taller opens evenly above and below.
+                        alignment: Alignment.centerLeft,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,23 +1115,48 @@ class _PactCard extends StatelessWidget {
                               child: Row(
                                 children: List.generate(
                                   pact.daysPerWeek,
+                                  // Segments are cut to the same squircle as
+                                  // the cards and cells around them, held to
+                                  // half their height: a continuous corner
+                                  // overshoots once it outgrows the box it is
+                                  // cutting, and leaves ticks at the ends.
                                   (i) => Expanded(
                                     child: Container(
-                                      height: 10,
+                                      height: _segmentHeight,
                                       margin: EdgeInsets.only(
                                         right: i == pact.daysPerWeek - 1
                                             ? 0
                                             : 5,
                                       ),
-                                      decoration: BoxDecoration(
+                                      decoration: ShapeDecoration(
                                         color: i < completed
                                             ? _ink
                                             : _ink.withValues(alpha: .20),
-                                        borderRadius: WeekPactMetrics.pill,
-                                        border: i < completed
-                                            ? Border.all(
-                                                color: WeekPactColors.inkEdge,
-                                              )
+                                        shape: ContinuousRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            math.min(
+                                              WeekPactMetrics.curveFor(
+                                                WeekPactMetrics.controlRadius,
+                                              ),
+                                              _segmentHeight / 2,
+                                            ),
+                                          ),
+                                          side: i < completed
+                                              ? const BorderSide(
+                                                  color: WeekPactColors.inkEdge,
+                                                )
+                                              : BorderSide.none,
+                                        ),
+                                        // A day that is kept is raised on the
+                                        // same edge as the check-in button.
+                                        shadows: i < completed
+                                            ? const [
+                                                BoxShadow(
+                                                  color: WeekPactColors.inkEdge,
+                                                  offset: WeekPactMetrics
+                                                      .raisedOffset,
+                                                ),
+                                              ]
                                             : null,
                                       ),
                                     ),
@@ -811,124 +1168,9 @@ class _PactCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Row(
-                      children: List.generate(7, (i) {
-                        final date = start.add(Duration(days: i));
-                        final day =
-                            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                        final done = week.checkIns.any(
-                          (c) =>
-                              c.pactId == pact.id &&
-                              c.userId == userId &&
-                              c.day == day,
-                        );
-                        final future = day.compareTo(week.today) > 0;
-                        final current = day == week.today;
-                        return Expanded(
-                          child: Semantics(
-                            label:
-                                '$day${current ? ', today' : ''}: ${done
-                                    ? 'completed'
-                                    : future
-                                    ? 'upcoming'
-                                    : 'not completed'}',
-                            child: Container(
-                              key: ValueKey('pact-day-${pact.id}-$day'),
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: ShapeDecoration(
-                                color: done
-                                    ? _doneFill
-                                    : Colors.white.withValues(alpha: .35),
-                                // The same squircle every card, button and tile
-                                // is cut to, stepped down to a cell's corner.
-                                shape: ContinuousRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    WeekPactMetrics.curveFor(
-                                      WeekPactMetrics.controlRadius,
-                                    ),
-                                  ),
-                                  side: BorderSide(
-                                    color: _ink.withValues(
-                                      alpha: current ? .75 : 0,
-                                    ),
-                                    width: 1,
-                                  ),
-                                ),
-                                shadows: done
-                                    ? [
-                                        BoxShadow(
-                                          color: doneEdge,
-                                          offset: WeekPactMetrics.raisedOffset,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 9,
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      [
-                                        'M',
-                                        'T',
-                                        'W',
-                                        'T',
-                                        'F',
-                                        'S',
-                                        'S',
-                                      ][date.weekday - 1],
-                                      style: TextStyle(
-                                        fontWeight: current
-                                            ? FontWeight.w700
-                                            : FontWeight.w400,
-                                        fontFamily: WeekPactType.secondary,
-                                        fontFamilyFallback:
-                                            WeekPactType.secondaryFallback,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${date.day}',
-                                      key: ValueKey(
-                                        'pact-date-${pact.id}-$day',
-                                      ),
-                                      style: TextStyle(
-                                        fontFamily: WeekPactType.secondary,
-                                        fontFamilyFallback:
-                                            WeekPactType.secondaryFallback,
-                                        fontSize: 16,
-                                        fontWeight: current
-                                            ? FontWeight.w700
-                                            : FontWeight.w400,
-                                        color: _ink.withValues(
-                                          alpha: future ? .65 : 1,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    SizedBox(
-                                      height: 12,
-                                      child: done
-                                          ? const HugeIcon(
-                                              icon: HugeIconsStrokeRounded
-                                                  .tickDouble03,
-                                              color: _ink,
-                                              size: 12,
-                                            )
-                                          : const SizedBox.shrink(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 24),
+                    // The bar reads as the button's own tally, so it sits
+                    // close under it.
+                    const SizedBox(height: 12),
                     if (checked)
                       _CompletedCheckIn(
                         pactTitle: pact.title,
@@ -1020,105 +1262,105 @@ class _PactCard extends StatelessWidget {
           // Fade faster than the digits travel, so the pair is gone before it
           // is close enough to read as one smudged glyph.
           final peekOpacity = peekReveal * peekReveal;
-          // Fade foreground content with the gesture while retaining the card tint.
-          return Opacity(
-            key: ValueKey('pact-content-opacity-${pact.id}'),
-            opacity: contentOpacity,
-            child: Stack(
-              fit: StackFit.expand,
-              clipBehavior: Clip.none,
-              children: [
-                ExcludeSemantics(
-                  excluding: reveal < 1,
-                  child: IgnorePointer(
-                    ignoring: reveal < 1,
-                    child: Opacity(opacity: reveal, child: content),
+          // The card tint stays put; only its foreground follows the stack.
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              ExcludeSemantics(
+                excluding: reveal < 1,
+                child: IgnorePointer(
+                  ignoring: reveal < 1,
+                  child: Opacity(
+                    key: ValueKey('pact-content-opacity-${pact.id}'),
+                    opacity: reveal,
+                    child: content,
                   ),
                 ),
-                Positioned(
-                  // Preserve the icon’s spacing so stacked previews stay visible.
-                  right: -6,
-                  top: 0,
-                  child: IgnorePointer(
-                    child: SizedBox(
-                      key: ValueKey('pact-icon-${pact.id}'),
-                      width: iconSize,
-                      height: iconSize,
+              ),
+              Positioned(
+                // Preserve the icon’s spacing so stacked previews stay visible.
+                right: -6,
+                top: 0,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    key: ValueKey('pact-icon-${pact.id}'),
+                    width: iconSize,
+                    height: iconSize,
 
-                      child: Center(
-                        child: HugeIcon(
-                          icon: PactIcon.find(pact.iconKey).data,
-                          color: _ink,
-                          size: iconSize * .6,
-                        ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: PactIcon.find(pact.iconKey).data,
+                        color: _ink,
+                        size: iconSize * .6,
                       ),
                     ),
                   ),
                 ),
-                if (peekReveal > 0)
-                  Positioned(
-                    key: ValueKey('pact-peek-score-${pact.id}'),
-                    right: -6,
-                    // Ride just under the icon so the two never collide while
-                    // the icon is still growing or shrinking.
-                    top: iconSize + 4 / stackScale,
-                    child: IgnorePointer(
-                      child: ExcludeSemantics(
-                        child: Opacity(
-                          opacity: peekOpacity,
-                          child: SizedBox(
-                            width: iconSize,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Transform.translate(
-                                  offset: Offset(
-                                    0,
-                                    readoutFont * .38 * (1 - peekReveal),
-                                  ),
-                                  child: _PeekNumeral(
-                                    value: completed,
-                                    size: readoutFont,
-                                  ),
+              ),
+              if (peekReveal > 0)
+                Positioned(
+                  key: ValueKey('pact-peek-score-${pact.id}'),
+                  right: -6,
+                  // Ride just under the icon so the two never collide while
+                  // the icon is still growing or shrinking.
+                  top: iconSize + 4 / stackScale,
+                  child: IgnorePointer(
+                    child: ExcludeSemantics(
+                      child: Opacity(
+                        opacity: peekOpacity,
+                        child: SizedBox(
+                          width: iconSize,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Transform.translate(
+                                offset: Offset(
+                                  0,
+                                  readoutFont * .38 * (1 - peekReveal),
                                 ),
-                                // The rule draws itself outward from the centre
-                                // as the two numerals close in on it.
-                                Container(
-                                  height: 1.5,
-                                  width: previewSize * .62 / stackScale,
-                                  margin: EdgeInsets.symmetric(
-                                    vertical: readoutFont * .12,
-                                  ),
-                                  transform: Matrix4.diagonal3Values(
-                                    peekReveal,
-                                    1,
-                                    1,
-                                  ),
-                                  transformAlignment: Alignment.center,
-                                  color: _ink.withValues(
-                                    alpha: .55 * peekOpacity,
-                                  ),
+                                child: _PeekNumeral(
+                                  value: completed,
+                                  size: readoutFont,
                                 ),
-                                Transform.translate(
-                                  offset: Offset(
-                                    0,
-                                    -readoutFont * .38 * (1 - peekReveal),
-                                  ),
-                                  child: _PeekNumeral(
-                                    value: pact.daysPerWeek,
-                                    size: readoutFont * .86,
-                                    alpha: .7,
-                                  ),
+                              ),
+                              // The rule draws itself outward from the centre
+                              // as the two numerals close in on it.
+                              Container(
+                                height: 1.5,
+                                width: previewSize * .62 / stackScale,
+                                margin: EdgeInsets.symmetric(
+                                  vertical: readoutFont * .12,
                                 ),
-                              ],
-                            ),
+                                transform: Matrix4.diagonal3Values(
+                                  peekReveal,
+                                  1,
+                                  1,
+                                ),
+                                transformAlignment: Alignment.center,
+                                color: _ink.withValues(
+                                  alpha: .55 * peekOpacity,
+                                ),
+                              ),
+                              Transform.translate(
+                                offset: Offset(
+                                  0,
+                                  -readoutFont * .38 * (1 - peekReveal),
+                                ),
+                                child: _PeekNumeral(
+                                  value: pact.daysPerWeek,
+                                  size: readoutFont * .86,
+                                  alpha: .7,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           );
         },
       ),
@@ -1862,32 +2104,6 @@ class _TodaySkeletonState extends State<TodaySkeleton>
     child: SkeletonBar(width: width, height: height, color: color),
   );
 
-  Widget _crewTile(Color color) => Expanded(
-    child: HomeSurface(
-      tint: color,
-      radius: WeekPactMetrics.cardCorner,
-      shape: WeekPactMetrics.pactCardShape,
-      raised: true,
-      outlineColor: color == WeekPactColors.mintGreen
-          ? WeekPactColors.mintEdge
-          : WeekPactColors.pendingEdge,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      // The loaded tile leads with a count and trails with faces.
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [_line(22, 26), const SizedBox(height: 6), _line(46, 8)],
-          ),
-          const Spacer(),
-          const SkeletonBar(width: 34, height: 34, shape: AvatarShape()),
-        ],
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading your home',
@@ -1900,87 +2116,27 @@ class _TodaySkeletonState extends State<TodaySkeleton>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                height: HomeHeader.height,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                height: HomeHeader.headingHeight,
+                child: Row(
                   children: [
-                    SizedBox(
-                      height: HomeHeader.titleHeight,
-                      child: Row(
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _line(104, 28),
-                          ),
-                          const Spacer(),
-                          SizedBox(
-                            width: 108,
-                            child: CrewHeaderSurface(
-                              child: Center(child: _line(64, 20)),
-                            ),
-                          ),
-                        ],
-                      ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _line(104, 28),
                     ),
-                    const SizedBox(height: HomeHeader.gap),
+                    const Spacer(),
                     SizedBox(
-                      height: HomeHeader.selectorHeight,
+                      width: 108,
                       child: CrewHeaderSurface(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _line(62, 8),
-                              const SizedBox(height: 8),
-                              _line(145, 20),
-                            ],
-                          ),
-                        ),
+                        child: Center(child: _line(64, 20)),
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              CrewHeaderSurface(
-                curve: CrewWeekButton.frameCurve,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        CrewWeekButton.pad,
-                        CrewWeekButton.pad,
-                        CrewWeekButton.pad,
-                        CrewWeekButton.rowGap,
-                      ),
-                      child: SizedBox(
-                        key: const ValueKey('skeleton-crew-board'),
-                        height: TodayCrewCard.groupHeight,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _crewTile(WeekPactColors.mintGreen),
-                            _crewTile(WeekPactColors.pendingCheckIns),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: CrewWeekButton.height,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(children: [_line(104, 12)]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // The crew panel is empty either way, so the skeleton holds the
+              // same surface rather than promising something to load into it.
+              const HomeCrewPanel.loading(key: ValueKey('skeleton-crew-panel')),
               const SizedBox(height: 12),
               Expanded(
                 child: Column(

@@ -206,169 +206,6 @@ void main() {
     },
   );
 
-  testWidgets('a held finger is not a pull and leaves the hand away', (
-    tester,
-  ) async {
-    final crews = MultipleCrews();
-    final pacts = CrewPacts()..crews = await crews.fetchCrews();
-    final home = CrewHome(pacts);
-    SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: HomePage(
-          user: const AuthUser(email: 'owner@example.com'),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: home,
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byTooltip('Switch crew')),
-    );
-    await tester.pump(const Duration(milliseconds: 600));
-    await tester.pumpUi();
-    expect(find.text('Switch to Night Owls'), findsNothing);
-    // Pushing the card up is not a pull either — the page keeps that drag.
-    await gesture.moveBy(const Offset(0, -60));
-    await tester.pumpUi();
-    expect(find.text('Switch to Night Owls'), findsNothing);
-    await gesture.up();
-    await tester.pumpUi();
-    expect(
-      find.descendant(
-        of: find.byTooltip('Switch crew'),
-        matching: find.text('Early Birds'),
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('the hand deals the crew you are on at the top', (tester) async {
-    final crews = MultipleCrews();
-    final pacts = CrewPacts()..crews = await crews.fetchCrews();
-    SharedPreferences.setMockInitialValues({
-      'selected_crew:owner@example.com': 'second',
-    });
-    final preferences = await SharedPreferences.getInstance();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: HomePage(
-          crewSelectionStore: CrewSelectionStore(preferences),
-          user: const AuthUser(email: 'owner@example.com'),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: CrewHome(pacts),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    await tester.tap(find.byTooltip('Switch crew'));
-    await tester.pumpUi();
-    // 'Night Owls' is the crew on the header, so its card is the one that
-    // lands directly under the switcher.
-    final owls = tester.getRect(find.text('Night Owls').last);
-    final birds = tester.getRect(find.text('Early Birds').last);
-    expect(owls.top, lessThan(birds.top));
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('a pull that stops short hands the cards back', (tester) async {
-    final crews = MultipleCrews();
-    final pacts = CrewPacts()..crews = await crews.fetchCrews();
-    SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: HomePage(
-          user: const AuthUser(email: 'owner@example.com'),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: CrewHome(pacts),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    final pull = await tester.startGesture(
-      tester.getCenter(find.byTooltip('Switch crew')),
-    );
-    await pull.moveBy(const Offset(0, 30));
-    await tester.pump();
-    expect(find.text('Night Owls'), findsWidgets);
-    // Too little of the hand is out to leave it dealt, and the finger is not
-    // flicking, so letting go puts the cards away again.
-    await pull.up();
-    await tester.pumpUi();
-    expect(find.text('Switch to Night Owls'), findsNothing);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('a pull deals the hand and leaves it out to choose from', (
-    tester,
-  ) async {
-    final crews = MultipleCrews();
-    final pacts = CrewPacts()..crews = await crews.fetchCrews();
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final store = CrewSelectionStore(preferences);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: HomePage(
-          crewSelectionStore: store,
-          user: const AuthUser(email: 'owner@example.com'),
-          authBackend: const MissingConfigurationAuthBackend(),
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: CrewHome(pacts),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    // Anywhere on the card pulls, not only the grip at its foot.
-    final pull = await tester.startGesture(
-      tester.getCenter(find.byTooltip('Switch crew')),
-    );
-    // The cards follow the finger: a little way down the hand is only part
-    // dealt, and going back up takes it with them.
-    await pull.moveBy(const Offset(0, 40));
-    await tester.pump();
-    // The top card is the crew on the header, and it keeps pace with the
-    // finger: another hundred pixels of pull moves it a hundred pixels, not a
-    // multiple of them. (The cards behind it deal on their own stagger.)
-    final dealt = tester.getRect(find.text('Early Birds').last);
-    await pull.moveBy(const Offset(0, 100));
-    await tester.pump();
-    expect(
-      tester.getRect(find.text('Early Birds').last).top - dealt.top,
-      closeTo(100, 0.5),
-    );
-    await tester.pumpUi();
-    expect(find.text('Night Owls'), findsWidgets);
-    // Letting go of the pull is not an answer: the hand stays dealt, and the
-    // cards that landed under the finger are not picked by lifting it.
-    await pull.up();
-    await tester.pumpUi();
-    expect(find.text('Night Owls'), findsWidgets);
-    expect(store.read('owner@example.com'), isNot('second'));
-    await tester.tap(find.text('Night Owls').last);
-    await tester.pumpUi();
-    expect(store.read('owner@example.com'), 'second');
-    expect(find.text('Night Owls'), findsWidgets);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
   testWidgets('crew selection follows the user between Home, Pacts and Crews', (
     tester,
   ) async {
@@ -393,9 +230,15 @@ void main() {
     );
     await launch();
     await tester.pumpUi();
+    // Home carries no crew selector, so the crew is switched from Pacts and
+    // Home is expected to have followed it when you come back.
+    await tester.tap(find.text('Pacts').last);
+    await tester.pumpUi();
     await tester.tap(find.byTooltip('Switch crew'));
     await tester.pumpUi();
     await tester.tap(find.text('Night Owls').last);
+    await tester.pumpUi();
+    await tester.tap(find.text('Home').last);
     await tester.pumpUi();
     expect(home.requested.last, 'second');
     expect(store.read('owner@example.com'), 'second');

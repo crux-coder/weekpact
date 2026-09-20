@@ -29,7 +29,8 @@ class LimitedCrews extends MultipleCrews {
   @override
   Future<CrewDetails> acceptInvite(String token) async {
     attempts++;
-    if (relentsAfterUpgrade && upgraded) return MultipleCrews.details('c', 'Joined');
+    if (relentsAfterUpgrade && upgraded)
+      return MultipleCrews.details('c', 'Joined');
     throw refusal;
   }
 
@@ -39,7 +40,8 @@ class LimitedCrews extends MultipleCrews {
     required String timezone,
   }) async {
     attempts++;
-    if (relentsAfterUpgrade && upgraded) return super.createCrew(name: name, timezone: timezone);
+    if (relentsAfterUpgrade && upgraded)
+      return super.createCrew(name: name, timezone: timezone);
     throw refusal;
   }
 }
@@ -59,7 +61,10 @@ Future<SubscriptionController> pumpCrewPage(
       home: SubscriptionScope(
         controller: controller,
         child: Scaffold(
-          body: CrewPage(backend: backend, currentUserEmail: 'owner@example.com'),
+          body: CrewPage(
+            backend: backend,
+            currentUserEmail: 'owner@example.com',
+          ),
         ),
       ),
     ),
@@ -76,7 +81,10 @@ void main() {
     test('other failures are left alone', () {
       for (final other in <Object>[
         const PostgrestException(message: 'Invite has expired', code: '22023'),
-        const PostgrestException(message: 'You must be signed in', code: '42501'),
+        const PostgrestException(
+          message: 'You must be signed in',
+          code: '42501',
+        ),
         StateError('Supabase is not configured'),
         Exception('offline'),
       ]) {
@@ -159,9 +167,8 @@ void main() {
         MaterialApp(
           theme: WeekPactTheme.dark,
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(scale)),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(scale)),
             child: child!,
           ),
           home: SubscriptionScope(
@@ -195,23 +202,27 @@ void main() {
     expect(find.text('CREATE CREW'), findsOneWidget);
   });
 
-  testWidgets('the database has the last word when the client thinks it is Pro', (
-    tester,
-  ) async {
-    // Entitlements lapse between opening the form and submitting it, so a
-    // client that believes it has Pro still has to handle the refusal.
-    final backend = LimitedCrews();
-    await pumpCrewPage(tester, backend, isPro: true);
-    await tester.tap(find.byTooltip('Create another crew'));
-    await tester.pumpUi();
-    await tester.enterText(find.byType(TextFormField).first, 'Weekend Walkers');
-    await tester.ensureVisible(find.text('CREATE CREW'));
-    await tester.tap(find.text('CREATE CREW'));
-    await tester.pumpUi();
+  testWidgets(
+    'the database has the last word when the client thinks it is Pro',
+    (tester) async {
+      // Entitlements lapse between opening the form and submitting it, so a
+      // client that believes it has Pro still has to handle the refusal.
+      final backend = LimitedCrews();
+      await pumpCrewPage(tester, backend, isPro: true);
+      await tester.tap(find.byTooltip('Create another crew'));
+      await tester.pumpUi();
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'Weekend Walkers',
+      );
+      await tester.ensureVisible(find.text('CREATE CREW'));
+      await tester.tap(find.text('CREATE CREW'));
+      await tester.pumpUi();
 
-    expect(backend.attempts, 1);
-    expect(find.text('One crew on the free plan'), findsOneWidget);
-  });
+      expect(backend.attempts, 1);
+      expect(find.text('One crew on the free plan'), findsOneWidget);
+    },
+  );
 
   testWidgets('a refused invite offers Pro, and upgrading joins the crew', (
     tester,
@@ -247,7 +258,11 @@ void main() {
     await tester.pumpUi();
 
     expect(store.purchases, 1);
-    expect(backend.attempts, 2, reason: 'the invite is retried after upgrading');
+    expect(
+      backend.attempts,
+      2,
+      reason: 'the invite is retried after upgrading',
+    );
     expect(finished, isTrue);
   });
 }

@@ -56,6 +56,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
           setState(() => _panel = null);
         }
       });
+
   /// How dark the rest of home goes behind an open panel.
   static const _scrimOpacity = .38;
 
@@ -309,10 +310,7 @@ class _ExpandableHomePanelsState extends State<ExpandableHomePanels>
       rect: rect,
       child: IgnorePointer(
         ignoring: obscured,
-        child: ExcludeSemantics(
-          excluding: obscured,
-          child: child,
-        ),
+        child: ExcludeSemantics(excluding: obscured, child: child),
       ),
     );
   }

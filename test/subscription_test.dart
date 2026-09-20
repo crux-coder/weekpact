@@ -71,6 +71,7 @@ class FakeSubscriptionBackend implements SubscriptionBackend {
     emit(const ProAccess(active: true, willRenew: true));
     return _access;
   }
+
   @override
   Future<PaywallOutcome> presentPaywall({bool onlyIfLocked = true}) async {
     paywalls++;
@@ -151,13 +152,16 @@ void main() {
     expect(notified, 1);
   });
 
-  test('the missing backend keeps everything locked without throwing', () async {
-    const backend = MissingSubscriptionBackend();
-    expect(backend.access.active, isFalse);
-    expect(await backend.refresh(), ProAccess.locked);
-    expect(await backend.presentPaywall(), PaywallOutcome.failed);
-    await expectLater(backend.restore(), throwsA(isA<SubscriptionFailure>()));
-  });
+  test(
+    'the missing backend keeps everything locked without throwing',
+    () async {
+      const backend = MissingSubscriptionBackend();
+      expect(backend.access.active, isFalse);
+      expect(await backend.refresh(), ProAccess.locked);
+      expect(await backend.presentPaywall(), PaywallOutcome.failed);
+      await expectLater(backend.restore(), throwsA(isA<SubscriptionFailure>()));
+    },
+  );
 
   testWidgets('a locked account is offered the paywall', (tester) async {
     final backend = FakeSubscriptionBackend();

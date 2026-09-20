@@ -1,5 +1,4 @@
 import 'photo_check_in_sheet.dart';
-import '../crew/crew_switcher.dart';
 import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../auth/account_page.dart';
@@ -7,9 +6,9 @@ import 'home_surface.dart';
 
 import 'package:flutter/services.dart';
 
-import '../crew/crew_week_page.dart';
-
 import 'dart:async';
+
+import '../crew/crew_week_page.dart';
 
 import '../feed/feed_page.dart';
 import 'home_backend.dart';
@@ -18,6 +17,7 @@ import 'package:flutter/material.dart';
 
 import '../pacts/pacts_backend.dart';
 import '../pacts/pacts_page.dart';
+import 'recent_activity.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
@@ -244,6 +244,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+/// The height the pact stack keeps for itself before Home will place anything
+/// under it: less than this and the card is too short to read.
+const _pactStackFloor = 240.0;
 
 class _HomeDestination extends StatefulWidget {
   const _HomeDestination({
@@ -480,13 +484,11 @@ class _HomeDestinationState extends State<_HomeDestination>
                           child: SizedBox(
                             width: constraints.maxWidth,
                             height: constraints.maxHeight.clamp(
-                              // Header, the crew week row, crew tiles and a
-                              // usable pact card; shorter viewports scale down.
+                              // Heading, the crew panel and a usable pact
+                              // card; shorter viewports scale down.
                               312 +
-                                  HomeHeader.height +
-                                  CrewWeekButton.height +
-                                  CrewWeekButton.pad +
-                                  CrewWeekButton.rowGap +
+                                  HomeHeader.headingHeight +
+                                  HomeCrewPanel.height +
                                   (_saveError == null ? 0 : 40),
                               double.infinity,
                             ),
@@ -542,20 +544,19 @@ class _HomeDestinationState extends State<_HomeDestination>
                                 if (week == null) {
                                   return const SizedBox.shrink();
                                 }
-                                const crewHeight = TodayCrewCard.groupHeight;
                                 return ExpandableHomePanels(
-                                  showCrewCheckIns: true,
                                   key: ValueKey(_crew!.id),
                                   backend: widget.backend,
                                   crewId: _crew!.id,
                                   week: week,
                                   userId: widget.userId,
                                   active: widget.active,
-                                  // The check-in tiles sit inside the crew's
-                                  // surface, so the panel that unfolds over
-                                  // them starts inside its frame too.
+                                  // The crew panel is empty, so nothing
+                                  // unfolds over it and there is no tile for
+                                  // a panel to line up with.
+                                  showCrewCheckIns: false,
                                   top:
-                                      HomeHeader.height +
+                                      HomeHeader.headingHeight +
                                       12 +
                                       CrewWeekButton.pad,
                                   inset: CrewWeekButton.pad,
@@ -563,36 +564,16 @@ class _HomeDestinationState extends State<_HomeDestination>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      HomeHeader(
-                                        streakWeeks: week.streakWeeks,
-                                        selector: (_crews?.length ?? 0) > 0
-                                            ? CrewSwitcher(
-                                                compact: true,
-                                                crews: _crews!,
-                                                selectedId: _crew!.id,
-                                                loadWeek:
-                                                    widget.backend.fetchWeek,
-                                                onSelected: _savingPact != null
-                                                    ? null
-                                                    : (id) {
-                                                        widget.onCrewSelected
-                                                            ?.call(id);
-                                                        _refresh(crewId: id);
-                                                      },
-                                              )
-                                            : CrewNamePlate(name: _crew!.name),
-                                      ),
+                                      HomeHeader(streakWeeks: week.streakWeeks),
                                       const SizedBox(height: 12),
-                                      CrewWeekButton(
-                                        onOpen: _openCrewWeek,
-                                        checkIns: TodayCrewCard(
-                                          showGroups: false,
-                                          height: crewHeight,
-                                          crewName: _crew!.name,
-                                          week: week,
-                                          userId: widget.userId,
-                                          onOpen: _openCrewWeek,
-                                        ),
+                                      HomeCrewPanel(
+                                        key: const ValueKey('home-crew-panel'),
+                                        week: week,
+                                        userId: widget.userId,
+                                        onOpenWeek: _openCrewWeek,
+                                        backend: widget.backend,
+                                        crewId: _crew!.id,
+                                        active: widget.active,
                                       ),
                                       const SizedBox(height: 12),
                                       if (_saveError != null)
@@ -637,15 +618,53 @@ class _HomeDestinationState extends State<_HomeDestination>
                                                 ),
                                               )
                                             : LayoutBuilder(
-                                                builder: (context, space) =>
-                                                    TodayPactsCard(
-                                                      height: space.maxHeight,
-                                                      horizontalBleed: 12,
-                                                      week: week,
-                                                      userId: widget.userId,
-                                                      savingPact: _savingPact,
-                                                      onToggle: _togglePact,
-                                                    ),
+                                                builder: (context, space) {
+                                                  // Home never scrolls, so the
+                                                  // activity line is only worth
+                                                  // its height where the stack
+                                                  // can give that up and still
+                                                  // read as a card. A short
+                                                  // screen keeps the stack
+                                                  // whole instead.
+                                                  final section =
+                                                      12 +
+                                                      RecentActivityCard.heightOf(
+                                                        context,
+                                                      );
+                                                  final room =
+                                                      space.maxHeight -
+                                                          section >=
+                                                      _pactStackFloor;
+                                                  return Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: [
+                                                      TodayPactsCard(
+                                                        height: room
+                                                            ? space.maxHeight -
+                                                                  section
+                                                            : space.maxHeight,
+                                                        horizontalBleed: 12,
+                                                        week: week,
+                                                        userId: widget.userId,
+                                                        savingPact: _savingPact,
+                                                        onToggle: _togglePact,
+                                                      ),
+                                                      if (room) ...[
+                                                        const SizedBox(
+                                                          height: 12,
+                                                        ),
+                                                        RecentActivityCard(
+                                                          week: week,
+                                                          userId: widget.userId,
+                                                          onOpenFeed:
+                                                              widget.onOpenFeed,
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  );
+                                                },
                                               ),
                                       ),
                                     ],

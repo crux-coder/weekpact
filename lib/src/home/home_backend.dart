@@ -471,8 +471,9 @@ class SupabaseHomeBackend implements HomeBackend {
       ),
     );
     final week = CrewWeek.fromJson(row);
-    // The snapshot supplies today in the crew timezone. Keep activity on that
-    // same date; insertion time only determines which check-in is most recent.
+    // The crew's last check-in, whenever it was: the card reads as the latest
+    // thing that happened rather than a second account of today, and it dates
+    // what it shows. Bounded by the week's own pacts and members.
     final activity = week.pacts.isEmpty || week.members.isEmpty
         ? null
         : await client
@@ -483,7 +484,6 @@ class SupabaseHomeBackend implements HomeBackend {
                 'user_id',
                 week.members.map((member) => member.id).toList(),
               )
-              .eq('completed_on', week.today)
               .order('created_at', ascending: false)
               .order('pact_id')
               .order('user_id')

@@ -35,18 +35,10 @@ class RolloverBackend extends DashboardBackend {
 /// question as whether today is checked: rolling 15th → 16th keeps last night's
 /// check-in inside the same week, while rolling 13th → 14th starts a new one.
 void expectDay(
-  WidgetTester tester,
-  String day, {
+  WidgetTester tester, {
   required bool checked,
   required int completed,
 }) {
-  final label = '$day, today: ${checked ? 'completed' : 'not completed'}';
-  expect(
-    find.byWidgetPredicate(
-      (widget) => widget is Semantics && widget.properties.label == label,
-    ),
-    findsWidgets,
-  );
   expect(
     find.text('Checked in today').hitTestable(),
     checked ? findsOneWidget : findsNothing,
@@ -80,38 +72,15 @@ void main() {
         await pumpHome(tester, backend);
         await tester.pumpUi();
         final sameWeek = dates.first == '2026-09-15';
-        expectDay(tester, dates.first, checked: true, completed: 1);
+        expectDay(tester, checked: true, completed: 1);
         final fetches = backend.fetches;
         backend.today = dates.last;
         await tester.pump(const Duration(minutes: 1));
         await tester.pumpUi();
         expect(backend.fetches, greaterThan(fetches));
-        expectDay(
-          tester,
-          dates.last,
-          checked: false,
-          completed: sameWeek ? 1 : 0,
-        );
-        expect(
-          find.bySemanticsLabel('${dates.first}, today: completed'),
-          findsNothing,
-        );
-        if (sameWeek) {
-          // Yesterday stays completed in the same week, but cannot be undone as today.
-          expect(
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is Semantics &&
-                  widget.properties.label == '${dates.first}: completed',
-            ),
-            findsWidgets,
-          );
-        } else {
-          expect(
-            find.byKey(ValueKey('pact-day-move-${dates.first}')),
-            findsNothing,
-          );
-        }
+        // The card counts the week, so the same week keeps last night's day
+        // while a new one starts the count over.
+        expectDay(tester, checked: false, completed: sameWeek ? 1 : 0);
         await tester.pumpWidget(const SizedBox());
       },
     );
@@ -123,13 +92,13 @@ void main() {
       final backend = RolloverBackend('2026-09-15');
       await pumpHome(tester, backend);
       await tester.pumpUi();
-      expectDay(tester, backend.today, checked: true, completed: 1);
+      expectDay(tester, checked: true, completed: 1);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       backend.today = '2026-09-16';
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpUi();
       // Still the same week, so yesterday's check-in stays counted.
-      expectDay(tester, backend.today, checked: false, completed: 1);
+      expectDay(tester, checked: false, completed: 1);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -143,7 +112,7 @@ void main() {
     backend.today = '2026-09-16';
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpUi();
-    expectDay(tester, backend.today, checked: false, completed: 1);
+    expectDay(tester, checked: false, completed: 1);
     await tester.pumpWidget(const SizedBox());
   });
 }

@@ -234,9 +234,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.bySemanticsLabel('Checked in today · 1'), findsOneWidget);
-    expect(find.bySemanticsLabel('Not yet today · 1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
@@ -267,7 +265,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.text('Early Birds'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-pacts')));
     await tester.pumpUi();
@@ -393,14 +391,14 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    final initialHomeX = tester.getTopLeft(find.text('Early Birds')).dx;
+    final initialHomeX = tester.getTopLeft(find.byKey(const ValueKey('home-crew-panel'))).dx;
     // The adjacent destination keeps Home mounted through the slide.
     await tester.tap(find.byKey(const ValueKey('nav-feed')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(
-      tester.getTopLeft(find.text('Early Birds')).dx,
+      tester.getTopLeft(find.byKey(const ValueKey('home-crew-panel'))).dx,
       lessThan(initialHomeX),
     );
 
@@ -513,9 +511,7 @@ void main() {
     );
   });
 
-  testWidgets('uses one theme regardless of device appearance', (
-    tester,
-  ) async {
+  testWidgets('uses one theme regardless of device appearance', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
@@ -624,7 +620,7 @@ void main() {
 
     expect(crews.acceptedTokens, ['secret-token']);
     expect(find.text('Your crew is waiting.'), findsNothing);
-    expect(find.text('Early Birds'), findsWidgets);
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
   });
 }
 

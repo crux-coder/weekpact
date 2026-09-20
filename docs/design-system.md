@@ -52,7 +52,9 @@ There are exactly two card languages, and `WeekPactDarkCard` in
 dark ink. Three content-heavy surfaces invert that — the Feed, the paywall and
 the subscription page — because the photos and the pricing carry the colour
 there and a pale card would compete with them; Crew week's streak panel and
-Home's activity panel use the same fill. Take `fill`, `outline`, `ink` and
+Home's activity card use the same fill, and the activity card is built as that
+panel is: a face where it puts its flame, a line in the card's own weight and a
+muted caption under it. Take `fill`, `outline`, `ink` and
 `muted` from `WeekPactDarkCard` together, as a closed set: never put pale-card
 ink (`black`, `mutedLight`) on that fill, and never put dark-card ink on a pact
 tint. Do not add a third card language, and do not introduce pink card variants.
@@ -64,7 +66,8 @@ There are four corners in `WeekPactMetrics`, and a screen should reach for one
 of them rather than a new number:
 
 - `controlRadius` (8) — a control, a cell or a flat panel, as a rounded rect.
-  Weekday cells on Home and in the crew week card are both this.
+  The crew week card's weekday cells and Home's activity pact chip are both
+  this.
 - `cardCorner` (18) / `cardCurve` (40) — a standard card, as a continuous
   squircle. They are the same corner: `cardCorner` is its plain radius and
   `cardCurve` is what that corner needs to read at the same size once drawn as
@@ -78,9 +81,12 @@ of them rather than a new number:
 
 Two more shapes sit outside the scale. `pill` is a bar, pip or progress track
 rounded to its own half-height, so it reads as a pill at whatever size it is
-rather than at a guessed radius — Home's progress segments, the Pacts progress
-bar, carousel dots, step pips, sheet grab handles and skeleton bars are all
-this one value. `sheetRadius` (16) is a modal sheet, which meets the screen
+rather than at a guessed radius — the Pacts progress bar, carousel dots, step
+pips, sheet grab handles and skeleton bars are all this one value. Home's own
+weekly segments are the exception: they are tall enough to carry a corner, so
+they are cut to the squircle every cell is. Hold that corner to half the box it
+cuts — a continuous corner that outgrows its box overshoots, and leaves stray
+ticks of the border at the ends. `sheetRadius` (16) is a modal sheet, which meets the screen
 edge and so rounds only along the top.
 
 A dashed outline traces the same continuous squircle as the surface it sits on
@@ -237,16 +243,96 @@ shadows. `RaisedIcon` opts individual icons into that treatment. The active
 navigation card stays raised with a plain icon. The activity chevron retains
 its opening press animation, which compresses the solid edge.
 
-Home’s progress bars remain flat. Weekday cells are raised when complete and
-flat otherwise; today’s letter and date are bold, with an outline reserved for
+Home’s progress segments are raised on the check-in button's edge once the day
+is kept, and flat before it. They sit close under that button: spare height in
+the card gathers over the count instead, so the pair holds together whatever
+height the card is standing in. Its pact card carries no weekday strip:
+the week is read there as the count over the bar, with the days themselves left
+to the crew week card. Its weekday cells are raised when complete and flat
+otherwise; today’s letter and date are bold, with an outline reserved for
 today. Completed days and the “Checked in today” banner use one cue that works on every tint: a cream fill (`_doneFill`), a green mark (`_doneMark`), and a raised edge mixed from the card's own colour. Do not tie an on-card completion cue to a fixed green — it fights the warm tints and vanishes on the green ones. Crew check-in tiles sit on the canvas, not a tint, and stay mint. Preserve these state cues.
 
 Home’s compact crew header has two solid raised containers with labels inside:
 crew selection on the left and a narrower streak summary on the right. Use
 `CrewHeaderSurface` for their shared 2px edge, outline, and squircle corners.
 
+Home carries neither. Its heading stands alone — the page's name and dot with
+the crew streak beside it — and the crew block under it is `HomeCrewPanel`: a
+recessed frame holding the week over the day. A raised squircle card headlines
+it with the week — its icon, `CREW PROGRESS · THIS WEEK`, the percentage on the
+same line and the bar under them — reading `CrewWeek.percentCrew`, which caps
+each pact at its own weekly target, in the crew week page's own two states:
+butter while the week is being kept, mint once it is. The label names its span
+because the rows underneath cover a different one; a block holding both a week
+and a day says which is which on each.
+
+The card is also the way into the crew week, which is the same week at length,
+so it takes the tap rather than a labelled row of its own: its inset sits
+inside the `InkWell` so the whole face answers the finger, and a chevron at
+`_chevronSize` stands at its right edge — sized as the card's own handle
+rather than as a mark on it. The loading card keeps that width in reserve, so
+the bar under it does not move once the week arrives, and offers no tap until
+there is a week to open.
+
+Under the card the block names today, and only today, in one line whatever
+the crew's size — `CrewTodayStrip` in `lib/src/home/crew_today_strip.dart`. A
+`TODAY` label, then the day as a score (`2/5 in today`) with today's check-ins
+beside it as faces, hard right against the block's edge — so the day reads left
+to right as a number and then the people behind it. The faces are the crew who
+are in and only those: mint, lifted on a `mintEdge`, with a tick badge. Past
+`maxFaces` the rest of them become one `+N`, and nobody who has yet to check in
+appears at all — the score already counts them, and the drawer is where they
+are read. A row per person would have grown the block with the crew and spent a
+page that cannot scroll on people you are not waiting for.
+
+The whole roster is a pull away. The strip is a drawer front: it wears the
+same grip `CrewSwitcher` puts at the foot of its own card — the 96px pill that
+slackens as the drawer comes out — and the same pull, measured from where the
+finger landed in global pixels, running the drawer open under it pixel for
+pixel. It commits past a quarter out or on a flick, hands back below that, and
+a tap plays the pull straight through either way. It answers with the
+switcher's own two beats: a light impact when the pull catches and the drawer
+first comes out, a medium one when it lands. Do not put a chevron on it: the
+grip is how this app says *pull*, and the two pulls should feel alike.
+
+The drawer is the block carried further down, not a card laid over the page.
+It keeps the block's face, comes out at the block's full width (`bleed`),
+meets it flush with a square head and finishes on the block's own corner
+(`curve`) with the lifted edge every raised surface here carries. Nothing
+behind it is dimmed — the barrier catching the tap that shuts it paints
+nothing. Inside, the front rides at the head and `CrewMemberList` slides out
+underneath with `onDark: true`, which takes `WeekPactDarkCard`'s ink and
+inverts the nudge button's face from `graphite` to `cream`, since graphite on
+a dark panel is a shadow. The button is the app's raised button either way —
+`AppSurface` on `buttonShape`, which mixes its own outline and lifted edge
+from that face rather than spelling a second pair beside it. The drawer runs
+exactly as far as the roster needs (`_rowHeight` per person plus the list's
+foot), so it neither clips its last name nor opens onto empty floor. It holds the whole crew, not one side of it: `done:
+false`, so the backend offers a nudge where one can be sent and says `Checked
+in` where it cannot. Escape, the back gesture, a tap outside and leaving Home
+all shut it.
+
+`HomeCrewPanel.loading` is the same frame, card and day line with their lines
+not yet filled in. The block's height is fixed — `HomeCrewPanel.height` — so
+nothing moves when the week arrives, whatever the crew turns out to be. It
+holds a fixed slice of a page that never scrolls, so larger system text is laid
+out at the room it wants and scaled back into its slot rather than growing
+one.
+
+The crew switcher itself is unchanged and still opens from Pacts and Crews;
+`CrewSwitcher`, `CrewNamePlate`, `CrewWeekButton`, `TodayCrewCard` and
+`CrewCheckInTile` are all still here and unedited, simply not built by Home.
+`ExpandableHomePanels` is still Home's host but has nothing to unfold
+(`showCrewCheckIns` is false), so the check-in tiles and their nudges are off
+the page for now.
+
 Buttons use `WeekPactMetrics.buttonShape` for squircle faces, outlines, and
 raised edges. Preserve the existing tap areas and flat icon glyphs.
+
+`TodayPactsCard` gives the pact card everything its section is handed, less
+its own heading and the row of dots: there is no ceiling on the card's height.
+Home has no scrollbar to absorb a shortfall, so a fixed maximum there shows up
+as dead floor under the stack.
 
 Pact icons are decorative: render the glyph alone, without a background, outline,
 or elevation. Label the Home pact section “YOUR PACTS” to reflect weekly progress. Unchecked dates have no status circles; future dates remain readable at 65%

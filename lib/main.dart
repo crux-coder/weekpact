@@ -34,7 +34,9 @@ const _revenueCatTestKey = String.fromEnvironment('REVENUECAT_TEST_KEY');
 
 String get _revenueCatKey {
   if (kReleaseMode) return _revenueCatAppleKey;
-  return _revenueCatTestKey.isNotEmpty ? _revenueCatTestKey : _revenueCatAppleKey;
+  return _revenueCatTestKey.isNotEmpty
+      ? _revenueCatTestKey
+      : _revenueCatAppleKey;
 }
 
 Future<void> main() async {

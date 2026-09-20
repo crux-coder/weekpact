@@ -32,7 +32,9 @@ class FirebaseMessagingClient implements MessagingClient {
       );
     }
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
     FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
     final messaging = FirebaseMessaging.instance;

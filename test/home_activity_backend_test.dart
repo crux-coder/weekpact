@@ -63,9 +63,9 @@ void main() {
     );
   });
 
-  for (final hasToday in [true, false]) {
+  for (final hasAny in [true, false]) {
     test(
-      'activity uses the crew date and returns ${hasToday ? 'today’s latest check-in' : 'no previous-day fallback'}',
+      'activity is the crew’s latest check-in of any date, ${hasAny ? 'when there is one' : 'or nothing at all'}',
       () async {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         final requests = <Uri>[];
@@ -106,7 +106,7 @@ void main() {
           } else {
             request.response.write(
               jsonEncode([
-                if (hasToday)
+                if (hasAny)
                   {
                     'pact_id': 'pact',
                     'user_id': 'member',
@@ -135,10 +135,11 @@ void main() {
         expect(query['user_id'], 'in.("member")');
         expect(query['order'], startsWith('created_at.desc'));
         expect(query['limit'], '1');
-        expect(query['completed_on'], 'eq.2026-09-14');
+        // Not held to today: the card reads as the last thing that happened,
+        // whenever that was, and dates what it shows.
+        expect(query['completed_on'], isNull);
         expect(week.checkIns.single.day, '2026-09-13');
-        // Today's check-in in the crew timezone can have yesterday's UTC timestamp.
-        if (hasToday) {
+        if (hasAny) {
           expect(week.latestActivity?.photoPath, 'member/crew/pact/photo.png');
           expect(
             week.latestActivity?.createdAt,

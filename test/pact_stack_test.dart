@@ -70,7 +70,56 @@ void main() {
     );
   }
 
-  testWidgets('cards sit slightly left and stop at both ends', (tester) async {
+  testWidgets('a day that is kept is raised, the rest stay flat', (
+    tester,
+  ) async {
+    final backend = DashboardBackend();
+    final week = await backend.fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TodayPactsCard(
+            week: week,
+            userId: '',
+            savingPact: null,
+            onToggle: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    // The second pact carries the week's one completed day.
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(-320, 0),
+    );
+    await tester.pumpUi();
+    final segments = tester
+        .widgetList<Container>(
+          find.descendant(
+            of: find.byKey(const ValueKey('pact-progress-read')),
+            matching: find.byType(Container),
+          ),
+        )
+        .toList();
+    expect(segments, hasLength(3));
+    final faces = segments
+        .map((segment) => segment.decoration! as ShapeDecoration)
+        .toList();
+    // The kept day is raised on the check-in button's own edge.
+    expect(faces.first.shadows, isNotNull);
+    expect(faces.last.shadows, isNull);
+    // A continuous corner that outgrows its box leaves stray ticks at the
+    // segment's ends, so it never exceeds half the height.
+    final shape = faces.first.shape as ContinuousRectangleBorder;
+    expect(
+      shape.borderRadius.resolve(TextDirection.ltr).topLeft.x,
+      lessThanOrEqualTo(segments.first.constraints!.maxHeight / 2),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cards sit centered and stop at both ends', (tester) async {
     final backend = DashboardBackend();
     backend.pacts.pacts.add(
       const CrewPact(
@@ -110,7 +159,7 @@ void main() {
             .opacity,
         1,
       );
-      expect(card.center.dx, closeTo(stack.center.dx - 12, 1));
+      expect(card.center.dx, closeTo(stack.center.dx, 1));
       expect(card.left, greaterThan(stack.left));
       expect(card.right, lessThan(stack.right));
       if (index > 0) {
@@ -122,11 +171,42 @@ void main() {
                 find.byKey(ValueKey('pact-content-opacity-${previousPact.id}')),
               )
               .opacity,
-          closeTo(.2, .001),
+          closeTo(0, .001),
+        );
+        // The strip left behind carries the same icon-over-score readout as
+        // the strip stacked on the right of the front card.
+        final outgoingIcon = tester.getRect(
+          find.byKey(ValueKey('pact-icon-${previousPact.id}')),
+        );
+        final frontIcon = tester.getRect(
+          find.byKey(ValueKey('pact-icon-${pact.id}')),
+        );
+        expect(outgoingIcon.width, lessThan(frontIcon.width));
+        expect(outgoingIcon.left, greaterThan(previous.left));
+        expect(outgoingIcon.right, lessThan(previous.right));
+        final outgoingScore = find.byKey(
+          ValueKey('pact-peek-score-${previousPact.id}'),
+        );
+        expect(outgoingScore, findsOneWidget);
+        expect(
+          tester
+              .widget<Opacity>(
+                find.descendant(
+                  of: outgoingScore,
+                  matching: find.byType(Opacity),
+                ),
+              )
+              .opacity,
+          closeTo(1, .001),
+        );
+        expect(
+          tester.getRect(outgoingScore).top,
+          greaterThan(outgoingIcon.bottom - 1),
         );
         expect(previous.left, lessThan(stack.left));
         expect(previous.right, greaterThan(stack.left + 10));
-        expect(previous.right, lessThan(card.left));
+        // The outgoing card parks one narrow gap short of the front card.
+        expect(card.left - previous.right, closeTo(12, 1));
         expect(previous.top, closeTo(card.top, 1));
         expect(previous.bottom, closeTo(card.bottom, 1));
         expect(

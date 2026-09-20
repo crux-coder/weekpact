@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/app_components.dart';
 import 'home_backend.dart';
 import 'home_surface.dart';
 
@@ -16,6 +17,7 @@ class CrewMemberList extends StatefulWidget {
     required this.userId,
     this.backend,
     this.crewId,
+    this.onDark = false,
   });
   final List<WeekMember> members;
   final bool done;
@@ -23,12 +25,21 @@ class CrewMemberList extends StatefulWidget {
   final HomeBackend? backend;
   final String? crewId;
 
+  /// True when the list sits on a dark face rather than a pale tile. The
+  /// rows then take the dark card's ink and the nudge button inverts: a pale
+  /// face on the dark border, since graphite on a dark panel is a shadow.
+  final bool onDark;
+
   @override
   State<CrewMemberList> createState() => _CrewMemberListState();
 }
 
 class _CrewMemberListState extends State<CrewMemberList>
     with WidgetsBindingObserver {
+  Color get _ink => widget.onDark ? WeekPactDarkCard.ink : homeInk;
+  Color get _muted =>
+      widget.onDark ? WeekPactDarkCard.muted : WeekPactColors.mutedLight;
+
   Map<String, CrewNudgeState> _states = {};
   final _sending = <String>{};
   final _failed = <String>{};
@@ -150,7 +161,7 @@ class _CrewMemberListState extends State<CrewMemberList>
                 ? 'No one has checked in today yet.'
                 : 'Everyone has checked in today.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: homeInk, fontSize: 14),
+            style: TextStyle(color: _ink, fontSize: 14),
           ),
         ),
       );
@@ -162,10 +173,10 @@ class _CrewMemberListState extends State<CrewMemberList>
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Could not load nudges.',
-                    style: TextStyle(color: homeInk, fontSize: 12),
+                    style: TextStyle(color: _ink, fontSize: 12),
                   ),
                 ),
                 TextButton(onPressed: _loadStates, child: const Text('Retry')),
@@ -195,7 +206,7 @@ class _CrewMemberListState extends State<CrewMemberList>
       child: Text(
         member.initials,
         style: const TextStyle(
-          color: homeInk,
+          color: WeekPactColors.black,
           fontFamily: WeekPactType.secondary,
           fontFamilyFallback: WeekPactType.secondaryFallback,
           fontSize: 14,
@@ -204,10 +215,7 @@ class _CrewMemberListState extends State<CrewMemberList>
       ),
     );
     final action = member.id == widget.userId
-        ? const Text(
-            'You',
-            style: TextStyle(color: WeekPactColors.mutedLight, fontSize: 12),
-          )
+        ? Text('You', style: TextStyle(color: _muted, fontSize: 12))
         : _canNudge
         ? _nudgeButton(context, member)
         : null;
@@ -216,8 +224,8 @@ class _CrewMemberListState extends State<CrewMemberList>
       children: [
         Text(
           name,
-          style: const TextStyle(
-            color: homeInk,
+          style: TextStyle(
+            color: _ink,
             fontFamily: WeekPactType.secondary,
             fontFamilyFallback: WeekPactType.secondaryFallback,
             fontSize: 14,
@@ -225,9 +233,14 @@ class _CrewMemberListState extends State<CrewMemberList>
           ),
         ),
         if (_failed.contains(member.id))
-          const Text(
+          Text(
             'Could not send. Try again.',
-            style: TextStyle(color: WeekPactColors.error, fontSize: 11),
+            style: TextStyle(
+              color: widget.onDark
+                  ? WeekPactColors.darkError
+                  : WeekPactColors.error,
+              fontSize: 11,
+            ),
           ),
       ],
     );
@@ -288,7 +301,7 @@ class _CrewMemberListState extends State<CrewMemberList>
     final nudged =
         state?.status == CrewNudgeStatus.sent ||
         state?.status == CrewNudgeStatus.cooldown;
-    final label = busy
+    final text = busy
         ? 'Sending…'
         : _loading
         ? 'Loading…'
@@ -310,25 +323,27 @@ class _CrewMemberListState extends State<CrewMemberList>
         : state?.status == CrewNudgeStatus.checkedIn
         ? 'They have already checked in today.'
         : 'This person cannot receive a nudge right now.';
-    // Only a nudge you can actually send is an object: graphite, outlined and
-    // sitting on its own edge. The other states are what the row has to say
-    // about that person, so they stay flat words.
+    // Only a nudge you can actually send is an object. The other states are
+    // what the row has to say about that person, so they stay flat words.
     final solid = ready || busy;
+    // On a dark face graphite is a shadow, so the button inverts to the pale
+    // one. Either way it is the app's raised button: `AppSurface` on
+    // `buttonShape`, which mixes its own outline and lifted edge from the
+    // face rather than spelling a second pair here.
+    final face = widget.onDark ? WeekPactColors.cream : WeekPactColors.graphite;
+    final label = widget.onDark ? WeekPactColors.black : homePaper;
     final button = TextButton(
       key: ValueKey('nudge-${member.id}'),
       onPressed: ready && !_loading && !_loadFailed && !busy
           ? () => _send(member.id)
           : null,
       style: TextButton.styleFrom(
-        foregroundColor: homePaper,
-        disabledForegroundColor: solid
-            ? homePaper.withValues(alpha: .7)
-            : WeekPactColors.mutedLight,
-        backgroundColor: solid ? WeekPactColors.graphite : Colors.transparent,
-        disabledBackgroundColor: solid
-            ? WeekPactColors.graphite
-            : Colors.transparent,
+        foregroundColor: solid ? label : _muted,
+        disabledForegroundColor: solid ? label.withValues(alpha: .7) : _muted,
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
         minimumSize: const Size(64, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         textStyle: const TextStyle(
           fontFamily: WeekPactType.secondary,
@@ -336,30 +351,21 @@ class _CrewMemberListState extends State<CrewMemberList>
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
-        shape: solid
-            ? WeekPactMetrics.buttonShape.copyWith(
-                side: const BorderSide(color: WeekPactColors.graphiteEdge),
-              )
-            : WeekPactMetrics.buttonShape,
+        shape: WeekPactMetrics.buttonShape,
       ),
-      child: Text(label),
+      child: Text(text),
     );
     return Tooltip(
       message: hint,
       child: Semantics(
         liveRegion: true,
         child: solid
-            ? DecoratedBox(
-                decoration: const ShapeDecoration(
-                  shape: WeekPactMetrics.buttonShape,
-                  shadows: [
-                    BoxShadow(
-                      color: WeekPactColors.graphiteEdge,
-                      offset: WeekPactMetrics.raisedOffset,
-                    ),
-                  ],
-                ),
-                child: button,
+            ? AppSurface(
+                fillColor: face,
+                resolveTone: false,
+                shape: WeekPactMetrics.buttonShape,
+                borderRadius: WeekPactMetrics.controlRadius,
+                builder: (context) => button,
               )
             : button,
       ),

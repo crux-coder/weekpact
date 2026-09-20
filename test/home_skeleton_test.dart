@@ -54,7 +54,7 @@ void main() {
           find.byKey(const ValueKey('skeleton-pact-card')),
         );
         final board = tester.getRect(
-          find.byKey(const ValueKey('skeleton-crew-board')),
+          find.byKey(const ValueKey('skeleton-crew-panel')),
         );
         expect(card.center.dx, closeTo(board.center.dx - 12, 1));
         if (const bool.fromEnvironment('CAPTURE_DESIGN')) {

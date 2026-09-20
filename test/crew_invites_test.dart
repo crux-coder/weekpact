@@ -152,7 +152,10 @@ void main() {
                 .hitTestable(),
             findsOneWidget,
           );
-          expect(find.text('Early Birds'), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('home-crew-panel')),
+            findsOneWidget,
+          );
         }
         await tester.pumpWidget(const SizedBox());
       },

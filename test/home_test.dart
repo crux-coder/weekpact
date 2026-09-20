@@ -44,7 +44,7 @@ void main() {
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    final heading = find.text('Early Birds');
+    final heading = find.byKey(const ValueKey('home-header'));
     final card = find.byKey(const ValueKey('move'));
     final navigation = find.byKey(const ValueKey('nav-home'));
     final headingY = tester.getTopLeft(heading).dy;
@@ -195,15 +195,15 @@ void main() {
       expect(find.text('CHECK IN'), findsNothing);
       expect(find.byKey(const ValueKey('skeleton-pact-card')), findsOneWidget);
       final loadingCrew = tester.getRect(
-        find.byKey(const ValueKey('skeleton-crew-board')),
+        find.byKey(const ValueKey('skeleton-crew-panel')),
       );
       backend.loading!.complete(week);
       backend.loading = null;
       await tester.pumpUi();
-      expect(find.text('Early Birds'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
       expect(find.byKey(const ValueKey('skeleton-pact-card')), findsNothing);
       expect(
-        tester.getRect(find.byKey(const ValueKey('crew-board'))),
+        tester.getRect(find.byKey(const ValueKey('home-crew-panel'))),
         loadingCrew,
       );
       expect(find.text('Check in').hitTestable(), findsOneWidget);
@@ -250,7 +250,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('opens current crew week, shows member days and returns home', (
+  testWidgets('the crew progress card opens the crew week and comes back', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -260,14 +260,39 @@ void main() {
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    // The streak is a readout: only the labelled row opens the week.
+    // The streak is a readout: only the crew card opens the week.
     await tester.tap(find.byKey(const ValueKey('crew-header-streak')));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsNothing);
-    await tester.ensureVisible(find.text('CREW WEEK'));
-    await tester.tap(find.text('CREW WEEK'));
+    await tester.tap(find.byKey(const ValueKey('open-crew-week')));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to home'));
+    await tester.pumpUi();
+    expect(find.byType(CrewWeekPage), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('crew week shows member days for the current week', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = DashboardBackend();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.light,
+        home: CrewWeekPage(
+          crew: backend.pacts.crews.first,
+          backend: backend,
+          userId: '',
+        ),
+      ),
+    );
+    await tester.pumpUi();
     expect(find.text('This week · Sep 7 – Sep 13'), findsOneWidget);
     expect(find.text('Crew progress'), findsOneWidget);
     expect(find.text('1 of 2 checked in today'), findsOneWidget);
@@ -277,9 +302,6 @@ void main() {
     expect(find.byTooltip('Sep 9 · Completed'), findsOneWidget);
     expect(find.byTooltip('Sep 10 · Upcoming').hitTestable(), findsNWidgets(2));
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Back to home'));
-    await tester.pumpUi();
-    expect(find.byType(CrewWeekPage), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -162,9 +162,8 @@ void main() {
   testWidgets('with no offering the switch still reads sensibly', (
     tester,
   ) async {
-    final store = FakeSubscriptionBackend(
-      initial: renewing(product: 'monthly'),
-    )..offer = null;
+    final store = FakeSubscriptionBackend(initial: renewing(product: 'monthly'))
+      ..offer = null;
     await tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
