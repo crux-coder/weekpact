@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
@@ -8,6 +7,7 @@ import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 import 'pact_icons.dart';
 import '../widgets/app_icon.dart';
+import '../widgets/pact_icon_badge.dart';
 import 'pacts_backend.dart';
 
 class YourWeekCard extends StatelessWidget {
@@ -131,6 +131,7 @@ class PactBarList extends StatelessWidget {
           key: ValueKey('pact-management-${pact.id}'),
           pact: pact,
           tint: WeekPactColors.pactTint(index),
+          badge: WeekPactColors.pactBadge(index),
           onEdit: onEdit == null ? null : () => onEdit!(pact),
         ),
       ],
@@ -142,9 +143,18 @@ class PactBarList extends StatelessWidget {
 /// day week; the ink stays the card ink on both the fill and the bare track, so
 /// a title that crosses the edge does not change colour halfway through.
 class PactBar extends StatelessWidget {
-  const PactBar({super.key, required this.pact, this.tint, this.onEdit});
+  const PactBar({
+    super.key,
+    required this.pact,
+    this.tint,
+    this.badge,
+    this.onEdit,
+  });
   final CrewPact pact;
+
+  /// The track's fill, and the deeper companion the icon badge is drawn in.
   final Color? tint;
+  final Color? badge;
   final VoidCallback? onEdit;
 
   @override
@@ -175,12 +185,12 @@ class PactBar extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      HugeIcon(
+                      PactIconBadge(
                         icon: PactIcon.find(pact.iconKey).data,
-                        color: context.ink,
-                        size: 22,
+                        tint: badge ?? WeekPactColors.pactBadge(0),
+                        size: 40,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Text(
                         '${pact.daysPerWeek}',
                         style: TextStyle(
@@ -291,8 +301,8 @@ class PactsSkeletonBody extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
               child: Row(
                 children: [
-                  SkeletonBar(width: 22, height: 22),
-                  SizedBox(width: 10),
+                  SkeletonBar(width: 40, height: 40),
+                  SizedBox(width: 12),
                   SkeletonBar(width: 22, height: 28),
                   SizedBox(width: 12),
                   Expanded(child: SkeletonBar(height: 16)),

@@ -4,7 +4,10 @@ import '../widgets/avatar_shape.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../crew/crew_switcher.dart' show CrewHeaderSurface;
 import '../widgets/app_components.dart';
 import 'home_backend.dart';
 import 'home_surface.dart';
@@ -17,14 +20,25 @@ class CrewMemberList extends StatefulWidget {
     required this.userId,
     this.backend,
     this.crewId,
+    this.checkedIn,
     this.onDark = false,
     this.head = 0,
+    this.headLead = 0,
   });
   final List<WeekMember> members;
   final bool done;
   final String userId;
   final HomeBackend? backend;
   final String? crewId;
+
+  /// Who is in today, where the list holds the whole crew rather than one
+  /// side of it.
+  ///
+  /// The panels above Home each show one state and say so in their own title,
+  /// so they leave this off and no row carries a mark. A list that mixes the
+  /// two — the day's drawer — passes the ids that are in, and every row then
+  /// wears what its day is: a tick, or the seat still waiting on it.
+  final Set<String>? checkedIn;
 
   /// True when the list sits on a dark face rather than a pale tile. The
   /// rows then take the dark card's ink and the nudge button inverts: a pale
@@ -46,6 +60,13 @@ class CrewMemberList extends StatefulWidget {
   /// runs exactly as far as its rows have to know this is in them, or it
   /// clips its last name.
   final double head;
+
+  /// The air over the hairline inside [head].
+  ///
+  /// The caller sets it, because only the caller knows what the thing above
+  /// already leaves under its own last line. The line wants the same space on
+  /// each side of it, and the slack over it is half that space already.
+  final double headLead;
 
   @override
   State<CrewMemberList> createState() => _CrewMemberListState();
@@ -210,8 +231,11 @@ class _CrewMemberListState extends State<CrewMemberList>
                 // faces start and stops where the nudge buttons stop. A rule
                 // running the full width would cut the drawer in two instead
                 // of grouping what is under it.
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CrewMemberList.inset,
+                padding: EdgeInsets.fromLTRB(
+                  CrewMemberList.inset,
+                  widget.headLead,
+                  CrewMemberList.inset,
+                  0,
                 ),
                 child: Container(
                   key: const ValueKey('crew-member-list-rule'),
@@ -308,21 +332,7 @@ class _CrewMemberListState extends State<CrewMemberList>
         // row centres on the avatar rather than hanging from its top edge.
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AvatarClip(
-            child: SizedBox.square(
-              dimension: 36,
-              child: ColoredBox(
-                color: homePaper,
-                child: member.avatarUrl == null
-                    ? initials
-                    : Image.network(
-                        member.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => initials,
-                      ),
-              ),
-            ),
-          ),
+          _face(context, member, initials),
           const SizedBox(width: 10),
           Expanded(
             child: LayoutBuilder(
@@ -347,6 +357,45 @@ class _CrewMemberListState extends State<CrewMemberList>
           ),
         ],
       ),
+    );
+  }
+
+  /// One person's face, with what their day is on it where the list is
+  /// holding the whole crew.
+  ///
+  /// The mark rides the corner of the face rather than taking a column of its
+  /// own: the row already spends its width on a name and a nudge, and a state
+  /// belongs to the person it is about.
+  Widget _face(BuildContext context, WeekMember member, Widget initials) {
+    final checkedIn = widget.checkedIn;
+    final avatar = AvatarClip(
+      child: SizedBox.square(
+        dimension: 36,
+        child: ColoredBox(
+          color: homePaper,
+          child: member.avatarUrl == null
+              ? initials
+              : Image.network(
+                  member.avatarUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => initials,
+                ),
+        ),
+      ),
+    );
+    if (checkedIn == null) return avatar;
+    final done = checkedIn.contains(member.id);
+    return Stack(
+      // The mark sits a little proud of the face, in the row's own padding.
+      clipBehavior: Clip.none,
+      children: [
+        avatar,
+        Positioned(
+          right: -3,
+          bottom: -3,
+          child: _CheckMark(done: done, onDark: widget.onDark),
+        ),
+      ],
     );
   }
 
@@ -427,4 +476,73 @@ class _CrewMemberListState extends State<CrewMemberList>
       ),
     );
   }
+}
+
+/// What the day is for one person, as a badge on their face: the crew tile's
+/// mint tick for a check-in that is in, and the empty seat for one the day is
+/// still waiting on.
+///
+/// It is the same pair the strip's seats and the check-in tiles use, held at
+/// badge size — a kept day is mint with a tick, an owed one is bare
+/// `pendingCheckIns`. Read together down the column they sort the roster
+/// without a word, which is what the drawer has no room for.
+class _CheckMark extends StatelessWidget {
+  const _CheckMark({required this.done, required this.onDark});
+  final bool done;
+  final bool onDark;
+
+  /// The badge's own box, inside the ring that knocks it out of the face.
+  static const _size = 13.0;
+
+  /// The seat's own colour. The empty one is the crew tile's
+  /// `pendingCheckIns` on a pale list, and the dark face's border on a dark
+  /// one: a pale grey dot repeated down a dark column reads as louder than
+  /// the tick it is supposed to be quieter than.
+  Color get _fill => done
+      ? WeekPactColors.mintGreen
+      : onDark
+      ? WeekPactColors.darkBorder
+      : WeekPactColors.pendingCheckIns;
+
+  Color get _edge => done
+      ? WeekPactColors.mintEdge
+      : onDark
+      ? Color.lerp(WeekPactColors.darkBorder, WeekPactColors.black, .35)!
+      : WeekPactColors.pendingEdge;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: done ? 'Checked in today' : 'Not checked in yet',
+    child: Semantics(
+      label: done ? 'Checked in today' : 'Not checked in yet',
+      child: Container(
+        // The list's own face, so the badge reads as an object on the photo
+        // rather than a hole punched in it.
+        padding: const EdgeInsets.all(1.5),
+        decoration: BoxDecoration(
+          color: onDark ? CrewHeaderSurface.faceColor(context) : homePaper,
+          shape: BoxShape.circle,
+        ),
+        child: SizedBox.square(
+          dimension: _size,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: _fill,
+              shape: CircleBorder(side: BorderSide(color: _edge)),
+            ),
+            child: done
+                ? const Center(
+                    child: HugeIcon(
+                      icon: HugeIconsStrokeRounded.tick03,
+                      color: WeekPactColors.black,
+                      size: 9,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : null,
+          ),
+        ),
+      ),
+    ),
+  );
 }

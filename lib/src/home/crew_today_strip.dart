@@ -132,6 +132,15 @@ class CrewTodayStrip extends StatefulWidget {
   /// this much.
   static const _listHead = 13.0;
 
+  /// The air over the hairline inside that head.
+  ///
+  /// The day's row leaves its own slack under the score — the row is taller
+  /// than the line of type in it — and the line wants to sit midway between
+  /// that type and the first face, not hard against the words. This is the
+  /// difference: the rest of the head falls under the line, where the list's
+  /// own row padding tops it up to the same gap again.
+  static const _listRule = 5.0;
+
   @override
   State<CrewTodayStrip> createState() => _CrewTodayStripState();
 }
@@ -148,7 +157,10 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
       )..addStatusListener((status) {
         if (!mounted) return;
         if (status == AnimationStatus.dismissed) _hide();
-        // The drawer lands: a pull that has run its course says so.
+        // The drawer lands: a pull that has run its course says so, and only
+        // then. A buzz as the drawer starts moving is the app answering a
+        // finger that is still on its way — the pull can still be handed
+        // back, and nothing has happened yet to feel.
         if (status == AnimationStatus.completed) {
           _buzz(HapticFeedback.mediumImpact);
         }
@@ -232,7 +244,6 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
     }
     _showDrawer();
     if (!_open) return;
-    _buzz(HapticFeedback.lightImpact);
     if (MediaQuery.disableAnimationsOf(context)) {
       _drawer.value = 1;
     } else {
@@ -270,7 +281,6 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
       if (pulled <= CrewTodayStrip._pullThreshold) return;
       _showDrawer();
       if (!_open) return;
-      _buzz(HapticFeedback.lightImpact);
       _scrubbing = !MediaQuery.disableAnimationsOf(context);
       if (!_scrubbing) {
         _drawer.value = 1;
@@ -529,6 +539,10 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
                       front: _front(context, inDrawer: true, grip: false),
                       grip: _grip(context),
                       members: _ordered,
+                      checkedIn: {
+                        for (final member in widget.week.members)
+                          if (_done(member)) member.id,
+                      },
                       userId: widget.userId,
                       backend: widget.backend!,
                       crewId: widget.crewId!,
@@ -555,6 +569,7 @@ class _Drawer extends StatelessWidget {
     required this.front,
     required this.grip,
     required this.members,
+    required this.checkedIn,
     required this.userId,
     required this.backend,
     required this.crewId,
@@ -566,6 +581,11 @@ class _Drawer extends StatelessWidget {
   final Widget front;
   final Widget grip;
   final List<WeekMember> members;
+
+  /// Whose day is already kept, so the roster can mark each row with it. The
+  /// drawer holds the whole crew, in and out, which is the one list that has
+  /// to say which is which.
+  final Set<String> checkedIn;
   final String userId;
   final HomeBackend backend;
   final String crewId;
@@ -622,7 +642,9 @@ class _Drawer extends StatelessWidget {
                       ),
                       child: CrewMemberList(
                         head: CrewTodayStrip._listHead,
+                        headLead: CrewTodayStrip._listRule,
                         members: members,
+                        checkedIn: checkedIn,
                         done: false,
                         userId: userId,
                         backend: backend,

@@ -13,7 +13,7 @@ class CrewPageHeading extends StatelessWidget {
     super.key,
     required this.title,
     this.actions = const [],
-    this.dotColor = WeekPactColors.coolGrey,
+    this.dotColor = WeekPactColors.sky,
   });
   final String title;
   final List<Widget> actions;

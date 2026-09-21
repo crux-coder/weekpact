@@ -12,6 +12,7 @@ import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/pact_icon_badge.dart';
 
 String crewDateLabel(DateTime date) {
   const months = [
@@ -40,8 +41,13 @@ class CrewPactWeekCard extends StatefulWidget {
     required this.members,
     required this.userId,
     this.tint,
+    this.badge,
   });
+
+  /// The card's tint, and the deeper companion its icon badge is drawn in.
+  /// Both come from the pact's place in the crew's list, so they stay a pair.
   final Color? tint;
+  final Color? badge;
   final CrewWeek week;
   final CrewPact pact;
   final List<WeekMember> members;
@@ -124,17 +130,9 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        SizedBox(
-                          width: 64,
-                          height: 64,
-
-                          child: Center(
-                            child: HugeIcon(
-                              icon: PactIcon.find(pact.iconKey).data,
-                              size: 36,
-                              color: context.ink,
-                            ),
-                          ),
+                        PactIconBadge(
+                          icon: PactIcon.find(pact.iconKey).data,
+                          tint: widget.badge ?? WeekPactColors.pactBadge(0),
                         ),
                       ],
                     ),
@@ -526,7 +524,7 @@ class _DayCell extends StatelessWidget {
     // filled. Today's is the whitest face on the card, so the column you can
     // still act on stands out from the days that have already gone.
     final face = done
-        ? context.mint
+        ? WeekPactColors.keptDay
         : today
         ? Colors.white
         : WeekPactColors.cream.withValues(alpha: future ? .35 : .6);
@@ -534,7 +532,7 @@ class _DayCell extends StatelessWidget {
     // other raised surface builds its shadow, rather than a flat grey laid
     // under it.
     final edge = done
-        ? Color.lerp(context.mint, Colors.black, .22)!
+        ? Color.lerp(WeekPactColors.keptDay, Colors.black, .22)!
         : Color.lerp(Colors.white, Colors.black, .20)!;
     return Padding(
       // The extra two below is the raised edge's room: without it a done
@@ -556,7 +554,7 @@ class _DayCell extends StatelessWidget {
                   ),
                   side: BorderSide(
                     color: done
-                        ? Color.lerp(context.mint, Colors.black, .28)!
+                        ? Color.lerp(WeekPactColors.keptDay, Colors.black, .28)!
                         : today
                         ? Color.lerp(Colors.white, Colors.black, .28)!
                         : context.ink.withValues(alpha: future ? .05 : .10),

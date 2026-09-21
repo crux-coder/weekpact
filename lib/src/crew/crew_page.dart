@@ -514,7 +514,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return PageFrame(
       header: CrewPageHeading(
         title: 'Crews',
-        dotColor: WeekPactColors.coolGrey,
+        dotColor: WeekPactColors.sky,
         actions: [
           if (_crew != null)
             IconButton(

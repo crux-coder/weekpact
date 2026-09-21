@@ -165,7 +165,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
     return PageFrame(
       header: const CrewPageHeading(
         title: 'Pacts',
-        dotColor: WeekPactColors.stone,
+        dotColor: WeekPactColors.lavender,
       ),
       onRefresh: _refresh,
       loading: !_hasLoaded && _loading,

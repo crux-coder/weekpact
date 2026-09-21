@@ -84,36 +84,82 @@ abstract final class WeekPactColors {
   static const mintGreen = Color(0xFFA8D2CC);
   static const bubblegumPink = Color(0xFFEAC7D4);
   static const pinkInk = Color(0xFF475556);
+
   /// The palette's two warm notes, and the only ones: the sand on the quay and
-  /// the brass on the boats. They carry the roles a marine tint cannot — the
-  /// Account dot, a subscription that is ending, a clap the viewer gave — so
-  /// those read as themselves rather than as one more card colour.
+  /// the brass on the boats. They carry the roles a marine tint cannot — a
+  /// subscription that is ending, a clap the viewer gave — so those read as
+  /// themselves rather than as one more card colour.
   static const sand = Color(0xFFE0D9C0);
   static const brass = Color(0xFFE6D7A6);
+
+  /// The five destinations' full stops: `salmon` Home, `lavender` Pacts,
+  /// `lime` Feed, `sky` Crews and `lantern` Account.
+  ///
+  /// A page's dot is a 32pt full stop — six pixels of colour against cream
+  /// ink, on a canvas the app never leaves. The card tints and the quay's warm
+  /// notes are chosen to sit *under* ink, so at that size every one of them
+  /// goes white; the dot is the one place the palette has to be loud. These
+  /// five are the hues held at full chroma for it, one per destination, spaced
+  /// far enough apart in hue to be told apart before the title is read.
+  ///
+  /// `lantern` is the warm one, and the Account dot: a light on the quay
+  /// rather than the sun on it, so it reads as gold beside cream where `sand`
+  /// and `brass` read as more cream. Keep it clear of `streak`'s orange —
+  /// that one answers to nothing else in the palette, and a dot wearing it
+  /// would say a streak is running.
+  static const lantern = Color(0xFFF0B858);
 
   static const stone = Color(0xFFCDE0DC);
   static const coolGrey = Color(0xFF9FCBD9);
   static const neutralInset = Color(0xFFD7E0DF);
   static const activitySurface = Color(0xFF1F2627);
-  // Card tints carry real colour, held light enough for near-black card ink.
-  // One harbour: sea glass through to the sand on the quay.
+  // Card tints: warm, and held low enough that a card reads as tinted paper
+  // rather than as a colour. The quay rather than the water — clay, straw and
+  // sage, with the two greens kept warm so they sit in the same light as the
+  // rest. They are ordered so neighbours in the list sit far apart in hue:
+  // most crews run two or three pacts, so the first few entries are the ones
+  // that have to look least alike.
   static const pactPalette = <Color>[
-    Color(0xFFA8D2CC), // Sea glass.
-    Color(0xFF9FCBD9), // Tide.
-    Color(0xFFB4C9D4), // Petrol mist.
-    Color(0xFFB9CDB8), // Kelp.
-    Color(0xFFA6C0D6), // Harbour blue.
-    Color(0xFFCDE0DC), // Foam.
-    Color(0xFFE0D9C0), // Buoy sand.
-    Color(0xFFABC4C7), // Slate teal.
-    Color(0xFFBFCEDD), // Squall.
-    Color(0xFFDAE4E4), // Salt.
+    Color(0xFFD6C5BD), // Clay.
+    Color(0xFFC4CEBB), // Sage.
+    Color(0xFFDCCBCD), // Blush.
+    Color(0xFFC5C9B1), // Olive.
+    Color(0xFFDDD7C6), // Straw.
+    Color(0xFFCCBAB8), // Rosewood.
+    Color(0xFFC8D3C5), // Moss.
+    Color(0xFFDBCFC2), // Apricot.
+    Color(0xFFC7BDB8), // Mushroom.
+    Color(0xFFDFDED2), // Wheat.
+  ];
+
+  /// The same ten, with the chroma the card gives up.
+  ///
+  /// A card this quiet cannot also be the thing that tells two pacts apart at
+  /// a glance, so the pact's icon badge carries that: the card's own hue held
+  /// deep enough to read as an object sitting on the card rather than as a
+  /// patch of it. Paired by index with [pactPalette] — a new tint needs a new
+  /// badge on the same line, in the same hue.
+  static const pactBadgePalette = <Color>[
+    Color(0xFFCBA08B), // Clay.
+    Color(0xFFA4C289), // Sage.
+    Color(0xFFD1999F), // Blush.
+    Color(0xFFB8C17B), // Olive.
+    Color(0xFFD0C295), // Straw.
+    Color(0xFFC18C86), // Rosewood.
+    Color(0xFFA2C497), // Moss.
+    Color(0xFFCEB092), // Apricot.
+    Color(0xFFB79B8A), // Mushroom.
+    Color(0xFFD2CBA3), // Wheat.
   ];
 
   /// A pact's card colour, by its position in the crew's pact list. Home, the
-  /// crew week and the pacts grid all read it, so one pact looks the same
+  /// crew week and the pacts page all read it, so one pact looks the same
   /// wherever it appears.
   static Color pactTint(int index) => pactPalette[index % pactPalette.length];
+
+  /// The badge colour that goes with [pactTint] at the same index.
+  static Color pactBadge(int index) =>
+      pactBadgePalette[index % pactBadgePalette.length];
 
   static const mutedLight = Color(0xFF46535A);
   static const error = Color(0xFFC94F59);
@@ -123,6 +169,18 @@ abstract final class WeekPactColors {
   // overflow chip, so a tile reads as a single object.
   static const mintEdge = Color(0xFF6D9188);
   static const pendingEdge = Color(0xFFA3A9AA);
+
+  /// The week in progress: the crew progress card on Home and on the crew week
+  /// page, while the week is still being kept. Pale citron — the one hue the
+  /// harbour does not carry — so a week underway is told apart from a week
+  /// finished at a glance rather than by reading the number.
+  static const crewProgress = Color(0xFFF2F3AE);
+
+  /// A day kept, on the crew week's calendar. Sea glass sat on the old marine
+  /// card set; on a warm card it read as the one cool thing on the page, so
+  /// the kept day is a warm green off the same quay. It clears 10:1 with card
+  /// ink and stands clear of all ten tints, olive — the nearest — included.
+  static const keptDay = Color(0xFFB8CC8E);
 
   /// The one green for a completed check-in, on cards and on the nudge button.
   /// Deeper and bluer than the sea glass tint, so done reads as a mark rather

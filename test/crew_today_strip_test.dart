@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/home/crew_member_list.dart';
@@ -7,6 +8,7 @@ import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/avatar_shape.dart';
 
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
@@ -91,6 +93,28 @@ Rect drawer(WidgetTester tester) =>
 
 bool isOpen(WidgetTester tester) =>
     find.byKey(const ValueKey('crew-today-drawer')).evaluate().isNotEmpty;
+
+/// Every haptic the app asks the platform for while the drawer is worked, in
+/// order.
+List<String> haptics(WidgetTester tester) {
+  final buzzes = <String>[];
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'HapticFeedback.vibrate') {
+        buzzes.add(call.arguments as String);
+      }
+      return null;
+    },
+  );
+  addTearDown(
+    () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    ),
+  );
+  return buzzes;
+}
 
 void main() {
   testWidgets('the strip reads the day as a score and a clock', (tester) async {
@@ -201,6 +225,70 @@ void main() {
     expect(backend.sent, ['c']);
     expect(find.text('Nudged'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the roster opens under a line hung midway between the day and '
+      'the first face', (tester) async {
+    await pumpStripHome(tester);
+    await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
+    await tester.pumpUi();
+    Rect inDrawer(Finder finder) => tester.getRect(
+      find.descendant(
+        of: find.byKey(const ValueKey('crew-today-drawer')),
+        matching: finder,
+      ),
+    );
+    final rule = inDrawer(find.byKey(const ValueKey('crew-member-list-rule')));
+    // The day's last line of type above it, and the first face under it.
+    final caption = inDrawer(find.text('in today'));
+    final face = inDrawer(
+      find.descendant(
+        of: find.byKey(const ValueKey('crew-check-in-person-')),
+        matching: find.byType(AvatarClip),
+      ),
+    );
+    expect(rule.top - caption.bottom, closeTo(face.top - rule.bottom, 1));
+  });
+
+  testWidgets('the roster says who is in and who the day is waiting on', (
+    tester,
+  ) async {
+    await pumpStripHome(tester);
+    await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
+    await tester.pumpUi();
+    // Two of the five are in, and every row wears its own state — the drawer
+    // holds the whole crew, so a row that says nothing says nothing at all.
+    expect(find.byTooltip('Checked in today'), findsNWidgets(2));
+    expect(find.byTooltip('Not checked in yet'), findsNWidgets(3));
+  });
+
+  testWidgets('the drawer buzzes once it has landed, not as it sets off', (
+    tester,
+  ) async {
+    await pumpStripHome(tester);
+    final buzzes = haptics(tester);
+    final strip = tester.getRect(
+      find.byKey(const ValueKey('crew-today-strip')),
+    );
+    // Under the finger, nothing: the pull can still be handed back, and a
+    // drawer on its way out has not arrived anywhere to be felt.
+    final pull = await tester.startGesture(strip.center);
+    await pull.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(isOpen(tester), isTrue);
+    expect(buzzes, isEmpty);
+    await pull.moveBy(const Offset(0, 60));
+    await tester.pump();
+    expect(buzzes, isEmpty);
+    await pull.up();
+    await tester.pumpUi();
+    expect(buzzes, ['HapticFeedbackType.mediumImpact']);
+
+    // Shutting it is not a landing either.
+    await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
+    await tester.pumpUi();
+    expect(isOpen(tester), isFalse);
+    expect(buzzes, ['HapticFeedbackType.mediumImpact']);
   });
 
   testWidgets('a pull that stops short hands the drawer back', (tester) async {

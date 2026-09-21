@@ -273,6 +273,10 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                                         WeekPactColors.pactTint(
                                                           index,
                                                         ),
+                                                    badge:
+                                                        WeekPactColors.pactBadge(
+                                                          index,
+                                                        ),
                                                     members: members,
                                                     userId: widget.userId,
                                                   ),
@@ -396,7 +400,7 @@ class _WeekSummary extends StatelessWidget {
           child: AppSurface(
             fillColor: week.percentCrew >= 100
                 ? WeekPactColors.mintGreen
-                : WeekPactColors.stone,
+                : WeekPactColors.crewProgress,
             builder: (_) => Padding(
               padding: const EdgeInsets.all(14),
               child: Column(

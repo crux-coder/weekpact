@@ -200,7 +200,7 @@ class _FeedPageState extends State<FeedPage> {
                     ),
                     child: PageHeading(
                       'Feed',
-                      dotColor: WeekPactColors.mintGreen,
+                      dotColor: WeekPactColors.lime,
                     ),
                   );
                 }

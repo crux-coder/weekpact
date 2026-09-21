@@ -78,14 +78,17 @@ class PageFrame extends StatelessWidget {
 /// A page's title with a coloured full stop.
 ///
 /// The dot is the destination's own tint, so each tab is recognisable before
-/// the title is read: Feed mint, Pacts butter, Crews sky, Account coral. Every
-/// destination passes its own; the default covers one-off pages outside the
-/// nav, such as an invitation.
+/// the title is read: Home salmon, Pacts lavender, Feed lime, Crews sky,
+/// Account lantern. Take them from the destination-dot group in
+/// `WeekPactColors` — they are held at full chroma on purpose, since a card
+/// tint at six pixels beside cream ink is just more cream. Every destination
+/// passes its own; the default covers one-off pages outside the nav, such as
+/// a crew invitation.
 class PageHeading extends StatelessWidget {
   const PageHeading(
     this.title, {
     super.key,
-    this.dotColor = WeekPactColors.coolGrey,
+    this.dotColor = WeekPactColors.sky,
   });
   final String title;
   final Color dotColor;

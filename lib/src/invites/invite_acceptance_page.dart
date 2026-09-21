@@ -68,7 +68,7 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
     body: PageFrame(
       header: const PageHeading(
         'Invitation',
-        dotColor: WeekPactColors.coolGrey,
+        dotColor: WeekPactColors.sky,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

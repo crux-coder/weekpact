@@ -95,7 +95,7 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, closeTo(.3, .001));
-    expect(_cardFill(tester), WeekPactColors.stone);
+    expect(_cardFill(tester), WeekPactColors.crewProgress);
     expect(tester.takeException(), isNull);
   });
 

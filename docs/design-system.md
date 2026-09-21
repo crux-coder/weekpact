@@ -1,6 +1,6 @@
 # WeekPact visual system
 
-The app uses solid-color raised cards, flat icons, Rubik type, compact spacing, and saturated mid-tone card tints on a neutral canvas. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
+The app uses solid-color raised cards, flat icons, Rubik type, compact spacing, and quiet warm card tints on a neutral canvas. Cards have a darker color-matched outline and a crisp 2px bottom edge (3px for the main Home pact card), without blurred shadows. Dark cards use a lighter grey outline and edge. Avoid background gradients and attached title tabs.
 
 ## Where to make changes
 
@@ -32,10 +32,16 @@ and over, 600 below it; a small-caps eyebrow or a caption is 500; body is 400.
 - `lib/src/widgets/app_sheet.dart`: `showAppSheet` and `AppSheet` for keyboard-aware modal forms.
 - `lib/src/widgets/page_frame.dart`: consistent scrolling, page headings, loading placeholders, and footer placement. `PageHeading`'s
   full stop is the destination's own tint, so a tab is recognisable before its
-  title is read: Feed sea glass, Pacts foam, Crews tide, Account sand. Every
-  destination passes its own `dotColor`; the default covers one-off pages
-  outside the nav, such as an invitation.
+  title is read: Home salmon, Pacts lavender, Feed lime, Crews sky, Account
+  lantern. Every destination passes its own `dotColor`; the default is sky,
+  covering one-off pages outside the nav, such as a crew invitation.
 - `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces on any tint.
+- `lib/src/widgets/pact_icon_badge.dart`: `PactIconBadge`, the raised squircle
+  carrying a pact's glyph in its badge colour. Its outline and edge are mixed
+  from that one colour, so the badge stays one object across all ten.
+- `tool/try_colors.py`: swaps colour constants, renders the main screens through
+  the design-preview harness, and puts the theme file back. Use it to look at a
+  palette before committing to one; it reports contrast against card ink.
 
 ## Theme behavior
 
@@ -54,15 +60,40 @@ preference; `widget_test.dart` asserts both. Changing the app's one theme means
 editing the two root lines in `app.dart`, and the Android splash, iOS launch
 screen and web chrome have to be changed to match by hand.
 
-`pactPalette` is one harbour — sea glass, tide, petrol mist, kelp, harbour
-blue, foam, buoy sand, slate teal, squall, salt — desaturated and held light
-enough that near-black card ink clears 9:1 against every entry; keep new tints
-in that band and in that family. Its companions come from the same water:
-`stone` is foam, `coolGrey` tide, `mintGreen` sea glass. `sand` and `brass` are
-the palette's only warm notes, and they are deliberate — they carry the Account
-dot, a subscription that is ending and a clap the viewer gave, so those read as
-themselves rather than as one more card colour. `streak` is the one hot colour
-in the app, and answers to nothing else. `pendingCheckIns` stays plain grey with
+`pactPalette` is the quay, not the water — clay, sage, blush, olive, straw,
+rosewood, moss, apricot, mushroom, wheat. It is warm, and held low on purpose:
+a card should read as tinted paper, not as a colour, and near-black card ink
+clears 9:1 against every entry. Keep new tints in that band and in that family.
+The list is ordered so neighbours sit far apart in hue — most crews run two or
+three pacts, so the first few entries are the ones that have to look least
+alike.
+
+A card that quiet cannot also be what tells two pacts apart at a glance, so
+`pactBadgePalette` does that: the same ten hues with the chroma the card gives
+up, drawn as the pact's icon badge (`PactIconBadge`). The two lists are paired
+by index — `pactTint(i)` and `pactBadge(i)` are one pact's card and its badge,
+and a new tint needs a new badge on the same line, in the same hue.
+
+`stone`, `coolGrey` and `mintGreen` are cooler and stay where they are: they
+sit on the canvas and in panels rather than on a pact card. `keptDay` is the
+warm green a kept day takes on the crew week's calendar — sea glass there read
+as the one cool thing on a warm card. `sand` and `brass` carry a subscription
+that is ending and a clap the viewer gave, so those read as themselves rather
+than as one more card colour.
+
+`salmon`, `lavender`, `lime`, `sky` and `lantern` are the destinations' full
+stops, and the one place the palette is loud on purpose. Everything else here
+is chosen to sit under ink; at the size of a 32pt full stop that reads as more
+ink, which is how five pages came to wear the same white dot. Each of the five
+stands clear of the canvas ink and of the other four — `theme_test.dart`
+holds that line, in Lab rather than in hex, so a new dot cannot be waved
+through on the grounds that its number looks different. `lantern` is the warm
+one, for Account: a light on the quay, gold beside cream where `sand` and
+`brass` are only more cream. Keep it clear of `streak` — that orange says a
+streak is running and nothing else. `streak` and `crewProgress` are the two colours that answer to
+nothing else in the palette — a running streak, and a crew week still being
+kept. `crewProgress` is pale citron, the one hue the harbour does not carry, so
+the card reads as a state rather than as another tint. `pendingCheckIns` stays plain grey with
 none of the palette's blue-green in it: against a marine card set, waiting has
 to read as absence of colour rather than as a paler sea.
 There are exactly two card languages, and `WeekPactDarkCard` in
@@ -199,7 +230,7 @@ means changing the other.
 
 ## Pacts overview
 
-`lib/src/pacts/pacts_overview.dart` owns the personal weekly progress summary and square management cards. `YourWeekCard` reads the current crew week and caps each pact’s completed days at its target. `PactSquareGrid` uses two columns when space and text size permit and one column otherwise, keeping cards square. A pact's colour comes from `WeekPactColors.pactTint(index)` — its position in the crew's pact list — so Home's stack, the crew week carousel and this grid all show the same pact in the same colour. Editing remains owner-only.
+`lib/src/pacts/pacts_overview.dart` owns the personal weekly progress summary and the management list. `YourWeekCard` reads the current crew week and caps each pact’s completed days at its target. `PactBarList` draws one full-width `PactBar` per pact, a track whose tinted fill spans the share of a seven day week the pact claims, so the list reads as one picture of the week. A pact's colours come from its position in the crew's pact list — `WeekPactColors.pactTint(index)` for the card and `pactBadge(index)` for its `PactIconBadge` — so Home's stack, the crew week carousel and this list all show the same pact the same way. Editing remains owner-only.
 
 ### Crews: people first
 
@@ -288,7 +319,7 @@ recessed frame holding the week over the day. A raised squircle card headlines
 it with the week — its icon, `CREW PROGRESS · THIS WEEK`, the percentage on the
 same line and the bar under them — reading `CrewWeek.percentCrew`, which caps
 each pact at its own weekly target, in the crew week page's own two states:
-foam while the week is being kept, sea glass once it is. The label names its span
+`crewProgress` citron while the week is being kept, sea glass once it is. The label names its span
 because the rows underneath cover a different one; a block holding both a week
 and a day says which is which on each.
 
@@ -350,9 +381,10 @@ The whole roster is a pull away. The strip is a drawer front: a 96px pill that
 slackens as the drawer comes out says so, and the pull — measured from where
 the finger landed in global pixels — runs the drawer open under it pixel for
 pixel. It commits past a quarter out or on a flick, hands back below that, and
-a tap plays the pull straight through either way. It answers in two beats: a
-light impact when the pull catches and the drawer first comes out, a medium one
-when it lands. Do not put a chevron on it: this is the app's one pull, and the
+a tap plays the pull straight through either way. It answers once, with a
+medium impact when the drawer lands — not as it sets off. A buzz under a finger
+that is still on its way answers a pull that can still be handed back, and
+nothing has happened yet to feel. Do not put a chevron on it: this is the app's one pull, and the
 grip is how it says so — a mark at the edge would say *tap*, which is what the
 switcher above it does.
 
@@ -370,7 +402,21 @@ from that face rather than spelling a second pair beside it. The drawer runs
 exactly as far as the roster needs (`_rowHeight` per person plus the list's
 foot), so it neither clips its last name nor opens onto empty floor. It holds the whole crew, not one side of it: `done:
 false`, so the backend offers a nudge where one can be sent and says `Checked
-in` where it cannot. Escape, the back gesture, a tap outside and leaving Home
+in` where it cannot. Because it mixes the two, every row wears which it is —
+`checkedIn` gives the list the ids that are in, and each face carries the
+strip's own seat at its corner: mint on a `mintEdge` with a tick for a day
+that is kept, an empty one for a day still owed, in the dark face's border
+rather than pale `pendingCheckIns`, since a pale dot repeated down a dark
+column would shout louder than the tick it is meant to be quieter than. The
+mark rides the face rather than taking a column: the row has already spent its
+width on a name and a nudge.
+
+The hairline at the head of the roster is hung midway between the day's line
+of type and the first face, not against the words. The day's row is taller
+than the type in it, so the slack it leaves is already half that gap;
+`headLead` is the rest, and the list's own row padding tops up the other side
+to match. The caller sets it, since only the caller knows what the thing above
+leaves under its last line. Escape, the back gesture, a tap outside and leaving Home
 all shut it.
 
 `HomeCrewPanel.loading` is the same frame, card and day line with their lines

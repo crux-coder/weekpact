@@ -18,6 +18,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
+import '../widgets/pact_icon_badge.dart';
 import '../widgets/page_frame.dart';
 import '../widgets/edge_bounce.dart';
 import 'home_backend.dart';
@@ -34,8 +35,9 @@ const _doneFill = WeekPactColors.cream;
 const _segmentHeight = 16.0;
 const _doneMark = WeekPactColors.doneMark;
 
-/// The pact icon on the card, as a glyph rather than a padded box.
-const _iconGlyph = 36.0;
+/// The pact's icon badge on the card: the card tint is too quiet to tell two
+/// pacts apart on its own, so this is what does. See [PactIconBadge].
+const _iconBadge = 56.0;
 
 /// The height the card keeps for a pact's name, whatever that name is.
 ///
@@ -436,7 +438,7 @@ class HomeHeader extends StatelessWidget {
       child: Row(
         children: [
           const Expanded(
-            child: PageHeading('Home', dotColor: WeekPactColors.stone),
+            child: PageHeading('Home', dotColor: WeekPactColors.salmon),
           ),
           const SizedBox(width: 10),
           CrewStreakPill(streakWeeks: streakWeeks),
@@ -521,11 +523,11 @@ class HomeCrewPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final crew = week;
     final percent = crew?.percentCrew;
-    // The crew week's own progress card reads the same way: mint once the
-    // week is kept, butter while it is still being kept.
+    // The crew week's own progress card reads the same way: sea glass once the
+    // week is kept, citron while it is still being kept.
     final tint = percent != null && percent >= 100
         ? WeekPactColors.mintGreen
-        : WeekPactColors.stone;
+        : WeekPactColors.crewProgress;
     return SizedBox(
       height: height,
       child: CrewHeaderSurface(
@@ -1192,6 +1194,9 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
                                           week: widget.week,
                                           userId: widget.userId,
                                           color: WeekPactColors.pactTint(index),
+                                          badge: WeekPactColors.pactBadge(
+                                            index,
+                                          ),
                                           busy:
                                               widget.savingPact ==
                                               pacts[index].id,
@@ -1337,6 +1342,7 @@ class _PactCard extends StatelessWidget {
     required this.week,
     required this.userId,
     required this.color,
+    required this.badge,
     required this.busy,
     required this.onToggle,
     this.depth = 0,
@@ -1345,7 +1351,11 @@ class _PactCard extends StatelessWidget {
   final CrewPact pact;
   final CrewWeek week;
   final String userId;
+
+  /// The card's tint, and the deeper companion its icon badge is drawn in.
+  /// Both come from the pact's place in the crew's list, so they stay a pair.
   final Color color;
+  final Color badge;
   final bool busy;
   final VoidCallback? onToggle;
   @override
@@ -1412,11 +1422,12 @@ class _PactCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // What the icon takes out of the title's lines: the
-                          // glyph, and the gap before it. It used to reserve
-                          // 72 for a 36pt glyph, which stole a word from
-                          // every title to hold air.
-                          const SizedBox(width: _iconGlyph + 12),
+                          // What the badge takes out of the title's lines: its
+                          // box, and the gap before it. Nothing more — it is
+                          // drawn flush to the card's inset, so anything extra
+                          // here would be a word stolen from the name to hold
+                          // air.
+                          const SizedBox(width: _iconBadge + 12),
                         ],
                       ),
                     ),
@@ -1646,12 +1657,10 @@ class _PactCard extends StatelessWidget {
               ),
             ),
           );
-          // The icon is the card's own, at one size. It fades with the rest
-          // of the card's face as the card falls back into the stack — the
-          // strip behind the front card carries nothing. Its box is the glyph
-          // and nothing more, so the inset around it is the card's own rather
-          // than the card's plus whatever slack a larger box left over.
-          final iconSize = _iconGlyph * shrink;
+          // The badge is the card's own, at one size, and it scales with the
+          // rest of the face. It fades as the card falls back into the stack —
+          // the strip behind the front card carries nothing.
+          final iconSize = _iconBadge * shrink;
           // The card tint stays put; only its foreground follows the stack.
           return Stack(
             fit: StackFit.expand,
@@ -1674,15 +1683,11 @@ class _PactCard extends StatelessWidget {
                 child: IgnorePointer(
                   child: Opacity(
                     opacity: reveal,
-                    child: SizedBox(
+                    child: PactIconBadge(
                       key: ValueKey('pact-icon-${pact.id}'),
-                      width: iconSize,
-                      height: iconSize,
-                      child: HugeIcon(
-                        icon: PactIcon.find(pact.iconKey).data,
-                        color: _ink,
-                        size: iconSize,
-                      ),
+                      icon: PactIcon.find(pact.iconKey).data,
+                      tint: badge,
+                      size: iconSize,
                     ),
                   ),
                 ),
