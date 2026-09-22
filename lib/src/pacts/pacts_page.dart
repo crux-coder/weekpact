@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/weekpact_theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
@@ -49,6 +50,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
   int _request = 0;
   bool _loading = false;
   bool _hasLoaded = false;
+  String? _deleting;
 
   @override
   void initState() {
@@ -157,6 +159,56 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
     if (!mounted || pact == null || _selected?.id != pact.crewId) return;
     // Refresh from the server so an overlapping load cannot hide the new pact.
     await _refresh();
+  }
+
+  Future<void> _deletePact(CrewPact pact) async {
+    final crew = _selected;
+    if (crew == null || !crew.isOwner || _deleting != null) return;
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        icon: HugeIconsStrokeRounded.delete02,
+        iconColor: WeekPactColors.sand,
+        title: 'Delete pact?',
+        // What goes with it, said plainly: the cascade behind this takes every
+        // check-in ever made against the pact, for the whole crew, and that is
+        // not something the crew can undo afterwards.
+        message:
+            '“${pact.title}” and every check-in the crew has ever made '
+            'against it will be gone. This cannot be undone.',
+        actions: [
+          // Card ink, not the error red: the app's other destructive
+          // confirmations — leaving a crew, removing a member — are this
+          // button, and ink at 15px clears contrast on the fill where the
+          // red does not. The red is spent on the menu entry that got here.
+          AppButton(
+            label: 'DELETE',
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          AppDialogDismiss(
+            label: 'CANCEL',
+            onPressed: () => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _deleting = pact.id;
+      _error = null;
+    });
+    try {
+      await widget.backend.deletePact(pactId: pact.id, crewId: pact.crewId);
+      if (!mounted) return;
+      // The week the bars and the progress card both read is the server's, so
+      // the page reloads it rather than dropping the pact from the local list
+      // and leaving the card above still counting it.
+      await _refresh();
+    } catch (error) {
+      if (mounted) setState(() => _error = _errorMessage(error));
+    } finally {
+      if (mounted) setState(() => _deleting = null);
+    }
   }
 
   @override
@@ -281,7 +333,12 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
               else
                 PactBarList(
                   pacts: _pacts!,
-                  onEdit: crew.isOwner ? (pact) => _addPact(pact) : null,
+                  onEdit: crew.isOwner && _deleting == null
+                      ? (pact) => _addPact(pact)
+                      : null,
+                  onDelete: crew.isOwner && _deleting == null
+                      ? _deletePact
+                      : null,
                 ),
               if (crew.isOwner) ...[
                 const SizedBox(height: 16),
@@ -326,6 +383,7 @@ class PactEditorState extends State<PactEditor> {
   PactFrequency _frequency = PactFrequency.daily;
   int _days = 3;
   String _iconKey = 'target';
+  bool _photoRequired = true;
   bool _saving = false;
   String? _error;
   @override
@@ -337,6 +395,7 @@ class PactEditorState extends State<PactEditor> {
       _frequency = pact.frequency;
       _days = pact.daysPerWeek;
       _iconKey = pact.iconKey;
+      _photoRequired = pact.photoRequired;
     }
   }
 
@@ -361,6 +420,7 @@ class PactEditorState extends State<PactEditor> {
               crewId: widget.crew.id,
               title: _title.text.trim(),
               iconKey: _iconKey,
+              photoRequired: _photoRequired,
               frequency: _frequency,
               daysPerWeek: _frequency == PactFrequency.daily ? 7 : _days,
             )
@@ -368,6 +428,7 @@ class PactEditorState extends State<PactEditor> {
               crewId: widget.crew.id,
               title: _title.text.trim(),
               iconKey: _iconKey,
+              photoRequired: _photoRequired,
               frequency: _frequency,
               daysPerWeek: _frequency == PactFrequency.daily ? 7 : _days,
             );
@@ -548,6 +609,49 @@ class PactEditorState extends State<PactEditor> {
                     ? null
                     : (value) => setState(() => _days = value!),
               ),
+            const SizedBox(height: 18),
+            MergeSemantics(
+              child: Row(
+                children: [
+                  const AppIcon(
+                    icon: HugeIconsStrokeRounded.camera01,
+                    size: 26,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Photo check-in',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _photoRequired
+                              ? 'Checking in takes a picture.'
+                              : 'A tap is enough. No picture needed.',
+                          style: TextStyle(fontSize: 13, color: context.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    key: const ValueKey('pact-photo-required'),
+                    activeTrackColor: WeekPactColors.coolGrey,
+                    activeThumbColor: WeekPactColors.black,
+                    value: _photoRequired,
+                    onChanged: _saving
+                        ? null
+                        : (value) => setState(() => _photoRequired = value),
+                  ),
+                ],
+              ),
+            ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 14),

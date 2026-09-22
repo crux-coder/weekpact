@@ -74,5 +74,21 @@ await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values(
 await as(member,()=>save([pact,second]));
 await db.query('delete from crew_pacts where id=$1',[pact]);
 assert.equal((await db.query('select * from private.check_in_photo_cleanup where path=$1',[path(member,pact,crew,today,'b')])).rows.length,1);
-console.log('Photo requirement, scope, privacy, immutability, retries, undo, legacy history and cleanup permissions passed.');
+// The photo is the pact's own rule: a pact that asks for none checks in on the
+// selection alone, while its neighbour in the same crew still needs evidence.
+const [optional,strict]=[23,24].map(id);
+await db.query("insert into crew_pacts(id,crew_id,title,frequency,days_per_week,created_by,photo_required) values($1,$2,'Stretch','daily',7,$3,false),($4,$2,'Journal','daily',7,$3,true)",[optional,crew,owner,strict]);
+await as(member,async()=> {
+ await assert.rejects(save([second,optional,strict]),/Take a photo/);
+ await save([second,optional]);
+ assert.equal((await db.query('select photo_path from pact_check_ins where pact_id=$1',[optional])).rows[0].photo_path,null);
+ await upload(path(member,strict,crew,today,'d'));
+ await save([second,optional,strict],{[strict]:path(member,strict,crew,today,'d')});
+ assert.equal((await db.query('select photo_path from pact_check_ins where pact_id=$1',[strict])).rows[0].photo_path,path(member,strict,crew,today,'d'));
+ // Only the crew owner sets the rule; a member cannot relax it for everyone.
+ assert.equal((await db.query('update crew_pacts set photo_required=false where id=$1 returning id',[strict])).rows.length,0);
+});
+await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,'owner@example.com','owner')",[crew,owner]);
+await as(owner,async()=>assert.equal((await db.query('update crew_pacts set photo_required=false where id=$1 returning id',[strict])).rows.length,1));
+console.log('Per-pact photo requirement, scope, privacy, immutability, retries, undo, legacy history and cleanup permissions passed.');
 await db.close();

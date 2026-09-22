@@ -41,8 +41,15 @@ worker after the database cutover.
 
 The Pacts page lists your crews and stores recurring pacts under the selected
 crew. Owners can add and edit pacts, including their Hugeicons icon; all crew members can read them. Choose **Every day**
-(seven days per week) or **Days per week** (one to seven distinct days). Schedules
-repeat Monday through Sunday in the crew timezone. The Home screen loads the current crew, pacts, members, and saved check-ins.
+(seven days per week) or **Days per week** (one to seven distinct days). The
+**Photo check-in** switch decides whether keeping the pact has to be shown: on,
+checking in opens the camera; off, a tap is the whole check-in. New pacts start
+with it on. Schedules
+repeat Monday through Sunday in the crew timezone. Each bar on the pacts list
+carries a menu for the crew owner, offering **Edit pact** and **Delete pact**.
+Deleting asks for confirmation first and cannot be undone: the pact's check-ins
+cascade away with it, for the whole crew, and any photos attached to them are
+swept once the check-in photo cleanup next runs. The Home screen loads the current crew, pacts, members, and saved check-ins.
 Members can select or unselect their own pacts for today, once per pact per day.
 The server determines today and the current week using the crew timezone.
 
@@ -448,6 +455,35 @@ batch per page.
 Focused checks: `flutter test test/feed_test.dart` and
 `node tool/test_check_in_feed_database.mjs` (with `PGLITE_MODULE` set if needed).
 
+### Notifications list
+
+Apply `20260921150000_add_notification_inbox.sql` before releasing the updated
+app. The bell at the top right of Feed opens every notification the account has
+received, newest first, paged as it is scrolled.
+
+The list has its own fanout, `private.notification_inbox`, one row per person per
+event. Push delivery is keyed on devices, so it is no list: someone who never
+turned notifications on has no delivery rows, and someone who did has one per
+device. Writing the inbox separately means the list reads the same with
+notifications off as on, and read state belongs to the account rather than a
+phone. A clap now creates its event whether or not the author has a device to
+push it to.
+
+`notification_inbox` returns one page against a `(created_at, event_id)` cursor,
+`unread_notification_count` is what the badge counts, capped at 100, and
+`mark_notifications_read` clears down to a given moment. Opening the list clears
+only as far as its newest entry, so a notification that arrives while the page is
+open is still unread when it closes. Wording is built in the app, not carried
+from the server: the push template has a tray to fit and the list does not.
+
+Existing events are backfilled from their delivery records, which named the
+actual recipients at the time; accounts with no device registered then have no
+history to recover. All of it arrives read.
+
+Focused checks: `flutter test test/notification_inbox_test.dart` and
+`node tool/test_notification_inbox_database.mjs` (with `PGLITE_MODULE` set if
+needed).
+
 ### Claps
 
 Apply `20260918120000_add_check_in_claps.sql` before releasing the updated app. It
@@ -469,12 +505,34 @@ clap back. A double tap on a post already clapped replays the burst and
 leaves the clap alone. Every clap gesture buzzes exactly once. The tally moves
 before the write lands and goes back if the write fails.
 
-Focused checks: `flutter test test/feed_claps_test.dart` and
-`node tool/test_check_in_claps_database.mjs` (with `PGLITE_MODULE` set if needed).
+Apply `20260921140000_add_clap_notifications.sql` and redeploy
+`dispatch-notifications` to tell people they were applauded. The author of the
+check-in is the only recipient; clapping your own post notifies nobody.
+
+A post can be clapped by the whole crew inside the same minute, so each check-in
+sends at most one clap push per hour. Claps arriving while that push is still in
+the outbox are folded into it, and the body counts them — “Jasmin and 2 others
+clapped your Climb twice check-in.” Claps that arrive after it has gone out are
+carried by the next window instead of being dropped, so the count is always the
+claps the author has not yet been told about. `private.clap_notice_window()` is
+the one place to change the hour.
+
+A window is only spent on a push that can be built: an author with no registered
+device keeps theirs for later. Taking every clap back before the worker runs
+cancels the queued push, as does deleting the check-in.
+
+Focused checks: `flutter test test/feed_claps_test.dart`,
+`node tool/test_check_in_claps_database.mjs` and
+`node tool/test_clap_notifications_database.mjs` (with `PGLITE_MODULE` set if
+needed), plus `node tool/test_notification_sender.mjs`.
 
 ### Photo check-ins
 
-New check-ins open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after
+The photo is the pact's own rule, set by its owner and enforced in the database:
+a pact with **Photo check-in** off saves on the selection alone, and one with it
+on is rejected without a matching upload.
+
+Check-ins for a photo pact open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after
 capture. Retake returns to the live preview. The camera stops when
 the app backgrounds or the preview closes. Microphone access is disabled. Images
 are center-cropped to 1024 × 1024 PNG and re-encoded without EXIF metadata.
@@ -485,6 +543,10 @@ permission text. The migration enforces a photo for every new client check-in;
 older photo-free records stay intact, but older app versions cannot add check-ins.
 Release the updated app with this migration.
 
+Apply `20260921120000_add_pact_photo_requirement.sql` to make the requirement a
+per-pact column. Existing pacts keep `photo_required = true`, so nothing a crew
+already agreed to loosens on deploy; only a crew owner can change it.
+
 The private `check-in-photos` bucket limits images to 5 MB. Current crew members
 can open submitted photos from activity. Photos cannot be replaced or removed by
 clients. Undo, deleted pacts/crews, and unused uploads queue Storage API deletion
@@ -492,7 +554,8 @@ through the existing minute dispatcher; abandoned uploads expire after 24 hours.
 Keep `tool/deploy_notifications.py` configured for the dispatcher schedule.
 Account deletion removes the user's uploaded photos before deleting Auth data.
 
-Focused checks: `flutter test test/photo_check_in_test.dart test/home_test.dart`,
+Focused checks: `flutter test test/photo_check_in_test.dart test/home_test.dart
+test/pacts_test.dart`,
 `node tool/test_check_in_photos_database.mjs` (with `PGLITE_MODULE` if needed), and
 `deno test supabase/functions/dispatch-notifications/photo_cleanup_test.ts
 supabase/functions/delete-account/service_test.ts`. Verify capture/retake and

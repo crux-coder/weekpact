@@ -164,18 +164,26 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
       if (!checked.contains(_pact!.id)) {
         checked.add(_pact!.id);
         if (!mounted) return;
-        final saved = await showPhotoCheckIn(
-          userId: widget.userId,
-          context: context,
-          backend: widget.homeBackend,
-          crewId: _crew!.id,
-          pactId: _pact!.id,
-          pactTitle: _pact!.title,
-          today: week.today,
-          selectedPactIds: checked,
-          capturePhoto: widget.captureCheckInPhoto,
-        );
-        if (!saved) return;
+        if (!_pact!.photoRequired) {
+          await widget.homeBackend.saveCheckIns(
+            crewId: _crew!.id,
+            today: week.today,
+            pactIds: checked,
+          );
+        } else {
+          final saved = await showPhotoCheckIn(
+            userId: widget.userId,
+            context: context,
+            backend: widget.homeBackend,
+            crewId: _crew!.id,
+            pactId: _pact!.id,
+            pactTitle: _pact!.title,
+            today: week.today,
+            selectedPactIds: checked,
+            capturePhoto: widget.captureCheckInPhoto,
+          );
+          if (!saved) return;
+        }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

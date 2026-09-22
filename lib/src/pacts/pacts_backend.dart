@@ -23,6 +23,7 @@ class CrewPact {
     required this.frequency,
     required this.daysPerWeek,
     this.iconKey = 'target',
+    this.photoRequired = true,
   });
   final String id;
   final String crewId;
@@ -30,6 +31,10 @@ class CrewPact {
   final PactFrequency frequency;
   final int daysPerWeek;
   final String iconKey;
+
+  /// Whether keeping this pact has to be shown, not just claimed. Pacts made
+  /// before the choice existed asked for a photo, and still do.
+  final bool photoRequired;
 
   String get schedule => frequency == PactFrequency.daily
       ? 'Every day · 7 days / week'
@@ -42,10 +47,14 @@ class CrewPact {
     iconKey: row['icon_key'] as String? ?? 'target',
     frequency: PactFrequency.values.byName(row['frequency'] as String),
     daysPerWeek: row['days_per_week'] as int,
+    photoRequired: row['photo_required'] as bool? ?? true,
   );
 }
 
 abstract interface class PactsBackend {
+  /// Removes a pact and, by the cascade under it, every check-in ever made
+  /// against it. The crew's owner is the only one the policy lets through.
+  Future<void> deletePact({required String pactId, required String crewId});
   Future<CrewPact> updatePact({
     required String pactId,
     required String crewId,
@@ -53,6 +62,7 @@ abstract interface class PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
+    required bool photoRequired,
   });
   Future<List<PactCrew>> fetchCrews();
   Future<List<CrewPact>> fetchPacts(String crewId);
@@ -62,6 +72,7 @@ abstract interface class PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
+    bool photoRequired = true,
   });
 }
 
@@ -109,6 +120,7 @@ class SupabasePactsBackend implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
+    bool photoRequired = true,
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.length < 2 || cleanTitle.length > 100) {
@@ -129,6 +141,7 @@ class SupabasePactsBackend implements PactsBackend {
           'icon_key': iconKey,
           'frequency': frequency.name,
           'days_per_week': daysPerWeek,
+          'photo_required': photoRequired,
           'created_by': user.id,
         })
         .select()
@@ -144,6 +157,7 @@ class SupabasePactsBackend implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
+    required bool photoRequired,
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.length < 2 ||
@@ -163,12 +177,30 @@ class SupabasePactsBackend implements PactsBackend {
           'frequency': frequency.name,
           'days_per_week': daysPerWeek,
           'icon_key': iconKey,
+          'photo_required': photoRequired,
         })
         .eq('id', pactId)
         .eq('crew_id', crewId)
         .select()
         .single();
     return CrewPact.fromJson(row);
+  }
+
+  @override
+  Future<void> deletePact({
+    required String pactId,
+    required String crewId,
+  }) async {
+    if (_client.auth.currentUser == null) {
+      throw StateError('Sign in to delete a pact.');
+    }
+    // Scoped by crew as well as by id, so a pact id from one crew can never
+    // be used to reach into another — the same pairing every write here uses.
+    await _client
+        .from('crew_pacts')
+        .delete()
+        .eq('id', pactId)
+        .eq('crew_id', crewId);
   }
 }
 
@@ -185,6 +217,7 @@ class MissingPactsBackend implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
+    bool photoRequired = true,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewPact> updatePact({
@@ -194,5 +227,9 @@ class MissingPactsBackend implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
+    required bool photoRequired,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> deletePact({required String pactId, required String crewId}) =>
+      Future.error(StateError('Supabase is not configured.'));
 }

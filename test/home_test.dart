@@ -11,6 +11,7 @@ import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -370,6 +371,34 @@ void main() {
     await tester.pumpUi();
     expect(calls.length, 1);
     expect(backend.selected, isNot(contains('move')));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a pact that asks for no photo checks in on the tap alone', (
+    tester,
+  ) async {
+    final backend = DashboardBackend();
+    backend.pacts.pacts = [
+      for (final pact in backend.pacts.pacts)
+        CrewPact(
+          id: pact.id,
+          crewId: pact.crewId,
+          title: pact.title,
+          frequency: pact.frequency,
+          daysPerWeek: pact.daysPerWeek,
+          iconKey: pact.iconKey,
+          photoRequired: pact.id != 'move',
+        ),
+    ];
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    await tester.tap(
+      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    );
+    await tester.pumpUi();
+    expect(find.text('TAKE PICTURE'), findsNothing);
+    expect(backend.selected, contains('move'));
+    expect(backend.lastPhotos, isEmpty);
     await tester.pumpWidget(const SizedBox());
   });
 

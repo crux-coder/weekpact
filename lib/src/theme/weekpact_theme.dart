@@ -113,23 +113,25 @@ abstract final class WeekPactColors {
   static const coolGrey = Color(0xFF9FCBD9);
   static const neutralInset = Color(0xFFD7E0DF);
   static const activitySurface = Color(0xFF1F2627);
-  // Card tints: warm, and held low enough that a card reads as tinted paper
-  // rather than as a colour. The quay rather than the water — clay, straw and
-  // sage, with the two greens kept warm so they sit in the same light as the
-  // rest. They are ordered so neighbours in the list sit far apart in hue:
-  // most crews run two or three pacts, so the first few entries are the ones
-  // that have to look least alike.
+  // Card tints: warm, and held to the depth where a card still reads as
+  // tinted paper but the tint reads as a colour rather than as a smudge — the
+  // pale versions washed out against cream and the fill lost its edge. The
+  // quay rather than the water — clay, straw and sage, with the two greens
+  // kept warm so they sit in the same light as the rest. They are ordered so
+  // neighbours in the list sit far apart in hue: most crews run two or three
+  // pacts, so the first few entries are the ones that have to look least
+  // alike. Every one clears 7:1 against card ink.
   static const pactPalette = <Color>[
-    Color(0xFFD6C5BD), // Clay.
-    Color(0xFFC4CEBB), // Sage.
-    Color(0xFFDCCBCD), // Blush.
-    Color(0xFFC5C9B1), // Olive.
-    Color(0xFFDDD7C6), // Straw.
-    Color(0xFFCCBAB8), // Rosewood.
-    Color(0xFFC8D3C5), // Moss.
-    Color(0xFFDBCFC2), // Apricot.
-    Color(0xFFC7BDB8), // Mushroom.
-    Color(0xFFDFDED2), // Wheat.
+    Color(0xFFD0B2A4), // Clay.
+    Color(0xFFB4C8A2), // Sage.
+    Color(0xFFD6B2B6), // Blush.
+    Color(0xFFBEC596), // Olive.
+    Color(0xFFD6CCAE), // Straw.
+    Color(0xFFC6A39F), // Rosewood.
+    Color(0xFFB5CCAE), // Moss.
+    Color(0xFFD4C0AA), // Apricot.
+    Color(0xFFBFACA1), // Mushroom.
+    Color(0xFFD8D4BA), // Wheat.
   ];
 
   /// The same ten, with the chroma the card gives up.

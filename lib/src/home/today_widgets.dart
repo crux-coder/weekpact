@@ -279,7 +279,11 @@ class _CrewFace extends StatelessWidget {
         fontFamilyFallback: WeekPactType.secondaryFallback,
         fontSize: 13,
         fontWeight: FontWeight.w500,
-        color: kept ? _ink : homeMutedInk,
+        // Card ink on both states. The seat under it already says which
+        // one this is — paper, or a hole cut in the card — so letting the
+        // initials down as well only made a name on the unkept seat hard to
+        // read, at 3:1 against the very fill that was carrying the state.
+        color: _ink,
       ),
     );
     final url = kept ? member?.avatarUrl : null;
@@ -292,7 +296,7 @@ class _CrewFace extends StatelessWidget {
         child: SizedBox.square(
           dimension: _faceSize,
           child: ColoredBox(
-            color: kept ? homePaper : _ink.withValues(alpha: .14),
+            color: kept ? homePaper : _ink.withValues(alpha: .24),
             child: Center(
               child: url == null
                   ? label
@@ -1551,7 +1555,7 @@ class _PactCard extends StatelessWidget {
                                       decoration: ShapeDecoration(
                                         color: i < completed
                                             ? _ink
-                                            : _ink.withValues(alpha: .20),
+                                            : _ink.withValues(alpha: .32),
                                         shape: ContinuousRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             math.min(

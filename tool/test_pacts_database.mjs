@@ -50,7 +50,14 @@ for (const column of ['crew_id', 'created_by', 'id']) {
   await asUser(owner, async () => assert.rejects(db.query(`update crew_pacts set ${column}=$1`, [outsider]), error => error.code === '42501'));
 }
 await asUser(owner, async () => assert.rejects(db.query("update crew_pacts set days_per_week=3"), error => error.code === '23514'));
-await asUser(owner, async () => assert.rejects(db.query('delete from crew_pacts'), error => error.code === '42501'));
+// Deleting is the owner's alone. RLS filters a member's delete to nothing
+// rather than raising, the same way it filters their update above; anon has
+// no grant at all and is refused outright.
+for (const user of [member, outsider]) {
+  await asUser(user, async () => assert.equal((await db.query('delete from crew_pacts returning id')).rows.length, 0));
+}
+await asUser('', async () => assert.rejects(db.query('delete from crew_pacts'), error => error.code === '42501'), 'anon');
+await asUser(owner, async () => assert.ok((await db.query('delete from crew_pacts returning id')).rows.length > 0));
 const policy = await db.query("select relrowsecurity from pg_class where oid='public.crew_pacts'::regclass");
 assert.equal(policy.rows[0].relrowsecurity,true);
 
@@ -137,5 +144,26 @@ await asUser(member, async () => {
   await save([pactId]);
   assert.equal(await streak(), 3);
 });
+// Deleting a pact takes its whole history with it: the check-ins cascade off
+// `crew_pacts`, and the claps on those check-ins cascade off them in turn. The
+// owner does this in one statement and nothing is left pointing at the pact.
+await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,$3) on conflict do nothing', [pactId,owner,today]);
+await db.query('insert into check_in_claps(pact_id,check_in_user_id,completed_on,actor_id) values($1,$2,$3,$4)', [pactId,owner,today,member]);
+assert.equal((await db.query('select 1 from check_in_claps where pact_id=$1', [pactId])).rows.length, 1);
+// `asUser` rolls its transaction back, so the delete has to be the owner's
+// while the check that nothing survived is the administrator's, after it.
+await db.exec('begin');
+await db.query("select set_config('request.jwt.claim.sub', $1, true)", [owner]);
+await db.exec('set local role authenticated');
+assert.equal((await db.query('delete from crew_pacts where id=$1 returning id', [pactId])).rows.length, 1);
+await db.exec('reset role');
+await db.exec('commit');
+passed++;
+assert.equal((await db.query('select 1 from pact_check_ins where pact_id=$1', [pactId])).rows.length, 0);
+assert.equal((await db.query('select 1 from check_in_claps where pact_id=$1', [pactId])).rows.length, 0);
+// A pact id from another crew is out of reach even for that crew's owner,
+// because the policy asks about the row's own crew.
+await asUser(owner, async () => assert.equal((await db.query('delete from crew_pacts where id=$1 returning id', [otherPact])).rows.length, 0));
+
 console.log(`${passed} PostgreSQL permission and validation scenarios passed; RLS enabled.`);
 await db.close();

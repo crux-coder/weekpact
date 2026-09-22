@@ -367,14 +367,15 @@ class _HomeDestinationState extends State<_HomeDestination>
       _saveError = null;
     });
     try {
-      if (selected.contains(pactId)) {
+      final pact = week.pacts.firstWhere((p) => p.id == pactId);
+      if (selected.contains(pactId) && pact.photoRequired) {
         final saved = await showPhotoCheckIn(
           userId: widget.userId,
           context: context,
           backend: widget.backend,
           crewId: crew.id,
           pactId: pactId,
-          pactTitle: week.pacts.firstWhere((p) => p.id == pactId).title,
+          pactTitle: pact.title,
           today: week.today,
           selectedPactIds: selected,
           capturePhoto: widget.captureCheckInPhoto,

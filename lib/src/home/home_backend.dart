@@ -298,6 +298,110 @@ class CrewWeek {
   }
 }
 
+/// One notification as the reader sees it: what happened, who did it, and
+/// whether this person has already read it.
+///
+/// The wording is built here rather than carried from the server, because the
+/// push template lives in the notification worker and a list has room the
+/// notification tray does not. What the payload contributes is the facts.
+class NotificationEntry {
+  const NotificationEntry({
+    required this.eventId,
+    required this.type,
+    required this.createdAt,
+    required this.read,
+    required this.crewId,
+    required this.crewName,
+    required this.actorId,
+    required this.displayName,
+    this.pactTitle,
+    this.iconKey,
+    this.clapCount = 0,
+    this.avatarPath,
+    this.avatarUrl,
+  });
+
+  final String eventId;
+  final String type;
+  final DateTime createdAt;
+  final bool read;
+  final String crewId;
+  final String crewName;
+  final String actorId;
+  final String displayName;
+  final String? pactTitle;
+  final String? iconKey;
+
+  /// How many people the clap notification stands for, the first of them named
+  /// by [displayName]. Zero for every other type.
+  final int clapCount;
+  final String? avatarPath;
+  final String? avatarUrl;
+
+  String get initials {
+    final parts = displayName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty || displayName == 'Crew member') return '?';
+    return (parts.first.characters.first +
+            (parts.length > 1 ? parts.last.characters.first : ''))
+        .toUpperCase();
+  }
+
+  /// Everyone the notification is about, the way it would be said aloud.
+  String get subject {
+    final others = clapCount - 1;
+    if (type != 'check_in_clapped' || others <= 0) return displayName;
+    return others == 1
+        ? '$displayName and 1 other'
+        : '$displayName and $others others';
+  }
+
+  /// What they did, with [subject] already said.
+  String get action => switch (type) {
+    'check_in_clapped' =>
+      'clapped your ${pactTitle ?? 'pact'} check-in',
+    'pact_completed' => 'completed ${pactTitle ?? 'a pact'}',
+    'crew_nudge' => 'is cheering you on',
+    _ => 'sent you a notification',
+  };
+
+  NotificationEntry copyWith({String? avatarUrl, bool? read}) =>
+      NotificationEntry(
+        eventId: eventId,
+        type: type,
+        createdAt: createdAt,
+        read: read ?? this.read,
+        crewId: crewId,
+        crewName: crewName,
+        actorId: actorId,
+        displayName: displayName,
+        pactTitle: pactTitle,
+        iconKey: iconKey,
+        clapCount: clapCount,
+        avatarPath: avatarPath,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+      );
+
+  static NotificationEntry fromJson(Map<String, dynamic> row) =>
+      NotificationEntry(
+        eventId: row['event_id'] as String,
+        type: row['type'] as String,
+        createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
+        read: row['read'] as bool? ?? false,
+        crewId: row['crew_id'] as String,
+        crewName: row['crew_name'] as String? ?? '',
+        actorId: row['actor_id'] as String,
+        displayName: row['display_name'] as String? ?? 'Crew member',
+        pactTitle: row['pact_title'] as String?,
+        iconKey: row['icon_key'] as String?,
+        clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
+        avatarPath: row['avatar_path'] as String?,
+      );
+}
+
 abstract interface class HomeBackend {
   Future<Uint8List> fetchCheckInPhoto(String path);
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId);
@@ -314,6 +418,12 @@ abstract interface class HomeBackend {
 
   /// Check-ins from every crew the signed-in member belongs to, newest first.
   Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20});
+  Future<List<NotificationEntry>> fetchNotifications({
+    NotificationEntry? before,
+    int limit = 20,
+  });
+  Future<int> fetchUnreadNotificationCount();
+  Future<void> markNotificationsRead({DateTime? upTo});
 
   /// Adds or removes the viewer's clap on one check-in and returns the check-in's
   /// clap count afterwards. Both directions are idempotent, so a repeated tap
@@ -336,6 +446,7 @@ class SupabaseHomeBackend implements HomeBackend {
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
   final _feedAvatars = AvatarUrlCache();
+  final _notificationAvatars = AvatarUrlCache();
   final SupabaseClient client;
   @override
   Future<Uint8List> fetchCheckInPhoto(String path) =>
@@ -435,6 +546,47 @@ class SupabaseHomeBackend implements HomeBackend {
         )
         .toList();
   }
+
+  @override
+  Future<List<NotificationEntry>> fetchNotifications({
+    NotificationEntry? before,
+    int limit = 20,
+  }) async {
+    final rows = await client.rpc(
+      'notification_inbox',
+      params: {
+        'before_created_at': before?.createdAt.toUtc().toIso8601String(),
+        'before_event': before?.eventId,
+        'page_limit': limit,
+      },
+    );
+    final entries = (rows as List)
+        .map(
+          (row) =>
+              NotificationEntry.fromJson(Map<String, dynamic>.from(row as Map)),
+        )
+        .toList();
+    // One batch of signed URLs for the page, as the feed does for its posts.
+    final avatars = await _notificationAvatars.resolve(
+      account: client.auth.currentUser?.id,
+      key: 'notifications',
+      paths: entries.map((entry) => entry.avatarPath).nonNulls.toSet().toList(),
+      sign: (missing, lifetime) => _signed('avatars', missing, lifetime),
+    );
+    return entries
+        .map((entry) => entry.copyWith(avatarUrl: avatars[entry.avatarPath]))
+        .toList();
+  }
+
+  @override
+  Future<int> fetchUnreadNotificationCount() async =>
+      (await client.rpc('unread_notification_count') as num).toInt();
+
+  @override
+  Future<void> markNotificationsRead({DateTime? upTo}) => client.rpc(
+    'mark_notifications_read',
+    params: {'up_to': upTo?.toUtc().toIso8601String()},
+  );
 
   @override
   Future<int> setClap({
@@ -620,6 +772,17 @@ class MissingHomeBackend implements HomeBackend {
     required String day,
     required bool clapped,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<NotificationEntry>> fetchNotifications({
+    NotificationEntry? before,
+    int limit = 20,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> fetchUnreadNotificationCount() =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> markNotificationsRead({DateTime? upTo}) =>
+      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewWeek> fetchWeek(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));

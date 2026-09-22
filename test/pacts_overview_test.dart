@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/pacts/pacts_overview.dart';
+import 'package:weekpact/src/widgets/app_components.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
@@ -110,7 +111,7 @@ void main() {
 
   for (final settings in [(390.0, 1.0), (320.0, 2.0)]) {
     testWidgets(
-      'pact bars stack, scale with the week and stay editable at $settings',
+      'pact bars stack, wear their own colour and stay editable at $settings',
       (tester) async {
         tester.view.physicalSize = Size(settings.$1, 844);
         tester.view.devicePixelRatio = 1;
@@ -145,14 +146,30 @@ void main() {
         expect(first.width, settings.$1 - 24);
         expect(second.width, first.width);
         expect(second.top, greaterThanOrEqualTo(first.bottom));
-        // The tinted fill measures the pact against a seven day week.
-        final fills = tester
-            .widgetList<FractionallySizedBox>(find.byType(FractionallySizedBox))
-            .map((box) => box.widthFactor)
-            .toList();
-        expect(fills.first, 7 / 7);
-        expect(fills[1], 3 / 7);
-        await tester.tap(find.byTooltip('Edit Move for 30 min'));
+        // Each card is wholly its pact's own colour, taken by the pact's
+        // place in the list — not a partial fill measuring the week.
+        expect(find.byType(FractionallySizedBox), findsNothing);
+        Color fillOf(String id) => tester
+            .widget<AppSurface>(
+              find
+                  .descendant(
+                    of: find.byKey(ValueKey('pact-management-$id')),
+                    matching: find.byType(AppSurface),
+                  )
+                  .first,
+            )
+            .fillColor!;
+        expect(fillOf('move'), WeekPactColors.pactTint(0));
+        expect(fillOf('read'), WeekPactColors.pactTint(1));
+        // The weekly count is the title's caption, not a column of its own.
+        expect(find.text('7/week'), findsOneWidget);
+        expect(find.text('3/week'), findsOneWidget);
+        // Editing lives behind the bar's menu now, so the tap that used to
+        // reach it has to open the menu first.
+        await tester.tap(find.byTooltip('Move for 30 min options'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit pact'));
+        await tester.pumpAndSettle();
         expect(edited, 'move');
       },
     );

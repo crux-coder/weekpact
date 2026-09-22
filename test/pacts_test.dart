@@ -26,6 +26,18 @@ class FakePacts implements PactsBackend {
   final pacts = <CrewPact>[];
   Completer<List<PactCrew>>? loading;
   bool failSave = false;
+  final deleted = <String>[];
+  bool failDelete = false;
+
+  @override
+  Future<void> deletePact({
+    required String pactId,
+    required String crewId,
+  }) async {
+    if (failDelete) throw Exception('offline');
+    deleted.add(pactId);
+    pacts.removeWhere((pact) => pact.id == pactId && pact.crewId == crewId);
+  }
   @override
   Future<CrewPact> updatePact({
     required String pactId,
@@ -34,6 +46,7 @@ class FakePacts implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     required String iconKey,
+    required bool photoRequired,
   }) async {
     if (failSave) throw Exception('offline');
     final index = pacts.indexWhere(
@@ -46,6 +59,7 @@ class FakePacts implements PactsBackend {
       frequency: frequency,
       daysPerWeek: daysPerWeek,
       iconKey: iconKey,
+      photoRequired: photoRequired,
     );
   }
 
@@ -61,6 +75,7 @@ class FakePacts implements PactsBackend {
     required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
+    bool photoRequired = true,
   }) async {
     if (failSave) throw Exception('offline');
     final pact = CrewPact(
@@ -70,10 +85,26 @@ class FakePacts implements PactsBackend {
       frequency: frequency,
       daysPerWeek: daysPerWeek,
       iconKey: iconKey,
+      photoRequired: photoRequired,
     );
     pacts.add(pact);
     return pact;
   }
+}
+
+/// Opens a bar's menu and picks one of its entries. Editing and deleting both
+/// live behind the bar's one button, so every test that reaches either has to
+/// go through here.
+Future<void> openPactMenu(
+  WidgetTester tester,
+  String title,
+  String entry,
+) async {
+  await tester.ensureVisible(find.byTooltip('$title options'));
+  await tester.tap(find.byTooltip('$title options'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(entry));
+  await tester.pumpAndSettle();
 }
 
 Future<void> pumpPacts(WidgetTester tester, FakePacts backend) async {
@@ -129,8 +160,7 @@ void main() {
       );
       await pumpPacts(tester, backend);
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Edit Read'));
-      await tester.pumpAndSettle();
+      await openPactMenu(tester, 'Read', 'Edit pact');
       expect(find.text('EDIT PACT'), findsOneWidget);
       expect(find.byTooltip('Change icon: Reading'), findsOneWidget);
       expect(
@@ -177,7 +207,7 @@ void main() {
     await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
     expect(find.text('Read'), findsNWidgets(2));
-    expect(find.byTooltip('Edit Read'), findsNothing);
+    expect(find.byTooltip('Read options'), findsNothing);
   });
 
   testWidgets('shows skeleton while loading and a crew-specific empty state', (
@@ -240,7 +270,8 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Semantics &&
-            widget.properties.label == 'Go for a run. 3 days / week',
+            widget.properties.label ==
+                'Go for a run. 3 days / week. Photo check-in',
       ),
       findsOneWidget,
     );
@@ -282,6 +313,134 @@ void main() {
     await tester.pumpAndSettle();
     expect(backend.pacts.length, 1);
     expect(find.text('ADD A PACT'), findsNothing);
+  });
+
+  testWidgets(
+    'the photo requirement is a per-pact choice that survives an edit',
+    (tester) async {
+      final backend = FakePacts();
+      await pumpPacts(tester, backend);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ADD PACT'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'Tidy one thing');
+      expect(find.text('Checking in takes a picture.'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('pact-photo-required')),
+      );
+      await tester.tap(find.byKey(const ValueKey('pact-photo-required')));
+      await tester.pumpAndSettle();
+      expect(find.text('A tap is enough. No picture needed.'), findsOneWidget);
+      await tester.ensureVisible(find.text('SAVE PACT'));
+      await tester.tap(find.text('SAVE PACT'));
+      await tester.pumpAndSettle();
+      expect(backend.pacts.single.photoRequired, isFalse);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label ==
+                  'Tidy one thing. Every day · 7 days / week. '
+                      'No photo needed',
+        ),
+        findsOneWidget,
+      );
+
+      // Reopening the pact shows the saved choice, and it can be turned back on.
+      await openPactMenu(tester, 'Tidy one thing', 'Edit pact');
+      expect(find.text('A tap is enough. No picture needed.'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('pact-photo-required')),
+      );
+      await tester.tap(find.byKey(const ValueKey('pact-photo-required')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('SAVE CHANGES'));
+      await tester.tap(find.text('SAVE CHANGES'));
+      await tester.pumpAndSettle();
+      expect(backend.pacts.single.photoRequired, isTrue);
+      // The bar no longer carries a camera badge, so the round trip is read
+      // off the one place the setting is still spoken: the bar's semantics.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label ==
+                  'Tidy one thing. Every day · 7 days / week. Photo check-in',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('owner deletes a pact, after confirming and not before', (
+    tester,
+  ) async {
+    final backend = FakePacts();
+    backend.pacts.addAll(const [
+      CrewPact(
+        id: 'g',
+        crewId: 'a',
+        title: 'Read',
+        frequency: PactFrequency.weekly,
+        daysPerWeek: 3,
+      ),
+      CrewPact(
+        id: 'h',
+        crewId: 'a',
+        title: 'Walk',
+        frequency: PactFrequency.weekly,
+        daysPerWeek: 2,
+      ),
+    ]);
+    await pumpPacts(tester, backend);
+    await tester.pumpAndSettle();
+
+    // Backing out of the confirmation leaves the pact where it was.
+    await openPactMenu(tester, 'Read', 'Delete pact');
+    expect(find.text('Delete pact?'), findsOneWidget);
+    expect(
+      find.textContaining('every check-in the crew has ever made'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('CANCEL'));
+    await tester.pumpAndSettle();
+    expect(backend.deleted, isEmpty);
+    expect(backend.pacts.length, 2);
+
+    // A failed delete says so and keeps the pact.
+    backend.failDelete = true;
+    await openPactMenu(tester, 'Read', 'Delete pact');
+    await tester.tap(find.text('DELETE'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Could not load or save'), findsOneWidget);
+    expect(backend.pacts.length, 2);
+
+    backend.failDelete = false;
+    await openPactMenu(tester, 'Read', 'Delete pact');
+    await tester.tap(find.text('DELETE'));
+    await tester.pumpAndSettle();
+    expect(backend.deleted, ['g']);
+    expect(backend.pacts.single.id, 'h');
+    // The page reloads the week rather than trusting its own list, so the bar
+    // is gone from the list and from the progress card above it.
+    expect(find.text('Read'), findsNothing);
+    expect(find.text('Walk'), findsNWidgets(2));
+  });
+
+  testWidgets('members are offered no pact menu at all', (tester) async {
+    final backend = FakePacts()..crews = [memberCrew];
+    backend.pacts.add(
+      const CrewPact(
+        id: 'g',
+        crewId: 'b',
+        title: 'Read',
+        frequency: PactFrequency.daily,
+        daysPerWeek: 7,
+      ),
+    );
+    await pumpPacts(tester, backend);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('pact-menu-g')), findsNothing);
   });
 
   testWidgets('users without crews get a crews action', (tester) async {

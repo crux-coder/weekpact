@@ -58,6 +58,7 @@ class SetupPacts extends DashboardPacts {
     required PactFrequency frequency,
     required int daysPerWeek,
     String iconKey = 'target',
+    bool photoRequired = true,
   }) async {
     if (fail) throw StateError('offline');
     final pact = CrewPact(
@@ -67,6 +68,7 @@ class SetupPacts extends DashboardPacts {
       frequency: frequency,
       daysPerWeek: daysPerWeek,
       iconKey: iconKey,
+      photoRequired: photoRequired,
     );
     pacts.add(pact);
     return pact;

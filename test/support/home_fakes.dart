@@ -68,6 +68,37 @@ class DashboardBackend implements HomeBackend {
     FeedEntry? before,
     int limit = 20,
   }) async => [];
+
+  /// Notifications the fake hands back, newest first. Tests that care set it;
+  /// everything else gets an empty list and a quiet badge.
+  List<NotificationEntry> notifications = const [];
+  int unreadNotifications = 0;
+  DateTime? markedReadUpTo;
+  int notificationPages = 0;
+  bool failNotifications = false;
+  @override
+  Future<List<NotificationEntry>> fetchNotifications({
+    NotificationEntry? before,
+    int limit = 20,
+  }) async {
+    notificationPages++;
+    if (failNotifications) throw StateError('Notifications unavailable');
+    final start = before == null
+        ? 0
+        : notifications.indexWhere((entry) => entry.eventId == before.eventId) +
+              1;
+    if (start <= 0 && before != null) return [];
+    return notifications.skip(start).take(limit).toList();
+  }
+
+  @override
+  Future<int> fetchUnreadNotificationCount() async => unreadNotifications;
+
+  @override
+  Future<void> markNotificationsRead({DateTime? upTo}) async {
+    markedReadUpTo = upTo;
+    unreadNotifications = 0;
+  }
   @override
   Future<int> setClap({
     required String pactId,
@@ -111,7 +142,8 @@ class DashboardBackend implements HomeBackend {
   }) async {
     if (failSave) throw StateError('offline');
     for (final id in pactIds.difference(selected)) {
-      if (photos[id]?.isNotEmpty != true) {
+      final pact = pacts.pacts.firstWhere((pact) => pact.id == id);
+      if (pact.photoRequired && photos[id]?.isNotEmpty != true) {
         throw StateError('Take a photo to check in.');
       }
     }

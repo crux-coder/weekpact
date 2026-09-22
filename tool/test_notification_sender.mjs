@@ -15,6 +15,15 @@ assert.equal(nudge.data.type,'crew_nudge');
 assert.equal(nudge.data.crew_id,event.crew_id);
 assert.equal(nudge.data.pact_id,undefined);
 assert.ok(renderNotification({...event,event_type:'crew_nudge',payload:{}}).body.startsWith('A crew member is cheering you on.'));
+const clapped = payload => renderNotification({...event,event_type:'check_in_clapped',payload:{actor_name:'Jasmin',pact_title:'Climb twice',pact_id:'pact-123',...payload}});
+assert.equal(clapped({clap_count:1}).title,'Your crew is clapping');
+assert.equal(clapped({clap_count:1}).body,'Jasmin clapped your Climb twice check-in.');
+assert.equal(clapped({clap_count:2}).body,'Jasmin and 1 other clapped your Climb twice check-in.');
+assert.equal(clapped({clap_count:4}).body,'Jasmin and 3 others clapped your Climb twice check-in.');
+assert.equal(clapped({}).body,'Jasmin clapped your Climb twice check-in.','a missing count reads as a single clap');
+assert.equal(clapped({clap_count:0}).body,'Jasmin clapped your Climb twice check-in.');
+assert.equal(clapped({actor_name:null,pact_title:null,clap_count:1}).body,'A crew member clapped your pact check-in.');
+assert.equal(clapped({clap_count:1}).data.pact_id,'pact-123');
 let oauthCalls=0;let status=200;let code;
 const send=createFcmSender(account,async(url,options)=>{
  if(url.includes('oauth2')) {

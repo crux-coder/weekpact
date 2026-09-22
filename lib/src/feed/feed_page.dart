@@ -6,14 +6,17 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../crew/crew_page_layout.dart';
 import '../home/check_in_photo_frame.dart';
 import '../home/home_backend.dart';
 import '../pacts/pact_icons.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/app_icon.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/page_frame.dart';
 import 'clap_control.dart';
+import 'notifications_page.dart';
 
 /// Check-ins from every crew the member belongs to, newest first, as a photo
 /// feed. Paging is keyed on the last entry, so new posts never shift a page.
@@ -42,18 +45,27 @@ class _FeedPageState extends State<FeedPage> {
   bool _hasMore = true;
   bool _failed = false;
 
+  /// What the bell wears. A failed count leaves the badge as it was rather
+  /// than claiming the crew has gone quiet.
+  int _unread = 0;
+  bool _notificationsOpen = false;
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_loadNearEnd);
     unawaited(_loadMore());
+    unawaited(_countUnread());
   }
 
   @override
   void didUpdateWidget(covariant FeedPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Returning to the tab should show check-ins posted since it was left.
-    if (widget.active && !oldWidget.active && !_loading) unawaited(_refresh());
+    if (widget.active && !oldWidget.active && !_loading) {
+      unawaited(_refresh());
+      unawaited(_countUnread());
+    }
   }
 
   @override
@@ -66,6 +78,32 @@ class _FeedPageState extends State<FeedPage> {
     if (_scroll.hasClients && _scroll.position.extentAfter < 600 && !_failed) {
       unawaited(_loadMore());
     }
+  }
+
+  Future<void> _countUnread() async {
+    try {
+      final unread = await widget.backend.fetchUnreadNotificationCount();
+      if (mounted) setState(() => _unread = unread);
+    } catch (_) {
+      // The feed is the page; the badge is not worth an error state.
+    }
+  }
+
+  /// The list hands back what is still unread when it closes, so the badge
+  /// settles on the way out instead of on the next read. Backing out with the
+  /// system gesture answers nothing, and the count is read again instead.
+  Future<void> _openNotifications() async {
+    setState(() => _notificationsOpen = true);
+    final remaining = await showNotificationsPage(
+      context,
+      backend: widget.backend,
+    );
+    if (!mounted) return;
+    setState(() {
+      _notificationsOpen = false;
+      if (remaining != null) _unread = remaining;
+    });
+    if (remaining == null) await _countUnread();
   }
 
   Future<void> _refresh() async {
@@ -194,13 +232,31 @@ class _FeedPageState extends State<FeedPage> {
               itemCount: _entries.length + 2,
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return const Padding(
-                    padding: EdgeInsets.only(
+                  return Padding(
+                    padding: const EdgeInsets.only(
                       bottom: WeekPactMetrics.sectionGap,
                     ),
-                    child: PageHeading(
-                      'Feed',
+                    child: CrewPageHeading(
+                      title: 'Feed',
                       dotColor: WeekPactColors.lime,
+                      actions: [
+                        IconButton(
+                          tooltip: 'Notifications',
+                          onPressed: _notificationsOpen
+                              ? null
+                              : () => unawaited(_openNotifications()),
+                          icon: Badge(
+                            key: const ValueKey('feed-notifications-badge'),
+                            isLabelVisible: _unread > 0,
+                            label: Text(_unread > 99 ? '99+' : '$_unread'),
+                            backgroundColor: WeekPactColors.salmon,
+                            textColor: WeekPactColors.black,
+                            child: const AppIcon(
+                              icon: HugeIconsStrokeRounded.notification02,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }

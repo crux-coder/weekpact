@@ -25,6 +25,58 @@ even after unchecking and rechecking. Historical check-ins are not backfilled.
 
 Example: **A pact checked off!** — “Ada completed Read.”
 
+## Clap notifications
+
+A clap queues `check_in_clapped` for the author of the check-in alone, never the
+crew. Clapping your own post, re-clapping one you already clapped, and taking a
+clap back all notify nobody.
+
+Example: **Your crew is clapping** — “Jasmin and 2 others clapped your Climb
+twice check-in.”
+
+Claps are the one event several people can raise against the same thing at once,
+so they are throttled per check-in rather than per sender: `private.clap_notice_window()`
+(one hour) is how often a single check-in may interrupt its author.
+`private.check_in_clap_notices` holds one row per clapped check-in with the time
+of the last push and the cutoff the next count is measured from.
+
+Opening a window uses the same conditional upsert as the nudge cooldown, so
+simultaneous claps cannot both decide they are first. Claps that arrive while the
+push is still `pending` rewrite its `clap_count` in place; once any delivery has
+left `pending` the payload is left alone and the claps wait for the next window,
+which counts everything since the last push rather than only what is new. The
+name in the body is the clapper who opened the window.
+
+A queued push is cancelled if every clap it announces is withdrawn before
+delivery, alongside the existing membership, session and check-in checks in
+`claim_notification_deliveries`.
+
+## The notifications list
+
+`private.notification_inbox` is a second fanout beside delivery: one row per
+person per event, written whether or not that person has a registered device.
+Delivery rows cannot serve as a list — they are per device, and absent entirely
+for anyone with notifications off — so the inbox is written by the same three
+producers instead: `enqueue_crew_notification` for crew events, and the nudge and
+clap functions for their single recipients.
+
+A nudge with nowhere to land is still not sent, because the interruption is the
+point. A clap is written down either way: the event and its inbox row are created
+before devices are consulted, and only the push depends on them.
+
+Three RPCs serve the page. `notification_inbox(before_created_at, before_event,
+page_limit)` returns one page against the full sort key, so a notification
+arriving mid-scroll cannot shift or repeat what is below. `unread_notification_count()`
+counts unread rows up to 100 — past that the number stops meaning anything.
+`mark_notifications_read(up_to)` clears the reader's unread rows to that moment;
+the app passes the newest entry it actually showed.
+
+Names and avatars are read live, so the list ages with the profile; the pact title
+comes from the payload, because it is the only copy that survives the pact being
+deleted. Rows cascade with the event, which cascades with the crew and with either
+account. The wording itself is built in the app from those facts rather than
+carried from `templates.ts`, which renders for a notification tray.
+
 Each type uses the same internal `private.enqueue_crew_notification` API, durable
 outbox, per-device delivery records, worker, and FCM transport. Templates live in
 `supabase/functions/dispatch-notifications/templates.ts`. To add a type, create
