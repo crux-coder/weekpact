@@ -58,6 +58,21 @@ target. “On track” means the member can still reach every target with the da
 remaining this week (including today if not yet checked in). Editing a target
 recalculates current-week progress without deleting existing check-ins.
 
+Home shows the crew's week as a race rather than an average: everyone stands on
+one lane at their own share of their own week, the lane is filled in behind the
+front runner, a chequered flag closes it, and the card says where you place
+rather than what the crew averages. The card is read rather than opened, so
+nothing on Home currently opens the crew week page. Members level with one another share
+a place, and a crew that is level all the way down says so instead. A crew of
+one keeps the plain bar. A running crew streak sits beside the place.
+
+Every crew-scoped page — Home, Pacts, Crews — leads with the crew's name,
+centred, with a chevron that opens a plain list of your crews. A member of one
+crew sees the name without the chevron. Long-pressing the tile of a
+crewmate who has not checked in today offers a nudge, with the day they last
+kept a pact and the one-per-24-hours rule; the crew roster still sends nudges
+too.
+
 Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets
@@ -96,8 +111,8 @@ cp .env.example .env
 ```
 
 For local Supabase, replace the URL and publishable key in `.env` with the
-values printed by `supabase status`. Keep `APP_TIMEZONE` as the crew owner's
-IANA timezone, such as `Europe/Sarajevo`.
+values printed by `supabase status`. A crew's timezone is no longer built in:
+it is read from the device the crew is created on.
 
 Create the local Edge Function configuration:
 
@@ -439,27 +454,23 @@ memberships, ownership, pacts, and check-ins are preserved.
 Run `node tool/test_multi_crew_database.mjs` (with `PGLITE_MODULE` set if needed)
 and `flutter test test/multiple_crews_test.dart` for the focused regression checks.
 
-### Check-in feed
+### Check-in feed (removed)
 
-Apply `20260916120000_add_check_in_feed.sql` before releasing the updated app. It
-adds the `check_in_feed` RPC, which returns one paginated page of check-ins across
-every crew the caller belongs to — author display name and avatar path, crew name,
-pact title and icon, and the photo path — plus the index that orders it.
-Membership is re-checked per row, so leaving a crew removes its posts from the
-feed. No existing data changes.
+The Feed destination is gone. Today's check-ins are the stories rail on Home, and
+everything the crew has told you is the notification list behind the bell, so a
+second reverse-chronological list of the same check-ins had nothing left to say.
 
-The Feed destination sits between Home and Pacts and replaces Home's crew history
-panel, which is removed. Photos and avatars load as short-lived signed URLs, one
-batch per page.
-
-Focused checks: `flutter test test/feed_test.dart` and
-`node tool/test_check_in_feed_database.mjs` (with `PGLITE_MODULE` set if needed).
+Apply `20260923120000_drop_check_in_feed.sql` after releasing the updated app. It
+drops the `check_in_feed` RPC and the index that ordered it; claps, check-ins and
+their photos are untouched. Older builds still call the RPC, so ship the app
+first.
 
 ### Notifications list
 
 Apply `20260921150000_add_notification_inbox.sql` before releasing the updated
-app. The bell at the top right of Feed opens every notification the account has
-received, newest first, paged as it is scrolled.
+app. The bell at the top right of Home opens every notification the account has
+received, newest first, paged as it is scrolled. The bell lives on Home, the
+page people open to see what the crew has been doing.
 
 The list has its own fanout, `private.notification_inbox`, one row per person per
 event. Push delivery is keyed on devices, so it is no list: someone who never
@@ -487,23 +498,21 @@ needed).
 ### Claps
 
 Apply `20260918120000_add_check_in_claps.sql` before releasing the updated app. It
-adds the `check_in_claps` table, the `set_check_in_clap` RPC, and replaces
-`check_in_feed` so every page carries each post's clap count and whether the
-viewer clapped it. No existing data changes.
+adds the `check_in_claps` table and the `set_check_in_clap` RPC. No existing data
+changes.
 
 A clap is one crew member applauding one check-in: at most one per member per
 check-in, allowed only from inside a crew the member belongs to, and re-checked
-on the server rather than trusted from the feed page. Both directions are
+on the server rather than trusted from the client. Both directions are
 idempotent, so a repeated tap settles on the state asked for. Claps are removed
 with the check-in they applaud and with the account that gave them. Clients
 never write the table directly.
 
-In the feed, double-tapping a post claps for it: the card gives slightly, a
-clap swells over the photo on a card of its own, and the phone buzzes. The tally
-at the foot of the post turns yellow once you have clapped; tapping it takes the
-clap back. A double tap on a post already clapped replays the burst and
-leaves the clap alone. Every clap gesture buzzes exactly once. The tally moves
-before the write lands and goes back if the write fails.
+Claps are given in the story viewer: the pill under a check-in says `Clap`, fills
+with brass once you have clapped, and takes the clap back when tapped again. The
+count appears once the server has answered with one — Home's week does not carry
+claps, so the pill never opens on a number it would have to invent. The pill
+moves before the write lands and goes back if the write fails.
 
 Apply `20260921140000_add_clap_notifications.sql` and redeploy
 `dispatch-notifications` to tell people they were applauded. The author of the
@@ -521,7 +530,7 @@ A window is only spent on a push that can be built: an author with no registered
 device keeps theirs for later. Taking every clap back before the worker runs
 cancels the queued push, as does deleting the check-in.
 
-Focused checks: `flutter test test/feed_claps_test.dart`,
+Focused checks: `flutter test test/stories_test.dart`,
 `node tool/test_check_in_claps_database.mjs` and
 `node tool/test_clap_notifications_database.mjs` (with `PGLITE_MODULE` set if
 needed), plus `node tool/test_notification_sender.mjs`.

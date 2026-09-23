@@ -17,6 +17,7 @@ import 'auth/auth_backend.dart';
 import 'auth/auth_gate.dart';
 import 'crew/crew_backend.dart';
 import 'crew/crew_selection_store.dart';
+import 'home/story_seen_store.dart';
 import 'invites/invite_links.dart';
 import 'subscriptions/subscription_scope.dart';
 import 'theme/weekpact_theme.dart';
@@ -27,6 +28,7 @@ class WeekPactApp extends StatefulWidget {
     required this.authBackend,
     this.notifications,
     this.crewSelectionStore,
+    this.storySeenStore,
     this.crewBackend = const MissingCrewBackend(),
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
@@ -38,6 +40,7 @@ class WeekPactApp extends StatefulWidget {
   final AuthBackend authBackend;
   final NotificationService? notifications;
   final CrewSelectionStore? crewSelectionStore;
+  final StorySeenStore? storySeenStore;
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
@@ -122,6 +125,7 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       },
       home: AuthGate(
         crewSelectionStore: widget.crewSelectionStore,
+        storySeenStore: widget.storySeenStore,
         authBackend: widget.authBackend,
         crewBackend: widget.crewBackend,
         pactsBackend: widget.pactsBackend,

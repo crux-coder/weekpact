@@ -251,7 +251,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the crew progress card opens the crew week and comes back', (
+  testWidgets("today's count under the rail opens the crew week", (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -261,16 +261,29 @@ void main() {
     final backend = DashboardBackend();
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    // The streak is a readout: only the crew card opens the week.
-    await tester.tap(find.byKey(const ValueKey('crew-header-streak')));
+    // The line under the rail is the week drawn small — seven columns, one a
+    // day — with today's count beside it. The sentence it used to spell out is
+    // what a screen reader still hears.
+    expect(find.byKey(const ValueKey('crew-today-bar')), findsOneWidget);
+    expect(find.text('Crew week'), findsOneWidget);
+    // The columns carry the count; nothing beside them repeats it in figures.
+    expect(find.text('1/2'), findsNothing);
+    expect(find.text('1 of 2 checked in today'), findsNothing);
+    final semantics = tester.ensureSemantics();
+    expect(
+      find.bySemanticsLabel('1 of 2 checked in today, open the crew week'),
+      findsOneWidget,
+    );
+    semantics.dispose();
+    // The week card carried the chevron and took the tap into the crew week
+    // while it was a headline and a bar. The race wants that width, so the
+    // door moved to the line above it and the card is read rather than opened.
+    await tester.tap(find.byKey(const ValueKey('home-crew-panel')));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsNothing);
     await tester.tap(find.byKey(const ValueKey('open-crew-week')));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsOneWidget);
-    await tester.tap(find.byTooltip('Back to home'));
-    await tester.pumpUi();
-    expect(find.byType(CrewWeekPage), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

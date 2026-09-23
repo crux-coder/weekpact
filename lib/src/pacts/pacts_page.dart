@@ -215,9 +215,14 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final crew = _selected;
     return PageFrame(
-      header: const CrewPageHeading(
-        title: 'Pacts',
-        dotColor: WeekPactColors.lavender,
+      header: CrewPageHeading(
+        switcher: crew == null
+            ? null
+            : CrewSwitcher(
+                crews: _crews!,
+                selectedId: crew.id,
+                onSelected: _loading ? null : _select,
+              ),
       ),
       onRefresh: _refresh,
       loading: !_hasLoaded && _loading,
@@ -228,16 +233,6 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (crew != null) ...[
-            CrewSwitcher(
-              compact: true,
-              crews: _crews!,
-              selectedId: crew.id,
-              loadWeek: widget.loadWeek,
-              onSelected: _loading ? null : _select,
-            ),
-            const SizedBox(height: 12),
-          ],
           if (_crews != null && _crews!.isEmpty)
             AppSectionCard(
               title: 'A shared start',
@@ -271,7 +266,6 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
           if (crew != null) ...[
             if (_loading || (_pacts == null && _error == null))
               const CrewPageSkeleton(
-                showSelector: false,
                 label: 'Loading pacts',
                 body: PactsSkeletonBody(),
               )

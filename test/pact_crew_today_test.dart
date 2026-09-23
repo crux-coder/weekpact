@@ -166,7 +166,9 @@ void main() {
         inToday: ['ak'],
       ),
     );
-    final card = tester.getRect(find.byKey(const ValueKey('move')).hitTestable());
+    final card = tester.getRect(
+      find.byKey(const ValueKey('move')).hitTestable(),
+    );
     final faces = tester.getRect(find.byKey(const ValueKey('pact-crew-move')));
     final bar = tester.getRect(
       find.byKey(const ValueKey('pact-progress-move')).hitTestable(),

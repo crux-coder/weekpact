@@ -24,11 +24,124 @@ Future<int?> showNotificationsPage(
   MaterialPageRoute(builder: (_) => NotificationsPage(backend: backend)),
 );
 
+/// The bell, and what it wears: how many of the crew's notices are unread,
+/// and the way into the list of them.
+///
+/// The bell is Home's — top right, across from the crew's name, which is the
+/// corner an app's notifications live in and the one place on Home nothing
+/// else is asking for.
+///
+/// It keeps its own count rather than taking one from the page around it: the
+/// count has nothing to do with the crew's week, survives a crew switch
+/// untouched, and a page that threaded it through would have to refresh it for
+/// reasons that are not its own.
+class NotificationsBell extends StatefulWidget {
+  const NotificationsBell({
+    super.key,
+    required this.backend,
+    this.active = true,
+  });
+
+  final HomeBackend backend;
+
+  /// Whether the page carrying the bell is the one on screen. Coming back to
+  /// it re-reads the count, the way returning to any tab re-reads its page.
+  final bool active;
+
+  /// The bell's tap target, which is also the height a header has to give the
+  /// row it sits in.
+  static const size = 44.0;
+
+  @override
+  State<NotificationsBell> createState() => _NotificationsBellState();
+}
+
+class _NotificationsBellState extends State<NotificationsBell>
+    with WidgetsBindingObserver {
+  /// What the bell wears. A failed count leaves the badge as it was rather
+  /// than claiming the crew has gone quiet.
+  int _unread = 0;
+  bool _opening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_count());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationsBell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) unawaited(_count());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.active) {
+      unawaited(_count());
+    }
+  }
+
+  Future<void> _count() async {
+    try {
+      final unread = await widget.backend.fetchUnreadNotificationCount();
+      if (mounted) setState(() => _unread = unread);
+    } catch (_) {
+      // The page is the page; the badge is not worth an error state.
+    }
+  }
+
+  /// The list hands back what is still unread when it closes, so the badge
+  /// settles on the way out instead of on the next read. Backing out with the
+  /// system gesture answers nothing, and the count is read again instead.
+  Future<void> _openList() async {
+    setState(() => _opening = true);
+    final remaining = await showNotificationsPage(
+      context,
+      backend: widget.backend,
+    );
+    if (!mounted) return;
+    setState(() {
+      _opening = false;
+      if (remaining != null) _unread = remaining;
+    });
+    if (remaining == null) await _count();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: NotificationsBell.size,
+    child: IconButton(
+      tooltip: 'Notifications',
+      onPressed: _opening ? null : () => unawaited(_openList()),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(
+        width: NotificationsBell.size,
+        height: NotificationsBell.size,
+      ),
+      icon: Badge(
+        key: const ValueKey('notifications-badge'),
+        isLabelVisible: _unread > 0,
+        label: Text(_unread > 99 ? '99+' : '$_unread'),
+        backgroundColor: WeekPactColors.salmon,
+        textColor: WeekPactColors.black,
+        child: const AppIcon(icon: HugeIconsStrokeRounded.notification02),
+      ),
+    ),
+  );
+}
+
 /// Everything the crew has told this person, newest first.
 ///
-/// The page reads itself in pages keyed on the last entry, the way the feed
-/// does, so a notification arriving mid-scroll cannot shift what is below the
-/// fold. Opening it marks read only as far as the first page reached: anything
+/// The page reads itself in pages keyed on the last entry, so a notification
+/// arriving mid-scroll cannot shift what is below the fold. Opening it marks read only as far as the first page reached: anything
 /// that lands while it is open is still unread when it closes.
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key, required this.backend});
@@ -177,13 +290,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         bottom: WeekPactMetrics.sectionGap,
                       ),
                       child: CrewPageHeading(
-                        title: 'Notifications',
-                        dotColor: WeekPactColors.lime,
                         actions: [
                           IconButton(
                             tooltip: 'Close notifications',
-                            onPressed: () =>
-                                Navigator.of(context).pop(_unread),
+                            onPressed: () => Navigator.of(context).pop(_unread),
                             icon: const AppIcon(
                               icon: HugeIconsStrokeRounded.cancel01,
                             ),
@@ -296,7 +406,8 @@ class _NotificationRow extends StatelessWidget {
     return AppSurface(
       borderRadius: 16,
       builder: (context) => Semantics(
-        label: '${entry.subject} ${entry.action} · ${entry.crewName} · $when'
+        label:
+            '${entry.subject} ${entry.action} · ${entry.crewName} · $when'
             '${entry.read ? '' : ' · unread'}',
         child: ExcludeSemantics(
           child: Padding(
@@ -356,7 +467,8 @@ class _NotificationRow extends StatelessWidget {
                             ' · $when',
                             style: TextStyle(
                               fontFamily: WeekPactType.secondary,
-                              fontFamilyFallback: WeekPactType.secondaryFallback,
+                              fontFamilyFallback:
+                                  WeekPactType.secondaryFallback,
                               color: context.muted,
                               fontSize: 12,
                             ),

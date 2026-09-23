@@ -111,6 +111,34 @@ void main() {
     expect(left, isTrue);
     expect(find.text('CREATE CREW'), findsOneWidget);
   });
+  testWidgets('the create form asks for a name and nothing else', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()..crew = null;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.light,
+        home: Scaffold(
+          body: CrewPage(
+            backend: backend,
+            currentUserEmail: 'owner@example.com',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Start your crew'), findsOneWidget);
+    expect(find.text('CREATE CREW'), findsOneWidget);
+    // The crew's week runs on the zone of the device it is made on, so there
+    // is nothing here to choose and nothing to show. It used to carry a
+    // read-only box holding whatever zone the build was compiled with.
+    expect(find.text('UTC'), findsNothing);
+    expect(find.text('Europe/Sarajevo'), findsNothing);
+    expect(find.text('WEEK STARTS MONDAY'), findsNothing);
+    // One field, and it is the name.
+    expect(find.byType(TextFormField), findsOneWidget);
+  });
+
   testWidgets('owner confirms removal and member list refreshes', (
     tester,
   ) async {

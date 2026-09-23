@@ -24,8 +24,13 @@ async function asUser(user, fn) {
 const clap = (user, clapped, target = [pact, author, day]) => asUser(user, async () => (await db.query(
   'select set_check_in_clap($1,$2,$3,$4) as result', [...target, clapped],
 )).rows[0].result);
-const feed = user => asUser(user, async () =>
-  (await db.query('select check_in_feed(null,null,null,null,10) as entries')).rows[0].entries);
+// The feed RPC is gone, and `check_in_claps` has no direct read path of its
+// own, so the stored rows are checked here from outside RLS instead.
+const clapTotal = async () =>
+  (await db.query('select count(*)::int as total from check_in_claps')).rows[0].total;
+const clappedBy = async user => (await db.query(
+  'select count(*)::int as total from check_in_claps where actor_id=$1', [user],
+)).rows[0].total > 0;
 
 await asUser(author, () => db.query('insert into crews(id,name,owner_id) values($1,$2,$3)', [crew, 'Climbers', author]));
 await asUser(outsider, () => db.query('insert into crews(id,name,owner_id) values($1,$2,$3)', [foreign, 'Private crew', outsider]));
@@ -45,14 +50,13 @@ assert.deepEqual(await clap(mate, true), { clap_count: 1, viewer_clapped: true }
 assert.deepEqual(await clap(mate, true), { clap_count: 1, viewer_clapped: true }, 'clapping twice still counts once');
 assert.deepEqual(await clap(author, true), { clap_count: 2, viewer_clapped: true }, 'members can clap their own check-in');
 
-const [post] = await feed(mate);
-assert.equal(Number(post.clap_count), 2, 'the feed carries the count');
-assert.equal(post.viewer_clapped, true, 'and whether the viewer clapped');
-assert.equal((await feed(author))[0].viewer_clapped, true);
+assert.equal(await clapTotal(), 2, 'both claps are stored');
+assert.equal(await clappedBy(mate), true, 'one row per member who clapped');
+assert.equal(await clappedBy(author), true);
 
 assert.deepEqual(await clap(mate, false), { clap_count: 1, viewer_clapped: false }, 'unclapping removes only my clap');
 assert.deepEqual(await clap(mate, false), { clap_count: 1, viewer_clapped: false }, 'unclapping twice is harmless');
-assert.equal((await feed(mate))[0].viewer_clapped, false);
+assert.equal(await clappedBy(mate), false, 'and the row goes with it');
 
 // Only the crews you belong to, in both directions.
 await assert.rejects(clap(outsider, true), /Crew membership required/, 'outsiders cannot clap');
@@ -80,5 +84,5 @@ await db.query('delete from pact_check_ins where pact_id=$1 and user_id=$2 and c
 assert.equal((await db.query('select count(*)::int as total from check_in_claps')).rows[0].total, 0,
   'claps are removed with the check-in they applaud');
 
-console.log('Check-in clap toggling, crew scope, idempotence, feed counts and cascade passed.');
+console.log('Check-in clap toggling, crew scope, idempotence and cascade passed.');
 await db.close();

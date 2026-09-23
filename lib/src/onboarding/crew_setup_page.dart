@@ -3,6 +3,7 @@ import '../home/photo_check_in_sheet.dart';
 import 'package:flutter/material.dart';
 
 import '../crew/crew_backend.dart';
+import '../crew/device_timezone.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../crew/crew_sharing.dart';
 import '../home/home_backend.dart';
@@ -103,10 +104,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
     try {
       final crew = await widget.crewBackend.createCrew(
         name: _name.text.trim(),
-        timezone: const String.fromEnvironment(
-          'APP_TIMEZONE',
-          defaultValue: 'UTC',
-        ),
+        timezone: await deviceTimezone(),
       );
       if (mounted) {
         setState(() {

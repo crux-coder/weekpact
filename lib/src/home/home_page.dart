@@ -8,10 +8,13 @@ import 'package:flutter/services.dart';
 
 import 'dart:async';
 
-import '../crew/crew_week_page.dart';
-
-import '../feed/feed_page.dart';
+import '../notifications/notifications_page.dart';
 import 'home_backend.dart';
+import 'nudge_sheet.dart';
+import 'stories.dart';
+import 'stories_rail.dart';
+import 'story_seen_store.dart';
+import 'story_viewer.dart';
 
 import 'package:flutter/material.dart';
 
@@ -24,6 +27,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../auth/auth_backend.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_page.dart';
+import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import 'today_widgets.dart';
@@ -37,6 +41,7 @@ class HomePage extends StatefulWidget {
     required this.crewBackend,
     this.initialCrewId,
     this.crewSelectionStore,
+    this.storySeenStore,
     this.captureCheckInPhoto,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
@@ -47,6 +52,10 @@ class HomePage extends StatefulWidget {
   final CrewBackend crewBackend;
   final String? initialCrewId;
   final CrewSelectionStore? crewSelectionStore;
+
+  /// Which of today's stories this device has already opened. Null keeps them
+  /// for the run of the app and no longer.
+  final StorySeenStore? storySeenStore;
   final CheckInPhotoCapture? captureCheckInPhoto;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
@@ -61,11 +70,6 @@ class _HomePageState extends State<HomePage> {
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
       color: WeekPactColors.stone,
-    ),
-    AppNavigationItem(
-      label: 'Feed',
-      icon: HugeIconsStrokeRounded.image02,
-      color: WeekPactColors.coolGrey,
     ),
     AppNavigationItem(
       label: 'Pacts',
@@ -85,6 +89,10 @@ class _HomePageState extends State<HomePage> {
   ];
 
   late final PageController _pageController;
+
+  /// The fallback when no store was handed in: stories stay seen for as long
+  /// as the app is running.
+  late final _seenStore = StorySeenStore.memory();
   int _selectedIndex = 0;
   int _homeRevision = 0;
   String? _selectedCrewId;
@@ -186,6 +194,7 @@ class _HomePageState extends State<HomePage> {
           _HomeDestination(
             key: ValueKey(_homeRevision),
             backend: widget.homeBackend,
+            seenStore: widget.storySeenStore ?? _seenStore,
             selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
             pactsBackend: widget.pactsBackend,
@@ -193,26 +202,20 @@ class _HomePageState extends State<HomePage> {
             captureCheckInPhoto: widget.captureCheckInPhoto,
             active: _selectedIndex == 0,
             onStartCrew: _startCrew,
-            onOpenCrews: () => _selectDestination(3),
-            onOpenPacts: () => _selectDestination(2),
-            onOpenFeed: () => _selectDestination(1),
-          ),
-          FeedPage(
-            backend: widget.homeBackend,
-            userId: widget.user.id,
-            active: _selectedIndex == 1,
+            onOpenCrews: () => _selectDestination(2),
+            onOpenPacts: () => _selectDestination(1),
           ),
           PactsPage(
-            active: _selectedIndex == 2,
+            active: _selectedIndex == 1,
             backend: widget.pactsBackend,
             loadWeek: widget.homeBackend.fetchWeek,
             userId: widget.user.id,
             selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
-            onOpenCrews: () => _selectDestination(3),
+            onOpenCrews: () => _selectDestination(2),
           ),
           CrewPage(
-            active: _selectedIndex == 3,
+            active: _selectedIndex == 2,
             onInviteAccepted: () => _selectDestination(0),
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
@@ -252,24 +255,24 @@ class _HomeDestination extends StatefulWidget {
     required this.pactsBackend,
     required this.userId,
     required this.active,
+    required this.seenStore,
     this.captureCheckInPhoto,
     this.selectedCrewId,
     this.onCrewSelected,
     required this.onOpenCrews,
     required this.onOpenPacts,
-    required this.onOpenFeed,
     required this.onStartCrew,
   });
   final CheckInPhotoCapture? captureCheckInPhoto;
   final HomeBackend backend;
   final PactsBackend pactsBackend;
   final String userId;
+  final StorySeenStore seenStore;
   final String? selectedCrewId;
   final ValueChanged<String>? onCrewSelected;
   final bool active;
   final VoidCallback onOpenCrews;
   final VoidCallback onOpenPacts;
-  final VoidCallback onOpenFeed;
   final VoidCallback onStartCrew;
   @override
   State<_HomeDestination> createState() => _HomeDestinationState();
@@ -285,6 +288,18 @@ class _HomeDestinationState extends State<_HomeDestination>
   Timer? _timer;
   String? _savingPact;
   String? _saveError;
+
+  /// Today's stories this device has already opened, so a ring that has been
+  /// looked at goes grey. Read from the store as the week arrives, because the
+  /// week is what says which day "today" is.
+  final _seen = <String>{};
+
+  /// Whether each crewmate can be nudged, fetched with the week rather than
+  /// on the press, so the offer opens with its button already in the state it
+  /// is really in. Empty when the call failed, which the offer takes as "ask
+  /// the server" rather than as a refusal — a states call that fell over
+  /// should not take the nudge down with it.
+  Map<String, CrewNudgeState> _nudges = const {};
 
   @override
   void initState() {
@@ -346,13 +361,80 @@ class _HomeDestinationState extends State<_HomeDestination>
           ? null
           : await widget.backend.fetchWeek(crew.id);
       if (mounted && request == _request) {
-        setState(() => _week = week);
+        setState(() {
+          _week = week;
+          _seen
+            ..clear()
+            ..addAll(
+              week == null
+                  ? const <String>{}
+                  : widget.seenStore.read(widget.userId, week.today),
+            );
+        });
       }
+      await _loadNudges(crew?.id, request);
     } catch (_) {
       if (mounted && request == _request) {
         setState(() => _error = 'Could not load your week. Please try again.');
       }
     }
+  }
+
+  /// Who can be nudged, alongside the week.
+  ///
+  /// Its own try, outside the week's: the week is the page and a nudge is one
+  /// gesture on it, so a states call that fails leaves Home standing and the
+  /// offer asking the server for itself. Nothing here ever sets [_error].
+  Future<void> _loadNudges(String? crewId, int request) async {
+    if (crewId == null) {
+      if (mounted && request == _request) {
+        setState(() => _nudges = const {});
+      }
+      return;
+    }
+    try {
+      final states = await widget.backend.fetchNudgeStates(crewId);
+      if (mounted && request == _request) setState(() => _nudges = states);
+    } catch (_) {
+      if (mounted && request == _request) {
+        setState(() => _nudges = const {});
+      }
+    }
+  }
+
+  /// Offers a nudge for a crewmate who has not been out today.
+  ///
+  /// The last day they kept anything is read off the week already in hand —
+  /// [CrewWeek.checkIns] covers this week, which is as far back as the card
+  /// needs to look and as far back as it can see without another call.
+  Future<void> _nudge(MemberDay day) async {
+    final crew = _crew;
+    final week = _week;
+    if (crew == null || week == null) return;
+    final kept =
+        week.checkIns
+            .where((i) => i.userId == day.member.id)
+            .map((i) => i.day)
+            .toList()
+          ..sort();
+    final result = await showNudge(
+      context: context,
+      backend: widget.backend,
+      crewId: crew.id,
+      member: day.member,
+      state: _nudges[day.member.id],
+      today: week.today,
+      lastKept: kept.lastOrNull,
+    );
+    if (!mounted || result == null) return;
+    setState(() => _nudges = {..._nudges, day.member.id: result});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Nudged ${day.member.displayName.trim().isEmpty ? 'your crewmate' : day.member.displayName.trim()}.',
+        ),
+      ),
+    );
   }
 
   Future<void> _togglePact(String pactId) async {
@@ -427,34 +509,84 @@ class _HomeDestinationState extends State<_HomeDestination>
     }
   }
 
-  /// The crew switcher, as Pacts and Crews carry it: the same compact control
-  /// under the page's own heading, so switching crews is the one gesture
-  /// wherever you are. Null until the crews are in — there is nothing to
-  /// switch between yet, and the heading stands alone until there is.
+  /// Whether Home knows which crew it is about yet, which is what decides
+  /// the header's height. See [_selector].
+  bool get _hasSelector => _crews?.isNotEmpty ?? false;
+
+  /// The header's height as the page is drawing it now: the rail alone until
+  /// the crews arrive, and the crew's name over it once they have.
+  double get _headerHeight =>
+      _hasSelector ? HomeHeader.height : HomeHeader.headingHeight;
+
+  /// The bell in the top corner: what the crew has told you, and the way into
+  /// the list of it. Home is the page people open to see what the crew has
+  /// been doing, and this is the corner notifications live in.
+  ///
+  /// It counts for itself and does not ride [_refresh]: the count answers to
+  /// the crew's notices rather than to this week, and it should not be reread
+  /// every time a pact is saved or a crew is switched.
+  Widget _bell() => NotificationsBell(
+    key: const ValueKey('home-notifications'),
+    backend: widget.backend,
+    active: widget.active,
+  );
+
+  /// The crew's name at the top of Home, as Pacts and Crews carry it: the
+  /// same title in the same place, so the page says which crew it is about
+  /// and switching is one gesture wherever you are. Null until the crews are
+  /// in — the page does not know its own subject yet, and a title guessing at
+  /// one is worse than no title.
   Widget? _selector() {
     final crews = _crews;
     if (crews == null || crews.isEmpty) return null;
     return CrewSwitcher(
       key: const ValueKey('home-crew-switcher'),
-      compact: true,
-      // Home stacks the switcher on the crew panel at the same width, so it
-      // takes the corner that column is cut to rather than the standalone
-      // control's own.
-      curve: CrewWeekButton.frameCurve,
       crews: crews,
       selectedId: _crew?.id ?? widget.selectedCrewId,
-      loadWeek: widget.backend.fetchWeek,
       // A switch mid-save would save the check-in against the crew being
       // left, so the control waits for the write to land.
       onSelected: _savingPact != null ? null : widget.onCrewSelected,
     );
   }
 
+  /// Opens the rail on [day], with the rest of the crew's day behind it.
+  ///
+  /// Only members who are in are handed over: the viewer walks out of one
+  /// member's check-ins and into the next one's, and a member with nothing
+  /// kept would be a page in that walk with nothing on it.
+  Future<void> _openStories(List<MemberDay> days, MemberDay day) async {
+    final open = days.where((d) => d.isIn).toList();
+    final index = open.indexOf(day);
+    final today = _week?.today;
+    if (index < 0 || today == null) return;
+    final opened = <String>{};
+    await StoryViewer.open(
+      context,
+      days: open,
+      viewerId: widget.userId,
+      initial: index,
+      backend: widget.backend,
+      onSeen: (story) => opened.add(story.id),
+    );
+    if (opened.isEmpty) return;
+    // Marked on the way out rather than as each story is shown: the rail is
+    // behind the viewer, so a ring going grey there is a frame nobody sees —
+    // and a rebuild of this page in the middle of another route's build.
+    unawaited(widget.seenStore.mark(widget.userId, today, opened));
+    if (mounted) setState(() => _seen.addAll(opened));
+  }
+
+  /// Opens the crew's week, the page the count under the rail is a line of.
+  ///
+  /// The week is reread on the way back: the page checks nobody in, but it
+  /// stands open long enough for the crew to have moved under it.
   Future<void> _openCrewWeek() async {
+    final crew = _crew;
+    if (crew == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CrewWeekPage(
-          crew: _crew!,
+          crew: crew,
           backend: widget.backend,
           userId: widget.userId,
         ),
@@ -499,10 +631,13 @@ class _HomeDestinationState extends State<_HomeDestination>
                         // Preserve a complete, non-scrolling composition even when
                         // safe areas or landscape leave less than its minimum height.
                         final pageHeight = constraints.maxHeight.clamp(
-                          // Heading and its switcher, the crew panel and a
-                          // usable pact card; shorter viewports scale down.
+                          // Heading and its switcher, today's count, the crew
+                          // panel and a usable pact card; shorter viewports
+                          // scale down.
                           312 +
-                              HomeHeader.height +
+                              _headerHeight +
+                              CrewTodayBar.height +
+                              12 +
                               HomeCrewPanel.height +
                               (_saveError == null ? 0 : 40),
                           double.infinity,
@@ -521,7 +656,10 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   // switch, so the hand it is putting away
                                   // finishes its flight rather than blinking
                                   // out with the page under it.
-                                  return TodaySkeleton(selector: selector);
+                                  return TodaySkeleton(
+                                    selector: selector,
+                                    action: _bell(),
+                                  );
                                 }
                                 if (_error != null) {
                                   return Center(
@@ -572,6 +710,11 @@ class _HomeDestinationState extends State<_HomeDestination>
                                 if (week == null) {
                                   return const SizedBox.shrink();
                                 }
+                                final days = MemberDay.read(
+                                  week,
+                                  viewerId: widget.userId,
+                                  seen: _seen,
+                                );
                                 return ExpandableHomePanels(
                                   key: ValueKey(_crew!.id),
                                   backend: widget.backend,
@@ -583,28 +726,36 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   // unfolds over it and there is no tile for
                                   // a panel to line up with.
                                   showCrewCheckIns: false,
-                                  top:
-                                      HomeHeader.height +
-                                      12 +
-                                      CrewWeekButton.pad,
+                                  top: _headerHeight + 12 + CrewWeekButton.pad,
                                   inset: CrewWeekButton.pad,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
                                       HomeHeader(
-                                        streakWeeks: week.streakWeeks,
+                                        action: _bell(),
+                                        rail: StoriesRail(
+                                          days: days,
+                                          onNudge: _nudge,
+                                          // Past the page's own margin, so a
+                                          // long crew leaves at the screen's
+                                          // edge rather than at the card's.
+                                          bleed: 12,
+                                          onOpen: (day) =>
+                                              _openStories(days, day),
+                                        ),
                                         selector: selector,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      CrewTodayBar(
+                                        week: week,
+                                        onOpenWeek: _openCrewWeek,
                                       ),
                                       const SizedBox(height: 12),
                                       HomeCrewPanel(
                                         key: const ValueKey('home-crew-panel'),
                                         week: week,
                                         userId: widget.userId,
-                                        onOpenWeek: _openCrewWeek,
-                                        backend: widget.backend,
-                                        crewId: _crew!.id,
-                                        active: widget.active,
                                       ),
                                       const SizedBox(height: 12),
                                       if (_saveError != null)

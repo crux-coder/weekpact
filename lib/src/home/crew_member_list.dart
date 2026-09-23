@@ -21,9 +21,9 @@ class CrewMemberList extends StatefulWidget {
     this.backend,
     this.crewId,
     this.checkedIn,
+    this.week,
     this.onDark = false,
     this.head = 0,
-    this.headLead = 0,
   });
   final List<WeekMember> members;
   final bool done;
@@ -40,33 +40,28 @@ class CrewMemberList extends StatefulWidget {
   /// wears what its day is: a tick, or the seat still waiting on it.
   final Set<String>? checkedIn;
 
+  /// The crew's week, for the bar each row carries under its name. Null
+  /// leaves the rows as a name and a nudge — the panels that show one side of
+  /// the day are about today, and a week's progress on them would be a second
+  /// number answering a question nobody asked there.
+  final CrewWeek? week;
+
   /// True when the list sits on a dark face rather than a pale tile. The
   /// rows then take the dark card's ink and the nudge button inverts: a pale
   /// face on the dark border, since graphite on a dark panel is a shadow.
   final bool onDark;
 
-  /// The rows' margin from the list's own edges, which the hairline over them
-  /// takes too so the two line up.
+  /// The rows' margin from the list's own edges.
   static const inset = 12.0;
 
-  /// Room over the first face, carrying a hairline at its top.
-  ///
-  /// A list opening straight out of the thing above it needs a line saying
-  /// where one ends and the other begins, and air under that line so the
-  /// first face is not pressed against it. Zero where the list is already
-  /// inside a titled surface of its own.
+  /// Room over the first face, so it is not pressed against whatever the list
+  /// opened out of. Zero where the list is already inside a titled surface of
+  /// its own.
   ///
   /// The caller sets it, because the caller is sizing the box: a drawer that
   /// runs exactly as far as its rows have to know this is in them, or it
   /// clips its last name.
   final double head;
-
-  /// The air over the hairline inside [head].
-  ///
-  /// The caller sets it, because only the caller knows what the thing above
-  /// already leaves under its own last line. The line wants the same space on
-  /// each side of it, and the slack over it is half that space already.
-  final double headLead;
 
   @override
   State<CrewMemberList> createState() => _CrewMemberListState();
@@ -221,30 +216,7 @@ class _CrewMemberListState extends State<CrewMemberList>
               ],
             ),
           ),
-        if (widget.head > 0)
-          SizedBox(
-            height: widget.head,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                // Inset to the rows' own margin, so the line starts where the
-                // faces start and stops where the nudge buttons stop. A rule
-                // running the full width would cut the drawer in two instead
-                // of grouping what is under it.
-                padding: EdgeInsets.fromLTRB(
-                  CrewMemberList.inset,
-                  widget.headLead,
-                  CrewMemberList.inset,
-                  0,
-                ),
-                child: Container(
-                  key: const ValueKey('crew-member-list-rule'),
-                  height: 1,
-                  color: _ink.withValues(alpha: .12),
-                ),
-              ),
-            ),
-          ),
+        if (widget.head > 0) SizedBox(height: widget.head),
         Expanded(
           child: ListView.builder(
             key: ValueKey(
@@ -290,13 +262,22 @@ class _CrewMemberListState extends State<CrewMemberList>
         : _canNudge
         ? _nudgeButton(context, member)
         : null;
+    final week = widget.week;
+    // Nothing to show a share of: a crew with no pacts yet, or a list that was
+    // not given the week.
+    final percent = week == null || week.target == 0
+        ? null
+        : week.percent(member.id);
     final details = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Tooltip(
           message: full.isEmpty ? name : full,
           child: Semantics(
-            label: full.isEmpty ? name : full,
+            label: percent == null
+                ? (full.isEmpty ? name : full)
+                : '${full.isEmpty ? name : full}, '
+                      '$percent% of this week kept',
             excludeSemantics: true,
             child: Text(
               name,
@@ -312,6 +293,10 @@ class _CrewMemberListState extends State<CrewMemberList>
             ),
           ),
         ),
+        if (percent != null) ...[
+          const SizedBox(height: 3),
+          _WeekBar(percent: percent, ink: _ink, muted: _muted),
+        ],
         if (_failed.contains(member.id))
           Text(
             'Could not send. Try again.',
@@ -486,6 +471,60 @@ class _CrewMemberListState extends State<CrewMemberList>
 /// badge size — a kept day is mint with a tick, an owed one is bare
 /// `pendingCheckIns`. Read together down the column they sort the roster
 /// without a word, which is what the drawer has no room for.
+/// How much of this week one member has kept, under their name.
+///
+/// The crew's own progress card reads exactly this way — the bar in the
+/// surface's own ink on a let-down track of it, with the number beside it — so
+/// a person's week and the crew's are one picture at two sizes rather than two
+/// inventions. The share is `CrewWeek.percent`, which caps each pact at what
+/// it asked for, so nobody passes 100% by keeping a three-day pact all seven.
+class _WeekBar extends StatelessWidget {
+  const _WeekBar({
+    required this.percent,
+    required this.ink,
+    required this.muted,
+  });
+
+  final int percent;
+  final Color ink;
+  final Color muted;
+
+  /// Thin: it sits under a name rather than leading a card, and the row is
+  /// the same height as the face beside it whatever the bar does.
+  static const _height = 5.0;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    // The row's own label already reads the number; the bar would say it
+    // again, in percent-of-one.
+    child: Row(
+      children: [
+        Expanded(
+          child: LinearProgressIndicator(
+            value: percent / 100,
+            minHeight: _height,
+            borderRadius: WeekPactMetrics.pill,
+            color: ink,
+            backgroundColor: ink.withValues(alpha: .18),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          '$percent%',
+          style: TextStyle(
+            color: muted,
+            fontFamily: WeekPactType.secondary,
+            fontFamilyFallback: WeekPactType.secondaryFallback,
+            fontSize: 11,
+            height: 1.1,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _CheckMark extends StatelessWidget {
   const _CheckMark({required this.done, required this.onDark});
   final bool done;

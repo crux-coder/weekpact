@@ -123,23 +123,15 @@ class CrewTodayStrip extends StatefulWidget {
   static const _rowHeight = 44.0;
   static const _listInset = 8.0;
 
-  /// The roster's head: a hairline where the day's row ends, and the air under
-  /// it that keeps the first face off that line. It lives inside the drawer's
-  /// own clip, so nothing of it shows until the drawer is actually out.
+  /// The roster's head: the air that keeps the first face off the day's own
+  /// row. There was a hairline in it, and it cut the drawer in two rather
+  /// than grouping what was under it — the faces start where the drawer's
+  /// own edge already says they do.
   ///
   /// The drawer's run has to include it. It is part of what the list measures,
   /// and a drawer sized to the rows alone would clip its last name by exactly
   /// this much.
-  static const _listHead = 13.0;
-
-  /// The air over the hairline inside that head.
-  ///
-  /// The day's row leaves its own slack under the score — the row is taller
-  /// than the line of type in it — and the line wants to sit midway between
-  /// that type and the first face, not hard against the words. This is the
-  /// difference: the rest of the head falls under the line, where the list's
-  /// own row padding tops it up to the same gap again.
-  static const _listRule = 5.0;
+  static const _listHead = 8.0;
 
   @override
   State<CrewTodayStrip> createState() => _CrewTodayStripState();
@@ -409,19 +401,12 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
                     height: CrewTodayStrip.rowHeight,
                     child: Row(
                       children: [
-                        // The score takes the whole of the rest of the row and
-                        // sits at the head of it, so the time left finishes on
-                        // the row's own right edge. A `Flexible` score beside a
-                        // `Spacer` would split the free space between them and
-                        // leave the slack the score did not use standing to the
-                        // right of the clock.
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: _count(context),
-                          ),
-                        ),
+                        // The score that stood here — so many of the crew in
+                        // today — is what the stories rail at the top of the
+                        // page now says in faces, and a row cannot be worth
+                        // its height saying it a second time in figures. The
+                        // clock is the one thing left that nothing else says.
+                        const Spacer(),
                         // Gone once the crew is all in — there is nothing left
                         // for the time to be left for.
                         if (left != null && waiting)
@@ -451,44 +436,6 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
       animation: _drawer,
       builder: (context, _) => _Grip(open: _drawer.value, colour: context.ink),
     ),
-  );
-
-  /// The day as a score, in the page's own weight: the number that has been
-  /// kept over the number owed.
-  Widget _count(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.baseline,
-    textBaseline: TextBaseline.alphabetic,
-    children: [
-      Text(
-        '$_inCount',
-        key: const ValueKey('crew-today-count'),
-        style: TextStyle(
-          color: context.ink,
-          fontSize: 19,
-          height: 1,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      Text(
-        '/${widget.week.members.length}',
-        style: TextStyle(
-          color: context.muted,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(width: 5),
-      Text(
-        'in today',
-        style: TextStyle(
-          color: context.muted,
-          fontFamily: WeekPactType.secondary,
-          fontFamilyFallback: WeekPactType.secondaryFallback,
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ],
   );
 
   /// The drawer, open over the page.
@@ -539,6 +486,7 @@ class _CrewTodayStripState extends State<CrewTodayStrip>
                       front: _front(context, inDrawer: true, grip: false),
                       grip: _grip(context),
                       members: _ordered,
+                      week: widget.week,
                       checkedIn: {
                         for (final member in widget.week.members)
                           if (_done(member)) member.id,
@@ -569,6 +517,7 @@ class _Drawer extends StatelessWidget {
     required this.front,
     required this.grip,
     required this.members,
+    required this.week,
     required this.checkedIn,
     required this.userId,
     required this.backend,
@@ -581,6 +530,9 @@ class _Drawer extends StatelessWidget {
   final Widget front;
   final Widget grip;
   final List<WeekMember> members;
+
+  /// The week the roster reads each member's own progress off.
+  final CrewWeek week;
 
   /// Whose day is already kept, so the roster can mark each row with it. The
   /// drawer holds the whole crew, in and out, which is the one list that has
@@ -642,8 +594,8 @@ class _Drawer extends StatelessWidget {
                       ),
                       child: CrewMemberList(
                         head: CrewTodayStrip._listHead,
-                        headLead: CrewTodayStrip._listRule,
                         members: members,
+                        week: week,
                         checkedIn: checkedIn,
                         done: false,
                         userId: userId,

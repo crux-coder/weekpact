@@ -92,8 +92,8 @@ abstract final class WeekPactColors {
   static const sand = Color(0xFFE0D9C0);
   static const brass = Color(0xFFE6D7A6);
 
-  /// The five destinations' full stops: `salmon` Home, `lavender` Pacts,
-  /// `lime` Feed, `sky` Crews and `lantern` Account.
+  /// The four destinations' full stops: `salmon` Home, `lavender` Pacts,
+  /// `sky` Crews and `lantern` Account. `lime` is kept for a fifth.
   ///
   /// A page's dot is a 32pt full stop — six pixels of colour against cream
   /// ink, on a canvas the app never leaves. The card tints and the quay's warm
@@ -232,10 +232,10 @@ abstract final class WeekPactType {
 
 /// The charcoal card.
 ///
-/// Most of the app is pale cards with dark ink. Three content-heavy surfaces —
-/// the Feed, the paywall and the subscription page — invert that: the photos
-/// and the pricing carry the colour there, and a pale card would compete with
-/// them. Crew week's streak panel and Home's activity panel use it too.
+/// Most of the app is pale cards with dark ink. The content-heavy surfaces —
+/// the story viewer, the paywall and the subscription page — invert that: the
+/// photos and the pricing carry the colour there, and a pale card would
+/// compete with them. Crew week's streak panel uses it too.
 ///
 /// It is a closed set. Take fill, outline, ink and muted from here together;
 /// never put pale-card ink (`WeekPactColors.black`, `mutedLight`) on this fill,

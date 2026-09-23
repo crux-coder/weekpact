@@ -10,7 +10,7 @@ import 'viewport_scroll_view.dart';
 class PageFrame extends StatelessWidget {
   const PageFrame({
     super.key,
-    required this.header,
+    this.header,
     required this.child,
     this.loading = false,
     this.skeleton,
@@ -20,7 +20,10 @@ class PageFrame extends StatelessWidget {
   }) : assert(!loading || skeleton != null);
 
   final double topPadding;
-  final Widget header;
+  /// What stands above the page's content. Null on a page with nothing to put
+  /// there: the pages used to open with their own name, and a page that has
+  /// lost it should not keep the name's gap.
+  final Widget? header;
   final Widget child;
   final bool loading;
   final Widget? skeleton;
@@ -34,8 +37,10 @@ class PageFrame extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          header,
-          const SizedBox(height: WeekPactMetrics.sectionGap),
+          if (header != null) ...[
+            header!,
+            const SizedBox(height: WeekPactMetrics.sectionGap),
+          ],
           if (loading) skeleton! else child,
         ],
       ),
@@ -71,47 +76,6 @@ class PageFrame extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// A page's title with a coloured full stop.
-///
-/// The dot is the destination's own tint, so each tab is recognisable before
-/// the title is read: Home salmon, Pacts lavender, Feed lime, Crews sky,
-/// Account lantern. Take them from the destination-dot group in
-/// `WeekPactColors` — they are held at full chroma on purpose, since a card
-/// tint at six pixels beside cream ink is just more cream. Every destination
-/// passes its own; the default covers one-off pages outside the nav, such as
-/// a crew invitation.
-class PageHeading extends StatelessWidget {
-  const PageHeading(
-    this.title, {
-    super.key,
-    this.dotColor = WeekPactColors.sky,
-  });
-  final String title;
-  final Color dotColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = TextStyle(
-      color: context.ink,
-      fontSize: 32,
-      height: 1.1,
-      fontWeight: FontWeight.w700,
-      letterSpacing: -.5,
-    );
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Flexible(child: Text(title, style: style)),
-        ExcludeSemantics(
-          child: Text('.', style: style.copyWith(color: dotColor)),
-        ),
-      ],
     );
   }
 }

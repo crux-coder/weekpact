@@ -44,34 +44,36 @@ double difference(Color a, Color b) {
 }
 
 void main() {
-  test('a page dot is a colour, not a paler ink', () {
-    // The five destinations' full stops, as the pages set them.
+  test('the loud five are colours, not paler inks', () {
+    // The five the palette holds at full chroma. They were the destinations'
+    // full stops until the page titles went; `salmon` still carries the
+    // notification badge and the rest are unspent, but the set is the app's
+    // identity colours and has to keep reading as five colours.
     const dots = {
       'Home': WeekPactColors.salmon,
       'Pacts': WeekPactColors.lavender,
-      'Feed': WeekPactColors.lime,
       'Crews': WeekPactColors.sky,
       'Account': WeekPactColors.lantern,
     };
-    // A dot is six pixels beside 32pt of cream. A card tint at that size is
-    // just more cream — which is what the canvas ink already is — so each one
-    // has to stand well clear of it.
+    // Each is meant to be read as a colour at a small size, beside cream ink.
+    // A card tint there is just more cream — which is what the canvas ink
+    // already is — so each one has to stand well clear of it.
     dots.forEach((page, dot) {
       expect(
         difference(dot, WeekPactColors.darkInk),
         greaterThan(30),
-        reason: "$page's dot reads as the ink beside it",
+        reason: "$page's colour reads as the ink beside it",
       );
     });
-    // And clear of each other: the dot is how a destination is known before
-    // its title is read, which two dots of one colour cannot do.
+    // And clear of each other: two of these carrying the same colour would be
+    // one colour with two jobs, which is how the set stops being a set.
     for (final one in dots.entries) {
       for (final other in dots.entries) {
         if (one.key == other.key) continue;
         expect(
           difference(one.value, other.value),
           greaterThan(30),
-          reason: '${one.key} and ${other.key} wear the same dot',
+          reason: '${one.key} and ${other.key} are the same colour',
         );
       }
     }

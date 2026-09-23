@@ -18,13 +18,9 @@ import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import '../home/home_backend.dart';
 import 'crew_roster.dart';
+import 'device_timezone.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../subscriptions/subscription_scope.dart';
-
-const _appTimezone = String.fromEnvironment(
-  'APP_TIMEZONE',
-  defaultValue: 'UTC',
-);
 
 class CrewPage extends StatefulWidget {
   const CrewPage({
@@ -154,7 +150,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     try {
       final crew = await widget.backend.createCrew(
         name: _crewNameController.text,
-        timezone: _appTimezone,
+        timezone: await deviceTimezone(),
       );
       if (mounted) {
         setState(() {
@@ -513,9 +509,24 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return PageFrame(
       header: CrewPageHeading(
-        title: 'Crews',
-        dotColor: WeekPactColors.sky,
-        actions: [
+        switcher: _crews.isEmpty || _showCreate
+            ? null
+            : CrewSwitcher(
+                crews: _crews,
+                selectedId: _loading
+                    ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)
+                    : _crew?.id,
+                onSelected: _changingMembership || _loading
+                    ? null
+                    : (id) {
+                        _selectedCrewId = id;
+                        widget.onCrewSelected?.call(id);
+                        _loadCrew();
+                      },
+              ),
+        // Making another crew leads the row; the invites that other people
+        // sent you close it. They are not a pair, so they do not sit as one.
+        leading: [
           if (_crew != null)
             IconButton(
               tooltip: _showCreate ? 'Cancel new crew' : 'Create another crew',
@@ -528,6 +539,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     : HugeIconsStrokeRounded.add01,
               ),
             ),
+        ],
+        actions: [
           IconButton(
             tooltip: 'Invites',
             onPressed: _invitesOpen ? null : _openInvites,
@@ -548,26 +561,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_crews.isNotEmpty && !_showCreate) ...[
-            CrewSwitcher(
-              compact: true,
-              crews: _crews,
-              loadWeek: widget.profileBackend?.fetchWeek,
-              selectedId: _loading
-                  ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)
-                  : _crew?.id,
-              onSelected: _changingMembership || _loading
-                  ? null
-                  : (id) {
-                      _selectedCrewId = id;
-                      widget.onCrewSelected?.call(id);
-                      _loadCrew();
-                    },
-            ),
-            const SizedBox(height: 12),
-          ],
           if (_loading && !_showCreate && _crew != null)
-            const CrewPageSkeleton(showSelector: false)
+            const CrewPageSkeleton()
           else if (_crew != null && !_showCreate) ...[
             _buildCrewState(context, _crew!),
           ] else if (_hasLoaded)
@@ -621,48 +616,18 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     textInputAction: TextInputAction.done,
                   ),
                   const SizedBox(height: 22),
+                  // The crew's week runs on the zone this device is in, taken
+                  // from the device when the crew is made. It used to be shown
+                  // here, in a read-only box beside a globe, holding whatever
+                  // zone the app was built with — a field nobody could act on,
+                  // telling most people the wrong thing. There is nothing to
+                  // choose and so nothing to show.
                   Text(
-                    'WEEK STARTS MONDAY',
+                    'Your week runs Monday to Sunday.',
                     style: TextStyle(
-                      color: context.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: .4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: WeekPactColors.stone,
-                      border: Border.all(
-                        color: context.border,
-                        width: WeekPactMetrics.border,
-                      ),
-                      borderRadius: BorderRadius.circular(
-                        WeekPactMetrics.controlRadius,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        AppIcon(
-                          icon: HugeIconsStrokeRounded.globe02,
-                          color: context.ink,
-                          size: 22,
-                          strokeWidth: 2,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _appTimezone,
-                            style: TextStyle(
-                              color: context.ink,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                      color: context.muted,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 25),

@@ -10,6 +10,7 @@ import '../pacts/pacts_backend.dart';
 
 import '../crew/crew_backend.dart';
 import '../crew/crew_selection_store.dart';
+import '../home/story_seen_store.dart';
 import '../home/home_page.dart';
 import '../invites/invite_acceptance_page.dart';
 import '../invites/invite_links.dart';
@@ -26,6 +27,7 @@ class AuthGate extends StatefulWidget {
     this.homeBackend = const MissingHomeBackend(),
     this.captureCheckInPhoto,
     this.crewSelectionStore,
+    this.storySeenStore,
     required this.inviteLinkSource,
   });
 
@@ -35,6 +37,7 @@ class AuthGate extends StatefulWidget {
   final HomeBackend homeBackend;
   final CheckInPhotoCapture? captureCheckInPhoto;
   final CrewSelectionStore? crewSelectionStore;
+  final StorySeenStore? storySeenStore;
   final InviteLinkSource inviteLinkSource;
 
   @override
@@ -136,6 +139,7 @@ class _AuthGateState extends State<AuthGate> {
             }
             return HomePage(
               crewSelectionStore: widget.crewSelectionStore,
+              storySeenStore: widget.storySeenStore,
               initialCrewId: _joinedUser == user.id ? _joinedCrewId : null,
               user: profile,
               authBackend: widget.authBackend,

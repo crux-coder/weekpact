@@ -82,6 +82,10 @@ await asUser(member, async () => {
   assert.equal(snapshot.today, today);
   assert.equal(snapshot.check_ins.length, 1);
   assert.equal(snapshot.check_ins[0].user_id, member);
+  // Home's stories rail reads the day off the snapshot: which check-ins carry
+  // a photo, and when each was kept.
+  assert.match(snapshot.check_ins[0].photo_path, new RegExp(`^${member}/${crew}/${pactId}/${today}/`));
+  assert.ok(Date.parse(snapshot.check_ins[0].created_at) > 0);
   assert.equal(snapshot.members.length, 2);
   await save([]);
   snapshot = (await db.query('select public.crew_week_snapshot($1) as data', [crew])).rows[0].data;

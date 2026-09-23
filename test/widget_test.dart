@@ -74,7 +74,10 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Crews'), findsWidgets);
+      // The header used to carry the page's name through the load. It
+      // carries the page's controls now, and they stand through it too.
+      expect(find.text('Crews'), findsNothing);
+      expect(find.byTooltip('Invites'), findsOneWidget);
       expect(find.byType(SkeletonBar), findsWidgets);
       expect(find.text('CREATE CREW'), findsNothing);
       expect(find.byTooltip('Refresh crew'), findsNothing);
@@ -391,9 +394,11 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    final initialHomeX = tester.getTopLeft(find.byKey(const ValueKey('home-crew-panel'))).dx;
+    final initialHomeX = tester
+        .getTopLeft(find.byKey(const ValueKey('home-crew-panel')))
+        .dx;
     // The adjacent destination keeps Home mounted through the slide.
-    await tester.tap(find.byKey(const ValueKey('nav-feed')));
+    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -403,7 +408,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('Feed'), findsWidgets);
+    expect(find.text('Pacts'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (

@@ -63,12 +63,6 @@ class DashboardBackend implements HomeBackend {
     CrewActivity? before,
     int limit = 20,
   }) async => [];
-  @override
-  Future<List<FeedEntry>> fetchFeed({
-    FeedEntry? before,
-    int limit = 20,
-  }) async => [];
-
   /// Notifications the fake hands back, newest first. Tests that care set it;
   /// everything else gets an empty list and a quiet badge.
   List<NotificationEntry> notifications = const [];
@@ -99,6 +93,7 @@ class DashboardBackend implements HomeBackend {
     markedReadUpTo = upTo;
     unreadNotifications = 0;
   }
+
   @override
   Future<int> setClap({
     required String pactId,

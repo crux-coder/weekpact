@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/feed/feed_page.dart';
-import 'package:weekpact/src/feed/notifications_page.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/notifications/notifications_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
+import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -49,7 +51,9 @@ Future<void> pumpNotifications(
   await tester.pumpUi();
 }
 
-Future<void> pumpFeedWithBell(
+/// The bell lives on Home now, in its top corner, so that is where it is
+/// exercised: the whole page, as the person meets it.
+Future<void> pumpHomeWithBell(
   WidgetTester tester,
   DashboardBackend backend,
 ) async {
@@ -59,8 +63,14 @@ Future<void> pumpFeedWithBell(
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     MaterialApp(
-      theme: WeekPactTheme.light,
-      home: Scaffold(body: FeedPage(backend: backend, userId: 'member-0')),
+      theme: WeekPactTheme.dark,
+      home: HomePage(
+        user: const AuthUser(email: 'person@example.com'),
+        authBackend: const MissingConfigurationAuthBackend(),
+        crewBackend: const MissingCrewBackend(),
+        pactsBackend: backend.pacts,
+        homeBackend: backend,
+      ),
     ),
   );
   await tester.pumpUi();
@@ -77,7 +87,8 @@ void main() {
       ];
     await pumpNotifications(tester, backend);
 
-    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.byTooltip('Close notifications'), findsOneWidget);
+    expect(find.text('Notifications'), findsNothing);
     expect(
       find.textContaining('completed Climb twice.'),
       findsOneWidget,
@@ -114,10 +125,7 @@ void main() {
     await pumpNotifications(tester, backend);
 
     // Opening the list clears it, so every row settles as read.
-    expect(
-      find.byKey(const ValueKey('notification-unread-dot')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('notification-unread-dot')), findsNothing);
     expect(backend.markedReadUpTo, backend.notifications.first.createdAt);
   });
 
@@ -189,33 +197,47 @@ void main() {
     expect(find.textContaining('completed Climb twice.'), findsOneWidget);
   });
 
-  testWidgets('the feed carries a badge and opens the list', (tester) async {
+  testWidgets('home carries the badge and opens the list', (tester) async {
     final backend = DashboardBackend()
       ..unreadNotifications = 4
       ..notifications = [notification(0)];
-    await pumpFeedWithBell(tester, backend);
+    await pumpHomeWithBell(tester, backend);
 
-    final badge = find.byKey(const ValueKey('feed-notifications-badge'));
+    final badge = find.byKey(const ValueKey('notifications-badge'));
     expect(badge, findsOneWidget);
     expect(find.text('4'), findsOneWidget);
 
-    await tester.tap(find.ancestor(of: badge, matching: find.byType(IconButton)));
-    await tester.pumpUi();
-    expect(find.text('Notifications'), findsOneWidget);
+    // Top right, across from the crew's name.
+    final bell = tester.getRect(
+      find.byKey(const ValueKey('home-notifications')),
+    );
+    final header = tester.getRect(find.byKey(const ValueKey('home-header')));
+    expect(bell.right, closeTo(header.right, 1));
+    expect(bell.top, closeTo(header.top, 2));
+    // Clear of the crew's name, which keeps the page's own middle.
+    expect(
+      bell.left,
+      greaterThan(tester.getRect(find.text('Early Birds')).right),
+    );
 
-    // Closing hands the feed what is still unread, so the badge settles.
+    await tester.tap(
+      find.ancestor(of: badge, matching: find.byType(IconButton)),
+    );
+    await tester.pumpUi();
+    expect(find.byTooltip('Close notifications'), findsOneWidget);
+
+    // Closing hands the bell what is still unread, so the badge settles.
     await tester.tap(find.byTooltip('Close notifications'));
     await tester.pumpUi();
-    expect(find.text('Notifications'), findsNothing);
+    expect(find.byTooltip('Close notifications'), findsNothing);
     expect(find.text('4'), findsNothing);
   });
 
   testWidgets('no badge when nothing is unread', (tester) async {
-    await pumpFeedWithBell(tester, DashboardBackend());
-    expect(
-      find.byKey(const ValueKey('feed-notifications-badge')),
-      findsOneWidget,
-    );
-    expect(find.text('0'), findsNothing);
+    await pumpHomeWithBell(tester, DashboardBackend());
+    final badge = find.byKey(const ValueKey('notifications-badge'));
+    expect(badge, findsOneWidget);
+    // The bell is still there; it simply wears nothing.
+    expect(tester.widget<Badge>(badge).isLabelVisible, isFalse);
   });
 }

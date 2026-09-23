@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/crew/crew_selection_store.dart';
+import 'src/home/story_seen_store.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -98,6 +99,7 @@ Future<void> main() async {
   runApp(
     WeekPactApp(
       crewSelectionStore: CrewSelectionStore(preferences),
+      storySeenStore: StorySeenStore(preferences),
       authBackend: authBackend,
       notifications: notifications,
       crewBackend: crewBackend,

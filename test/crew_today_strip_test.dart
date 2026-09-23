@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/home/crew_member_list.dart';
 import 'package:weekpact/src/home/crew_today_strip.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
-import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/home/today_widgets.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/avatar_shape.dart';
 
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
-import 'widget_test.dart' show FakeAuthBackend, FakeCrewBackend;
 
 /// A crew of five, two of them in today, and a nudge waiting for the rest.
 class StripBackend extends DashboardBackend {
@@ -60,26 +58,41 @@ class StripBackend extends DashboardBackend {
   }
 }
 
-Future<StripBackend> pumpStripHome(
+/// The strip on its own, at the width and on the face Home's crew block gave
+/// it. Home itself stopped building it — the stories rail says who is in, and
+/// the crew block is the progress card alone — so its own tests host it.
+Future<StripBackend> pumpStrip(
   WidgetTester tester, {
   bool allIn = false,
+  bool active = true,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  final auth = FakeAuthBackend();
-  addTearDown(auth.dispose);
   final backend = StripBackend()..allIn = allIn;
+  final week = await backend.fetchWeek('crew');
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.dark,
-      home: HomePage(
-        user: const AuthUser(email: 'person@example.com'),
-        authBackend: auth,
-        crewBackend: FakeCrewBackend(),
-        pactsBackend: backend.pacts,
-        homeBackend: backend,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 80, 12, 0),
+            child: CrewTodayStrip(
+              week: week,
+              userId: '',
+              backend: backend,
+              crewId: 'crew',
+              active: active,
+              // The frame the crew block held it in: the drawer comes out at
+              // the block's width and finishes on the block's own corner.
+              bleed: CrewWeekButton.pad,
+              curve: CrewWeekButton.frameCurve,
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -117,35 +130,28 @@ List<String> haptics(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('the strip reads the day as a score and a clock', (tester) async {
-    await pumpStripHome(tester);
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('/5'), findsOneWidget);
-    expect(find.text('in today'), findsOneWidget);
-    // The faces are gone: the pact cards carry who is in, per pact, and the
-    // strip stopped repeating them. What is left is the roll-up and the clock.
+  testWidgets('the strip is a clock and a pull, and says nothing the rail '
+      'already says', (tester) async {
+    await pumpStrip(tester);
+    // The score — so many of the crew in today — moved to the stories rail at
+    // the top of the page, in faces. The strip stopped repeating it, as it
+    // stopped repeating the faces themselves.
+    expect(find.text('/5'), findsNothing);
+    expect(find.text('in today'), findsNothing);
+    expect(find.byKey(const ValueKey('crew-today-count')), findsNothing);
     expect(find.text('TODAY'), findsNothing);
     expect(
       find.byWidgetPredicate(
         (widget) =>
             widget.key is ValueKey<String> &&
-            (widget.key! as ValueKey<String>).value.startsWith('crew-today-face-'),
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'crew-today-face-',
+            ),
       ),
       findsNothing,
     );
-    // The score sits at the head of the row, on the strip's own inset. Where
-    // the clock lands at the other end is asserted where `now` is controlled
-    // — this fixture's day is not the device's, so there is no honest count.
-    expect(
-      tester.getRect(find.byKey(const ValueKey('crew-today-count'))).left -
-          tester.getRect(find.byType(CrewTodayStrip)).left,
-      closeTo(CrewTodayStrip.leftInset, 1),
-    );
-    // One row: the score and its caption share a line.
-    expect(
-      tester.getRect(find.text('in today')).center.dy,
-      closeTo(tester.getRect(find.text('/5')).center.dy, 6),
-    );
+    // Where the clock lands is asserted where `now` is controlled — this
+    // fixture's day is not the device's, so there is no honest count.
     expect(isOpen(tester), isFalse);
     expect(find.byType(CrewMemberList), findsNothing);
   });
@@ -153,8 +159,7 @@ void main() {
   testWidgets('the day still pulls open when the whole crew is in', (
     tester,
   ) async {
-    await pumpStripHome(tester, allIn: true);
-    expect(find.text('5'), findsOneWidget);
+    await pumpStrip(tester, allIn: true);
     // Nothing is left for the time to be left for.
     expect(find.byKey(const ValueKey('crew-today-left')), findsNothing);
     // The grip is still there, so the roster is still a pull away.
@@ -162,13 +167,13 @@ void main() {
   });
 
   testWidgets('a pull runs the drawer open under the finger', (tester) async {
-    final backend = await pumpStripHome(tester);
+    final backend = await pumpStrip(tester);
     final strip = tester.getRect(
       find.byKey(const ValueKey('crew-today-strip')),
     );
-    // Closed, the roster's hairline is not on the page at all — it lives
-    // inside the drawer, under its clip.
-    expect(find.byKey(const ValueKey('crew-member-list-rule')), findsNothing);
+    // Closed, the roster is not on the page at all — it lives inside the
+    // drawer, under its clip.
+    expect(find.byType(CrewMemberList), findsNothing);
     final pull = await tester.startGesture(strip.center);
     // The drawer comes out on the same update the pull passes the threshold,
     // and then keeps pace with the finger pixel for pixel.
@@ -188,37 +193,42 @@ void main() {
     expect(find.byType(CrewMemberList), findsOneWidget);
     // The whole crew, on first-name terms, with a nudge where one can be sent.
     // The surname stays in the tooltip and in what a screen reader reads.
+    // Scoped to the roster: Home's stories rail is on first-name terms too, so
+    // every name in the drawer also has a tile above it.
+    final roster = find.byType(CrewMemberList);
     for (final name in ['Jasmin', 'Bea', 'Cai', 'Eli']) {
-      expect(find.text(name), findsOneWidget);
+      expect(
+        find.descendant(of: roster, matching: find.text(name)),
+        findsOneWidget,
+      );
     }
     expect(find.text('Bea Novak'), findsNothing);
-    expect(find.byTooltip('Bea Novak'), findsOneWidget);
-    // The roster opens under a hairline, with air between it and the first
-    // face — and neither shows until the drawer is out.
-    final rule = tester.getRect(
-      find.byKey(const ValueKey('crew-member-list-rule')),
+    expect(
+      find.descendant(of: roster, matching: find.byTooltip('Bea Novak')),
+      findsOneWidget,
     );
+    // The roster opens straight out of the day's row, with air over its first
+    // face and nothing ruled across it.
     final firstFace = tester.getRect(
       find.byKey(const ValueKey('crew-check-in-person-b')),
     );
-    // It sits inside the drawer, at the head of the roster, with air under it
-    // so the first face is not pressed against the line.
-    expect(rule.top, greaterThan(drawer(tester).top));
-    expect(rule.top, lessThan(firstFace.top));
-    // Inset to the rows, not run wall to wall: it starts where the faces do.
-    expect(rule.left, closeTo(firstFace.left, 1));
-    expect(rule.left, greaterThan(drawer(tester).left));
-    expect(rule.right, lessThan(drawer(tester).right));
-    expect(firstFace.top - rule.bottom, greaterThan(8));
+    expect(firstFace.top, greaterThan(drawer(tester).top));
+    expect(firstFace.left, greaterThan(drawer(tester).left));
+    expect(firstFace.right, lessThan(drawer(tester).right));
     // The last name is whole: the drawer's run counts the head as well as the
     // rows, so nothing is clipped off the bottom.
     expect(
-      tester.getRect(find.byKey(const ValueKey('crew-check-in-person-e'))).bottom,
+      tester
+          .getRect(find.byKey(const ValueKey('crew-check-in-person-e')))
+          .bottom,
       lessThanOrEqualTo(drawer(tester).bottom),
     );
     expect(find.text('Nudge'), findsNWidgets(3));
     expect(find.text('Checked in'), findsOneWidget);
-    expect(find.text('You'), findsOneWidget);
+    expect(
+      find.descendant(of: roster, matching: find.text('You')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('nudge-c')));
     await tester.pumpUi();
@@ -227,9 +237,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the roster opens under a line hung midway between the day and '
-      'the first face', (tester) async {
-    await pumpStripHome(tester);
+  testWidgets('the roster opens with air over its first face, and no rule '
+      'across it', (tester) async {
+    await pumpStrip(tester);
     await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
     await tester.pumpUi();
     Rect inDrawer(Finder finder) => tester.getRect(
@@ -238,22 +248,50 @@ void main() {
         matching: finder,
       ),
     );
-    final rule = inDrawer(find.byKey(const ValueKey('crew-member-list-rule')));
-    // The day's last line of type above it, and the first face under it.
-    final caption = inDrawer(find.text('in today'));
+    expect(find.byKey(const ValueKey('crew-member-list-rule')), findsNothing);
+    // The drawer's own head is the gap: the day's row ends, and the first
+    // face stands clear of it without a line between them.
+    final drawer = tester.getRect(
+      find.byKey(const ValueKey('crew-today-drawer')),
+    );
     final face = inDrawer(
       find.descendant(
         of: find.byKey(const ValueKey('crew-check-in-person-')),
         matching: find.byType(AvatarClip),
       ),
     );
-    expect(rule.top - caption.bottom, closeTo(face.top - rule.bottom, 1));
+    expect(face.top - drawer.top, greaterThan(CrewTodayStrip.rowHeight));
+    expect(
+      face.top - drawer.top,
+      lessThan(CrewTodayStrip.rowHeight + CrewTodayStrip.gripHeight + 16),
+    );
+  });
+
+  testWidgets('every row carries that member\'s week, and the nudge with it', (
+    tester,
+  ) async {
+    await pumpStrip(tester);
+    await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
+    await tester.pumpUi();
+    // Five members, five bars: the week each of them has kept so far, capped
+    // per pact the way `CrewWeek.percent` caps it.
+    final bars = find.descendant(
+      of: find.byType(CrewMemberList),
+      matching: find.byType(LinearProgressIndicator),
+    );
+    expect(bars, findsNWidgets(5));
+    expect(
+      tester.widget<LinearProgressIndicator>(bars.first).value,
+      inInclusiveRange(0, 1),
+    );
+    // And the nudge is still on the rows that can take one.
+    expect(find.text('Nudge'), findsNWidgets(3));
   });
 
   testWidgets('the roster says who is in and who the day is waiting on', (
     tester,
   ) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
     await tester.pumpUi();
     // Two of the five are in, and every row wears its own state — the drawer
@@ -265,7 +303,7 @@ void main() {
   testWidgets('the drawer buzzes once it has landed, not as it sets off', (
     tester,
   ) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     final buzzes = haptics(tester);
     final strip = tester.getRect(
       find.byKey(const ValueKey('crew-today-strip')),
@@ -292,7 +330,7 @@ void main() {
   });
 
   testWidgets('a pull that stops short hands the drawer back', (tester) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     final strip = tester.getRect(
       find.byKey(const ValueKey('crew-today-strip')),
     );
@@ -316,7 +354,7 @@ void main() {
   testWidgets('a tap runs the pull through, and a second one shuts it', (
     tester,
   ) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     final strip = tester.getRect(
       find.byKey(const ValueKey('crew-today-strip')),
     );
@@ -338,23 +376,25 @@ void main() {
   });
 
   testWidgets('a tap outside shuts the drawer', (tester) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
     await tester.pumpUi();
     expect(isOpen(tester), isTrue);
     await tester.tapAt(const Offset(195, 800));
     await tester.pumpUi();
     expect(isOpen(tester), isFalse);
-    expect(find.byKey(const ValueKey('crew-today-count')), findsOneWidget);
+    expect(find.byType(CrewMemberList), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('leaving Home shuts an open drawer behind it', (tester) async {
-    await pumpStripHome(tester);
+  testWidgets('going inactive shuts an open drawer behind it', (tester) async {
+    await pumpStrip(tester);
     await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
     await tester.pumpUi();
     expect(isOpen(tester), isTrue);
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+    // What the page under it does when it is left: an open drawer belongs to
+    // a page you are looking at.
+    await pumpStrip(tester, active: false);
     await tester.pumpUi();
     expect(isOpen(tester), isFalse);
     expect(tester.takeException(), isNull);
@@ -363,7 +403,7 @@ void main() {
   testWidgets('the drawer opens downward and stays on the page', (
     tester,
   ) async {
-    await pumpStripHome(tester);
+    await pumpStrip(tester);
     final strip = tester.getRect(
       find.byKey(const ValueKey('crew-today-strip')),
     );
@@ -429,14 +469,10 @@ void main() {
         now: DateTime(2026, 9, 20, 17, 12),
       );
       expect(find.text('6H LEFT'), findsOneWidget);
-      // The day's two ends sit the same distance off the row's edges: the
-      // score at its head, the clock at its tail.
+      // The clock finishes on the row's own right edge, at the strip's inset.
       final row = tester.getRect(find.byType(CrewTodayStrip));
-      final count = tester.getRect(
-        find.byKey(const ValueKey('crew-today-count')),
-      );
       final left = tester.getRect(find.text('6H LEFT'));
-      expect(row.right - left.right, closeTo(count.left - row.left, 1));
+      expect(row.right - left.right, closeTo(CrewTodayStrip.leftInset, 1));
     });
 
     testWidgets('it counts in minutes once the day is nearly out', (
@@ -472,7 +508,6 @@ void main() {
         now: DateTime(2026, 9, 21, 0, 30),
       );
       expect(find.byKey(const ValueKey('crew-today-left')), findsNothing);
-      expect(find.byKey(const ValueKey('crew-today-count')), findsOneWidget);
     });
   });
 }

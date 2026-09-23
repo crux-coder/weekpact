@@ -43,10 +43,42 @@ class WeekMember {
 }
 
 class PactCheckIn {
-  const PactCheckIn(this.pactId, this.userId, this.day);
+  const PactCheckIn(
+    this.pactId,
+    this.userId,
+    this.day, {
+    this.photoPath,
+    this.photoUrl,
+    this.keptAt,
+  });
   final String pactId;
   final String userId;
   final String day;
+
+  /// The photo kept with this check-in, when the pact asked for one. Null for
+  /// a pact that does not, which is most of them.
+  final String? photoPath;
+
+  /// [photoPath] signed for reading. Carried for today's check-ins only — the
+  /// rest of the week is counted, never shown, and a signed URL for each of
+  /// them would be a page of links nothing opens.
+  final String? photoUrl;
+
+  /// When it was kept. The stories rail orders by it and the viewer prints it.
+  final DateTime? keptAt;
+
+  PactCheckIn withPhotoUrl(String? url) => PactCheckIn(
+    pactId,
+    userId,
+    day,
+    photoPath: photoPath,
+    photoUrl: url,
+    keptAt: keptAt,
+  );
+
+  /// The one name a check-in goes by: a clap, a seen mark and a story all
+  /// mean the same check-in by it.
+  String get id => '$pactId/$userId/$day';
 }
 
 class CrewActivity {
@@ -76,101 +108,6 @@ class CrewActivity {
   );
 }
 
-/// One check-in as it appears in the cross-crew feed, with everything needed to
-/// render it: who posted, in which crew, against which pact, and its photo.
-class FeedEntry {
-  const FeedEntry({
-    required this.pactId,
-    required this.userId,
-    required this.crewId,
-    required this.crewName,
-    required this.pactTitle,
-    required this.iconKey,
-    required this.day,
-    required this.createdAt,
-    required this.displayName,
-    this.photoPath,
-    this.photoUrl,
-    this.avatarPath,
-    this.avatarUrl,
-    this.clapCount = 0,
-    this.clapped = false,
-  });
-
-  final String pactId;
-  final String userId;
-  final String crewId;
-  final String crewName;
-  final String pactTitle;
-  final String iconKey;
-  final String day;
-  final DateTime createdAt;
-  final String displayName;
-  final String? photoPath;
-  final String? photoUrl;
-  final String? avatarPath;
-  final String? avatarUrl;
-
-  /// How many crew members applauded this check-in, and whether the viewer is
-  /// one of them.
-  final int clapCount;
-  final bool clapped;
-
-  /// Stable across pages, so list items keep their state while more load.
-  String get id => '$pactId/$userId/$day';
-
-  String get initials {
-    final parts = displayName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList();
-    if (parts.isEmpty || displayName == 'Crew member') return '?';
-    return (parts.first.characters.first +
-            (parts.length > 1 ? parts.last.characters.first : ''))
-        .toUpperCase();
-  }
-
-  FeedEntry copyWith({
-    String? photoUrl,
-    String? avatarUrl,
-    int? clapCount,
-    bool? clapped,
-  }) => FeedEntry(
-    pactId: pactId,
-    userId: userId,
-    crewId: crewId,
-    crewName: crewName,
-    pactTitle: pactTitle,
-    iconKey: iconKey,
-    day: day,
-    createdAt: createdAt,
-    displayName: displayName,
-    photoPath: photoPath,
-    photoUrl: photoUrl ?? this.photoUrl,
-    avatarPath: avatarPath,
-    avatarUrl: avatarUrl ?? this.avatarUrl,
-    clapCount: clapCount ?? this.clapCount,
-    clapped: clapped ?? this.clapped,
-  );
-
-  factory FeedEntry.fromJson(Map<String, dynamic> row) => FeedEntry(
-    pactId: row['pact_id'] as String,
-    userId: row['user_id'] as String,
-    crewId: row['crew_id'] as String,
-    crewName: row['crew_name'] as String? ?? 'Crew',
-    pactTitle: row['pact_title'] as String? ?? 'Pact',
-    iconKey: row['icon_key'] as String? ?? 'target',
-    day: row['completed_on'] as String,
-    createdAt: DateTime.parse(row['created_at'] as String),
-    displayName: row['display_name'] as String? ?? 'Crew member',
-    photoPath: row['photo_path'] as String?,
-    avatarPath: row['avatar_path'] as String?,
-    clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
-    clapped: row['viewer_clapped'] as bool? ?? false,
-  );
-}
-
 enum CrewNudgeStatus { ready, sent, cooldown, checkedIn, unavailable }
 
 class CrewNudgeState {
@@ -191,6 +128,26 @@ class CrewNudgeState {
         ? null
         : DateTime.parse(row['next_allowed_at'] as String),
   );
+}
+
+/// Where one member stands in the crew's week: how far along they are, and
+/// what place that puts them in. See [CrewWeek.standings].
+class CrewStanding {
+  const CrewStanding({
+    required this.member,
+    required this.percent,
+    required this.place,
+    required this.isViewer,
+  });
+
+  final WeekMember member;
+
+  /// How much of this member's own week is kept, 0 to 100.
+  final int percent;
+
+  /// One-based. Members on the same [percent] share a place.
+  final int place;
+  final bool isViewer;
 }
 
 class CrewWeek {
@@ -237,6 +194,8 @@ class CrewWeek {
             i['pact_id'] as String,
             i['user_id'] as String,
             i['completed_on'] as String,
+            photoPath: i['photo_path'] as String?,
+            keptAt: DateTime.tryParse(i['created_at'] as String? ?? ''),
           ),
         )
         .toList(),
@@ -253,6 +212,7 @@ class CrewWeek {
       .map((i) => i.day)
       .toSet()
       .length;
+
   /// Everyone who has kept [pactId] today, the crew included.
   ///
   /// The week already carries every check-in it has, each naming its pact, its
@@ -267,6 +227,35 @@ class CrewWeek {
       .where((i) => i.userId == userId && i.day == today)
       .map((i) => i.pactId)
       .toSet();
+
+  /// How much of the crew was out on [day], as a share of its members.
+  ///
+  /// A person counts once however many pacts they kept that day: the figure
+  /// answers "how much of the crew was in", which is what the row of days
+  /// under Home's rail draws, and a member with three pacts would otherwise
+  /// fill a day on their own.
+  double shareOut(String day) {
+    if (members.isEmpty) return 0;
+    final ids = members.map((m) => m.id).toSet();
+    final out = checkIns
+        .where((i) => i.day == day && ids.contains(i.userId))
+        .map((i) => i.userId)
+        .toSet()
+        .length;
+    return out / members.length;
+  }
+
+  /// The week's seven days as `yyyy-MM-dd`, Monday first.
+  ///
+  /// Built off [weekStart] rather than off the check-ins, so a day nobody kept
+  /// still has a column and the row keeps its shape all week.
+  List<String> get weekDays {
+    final start = DateTime.parse(weekStart);
+    return [
+      for (var i = 0; i < 7; i++)
+        start.add(Duration(days: i)).toIso8601String().substring(0, 10),
+    ];
+  }
   int get target => pacts.fold(0, (sum, g) => sum + g.daysPerWeek);
   int completed(String userId) => pacts.fold(
     0,
@@ -274,6 +263,41 @@ class CrewWeek {
   );
   int percent(String userId) =>
       target == 0 ? 0 : (100 * completed(userId) / target).round();
+
+  /// The crew this week, furthest along first.
+  ///
+  /// [percentCrew] folds the same numbers into one figure, which is the one
+  /// thing about a crew's week nobody can act on: a percentage of four people
+  /// is not a number you can move. This keeps them apart, so Home can say
+  /// where each member stands and where the viewer stands among them.
+  ///
+  /// Ties share a place, as places do — four members all on nothing are four
+  /// firsts, not a first, a second, a third and a fourth decided by whatever
+  /// order the roster arrived in.
+  List<CrewStanding> standings(String viewerId) {
+    final ordered = [...members]
+      ..sort((a, b) => percent(b.id).compareTo(percent(a.id)));
+    final places = <CrewStanding>[];
+    var place = 0;
+    int? previous;
+    for (var i = 0; i < ordered.length; i++) {
+      final share = percent(ordered[i].id);
+      if (share != previous) {
+        place = i + 1;
+        previous = share;
+      }
+      places.add(
+        CrewStanding(
+          member: ordered[i],
+          percent: share,
+          place: place,
+          isViewer: ordered[i].id == viewerId,
+        ),
+      );
+    }
+    return places;
+  }
+
   int get percentCrew => target == 0 || members.isEmpty
       ? 0
       : (100 *
@@ -361,8 +385,7 @@ class NotificationEntry {
 
   /// What they did, with [subject] already said.
   String get action => switch (type) {
-    'check_in_clapped' =>
-      'clapped your ${pactTitle ?? 'pact'} check-in',
+    'check_in_clapped' => 'clapped your ${pactTitle ?? 'pact'} check-in',
     'pact_completed' => 'completed ${pactTitle ?? 'a pact'}',
     'crew_nudge' => 'is cheering you on',
     _ => 'sent you a notification',
@@ -416,8 +439,6 @@ abstract interface class HomeBackend {
     int limit = 20,
   });
 
-  /// Check-ins from every crew the signed-in member belongs to, newest first.
-  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20});
   Future<List<NotificationEntry>> fetchNotifications({
     NotificationEntry? before,
     int limit = 20,
@@ -445,7 +466,6 @@ abstract interface class HomeBackend {
 class SupabaseHomeBackend implements HomeBackend {
   SupabaseHomeBackend(this.client);
   final _avatarUrls = AvatarUrlCache();
-  final _feedAvatars = AvatarUrlCache();
   final _notificationAvatars = AvatarUrlCache();
   final SupabaseClient client;
   @override
@@ -511,43 +531,6 @@ class SupabaseHomeBackend implements HomeBackend {
   }
 
   @override
-  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20}) async {
-    final rows = await client.rpc(
-      'check_in_feed',
-      params: {
-        'before_created_at': before?.createdAt.toUtc().toIso8601String(),
-        'before_pact': before?.pactId,
-        'before_user': before?.userId,
-        'before_day': before?.day,
-        'page_limit': limit,
-      },
-    );
-    final entries = (rows as List)
-        .map((row) => FeedEntry.fromJson(Map<String, dynamic>.from(row as Map)))
-        .toList();
-    // Sign both buckets for the whole page, so a post renders in one round trip
-    // each rather than one download per image.
-    final photos = await _signed(
-      'check-in-photos',
-      entries.map((entry) => entry.photoPath).nonNulls.toSet().toList(),
-    );
-    final avatars = await _feedAvatars.resolve(
-      account: client.auth.currentUser?.id,
-      key: 'feed',
-      paths: entries.map((entry) => entry.avatarPath).nonNulls.toSet().toList(),
-      sign: (missing, lifetime) => _signed('avatars', missing, lifetime),
-    );
-    return entries
-        .map(
-          (entry) => entry.copyWith(
-            photoUrl: photos[entry.photoPath],
-            avatarUrl: avatars[entry.avatarPath],
-          ),
-        )
-        .toList();
-  }
-
-  @override
   Future<List<NotificationEntry>> fetchNotifications({
     NotificationEntry? before,
     int limit = 20,
@@ -566,7 +549,7 @@ class SupabaseHomeBackend implements HomeBackend {
               NotificationEntry.fromJson(Map<String, dynamic>.from(row as Map)),
         )
         .toList();
-    // One batch of signed URLs for the page, as the feed does for its posts.
+    // One batch of signed URLs for the page, rather than one per row.
     final avatars = await _notificationAvatars.resolve(
       account: client.auth.currentUser?.id,
       key: 'notifications',
@@ -651,6 +634,18 @@ class SupabaseHomeBackend implements HomeBackend {
               .order('user_id')
               .limit(1)
               .maybeSingle();
+    // Today's photos, signed for the stories rail. Only today's: the rail
+    // shows the day, and the week's older check-ins are counted rather than
+    // opened.
+    final stories = await _signed(
+      'check-in-photos',
+      week.checkIns
+          .where((i) => i.day == week.today)
+          .map((i) => i.photoPath)
+          .nonNulls
+          .toSet()
+          .toList(),
+    );
     final paths = week.members
         .where((m) => m.avatarPath == '${m.id}/avatar.png')
         .map((m) => m.avatarPath!)
@@ -677,7 +672,13 @@ class SupabaseHomeBackend implements HomeBackend {
       members: week.members
           .map((m) => m.withAvatar(urls[m.avatarPath]))
           .toList(),
-      checkIns: week.checkIns,
+      checkIns: week.checkIns
+          .map(
+            (i) => i.photoPath == null || stories[i.photoPath] == null
+                ? i
+                : i.withPhotoUrl(stories[i.photoPath]),
+          )
+          .toList(),
       streakWeeks: week.streakWeeks,
       latestActivity: activity == null ? null : CrewActivity.fromJson(activity),
     );
@@ -762,9 +763,6 @@ class MissingHomeBackend implements HomeBackend {
     CrewActivity? before,
     int limit = 20,
   }) => Future.error(StateError('Supabase is not configured.'));
-  @override
-  Future<List<FeedEntry>> fetchFeed({FeedEntry? before, int limit = 20}) =>
-      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<int> setClap({
     required String pactId,

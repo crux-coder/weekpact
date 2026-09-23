@@ -40,7 +40,8 @@ void main() {
       const CrewPact(
         id: 'long',
         crewId: 'crew',
-        title: 'Walk the dog around the park before work and again after dinner',
+        title:
+            'Walk the dog around the park before work and again after dinner',
         frequency: PactFrequency.daily,
         daysPerWeek: 5,
         iconKey: 'yoga',
@@ -76,7 +77,7 @@ void main() {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  HomeCrewPanel(week: week, userId: '', onOpenWeek: () {}),
+                  HomeCrewPanel(week: week, userId: ''),
                   const SizedBox(height: 16),
                   // Home hands the stack whatever the page has left, so the
                   // card is usually taller than its own 248 floor. Render the
@@ -179,20 +180,15 @@ void main() {
               child: Column(
                 children: [
                   HomeCrewPanel(
+                    userId: '',
                     week: CrewWeek(
                       today: today,
                       weekStart: week.weekStart,
                       timezone: week.timezone,
                       pacts: week.pacts,
                       members: week.members,
-                      checkIns: [
-                        PactCheckIn(week.pacts.first.id, 'ak', today),
-                      ],
+                      checkIns: [PactCheckIn(week.pacts.first.id, 'ak', today)],
                     ),
-                    userId: '',
-                    onOpenWeek: () {},
-                    backend: backend,
-                    crewId: 'crew',
                   ),
                 ],
               ),
@@ -217,8 +213,6 @@ void main() {
               child: Column(
                 children: [
                   CrewSwitcher(
-                    compact: true,
-                    curve: CrewWeekButton.frameCurve,
                     crews: const [
                       PactCrew(
                         id: 'crew',
@@ -234,11 +228,10 @@ void main() {
                       ),
                     ],
                     selectedId: 'crew',
-                    loadWeek: (_) async => week,
                     onSelected: (_) {},
                   ),
                   const SizedBox(height: 10),
-                  HomeCrewPanel(week: week, userId: '', onOpenWeek: () {}),
+                  HomeCrewPanel(week: week, userId: ''),
                 ],
               ),
             ),
@@ -263,6 +256,7 @@ void main() {
               child: Column(
                 children: [
                   HomeCrewPanel(
+                    userId: '',
                     week: CrewWeek(
                       today: today,
                       weekStart: week.weekStart,
@@ -287,10 +281,6 @@ void main() {
                       ],
                       checkIns: [PactCheckIn(week.pacts.first.id, '', today)],
                     ),
-                    userId: '',
-                    onOpenWeek: () {},
-                    backend: backend,
-                    crewId: 'crew',
                   ),
                 ],
               ),

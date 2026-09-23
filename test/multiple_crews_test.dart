@@ -129,18 +129,21 @@ void main() {
         );
         // Each page stands in for its own content, so only the shared shell
         // above the progress line has to line up: switching tabs mid-load must
-        // not shift the selector or the progress line.
+        // not shift the progress line.
         final skeletonTop = tester.getTopLeft(find.byType(CrewPageSkeleton));
-        final selectorBounds = tester.getRect(find.byType(CrewHeaderSurface));
         final indicatorBounds = tester.getRect(
           find.byType(LinearProgressIndicator),
         );
+        // The crew's name is the page's title now and lives in the header, so
+        // the loading shell no longer stands a card in for a control that
+        // lands somewhere else.
+        expect(find.byType(CrewHeaderSurface), findsNothing);
+        expect(find.byType(CrewSwitcher), findsNothing);
         expect(find.byType(PactsSkeletonBody), findsOneWidget);
         await render(
           CrewPage(backend: crews, currentUserEmail: 'owner@example.com'),
         );
         expect(tester.getTopLeft(find.byType(CrewPageSkeleton)), skeletonTop);
-        expect(tester.getRect(find.byType(CrewHeaderSurface)), selectorBounds);
         expect(
           tester.getRect(find.byType(LinearProgressIndicator)),
           indicatorBounds,
@@ -259,16 +262,28 @@ void main() {
     await tester.pumpUi();
     expect(home.requested.length, greaterThan(beforePacts));
     expect(home.requested.last, 'second');
+    // Where the crew's name actually lands, which is what somebody crossing
+    // between tabs sees. The switcher's own box fills whatever slot the page
+    // leaves it, and those differ — Crews keeps two controls clear at either
+    // end of the row and Pacts keeps none — so the box is not the thing to
+    // measure here.
+    final pactsName = tester.getRect(find.text('Night Owls').hitTestable());
     final pactsSelectorBounds = tester.getRect(
       find.byType(CrewSwitcher).hitTestable(),
     );
     await tester.tap(find.text('Crews').last);
     await tester.pumpUi();
     expect(crews.fetched.last, 'second');
-    expect(
-      tester.getRect(find.byType(CrewSwitcher).hitTestable()),
-      pactsSelectorBounds,
+    // The name does not move between tabs: the controls are laid over the row
+    // rather than set beside the name, and the row keeps the page's middle
+    // either way.
+    expect(tester.getRect(find.text('Night Owls').hitTestable()), pactsName);
+    // And the slot itself stays on the page's middle, at one height.
+    final crewsSelectorBounds = tester.getRect(
+      find.byType(CrewSwitcher).hitTestable(),
     );
+    expect(crewsSelectorBounds.center, pactsSelectorBounds.center);
+    expect(crewsSelectorBounds.height, pactsSelectorBounds.height);
     await tester.tap(find.byTooltip('Switch crew'));
     await tester.pumpUi();
     await tester.tap(find.text('Early Birds').last);

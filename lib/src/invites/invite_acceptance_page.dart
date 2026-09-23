@@ -66,10 +66,6 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: PageFrame(
-      header: const PageHeading(
-        'Invitation',
-        dotColor: WeekPactColors.sky,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

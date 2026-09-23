@@ -338,7 +338,18 @@ class BandGlyph extends StatelessWidget {
     final square = AppSurface(
       fillColor: face,
       resolveTone: false,
-      shape: WeekPactMetrics.buttonShape,
+      // The panel curve, not `buttonShape`. That one caps its corner at half
+      // the shortest side, which a wide button never reaches but a 36pt square
+      // hits immediately: it came out at a continuous 18, and a continuous
+      // radius reads at roughly `cardCorner / cardCurve` of its number, so the
+      // square wore a corner of about 8 while the 56pt band around it wore 18.
+      // `panelCurve` is the value the system already keeps for a small tile
+      // stepping down from a card, and it lands the two in proportion.
+      shape: const ContinuousRectangleBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(WeekPactMetrics.panelCurve),
+        ),
+      ),
       builder: (_) =>
           onPressed == null ? mark : InkWell(onTap: onPressed, child: mark),
     );

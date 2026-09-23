@@ -38,6 +38,7 @@ class FakePacts implements PactsBackend {
     deleted.add(pactId);
     pacts.removeWhere((pact) => pact.id == pactId && pact.crewId == crewId);
   }
+
   @override
   Future<CrewPact> updatePact({
     required String pactId,
@@ -215,7 +216,9 @@ void main() {
   ) async {
     final backend = FakePacts()..loading = Completer<List<PactCrew>>();
     await pumpPacts(tester, backend);
-    expect(find.text('Pacts'), findsOneWidget);
+    // The page opened with its own name here. It has none now — the tab at
+    // the bottom of the screen is the one that says where this is.
+    expect(find.text('Pacts'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('ADD PACT'), findsNothing);
     backend.loading!.complete([ownerCrew]);

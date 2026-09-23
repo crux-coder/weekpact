@@ -10,6 +10,7 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_switcher.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -32,9 +33,77 @@ class LargeCrewBackend extends DashboardBackend {
 }
 
 void main() {
-  testWidgets('the switcher is cut to the same corner as the blocks under it', (
+  testWidgets('the crew title leads the page and lists your crews', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = LargeCrewBackend();
+    backend.pacts.crews.add(
+      const PactCrew(
+        id: 'second',
+        name: 'Night Owls',
+        timezone: 'UTC',
+        isOwner: false,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'person@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: const MissingCrewBackend(),
+          pactsBackend: backend.pacts,
+          homeBackend: backend,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+
+    // The title is a line of type, not a card: the switcher used to be a
+    // raised surface carrying a label and the name at 25pt.
+    final switcher = find.byKey(const ValueKey('home-crew-switcher'));
+    expect(switcher, findsOneWidget);
+    expect(
+      find.descendant(of: switcher, matching: find.byType(CrewHeaderSurface)),
+      findsNothing,
+    );
+    expect(tester.getSize(switcher).height, closeTo(CrewSwitcher.height, 1));
+
+    // It leads the page, above the crew's day rather than under it.
+    final rail = tester.getRect(find.byKey(const ValueKey('home-stories')));
+    final title = tester.getRect(switcher);
+    expect(title.bottom, lessThanOrEqualTo(rail.top));
+    // And the name and its chevron sit in the middle of the page as one
+    // object, rather than the name centring and the mark hanging off it.
+    final page = tester.getRect(find.byKey(const ValueKey('home-header')));
+    expect(
+      tester.getRect(find.byTooltip('Switch crew')).center.dx,
+      closeTo(page.center.dx, 1),
+    );
+    expect(
+      tester.getRect(find.text('Early Birds')).center.dx,
+      lessThan(page.center.dx),
+    );
+
+    // Opening it is a plain list of crews, and picking one switches.
+    expect(find.byKey(const ValueKey('crew-switcher-menu')), findsNothing);
+    await tester.tap(find.byTooltip('Switch crew'));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('crew-switcher-menu')), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-option-crew')), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-option-second')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('crew-option-second')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('crew-switcher-menu')), findsNothing);
+    expect(find.text('Night Owls'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('one crew is a title with nothing to open', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -53,37 +122,13 @@ void main() {
       ),
     );
     await tester.pumpUi();
-
-    /// The corner a block actually paints, not the one it was handed.
-    double cornerOf(Key key) {
-      final surface = tester.widget<CrewHeaderSurface>(
-        find
-            .descendant(
-              of: find.byKey(key),
-              matching: find.byType(CrewHeaderSurface),
-            )
-            .first,
-      );
-      return surface.curve;
-    }
-
-    final switcher = cornerOf(const ValueKey('home-crew-switcher'));
-    final panel = cornerOf(const ValueKey('home-crew-panel'));
-    // Two blocks of one width, stacked, sharing an edge: they share a corner
-    // or the pair reads as a mistake. The switcher used to keep the
-    // standalone control's `panelCurve` while the panel took the column's,
-    // which is half the radius at the same width.
-    expect(switcher, panel);
-    expect(switcher, CrewWeekButton.frameCurve);
-    expect(CrewWeekButton.frameCurve, greaterThan(WeekPactMetrics.panelCurve));
-    // And they really are the same width, which is what makes it show.
-    expect(
-      tester.getSize(find.byKey(const ValueKey('home-crew-switcher'))).width,
-      closeTo(
-        tester.getSize(find.byKey(const ValueKey('home-crew-panel'))).width,
-        1,
-      ),
-    );
+    // The name still leads the page — it says what the page is about — but a
+    // chevron on a list of one is a promise the control cannot keep.
+    expect(find.text('Early Birds'), findsOneWidget);
+    expect(find.byTooltip('Switch crew'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('home-crew-switcher')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('crew-switcher-menu')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -145,17 +190,23 @@ void main() {
           expect(activePact.right, lessThan(crewBounds.right));
           final titleBottom = tester.getBottomRight(find.byType(HomeHeader)).dy;
           final crewTop = crewBounds.top;
-          // Home leads with its own name and dot and the crew streak beside
-          // it, and carries the crew switcher under them as Pacts and Crews
-          // do — no activity strip.
-          expect(find.text('Home'), findsWidgets);
-          expect(find.byKey(const ValueKey('latest-check-in')), findsNothing);
-          expect(find.byType(CrewSwitcher), findsOneWidget);
-          final streak = tester.getRect(
+          // Home leads with the crew's day — the stories rail. The page's own
+          // name and the crew streak are gone from here: the navigation bar
+          // says which page this is, and the crew week page holds the streak.
+          expect(find.byKey(const ValueKey('home-stories')), findsOneWidget);
+          expect(
             find.byKey(const ValueKey('crew-header-streak')),
+            findsNothing,
           );
-          final heading = tester.getRect(find.text('Home').first);
-          expect(streak.left, greaterThan(heading.right));
+          expect(find.byKey(const ValueKey('latest-check-in')), findsNothing);
+          // The crew's name leads the page, over the rail.
+          expect(find.byType(CrewSwitcher), findsOneWidget);
+          final rail = tester.getRect(
+            find.byKey(const ValueKey('home-stories')),
+          );
+          final title = tester.getRect(find.byType(CrewSwitcher));
+          expect(title.bottom, lessThanOrEqualTo(rail.top));
+          expect(rail.bottom, lessThanOrEqualTo(crewBounds.top));
           final todayTop = tester.getTopLeft(find.byType(TodayPactsCard)).dy;
           expect(crewTop, greaterThanOrEqualTo(titleBottom));
           expect(todayTop, greaterThanOrEqualTo(crewBounds.bottom));

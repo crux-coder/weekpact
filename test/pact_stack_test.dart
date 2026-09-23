@@ -117,10 +117,8 @@ void main() {
     );
     await tester.pumpUi();
 
-    double sizeOf(String title) => tester
-        .widget<Text>(find.text(title).hitTestable())
-        .style!
-        .fontSize!;
+    double sizeOf(String title) =>
+        tester.widget<Text>(find.text(title).hitTestable()).style!.fontSize!;
 
     final short = sizeOf('Move for 30 min');
     await tester.drag(
@@ -231,7 +229,11 @@ void main() {
     void expectSelected(int index) {
       final pact = week.pacts[index];
       expect(find.text(pact.title).hitTestable(), findsOneWidget);
-      expect(find.text('3 pacts'), findsOneWidget);
+      // The stack used to carry a "3 pacts" count in a heading above it. The
+      // dots under it say how many there are, and the card is unmistakably a
+      // pact, so both lines went.
+      expect(find.text('3 pacts'), findsNothing);
+      expect(find.text('YOUR PACTS'), findsNothing);
       final card = tester.getRect(find.byKey(ValueKey(pact.id)).hitTestable());
       final stack = tester.getRect(find.byKey(const ValueKey('pact-stack')));
       expect(
