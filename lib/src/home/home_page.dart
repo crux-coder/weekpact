@@ -1,4 +1,4 @@
-import 'photo_check_in_sheet.dart';
+import 'photo_check_in_page.dart';
 import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../auth/account_page.dart';
@@ -31,7 +31,6 @@ import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import 'today_widgets.dart';
-import 'expandable_home_panels.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -178,6 +177,19 @@ class _HomePageState extends State<HomePage> {
     setState(() => _signingOut = true);
     try {
       await widget.authBackend.signOut();
+    } catch (_) {
+      // Signing out reaches the server, so it fails offline. Without this the
+      // row simply flipped back from "Logging out…" to "Log out" and looked
+      // like a tap that never landed.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not log out. Check your connection and try again.',
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _signingOut = false);
     }
@@ -444,6 +456,7 @@ class _HomeDestinationState extends State<_HomeDestination>
     ++_request; // Discard older reads while saving this selection.
     final selected = week.checkedToday(widget.userId);
     if (!selected.add(pactId)) selected.remove(pactId);
+    var dayChanged = false;
     setState(() {
       _savingPact = pactId;
       _saveError = null;
@@ -458,6 +471,8 @@ class _HomeDestinationState extends State<_HomeDestination>
           crewId: crew.id,
           pactId: pactId,
           pactTitle: pact.title,
+          daysKept: week.days(pactId, widget.userId),
+          daysPerWeek: pact.daysPerWeek,
           today: week.today,
           selectedPactIds: selected,
           capturePhoto: widget.captureCheckInPhoto,
@@ -497,14 +512,25 @@ class _HomeDestinationState extends State<_HomeDestination>
           ],
         );
       });
-    } catch (_) {
+    } catch (error) {
+      // Midnight in the crew's timezone is its own failure, not a failed
+      // write: the server refuses a check-in dated against the day that just
+      // ended, and the week in hand still says yesterday. Reported as a plain
+      // save error it skipped the refresh below, so `week.today` stayed stale
+      // and every retry was refused in exactly the same way. The photo sheet
+      // reads the same sentence — see `photo_check_in_page.dart`.
+      dayChanged = error.toString().contains('day changed');
       if (mounted) {
-        setState(() => _saveError = 'Could not save. Tap the pact to retry.');
+        setState(
+          () => _saveError = dayChanged
+              ? 'It’s a new day. Your week has been refreshed.'
+              : 'Could not save. Tap the pact to retry.',
+        );
       }
     } finally {
       if (mounted) {
         setState(() => _savingPact = null);
-        if (_saveError == null) await _refresh();
+        if (_saveError == null || dayChanged) await _refresh();
       }
     }
   }
@@ -715,104 +741,90 @@ class _HomeDestinationState extends State<_HomeDestination>
                                   viewerId: widget.userId,
                                   seen: _seen,
                                 );
-                                return ExpandableHomePanels(
+                                return Column(
                                   key: ValueKey(_crew!.id),
-                                  backend: widget.backend,
-                                  crewId: _crew!.id,
-                                  week: week,
-                                  userId: widget.userId,
-                                  active: widget.active,
-                                  // The crew panel is empty, so nothing
-                                  // unfolds over it and there is no tile for
-                                  // a panel to line up with.
-                                  showCrewCheckIns: false,
-                                  top: _headerHeight + 12 + CrewWeekButton.pad,
-                                  inset: CrewWeekButton.pad,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      HomeHeader(
-                                        action: _bell(),
-                                        rail: StoriesRail(
-                                          days: days,
-                                          onNudge: _nudge,
-                                          // Past the page's own margin, so a
-                                          // long crew leaves at the screen's
-                                          // edge rather than at the card's.
-                                          bleed: 12,
-                                          onOpen: (day) =>
-                                              _openStories(days, day),
-                                        ),
-                                        selector: selector,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    HomeHeader(
+                                      action: _bell(),
+                                      rail: StoriesRail(
+                                        days: days,
+                                        onNudge: _nudge,
+                                        // Past the page's own margin, so a
+                                        // long crew leaves at the screen's
+                                        // edge rather than at the card's.
+                                        bleed: 12,
+                                        onOpen: (day) =>
+                                            _openStories(days, day),
                                       ),
-                                      const SizedBox(height: 12),
-                                      CrewTodayBar(
-                                        week: week,
-                                        onOpenWeek: _openCrewWeek,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      HomeCrewPanel(
-                                        key: const ValueKey('home-crew-panel'),
-                                        week: week,
-                                        userId: widget.userId,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      if (_saveError != null)
-                                        SizedBox(
-                                          height: 40,
-                                          child: Text(
-                                            _saveError!,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: context.errorInk,
-                                              fontSize: 13,
-                                            ),
+                                      selector: selector,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    CrewTodayBar(
+                                      week: week,
+                                      onOpenWeek: _openCrewWeek,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    HomeCrewPanel(
+                                      key: const ValueKey('home-crew-panel'),
+                                      week: week,
+                                      userId: widget.userId,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (_saveError != null)
+                                      SizedBox(
+                                        height: 40,
+                                        child: Text(
+                                          _saveError!,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: context.errorInk,
+                                            fontSize: 13,
                                           ),
                                         ),
-                                      Expanded(
-                                        child: week.pacts.isEmpty
-                                            ? Center(
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Text(
-                                                      'No pacts yet.',
-                                                      style: TextStyle(
-                                                        color: context.ink,
-                                                        fontSize: 24,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    AppButton(
-                                                      label: _crew!.isOwner
-                                                          ? 'SET UP YOUR FIRST PACT'
-                                                          : 'VIEW PACTS',
-                                                      onPressed: _crew!.isOwner
-                                                          ? widget.onStartCrew
-                                                          : widget.onOpenPacts,
-                                                    ),
-                                                  ],
-                                                ),
-                                              )
-                                            : LayoutBuilder(
-                                                builder: (context, space) =>
-                                                    TodayPactsCard(
-                                                      height: space.maxHeight,
-                                                      horizontalBleed: 12,
-                                                      week: week,
-                                                      userId: widget.userId,
-                                                      savingPact: _savingPact,
-                                                      onToggle: _togglePact,
-                                                    ),
-                                              ),
                                       ),
-                                    ],
-                                  ),
+                                    Expanded(
+                                      child: week.pacts.isEmpty
+                                          ? Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    'No pacts yet.',
+                                                    style: TextStyle(
+                                                      color: context.ink,
+                                                      fontSize: 24,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  AppButton(
+                                                    label: _crew!.isOwner
+                                                        ? 'SET UP YOUR FIRST PACT'
+                                                        : 'VIEW PACTS',
+                                                    onPressed: _crew!.isOwner
+                                                        ? widget.onStartCrew
+                                                        : widget.onOpenPacts,
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          : LayoutBuilder(
+                                              builder: (context, space) =>
+                                                  TodayPactsCard(
+                                                    height: space.maxHeight,
+                                                    horizontalBleed: 12,
+                                                    week: week,
+                                                    userId: widget.userId,
+                                                    savingPact: _savingPact,
+                                                    onToggle: _togglePact,
+                                                  ),
+                                            ),
+                                    ),
+                                  ],
                                 );
                               },
                             ),

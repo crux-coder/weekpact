@@ -12,9 +12,9 @@ import 'home_backend.dart';
 /// The crew roster behind the crew strip's pull has carried nudges since they
 /// were built, and Home does not draw that strip — so on the page people
 /// actually open, the feature had no entrance at all. The stories rail has
-/// one: a member who has not been out today is a dashed tile, which is the
-/// only tile with nothing behind a tap, and the exact object the thought is
-/// about.
+/// one: a member who has not been out today is a dashed tile, the only tile
+/// with nothing else behind a tap, and the exact object the thought is about.
+/// A tap opens this, and so does a long press.
 ///
 /// It opens with a reason rather than only a button. "Last kept a pact three
 /// days ago" is the difference between poking someone and noticing them, and
@@ -55,6 +55,26 @@ String nudgeReason({required String today, String? lastKept}) {
     1 => 'Last kept a pact yesterday.',
     _ => 'Last kept a pact $days days ago.',
   };
+}
+
+/// How long until this person can be nudged again, in the words a countdown
+/// wants.
+///
+/// The cooldown is 24 hours from the send, so it almost never ends on a day
+/// boundary: a nudge at three in the afternoon printed as a date read "you
+/// can nudge again on Sep 29", which someone acts on at nine the next morning
+/// and is refused. A span answers the question the date was standing in for.
+/// Rounded up rather than down, since the send is the thing that decides and
+/// being told to come back a little late costs nothing.
+@visibleForTesting
+String nudgeCountdown(Duration left) {
+  final minutes = (left.inSeconds / 60).round();
+  if (minutes <= 1) return 'in a minute';
+  if (minutes < 60) return 'in $minutes minutes';
+  final hours = (minutes / 60).round();
+  if (hours < 24) return hours == 1 ? 'in an hour' : 'in $hours hours';
+  final days = (hours / 24).round();
+  return days == 1 ? 'in a day' : 'in $days days';
 }
 
 class _NudgeDialog extends StatefulWidget {
@@ -109,11 +129,10 @@ class _NudgeDialogState extends State<_NudgeDialog> {
     final reason = nudgeReason(today: widget.today, lastKept: widget.lastKept);
     if (_failed) return '$reason\n\nThat nudge did not send. Try again.';
     if (_alreadyNudged) {
-      final deadline = widget.state?.nextAllowedAt?.toLocal();
+      final deadline = widget.state?.nextAllowedAt;
       if (deadline == null) return '$reason\n\nYou have already nudged today.';
-      final localizations = MaterialLocalizations.of(context);
-      return '$reason\n\nYou can nudge again on '
-          '${localizations.formatMediumDate(deadline)}.';
+      return '$reason\n\nYou can nudge again '
+          '${nudgeCountdown(deadline.difference(DateTime.now()))}.';
     }
     if (!_ready) return '$reason\n\nThey cannot be nudged right now.';
     return '$reason\n\nOne nudge per person every 24 hours.';

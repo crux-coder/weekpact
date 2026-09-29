@@ -122,8 +122,25 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
 
   Future<void> _select(String? id) async {
     if (id == null || id == _selected?.id) return;
-    widget.onCrewSelected?.call(id);
-    final crew = _crews!.firstWhere((crew) => crew.id == id);
+    // The asked-for crew may not be in the list any more — deleted, or left
+    // from another device, between the switcher opening and a name in it being
+    // tapped. That is the same position the page's own load handles, so it
+    // lands the same way: whatever crew is left, or none at all.
+    final crews = _crews ?? const <PactCrew>[];
+    final matches = crews.where((crew) => crew.id == id);
+    final crew = matches.isNotEmpty
+        ? matches.first
+        : (crews.isEmpty ? null : crews.first);
+    if (crew == null) {
+      setState(() {
+        _selected = null;
+        _pacts = null;
+        _week = null;
+        _error = null;
+      });
+      return;
+    }
+    widget.onCrewSelected?.call(crew.id);
     final request = ++_request;
     setState(() {
       _selected = crew;
@@ -132,7 +149,7 @@ class _PactsPageState extends State<PactsPage> with WidgetsBindingObserver {
       _loading = true;
     });
     try {
-      final week = await widget.loadWeek(id);
+      final week = await widget.loadWeek(crew.id);
       if (mounted && request == _request) {
         setState(() {
           _week = week;

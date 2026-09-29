@@ -1,5 +1,7 @@
 import 'support/photo_fakes.dart';
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -12,6 +14,7 @@ import 'package:weekpact/src/onboarding/crew_setup_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/sharing/app_share.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/page_frame.dart';
 
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
@@ -44,6 +47,13 @@ class SetupCrew extends MissingCrewBackend {
       pendingInvites: [],
     );
   }
+}
+
+/// Setup that is still finding out where the person got to last time.
+class SlowSetupCrew extends SetupCrew {
+  final pending = Completer<CrewDetails?>();
+  @override
+  Future<CrewDetails?> fetchCrew({String? crewId}) => pending.future;
 }
 
 class SetupPacts extends DashboardPacts {
@@ -169,6 +179,45 @@ void main() {
     expect(find.text('Begin'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('guided setup stands a placeholder through its first load and '
+      'still lets you leave', (tester) async {
+    final crews = SlowSetupCrew();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.light,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CrewSetupPage(
+                  crewBackend: crews,
+                  pactsBackend: DashboardPacts(),
+                  homeBackend: DashboardBackend(),
+                  userId: '',
+                ),
+              ),
+            ),
+            child: const Text('Begin'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Begin'));
+    await tester.pumpUi();
+
+    expect(find.byType(SkeletonBar), findsWidgets);
+    expect(find.text('Create crew'), findsNothing);
+    expect(find.text('Step 1 of 4'), findsNothing);
+    // The wait belongs to the page, not to the person standing in front of it.
+    await tester.pageBack();
+    await tester.pumpUi();
+    expect(find.text('Begin'), findsOneWidget);
+
+    crews.pending.complete(null);
+    await tester.pumpUi();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('setup resumes saved crew and pact without recreating them', (
     tester,
   ) async {

@@ -745,12 +745,6 @@ void main() {
                       savingPact: null,
                       onToggle: (_) {},
                     ),
-                    TodayCrewCard(
-                      week: week,
-                      userId: '',
-                      crewName: 'Early Birds',
-                      onOpen: () {},
-                    ),
                   ],
                 ),
               ),
@@ -762,23 +756,6 @@ void main() {
       expect(find.text('1 of 14'), findsNothing);
       expect(find.byTooltip('Pact 5 of 14'), findsOneWidget);
       expect(find.byTooltip('Pact 6 of 14'), findsNothing);
-      // The crew card collapses its roster to a count, and so does each pact
-      // card's own face row — they are separate "+N"s, so each is checked
-      // where it belongs rather than by counting them across the screen.
-      expect(
-        find.descendant(
-          of: find.byType(TodayCrewCard),
-          matching: find.textContaining(RegExp(r'^\+\d+$')),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byType(TodayPactsCard),
-          matching: find.text('+15').hitTestable(),
-        ),
-        findsOneWidget,
-      );
       expect(tester.takeException(), isNull);
     },
   );

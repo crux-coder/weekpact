@@ -11,6 +11,7 @@ import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crew_roster.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -87,9 +88,17 @@ class CrewHome extends DashboardBackend {
   CrewHome(DashboardPacts pacts) : super(pacts: pacts);
   final requested = <String>[];
   @override
-  Future<CrewWeek> fetchWeek(String crewId) {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) {
     requested.add(crewId);
     return super.fetchWeek(crewId);
+  }
+}
+
+/// [MultipleCrews] with the one thing the crew page needs to offer the door.
+class DeletableCrews extends MultipleCrews implements CrewDeletionBackend {
+  @override
+  Future<void> deleteCrew(String crewId) async {
+    entries.removeWhere((c) => c.id == crewId);
   }
 }
 
@@ -418,6 +427,110 @@ void main() {
     expect(home.requested, ['crew']);
     expect(preferences.getString('selected_crew:account-a'), 'crew');
     expect(preferences.getString('selected_crew:account-b'), 'second');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the loading shapes stand where the loaded page\'s do', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final crews = MultipleCrews()..loading = Completer<List<PactCrew>>();
+    crews.entries[0] = CrewDetails(
+      id: 'crew',
+      name: 'Early Birds',
+      timezone: 'UTC',
+      ownerId: 'owner-id',
+      currentUserRole: 'owner',
+      createdAt: DateTime(2026, 9, 7),
+      members: [
+        for (var i = 0; i < 3; i++)
+          CrewMember(
+            userId: 'member-$i',
+            email: 'member-$i@example.com',
+            displayName: 'Member $i',
+            role: i == 0 ? 'owner' : 'member',
+            joinedAt: DateTime(2026),
+          ),
+      ],
+      pendingInvites: [],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: CrewPage(
+            backend: crews,
+            currentUserEmail: 'member-0@example.com',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // The skeleton opens on the summary card, not on the caption bar the page
+    // used to open with, and the roster stands the same distance under it in
+    // both states — so nothing jumps down the page when the crew lands.
+    expect(find.byType(CrewRosterSkeleton), findsOneWidget);
+    final card = find.byKey(const ValueKey('crew-summary-card'));
+    expect(tester.getSize(card).height, CrewSummaryCard.height);
+    expect(find.text('IN THE CREW'), findsOneWidget);
+    final loadingDrop =
+        tester.getTopLeft(find.byType(CrewBand).first).dy -
+        tester.getTopLeft(card).dy;
+
+    final gate = crews.loading!;
+    // Cleared before the gate opens: `fetchCrews` waits on this very completer
+    // while it is set, so asking the fake for the answer it is about to give
+    // would be asking it to wait for itself.
+    crews.loading = null;
+    gate.complete(await crews.fetchCrews());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CrewRosterSkeleton), findsNothing);
+    expect(find.byType(CrewPersonBand), findsNWidgets(3));
+    expect(
+      tester.getTopLeft(find.byType(CrewPersonBand).first).dy -
+          tester.getTopLeft(card).dy,
+      loadingDrop,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('deleting the crew you are reading falls back to another one', (
+    tester,
+  ) async {
+    final crews = DeletableCrews();
+    final selected = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: CrewPage(
+            backend: crews,
+            currentUserEmail: 'owner@example.com',
+            selectedCrewId: 'second',
+            onCrewSelected: selected.add,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.text('Night Owls'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('DELETE CREW').first);
+    await tester.tap(find.text('DELETE CREW').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DELETE CREW').last);
+    await tester.pumpAndSettle();
+
+    // The crew that is left, not the empty state and not the crew that is gone.
+    expect(crews.entries.map((c) => c.id), ['crew']);
+    expect(find.text('Early Birds'), findsOneWidget);
+    expect(find.text('CREATE CREW'), findsNothing);
+    expect(selected.last, 'crew');
     expect(tester.takeException(), isNull);
   });
 }

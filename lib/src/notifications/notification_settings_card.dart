@@ -5,10 +5,20 @@ import 'package:flutter/services.dart';
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/open_app_settings.dart' as settings;
 import 'notification_scope.dart';
 
 class NotificationSettingsCard extends StatelessWidget {
-  const NotificationSettingsCard({super.key});
+  const NotificationSettingsCard({
+    super.key,
+    this.openSettings = settings.openAppSettings,
+  });
+
+  /// The door out to the system's own Settings, injected so a test can watch
+  /// it open without leaving the process. Once notifications are refused the
+  /// app cannot ask again — only Settings can turn them back on — so the
+  /// sentence saying so is a dead end without this.
+  final settings.OpenAppSettings openSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +59,21 @@ class NotificationSettingsCard extends StatelessWidget {
                   style: TextStyle(color: context.errorInk),
                 ),
               ],
+              // Refused, the app has spent its one prompt: iOS and Android
+              // both hand the choice to Settings from then on, so the line
+              // above tells people to go there and this is how they get.
+              if (denied && service.available) ...[
+                const SizedBox(height: 12),
+                AppButton(label: 'OPEN SETTINGS', onPressed: openSettings),
+              ],
               const SizedBox(height: 12),
               AppButton(
+                color: denied && service.available
+                    ? WeekPactColors.neutralInset
+                    : null,
+                foregroundColor: denied && service.available
+                    ? WeekPactColors.black
+                    : null,
                 label: !service.available
                     ? 'RETRY SETUP'
                     : service.enabled

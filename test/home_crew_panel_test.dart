@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/home/crew_today_strip.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/today_widgets.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -141,11 +140,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a crew that is level is level, not first and second', (
+  testWidgets('a crew that is level shows no place, not first and second', (
     tester,
   ) async {
     // Two members on the same figure are not a first and a second decided by
-    // whatever order the roster arrived in.
+    // whatever order the roster arrived in, and the headline does not say so
+    // either: there is simply no place to show.
     await _pump(
       tester,
       HomeCrewPanel(
@@ -156,7 +156,7 @@ void main() {
         }),
       ),
     );
-    expect(find.text('LEVEL'), findsOneWidget);
+    expect(find.text('LEVEL'), findsNothing);
     expect(find.textContaining("YOU'RE"), findsNothing);
     // And level members stand together on the track rather than one of them
     // standing in for both.
@@ -182,7 +182,8 @@ void main() {
       ),
     );
     expect(_cardFill(tester), WeekPactColors.mintGreen);
-    expect(find.text('LEVEL'), findsOneWidget);
+    expect(find.text('LEVEL'), findsNothing);
+    expect(find.textContaining("YOU'RE"), findsNothing);
   });
 
   testWidgets('a crew of one keeps the bar, and has no place to be in', (
@@ -292,7 +293,6 @@ void main() {
     // The day's pull-down went with the score before it: the stories rail at
     // the top of the page says who is in, and a frame around a single card is
     // a box drawn round one object.
-    expect(find.byType(CrewTodayStrip), findsNothing);
     expect(find.text('in today'), findsNothing);
     // What is left is the card, at the card's own height.
     expect(
@@ -590,7 +590,10 @@ void main() {
     );
     await tester.pumpUi();
     expect(_lanes, findsNothing);
-    expect(tester.getRect(find.byType(HomeCrewPanel)).height, HomeCrewPanel.height);
+    expect(
+      tester.getRect(find.byType(HomeCrewPanel)).height,
+      HomeCrewPanel.height,
+    );
   });
 
   testWidgets('a crew that shrinks to one shuts the card behind it', (
@@ -614,7 +617,10 @@ void main() {
       HomeCrewPanel(userId: 'me', week: _weekWith({'me': (move: 3, read: 1)})),
     );
     expect(_lanes, findsNothing);
-    expect(tester.getRect(find.byType(HomeCrewPanel)).height, HomeCrewPanel.height);
+    expect(
+      tester.getRect(find.byType(HomeCrewPanel)).height,
+      HomeCrewPanel.height,
+    );
   });
 }
 

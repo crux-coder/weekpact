@@ -4,13 +4,26 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
+import 'package:weekpact/src/home/home_backend.dart';
+
+import 'support/home_fakes.dart';
 import 'widget_test.dart' show FakeCrewBackend;
 
-class MembershipBackend extends FakeCrewBackend {
+class MembershipBackend extends FakeCrewBackend implements CrewDeletionBackend {
   final removed = <String>[];
+  final deleted = <String>[];
   String? successor;
   Object? failure;
+  Object? deleteFailure;
   int leaves = 0;
+
+  @override
+  Future<void> deleteCrew(String crewId) async {
+    if (deleteFailure != null) throw deleteFailure!;
+    deleted.add(crewId);
+    crew = null;
+  }
+
   @override
   Future<void> leaveCrew({required String crewId, String? successorId}) async {
     if (failure != null) throw failure!;
@@ -68,6 +81,7 @@ Future<void> showCrew(
   WidgetTester tester,
   MembershipBackend backend, {
   VoidCallback? onLeft,
+  HomeBackend? profileBackend,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -75,6 +89,7 @@ Future<void> showCrew(
       home: Scaffold(
         body: CrewPage(
           backend: backend,
+          profileBackend: profileBackend,
           currentUserEmail: backend.crew!.isOwner
               ? 'owner@example.com'
               : 'member@example.com',
@@ -83,6 +98,12 @@ Future<void> showCrew(
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> tapDelete(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('DELETE CREW').first);
+  await tester.tap(find.text('DELETE CREW').first);
   await tester.pumpAndSettle();
 }
 
@@ -198,5 +219,81 @@ void main() {
       find.text('Something went wrong. Please try again.'),
       findsOneWidget,
     );
+  });
+  testWidgets('a member is offered no way to delete the crew', (tester) async {
+    final backend = MembershipBackend()..crew = details();
+    await showCrew(tester, backend);
+    expect(find.text('LEAVE CREW'), findsOneWidget);
+    expect(find.text('DELETE CREW'), findsNothing);
+  });
+  testWidgets('the owner is told what deleting costs and can keep the crew', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()..crew = details(owner: true);
+    await showCrew(tester, backend);
+    await tapDelete(tester);
+    expect(find.text('Delete Early Birds?'), findsOneWidget);
+    expect(find.textContaining('loses the crew, its pacts'), findsOneWidget);
+    await tester.tap(find.text('Keep crew'));
+    await tester.pumpAndSettle();
+    expect(backend.deleted, isEmpty);
+    expect(find.text('Sam'), findsOneWidget);
+  });
+  testWidgets('deleting ends the crew and lands on the empty state', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()..crew = details(owner: true);
+    var left = false;
+    await showCrew(tester, backend, onLeft: () => left = true);
+    await tapDelete(tester);
+    // The dialog's own action, not the button on the page behind it.
+    await tester.tap(find.text('DELETE CREW').last);
+    await tester.pumpAndSettle();
+    expect(backend.deleted, ['crew']);
+    expect(left, isTrue);
+    expect(find.text('CREATE CREW'), findsOneWidget);
+  });
+  testWidgets('a delete that fails leaves the crew and says so', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()
+      ..crew = details(owner: true)
+      ..deleteFailure = StateError('offline');
+    await showCrew(tester, backend);
+    await tapDelete(tester);
+    await tester.tap(find.text('DELETE CREW').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Sam'), findsOneWidget);
+    expect(
+      find.text('Something went wrong. Please try again.'),
+      findsOneWidget,
+    );
+  });
+  testWidgets('the sole owner is told they can delete as well as hand over', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()
+      ..crew = details(owner: true, alone: true);
+    await showCrew(tester, backend);
+    await tapLeave(tester);
+    expect(find.textContaining('or delete the crew'), findsOneWidget);
+  });
+  testWidgets('a week that never arrives leaves the card saying so, not '
+      'a bar', (tester) async {
+    final profiles = DashboardBackend()..failLoad = true;
+    final backend = MembershipBackend()..crew = details(owner: true);
+    await showCrew(tester, backend, profileBackend: profiles);
+    expect(find.text('Couldn’t load'), findsOneWidget);
+    expect(find.text('—'), findsNWidgets(2));
+    // The page below the roster stays quiet: one failure, one message.
+    expect(find.text('Something went wrong. Please try again.'), findsNothing);
+    final asked = profiles.fetches;
+    profiles.failLoad = false;
+    await tester.ensureVisible(find.text('RETRY'));
+    await tester.tap(find.text('RETRY'));
+    await tester.pumpAndSettle();
+    expect(profiles.fetches, greaterThan(asked));
+    expect(find.text('Couldn’t load'), findsNothing);
+    expect(find.text('—'), findsNothing);
   });
 }

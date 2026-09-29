@@ -40,6 +40,10 @@ class StoriesRail extends StatelessWidget {
   /// it: a member who is in has a story, so the tap is already spoken for,
   /// and a member who is not is the tile the thought is about. Never called
   /// for the viewer — you cannot nudge yourself out of bed.
+  ///
+  /// A dashed tile answers a plain tap with this as well as a long press. It
+  /// is the one tile with nothing else behind a tap, and a gesture nobody
+  /// discovers is a feature nobody has.
   final void Function(MemberDay day)? onNudge;
 
   /// How far past the page's own padding the rail runs, so tiles leave the
@@ -156,10 +160,14 @@ class _StoryTile extends StatelessWidget {
               child: Opacity(opacity: .55, child: _Face(day: day)),
             ),
     );
+    final tap = onOpen ?? onNudge;
     return Semantics(
-      button: onOpen != null,
+      button: tap != null,
       label: _semantics,
-      // The press has no glyph, so this is the only place it is announced.
+      onTap: tap,
+      // Neither gesture has a glyph, so this is the only place either is
+      // announced.
+      onTapHint: onOpen == null && onNudge != null ? 'Nudge them' : null,
       onLongPressHint: onNudge == null ? null : 'Nudge them',
       onLongPress: onNudge,
       excludeSemantics: true,
@@ -171,13 +179,13 @@ class _StoryTile extends StatelessWidget {
             Tooltip(
               message: day.isViewer ? 'You' : _fullName,
               child: InkWell(
-                onTap: onOpen,
-                // A press, not a tap: the tile carries no nudge mark and
-                // should not: a rail of dashed squares each wearing a button
-                // would read as a page about who is behind. The press is
-                // found the way a press is always found, and the roster
-                // behind the crew strip's pull still lists every nudge for
-                // anyone who never finds it.
+                // A dashed tile has nothing to open, so its plain tap is the
+                // nudge. The press is kept beside it because the tile still
+                // carries no nudge mark and should not — a rail of dashed
+                // squares each wearing a button would read as a page about
+                // who is behind — but a press alone was the only way in, on a
+                // page that draws no crew roster at all.
+                onTap: tap,
                 onLongPress: onNudge == null
                     ? null
                     : () {

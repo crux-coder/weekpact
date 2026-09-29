@@ -90,6 +90,31 @@ await asUser(recipient, async () => {
   await db.query('select accept_crew_invite($1)',[rawToken]);
   assert.equal((await inbox()).length,0);
 });
+// The acceptance screen names the crew before anyone has joined it.
+await db.query(`update auth.users set raw_user_meta_data='{"first_name":"Ada","last_name":"Lovelace"}' where id=$1`, [owner]);
+const shareToken = 'd'.repeat(64), expiredShare = 'e'.repeat(64);
+for (const [token, life] of [[shareToken, "interval '7 days'"], [expiredShare, "-interval '1 second'"]]) {
+  await db.query(`insert into private.crew_share_links(crew_id,token_hash,created_by,expires_at) values($1,encode(extensions.digest($2,'sha256'),'hex'),$3,now()+${life})`, [crew, token, owner]);
+}
+const expiredEmailToken = 'f'.repeat(64);
+await db.query("update crew_invites set token_hash=encode(extensions.digest($1,'sha256'),'hex') where id=$2", [expiredEmailToken, expired]);
+const preview = token => db.query('select public.preview_crew_invite($1) as data', [token]).then(r => r.rows[0].data);
+await asUser(outsider, async () => {
+  const shared = await preview(shareToken);
+  assert.deepEqual(shared, {crew_name:'Early Birds', member_count:1, owner_name:'Ada Lovelace'});
+  // Email tokens preview the same way, and neither kind says anything more.
+  assert.equal((await preview(rawToken)).crew_name, 'Early Birds');
+  for (const unusable of [expiredShare, expiredEmailToken, '0'.repeat(64), 'not-a-token', null]) {
+    assert.equal(await preview(unusable), null, `${unusable} previews nothing`);
+  }
+});
+await asUser('', async () => assert.rejects(preview(shareToken), /Sign in to view this invite/));
+await asUser('', async () => assert.rejects(preview(shareToken), e => e.code === '42501'), 'anon');
+// Free accounts stop at one crew, so the users below hold Pro for the rest of the script.
+async function grantPro(user) {
+  await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year') on conflict (user_id) do update set active=true, expires_at=excluded.expires_at", [user]);
+}
+await grantPro(recipient);
 // Existing members can join another crew through either email tokens or the inbox.
 await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,'member@example.com','member')",[otherCrew,recipient]);
 for (const join of [() => respond(invite,true), () => db.query('select accept_crew_invite($1)',[rawToken])]) {

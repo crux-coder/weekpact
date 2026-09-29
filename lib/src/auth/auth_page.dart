@@ -11,11 +11,6 @@ import 'account_actions.dart';
 
 enum AuthMode { login, signup }
 
-const _inviteRedirectBase = String.fromEnvironment(
-  'INVITE_REDIRECT_BASE',
-  defaultValue: 'weekpact://invite',
-);
-
 class AuthPage extends StatefulWidget {
   const AuthPage({
     super.key,
@@ -53,12 +48,22 @@ class _AuthPageState extends State<AuthPage> {
     super.dispose();
   }
 
-  void _switchMode() {
+  void _switchMode() => _setMode(_isLogin ? AuthMode.signup : AuthMode.login);
+
+  /// Clearing the form is the only way to take the fields' error text back off,
+  /// and it takes the email with it. The address is put back afterwards:
+  /// somebody who has just discovered they are on the wrong form has typed it
+  /// once already, and the passwords are the only part that belongs to the
+  /// form being left.
+  void _setMode(AuthMode mode) {
+    final email = _emailController.text;
     setState(() {
-      _mode = _isLogin ? AuthMode.signup : AuthMode.login;
+      _mode = mode;
       _submitting = false;
-      _confirmPasswordController.clear();
       _formKey.currentState?.reset();
+      _emailController.text = email;
+      _passwordController.clear();
+      _confirmPasswordController.clear();
     });
   }
 
@@ -78,9 +83,15 @@ class _AuthPageState extends State<AuthPage> {
           password: password,
           emailRedirectTo: _confirmationRedirectUrl,
         );
-        if (result == SignUpResult.emailConfirmationRequired && mounted) {
+        if (result == SignUpResult.emailAlreadyRegistered && mounted) {
+          _showMessage(
+            'An account with this email already exists. Log in instead.',
+          );
+          _setMode(AuthMode.login);
+        } else if (result == SignUpResult.emailConfirmationRequired &&
+            mounted) {
           _showMessage('Check your email to confirm your account.');
-          setState(() => _mode = AuthMode.login);
+          _setMode(AuthMode.login);
         }
       }
     } on AuthException catch (error) {
@@ -99,8 +110,8 @@ class _AuthPageState extends State<AuthPage> {
 
   String get _confirmationRedirectUrl {
     final token = widget.pendingInviteToken;
-    if (token == null) return _inviteRedirectBase;
-    return Uri.parse(_inviteRedirectBase)
+    if (token == null) return inviteRedirectBase;
+    return Uri.parse(inviteRedirectBase)
         .replace(queryParameters: {'invite': token})
         .toString();
   }
@@ -197,8 +208,12 @@ class _AuthPageState extends State<AuthPage> {
                         fillColor: WeekPactColors.stone,
                         builder: (context) => const Padding(
                           padding: EdgeInsets.all(14),
+                          // A share link takes any confirmed account, so the
+                          // line cannot send everyone hunting for an invited
+                          // address most of them were never sent.
                           child: Text(
-                            'Crew invite ready. Use your invited email.',
+                            'Crew invite ready. Sign in or create an account '
+                            'to join.',
                           ),
                         ),
                       ),

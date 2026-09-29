@@ -29,8 +29,9 @@ class LimitedCrews extends MultipleCrews {
   @override
   Future<CrewDetails> acceptInvite(String token) async {
     attempts++;
-    if (relentsAfterUpgrade && upgraded)
+    if (relentsAfterUpgrade && upgraded) {
       return MultipleCrews.details('c', 'Joined');
+    }
     throw refusal;
   }
 
@@ -40,8 +41,9 @@ class LimitedCrews extends MultipleCrews {
     required String timezone,
   }) async {
     attempts++;
-    if (relentsAfterUpgrade && upgraded)
+    if (relentsAfterUpgrade && upgraded) {
       return super.createCrew(name: name, timezone: timezone);
+    }
     throw refusal;
   }
 }

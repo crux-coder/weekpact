@@ -18,13 +18,80 @@ import 'support/home_fakes.dart';
 
 import 'package:weekpact/src/crew/crew_week_page.dart';
 
-Future<void> pumpHome(WidgetTester tester, DashboardBackend backend) async {
+/// The crew's day has rolled over on the server. The save is refused with the
+/// sentence `save_pact_check_ins` raises, and the week the next fetch answers
+/// with is already on the new date.
+class DayChangedBackend extends DashboardBackend {
+  DayChangedBackend() {
+    // The tap path, not the photo page: this is the one the day-changed
+    // error used to be swallowed on.
+    pacts.pacts = [
+      for (final pact in pacts.pacts)
+        CrewPact(
+          id: pact.id,
+          crewId: pact.crewId,
+          title: pact.title,
+          frequency: pact.frequency,
+          daysPerWeek: pact.daysPerWeek,
+          iconKey: pact.iconKey,
+          photoRequired: false,
+        ),
+    ];
+  }
+
+  String today = '2026-09-09';
+  bool refuse = true;
+
+  /// The date each attempted save was written against, oldest first.
+  final savedDays = <String>[];
+
+  @override
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
+    final week = await super.fetchWeek(crewId);
+    return CrewWeek(
+      today: today,
+      weekStart: week.weekStart,
+      timezone: week.timezone,
+      pacts: week.pacts,
+      members: week.members,
+      checkIns: const [],
+    );
+  }
+
+  @override
+  Future<void> saveCheckIns({
+    required String crewId,
+    required String today,
+    required Set<String> pactIds,
+    Map<String, Uint8List> photos = const {},
+  }) async {
+    savedDays.add(today);
+    if (!refuse) return;
+    refuse = false;
+    this.today = '2026-09-10';
+    throw StateError('The day changed. Refresh before checking in.');
+  }
+}
+
+/// Signing out reaches the server, so it is a thing that can fail.
+class OfflineSignOutBackend extends MissingConfigurationAuthBackend {
+  const OfflineSignOutBackend();
+
+  @override
+  Future<void> signOut() async => throw StateError('offline');
+}
+
+Future<void> pumpHome(
+  WidgetTester tester,
+  DashboardBackend backend, {
+  AuthBackend auth = const MissingConfigurationAuthBackend(),
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.light,
       home: HomePage(
         user: const AuthUser(email: 'person@example.com'),
-        authBackend: const MissingConfigurationAuthBackend(),
+        authBackend: auth,
         crewBackend: const MissingCrewBackend(),
         pactsBackend: backend.pacts,
         homeBackend: backend,
@@ -409,9 +476,57 @@ void main() {
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
     await tester.pumpUi();
-    expect(find.text('TAKE PICTURE'), findsNothing);
+    expect(find.byKey(const ValueKey('take-picture')), findsNothing);
     expect(backend.selected, contains('move'));
     expect(backend.lastPhotos, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a check-in refused because the day rolled over refreshes the '
+      'week rather than asking for the same retry', (tester) async {
+    final backend = DayChangedBackend();
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    final fetches = backend.fetches;
+    final pact = find
+        .byKey(const ValueKey('check-in-Move for 30 min'))
+        .hitTestable();
+    await tester.tap(pact);
+    await tester.pumpUi();
+    // Not "could not save": nothing is wrong with the connection, the day
+    // simply ended under the page.
+    expect(find.textContaining('new day'), findsOneWidget);
+    expect(find.textContaining('Tap the pact to retry'), findsNothing);
+    // And the week is refetched, which the old path skipped because it had an
+    // error set — so `today` stayed on the day that had just ended and every
+    // retry was refused in exactly the same way.
+    expect(backend.fetches, greaterThan(fetches));
+    expect(backend.savedDays, ['2026-09-09']);
+
+    await tester.tap(
+      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    );
+    await tester.pumpUi();
+    expect(backend.savedDays, ['2026-09-09', '2026-09-10']);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a log out that cannot reach the server says so', (tester) async {
+    final backend = DashboardBackend();
+    await pumpHome(tester, backend, auth: const OfflineSignOutBackend());
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('nav-account')));
+    await tester.pumpUi();
+    await tester.ensureVisible(find.text('Log out'));
+    await tester.tap(find.text('Log out'));
+    await tester.pumpUi();
+    // The row flipping back from "Logging out…" on its own reads as a tap
+    // that never landed.
+    expect(
+      find.text('Could not log out. Check your connection and try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Log out'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

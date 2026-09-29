@@ -116,10 +116,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
       // Explicitly dismiss the native keyboard before replacing this screen.
       await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
       if (mounted) widget.onCompleted(user);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        // An ArgumentError from the backend is the one failure the person can
+        // act on — a photo too large, a name too long — and it says which.
         setState(
-          () => _error = 'We couldn’t save your profile. Your details are still here—please try again.',
+          () => _error = error is ArgumentError ? '${error.message}' : 'We couldn’t save your profile. Your details are still here—please try again.',
         );
       }
     } finally {

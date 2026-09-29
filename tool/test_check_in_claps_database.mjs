@@ -76,6 +76,32 @@ await assert.rejects(
   'claps cannot be written around the RPC',
 );
 
+// Home builds its stories out of the week snapshot, so the week is where the
+// clap pill reads its state from: how many claps a check-in has, and whether
+// this viewer is one of them. Without both, a check-in with five claps opens
+// reading "Clap" and yesterday's clap looks ungiven.
+const week = user => asUser(user, async () =>
+  (await db.query('select crew_week_snapshot($1) as week', [crew])).rows[0].week);
+const currentDay = (await week(author)).today;
+await db.query('insert into pact_check_ins(pact_id,user_id,completed_on,created_at) values($1,$2,$3,now())',
+  [pact, author, currentDay]);
+const weekCheckIn = async user =>
+  (await week(user)).check_ins.find(row => row.completed_on === currentDay);
+
+assert.deepEqual(await clap(mate, true, [pact, author, currentDay]),
+  { clap_count: 1, viewer_clapped: true });
+assert.equal((await weekCheckIn(mate)).clap_count, 1, "the week carries the check-in's claps");
+assert.equal((await weekCheckIn(mate)).viewer_clapped, true,
+  'the clapper reads their own clap back off the week');
+assert.equal((await weekCheckIn(author)).clap_count, 1, 'everyone sees the same count');
+assert.equal((await weekCheckIn(author)).viewer_clapped, false,
+  'someone who has not clapped sees the check-in ungiven');
+await clap(mate, false, [pact, author, currentDay]);
+assert.equal((await weekCheckIn(mate)).clap_count, 0, 'taking a clap back empties the week too');
+assert.equal((await weekCheckIn(mate)).viewer_clapped, false);
+await assert.rejects(week(outsider), /Crew membership required/,
+  'and the week still answers only to the crew');
+
 // Leaving the crew withdraws the ability to clap, and deleting the check-in
 // takes its claps with it.
 await db.query('delete from crew_members where crew_id=$1 and user_id=$2', [crew, mate]);
@@ -84,5 +110,5 @@ await db.query('delete from pact_check_ins where pact_id=$1 and user_id=$2 and c
 assert.equal((await db.query('select count(*)::int as total from check_in_claps')).rows[0].total, 0,
   'claps are removed with the check-in they applaud');
 
-console.log('Check-in clap toggling, crew scope, idempotence and cascade passed.');
+console.log('Check-in clap toggling, crew scope, idempotence, week snapshot and cascade passed.');
 await db.close();

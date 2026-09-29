@@ -58,18 +58,24 @@ void main() {
     expect(await deviceTimezone(), 'UTC');
   });
 
-  test('does not remember a fallback, so a cold start is asked again', () async {
-    _platform(null);
-    expect(await deviceTimezone(), 'UTC');
-    _platform(() => 'Europe/Sarajevo');
-    expect(await deviceTimezone(), 'Europe/Sarajevo');
-  });
+  test(
+    'does not remember a fallback, so a cold start is asked again',
+    () async {
+      _platform(null);
+      expect(await deviceTimezone(), 'UTC');
+      _platform(() => 'Europe/Sarajevo');
+      expect(await deviceTimezone(), 'Europe/Sarajevo');
+    },
+  );
 
   testWidgets('a platform that never answers does not hold up a crew', (
     tester,
   ) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_channel, (call) => Completer<String>().future);
+        .setMockMethodCallHandler(
+          _channel,
+          (call) => Completer<String>().future,
+        );
     addTearDown(
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_channel, null),

@@ -25,7 +25,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo to share your check-in with your crew.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose a profile photo for your WeekPact account.</string>
+	<string>Choose a profile photo, or a photo to share as a check-in with your crew.</string>
 	<key>FirebaseCrashlyticsCollectionEnabled</key>
 	<false/>
 	<key>FirebaseMessagingAutoInitEnabled</key>

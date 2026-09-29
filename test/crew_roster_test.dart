@@ -55,38 +55,13 @@ void main() {
         tester.getTopLeft(invite).dy,
         greaterThanOrEqualTo(tester.getBottomLeft(person).dy),
       );
-      expect(find.text('OWNER'), findsOneWidget);
+      // Your own band names the tint rather than leaving colour to carry it.
+      expect(find.text('YOU · OWNER'), findsOneWidget);
+      expect(find.text('OWNER'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(invite);
       await tester.tap(find.text('INVITE SOMEONE'));
       expect(invited, isTrue);
     });
   }
-
-  testWidgets('avatar stack summarises the crew and counts the overflow', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.light,
-        home: Scaffold(
-          body: CrewAvatarStack(
-            limit: 2,
-            members: [
-              for (var i = 0; i < 5; i++)
-                CrewMember(
-                  userId: '$i',
-                  email: 'member$i@example.com',
-                  displayName: 'Member $i',
-                  role: 'member',
-                  joinedAt: DateTime(2026),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-    expect(find.byType(CrewFace), findsNWidgets(2));
-    expect(find.text('+3'), findsOneWidget);
-  });
 }

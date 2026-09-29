@@ -1,10 +1,11 @@
-import '../home/photo_check_in_sheet.dart';
+import '../home/photo_check_in_page.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../home/home_backend.dart';
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../pacts/pacts_backend.dart';
 
@@ -92,7 +93,15 @@ class _AuthGateState extends State<AuthGate> {
           return AuthPage(
             authBackend: widget.authBackend,
             pendingInviteToken: _pendingInviteToken,
-            initialError: 'This sign-in link could not be opened. It may be expired or already used. Request a new email and try again.',
+            // The auth stream errors when an email link (sign-in, recovery,
+            // confirmation) fails to open, which Supabase reports as an
+            // AuthException. Anything else on the stream is not a link, and
+            // used to be reported as an expired email, which sent people off
+            // to request a new one for a problem logging in would fix.
+            initialError:
+                snapshot.error is AuthException || _pendingInviteToken != null
+                ? 'This sign-in link could not be opened. It may be expired or already used. Request a new email and try again.'
+                : 'Could not confirm your sign-in. Please log in again.',
           );
         }
         final user = snapshot.data;
@@ -121,8 +130,10 @@ class _AuthGateState extends State<AuthGate> {
           key: ValueKey(user.id.isEmpty ? user.email : user.id),
           user: user,
           backend: widget.authBackend,
-          // Received invitations remain available in Crews → Invites after onboarding.
-          onCompleted: _clearInvite,
+          // The token outlives onboarding on purpose. Retiring it here left a
+          // new arrival from a share link with nothing to accept: the Crews
+          // inbox lists public.crew_invites, and a share-link token is not
+          // one of those. It goes when the acceptance page is finished with.
           builder: (profile) {
             final inviteToken = _pendingInviteToken;
             if (inviteToken != null) {
@@ -131,8 +142,8 @@ class _AuthGateState extends State<AuthGate> {
                 token: inviteToken,
                 crewBackend: widget.crewBackend,
                 onFinished: _clearInvite,
-                onAccepted: (crew) {
-                  _joinedCrewId = crew.id;
+                onAccepted: (crewId) {
+                  _joinedCrewId = crewId;
                   _joinedUser = user.id;
                 },
               );

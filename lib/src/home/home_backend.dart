@@ -50,10 +50,20 @@ class PactCheckIn {
     this.photoPath,
     this.photoUrl,
     this.keptAt,
+    this.clapCount = 0,
+    this.viewerClapped = false,
   });
   final String pactId;
   final String userId;
   final String day;
+
+  /// How many people have clapped this check-in, and whether the viewer is
+  /// one of them. The week carries both so a story opens on the claps it
+  /// already has rather than on a tally of this session's own tap. They
+  /// default to none, which is what an optimistic check-in the page has just
+  /// written honestly knows.
+  final int clapCount;
+  final bool viewerClapped;
 
   /// The photo kept with this check-in, when the pact asked for one. Null for
   /// a pact that does not, which is most of them.
@@ -74,6 +84,8 @@ class PactCheckIn {
     photoPath: photoPath,
     photoUrl: url,
     keptAt: keptAt,
+    clapCount: clapCount,
+    viewerClapped: viewerClapped,
   );
 
   /// The one name a check-in goes by: a clap, a seen mark and a story all
@@ -150,6 +162,42 @@ class CrewStanding {
   final bool isViewer;
 }
 
+/// One finished week as the crew week page lists it: when it was, how much
+/// of the crew's week was kept, and how much of the crew was out each day.
+class CrewWeekSummary {
+  const CrewWeekSummary({
+    required this.weekStart,
+    required this.percent,
+    required this.shareOut,
+  });
+
+  /// The week's Monday, as `yyyy-MM-dd`.
+  final String weekStart;
+
+  /// The crew's progress that week, 0 to 100, figured the way
+  /// [CrewWeek.percentCrew] figures the current one.
+  final int percent;
+
+  /// Monday to Sunday: the share of the crew that checked in that day.
+  final List<double> shareOut;
+
+  factory CrewWeekSummary.fromJson(Map<String, dynamic> row) => CrewWeekSummary(
+    weekStart: row['week_start'] as String,
+    percent: (row['percent'] as num?)?.toInt() ?? 0,
+    shareOut: [
+      for (final share in (row['days'] as List? ?? const []))
+        (share as num?)?.toDouble() ?? 0,
+    ],
+  );
+
+  /// The week's last day, as `yyyy-MM-dd`.
+  String get weekEnd =>
+      DateTime.parse(weekStart)
+          .add(const Duration(days: 6))
+          .toIso8601String()
+          .substring(0, 10);
+}
+
 class CrewWeek {
   const CrewWeek({
     required this.today,
@@ -196,6 +244,8 @@ class CrewWeek {
             i['completed_on'] as String,
             photoPath: i['photo_path'] as String?,
             keptAt: DateTime.tryParse(i['created_at'] as String? ?? ''),
+            clapCount: (i['clap_count'] as num?)?.toInt() ?? 0,
+            viewerClapped: i['viewer_clapped'] as bool? ?? false,
           ),
         )
         .toList(),
@@ -256,6 +306,11 @@ class CrewWeek {
         start.add(Duration(days: i)).toIso8601String().substring(0, 10),
     ];
   }
+
+  /// Whether the week has run its course: its Sunday is behind [today]. A
+  /// week reached from the past-weeks list is; the live week never is.
+  bool get isOver => weekDays.last.compareTo(today) < 0;
+
   int get target => pacts.fold(0, (sum, g) => sum + g.daysPerWeek);
   int completed(String userId) => pacts.fold(
     0,
@@ -432,7 +487,19 @@ abstract interface class HomeBackend {
     required String crewId,
     required String recipientId,
   });
-  Future<CrewWeek> fetchWeek(String crewId);
+
+  /// The crew's week: this one, or the finished week that began on
+  /// [weekStart] (a Monday, `yyyy-MM-dd`). A past week comes back with the
+  /// real [CrewWeek.today], so nothing in it reads as still open.
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart});
+
+  /// Finished weeks before [before] (a Monday; this week when null), newest
+  /// first, at most [limit] of them and never earlier than the crew's first.
+  Future<List<CrewWeekSummary>> fetchWeekHistory(
+    String crewId, {
+    String? before,
+    int limit = 12,
+  });
   Future<List<CrewActivity>> fetchActivity(
     String crewId, {
     CrewActivity? before,
@@ -608,11 +675,31 @@ class SupabaseHomeBackend implements HomeBackend {
   }
 
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<List<CrewWeekSummary>> fetchWeekHistory(
+    String crewId, {
+    String? before,
+    int limit = 12,
+  }) async {
+    final rows = await client.rpc(
+      'crew_week_history',
+      params: {
+        'target_crew_id': crewId,
+        'before_week': ?before,
+        'week_count': limit,
+      },
+    );
+    return [
+      for (final row in rows as List)
+        CrewWeekSummary.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+  }
+
+  @override
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final row = Map<String, dynamic>.from(
       await client.rpc(
         'crew_week_snapshot',
-        params: {'target_crew_id': crewId},
+        params: {'target_crew_id': crewId, 'target_week_start': ?weekStart},
       ),
     );
     final week = CrewWeek.fromJson(row);
@@ -782,8 +869,14 @@ class MissingHomeBackend implements HomeBackend {
   Future<void> markNotificationsRead({DateTime? upTo}) =>
       Future.error(StateError('Supabase is not configured.'));
   @override
-  Future<CrewWeek> fetchWeek(String crewId) =>
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) =>
       Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<CrewWeekSummary>> fetchWeekHistory(
+    String crewId, {
+    String? before,
+    int limit = 12,
+  }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<void> saveCheckIns({
     required String crewId,

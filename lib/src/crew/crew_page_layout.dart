@@ -49,8 +49,9 @@ class CrewPageHeading extends StatelessWidget {
   /// child of the stack below is positioned, so the stack has no size of its
   /// own to offer a column that is not offering it one either. The taller of
   /// the two things standing in the row, which is the control.
-  static const _rowHeight =
-      _actionSlot > CrewSwitcher.height ? _actionSlot : CrewSwitcher.height;
+  static const _rowHeight = _actionSlot > CrewSwitcher.height
+      ? _actionSlot
+      : CrewSwitcher.height;
 
   /// The crew this page is about. It used to sit in the page's body under the
   /// heading, as one more block in the column; it is the page's subject, so it
@@ -143,46 +144,102 @@ class CrewPageSkeleton extends StatelessWidget {
   );
 }
 
-/// The crew page's own loading shapes: its caption, then a stack of bands.
+/// A heading over a group on the crew page: a small-caps word and the rule
+/// that carries it across to the edge, so the roster reads as a named group
+/// rather than as the page's only content.
+///
+/// It lives here rather than beside the roster it heads because the loading
+/// shapes below need the very same row: the label is chrome the page knows
+/// before any answer arrives, so the skeleton shows the real one instead of a
+/// bar standing in for a word it could already have written.
+class CrewSectionLabel extends StatelessWidget {
+  const CrewSectionLabel(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          color: context.muted,
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          fontSize: 11,
+          letterSpacing: 1.1,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Divider(
+          height: 1,
+          thickness: 1,
+          color: context.ink.withValues(alpha: .14),
+        ),
+      ),
+    ],
+  );
+}
+
+/// The crew page's own loading shapes: the summary card at its own height,
+/// the heading over the roster, then the stack of bands.
+///
+/// It used to be a 120pt caption bar over the bands, which is what the page
+/// used to open with. The caption is gone — [CrewSummaryCard] stands there
+/// now, four times its height — so a skeleton still drawing the old bar
+/// promised a page that no longer exists and dropped the roster by some 80
+/// points the moment the answer landed.
 class CrewRosterSkeleton extends StatelessWidget {
   const CrewRosterSkeleton({super.key});
+
+  /// One band's ghost: the face, the name, the standing and the square at the
+  /// end, in the padding and the gaps [CrewPersonBand] lays them out with, so
+  /// nothing on the row moves sideways when the people arrive.
+  Widget _band(bool isCurrentUser) => CrewBand(
+    fillColor: isCurrentUser ? WeekPactColors.coolGrey : WeekPactColors.cream,
+    builder: (context) => const Padding(
+      padding: EdgeInsets.fromLTRB(12, 8, 6, 8),
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 40,
+            child: SkeletonBar(height: 40, shape: AvatarShape()),
+          ),
+          SizedBox(width: 12),
+          Expanded(child: SkeletonBar(height: 15)),
+          SizedBox(width: 10),
+          SkeletonBar(width: 54, height: 10),
+          SizedBox(width: 12),
+          // The band's control is a squircle the size of the slot it stands
+          // in, not the 30pt circle this used to draw.
+          SizedBox.square(
+            dimension: 36,
+            child: SkeletonBar(
+              height: 36,
+              shape: ContinuousRectangleBorder(
+                borderRadius: BorderRadius.all(
+                  Radius.circular(WeekPactMetrics.panelCurve),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const Align(
-        alignment: Alignment.centerLeft,
-        child: SkeletonBar(width: 120, height: 16),
-      ),
-      const SizedBox(height: 12),
-      CrewRoster(
-        children: [
-          for (var i = 0; i < 4; i++)
-            CrewBand(
-              fillColor: i == 0
-                  ? WeekPactColors.coolGrey
-                  : WeekPactColors.cream,
-              builder: (context) => const Padding(
-                padding: EdgeInsets.fromLTRB(12, 8, 6, 8),
-                child: Row(
-                  children: [
-                    SizedBox.square(
-                      dimension: 40,
-                      child: SkeletonBar(height: 40, shape: AvatarShape()),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(child: SkeletonBar(height: 15)),
-                    SizedBox(width: 12),
-                    SkeletonBar(width: 54, height: 10),
-                    SizedBox(width: 12),
-                    SkeletonBar(height: 30, width: 30, shape: CircleBorder()),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
+      const CrewSummaryCard.loading(),
+      const SizedBox(height: 18),
+      const CrewSectionLabel('IN THE CREW'),
+      const SizedBox(height: 10),
+      CrewRoster(children: [for (var i = 0; i < 4; i++) _band(i == 0)]),
     ],
   );
 }

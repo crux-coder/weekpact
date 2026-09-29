@@ -98,11 +98,15 @@ class _ProfileEditorState extends State<ProfileEditor> {
       if (mounted) {
         Navigator.pop(context, ProfileEdit(user: user, avatar: _avatar));
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        // An ArgumentError from the backend is the one failure the person can
+        // act on — a photo too large, a name too long — and it says which.
         setState(() {
           _saving = false;
-          _error = 'Could not save your profile. Try again.';
+          _error = error is ArgumentError
+              ? '${error.message}'
+              : 'Could not save your profile. Try again.';
         });
       }
     }

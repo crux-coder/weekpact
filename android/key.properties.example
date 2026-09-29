@@ -1,0 +1,18 @@
+# Copy to android/key.properties and fill in your own upload keystore.
+#
+# Neither this file's copy nor the .jks it names is committed: android/.gitignore
+# holds key.properties and **/*.jks. Without key.properties the release build
+# still runs, signed with the debug keystore and warning that it did — which
+# Google Play will not accept for an upload.
+#
+# storeFile may be absolute, or relative to the android/ directory. Keep the
+# keystore outside the repository: losing it means never updating this listing
+# again, and committing it means anyone can ship as you.
+#
+# See docs/launch-features.md, "Android release signing", for the keytool
+# command that makes one.
+
+storeFile=/Users/you/upload-keystore.jks
+storePassword=your-keystore-password
+keyAlias=upload
+keyPassword=your-key-password

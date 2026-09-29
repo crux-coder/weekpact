@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/home/clap_control.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/home/stories.dart';
@@ -18,9 +19,20 @@ const _today = '2026-09-09';
 /// A crew of four with a day between them: you have kept one pact, two others
 /// are in — one with a photo, one without — and the fourth has not checked in.
 class StoriesBackend extends DashboardBackend {
-  StoriesBackend({this.yourCheckIns = const ['read']});
+  StoriesBackend({
+    this.yourCheckIns = const ['read'],
+    this.beaClaps = 0,
+    this.beaClappedByYou = false,
+  }) : _beaCount = beaClaps;
 
   final List<String> yourCheckIns;
+
+  /// The claps Bea's check-in already carries in the week, and whether the
+  /// viewer gave one of them. Everything a story opens on comes from here.
+  final int beaClaps;
+  final bool beaClappedByYou;
+  int _beaCount;
+  bool failClap = false;
 
   /// The claps this backend was asked to write, newest last.
   final claps = <({String pactId, String userId, bool clapped})>[];
@@ -33,11 +45,16 @@ class StoriesBackend extends DashboardBackend {
     required bool clapped,
   }) async {
     claps.add((pactId: pactId, userId: userId, clapped: clapped));
-    return clapped ? 1 : 0;
+    if (failClap) throw StateError('offline');
+    // Bea's is the only check-in these tests clap, so one tally answers for
+    // the crew, and it answers from where the week left it rather than from
+    // zero.
+    _beaCount = (_beaCount + (clapped ? 1 : -1)).clamp(0, 999);
+    return _beaCount;
   }
 
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     fetches++;
     return CrewWeek(
       today: _today,
@@ -60,6 +77,8 @@ class StoriesBackend extends DashboardBackend {
           photoPath: 'bea/move.jpg',
           photoUrl: 'https://example.test/bea-move.jpg',
           keptAt: DateTime.utc(2026, 9, 9, 9),
+          clapCount: beaClaps,
+          viewerClapped: beaClappedByYou,
         ),
         PactCheckIn('read', 'cai', _today, keptAt: DateTime.utc(2026, 9, 9, 8)),
       ],
@@ -263,9 +282,88 @@ void main() {
     expect(seen.read('', _today), {'move/bea/$_today', 'read/cai/$_today'});
   });
 
-  testWidgets('a story takes a clap, and only then shows a tally', (
+  testWidgets('a story opens on the claps the check-in already has', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend(beaClaps: 5, beaClappedByYou: true);
+    await pumpStoriesHome(tester, backend: backend);
+    await tester.tap(find.byKey(const ValueKey('story-tile-bea')));
+    await tester.pumpUi();
+    // Five claps read as five, and the clap the viewer gave reads as given —
+    // both come off the week rather than off this session's own writes.
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('Clap'), findsNothing);
+    expect(backend.claps, isEmpty);
+    final pill = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('story-clap')),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(pill.color, clapInk);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a story opened already clapped does not pop', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpStoriesHome(
+      tester,
+      backend: StoriesBackend(beaClaps: 2, beaClappedByYou: true),
+    );
+    await tester.tap(find.byKey(const ValueKey('story-tile-bea')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // The squeeze answers a clap landing. A clap given yesterday is not one
+    // landing now, so the glyph stands still the whole way in.
+    final pop = find.descendant(
+      of: find.byKey(const ValueKey('story-clap')),
+      matching: find.byType(ScaleTransition),
+    );
+    for (var i = 0; i < 4; i++) {
+      expect(tester.widget<ScaleTransition>(pop).scale.value, 1.0);
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a clap moves the count the week gave it, and comes back on a '
+      'failure', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend(beaClaps: 5);
+    await pumpStoriesHome(tester, backend: backend);
+    await tester.tap(find.byKey(const ValueKey('story-tile-bea')));
+    await tester.pumpUi();
+    expect(find.text('5'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('story-clap')));
+    await tester.pumpUi();
+    expect(find.text('6'), findsOneWidget);
+    // Taking it back puts the crew's own count back, not a nought.
+    await tester.tap(find.byKey(const ValueKey('story-clap')));
+    await tester.pumpUi();
+    expect(find.text('5'), findsOneWidget);
+
+    backend.failClap = true;
+    await tester.tap(find.byKey(const ValueKey('story-clap')));
+    await tester.pumpUi();
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('Could not clap.'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a story nobody has clapped takes a clap, and only then shows a '
+      'tally', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -274,8 +372,8 @@ void main() {
     await pumpStoriesHome(tester, backend: backend);
     await tester.tap(find.byKey(const ValueKey('story-tile-bea')));
     await tester.pumpUi();
-    // Home's week does not carry claps, so the pill opens on the word rather
-    // than on a number it would have to invent.
+    // A check-in nobody has clapped opens on the word rather than standing a
+    // nought there.
     expect(find.text('Clap'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('story-clap')));
     await tester.pumpUi();
@@ -318,6 +416,9 @@ void main() {
     );
     await tester.pumpUi();
     expect(find.byType(StoryViewer), findsNothing);
+    // And it is not a nudge either: you cannot nudge yourself out of bed, so
+    // your own dashed tile takes no gesture at all.
+    expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

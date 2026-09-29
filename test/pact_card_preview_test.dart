@@ -9,7 +9,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/today_widgets.dart';
 import 'package:weekpact/src/crew/crew_switcher.dart';
-import 'package:weekpact/src/home/crew_member_list.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
@@ -241,59 +240,6 @@ void main() {
     );
     await tester.pumpUi();
     await shoot('crew-switcher-corner');
-
-    // The roster pulled open. The drawer lives in an OverlayPortal, so the
-    // capture has to sit above the app rather than inside its body.
-    await tester.pumpWidget(
-      RepaintBoundary(
-        key: capture,
-        child: MaterialApp(
-          theme: WeekPactTheme.dark,
-          debugShowCheckedModeBanner: false,
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  HomeCrewPanel(
-                    userId: '',
-                    week: CrewWeek(
-                      today: today,
-                      weekStart: week.weekStart,
-                      timezone: week.timezone,
-                      pacts: week.pacts,
-                      members: const [
-                        WeekMember(
-                          '',
-                          'me@example.com',
-                          displayName: 'Jasmin Mustafic',
-                        ),
-                        WeekMember(
-                          'mr',
-                          'mr@example.com',
-                          displayName: 'Mirnes Ramic',
-                        ),
-                        WeekMember(
-                          'ak',
-                          'ak@example.com',
-                          displayName: 'Amra Kovac',
-                        ),
-                      ],
-                      checkIns: [PactCheckIn(week.pacts.first.id, '', today)],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('crew-today-strip')));
-    await tester.pumpUi();
-    expect(find.byType(CrewMemberList), findsOneWidget);
-    await shoot('crew-drawer-open');
     expect(tester.takeException(), isNull);
   });
 }

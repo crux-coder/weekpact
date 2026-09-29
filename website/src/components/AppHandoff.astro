@@ -17,11 +17,11 @@ const config = readSiteConfig();
         <p class="handoff-description" id="handoff-description">{invite ? 'Open WeekPact to review the crew and accept your invitation.' : 'Open WeekPact to check in with your crew.'}</p>
         <a id="open-app" class="button button--wide" href="weekpact://invite">Open WeekPact <HugeIcon name="arrowRight01" size={20} /></a>
         <p class="open-feedback" id="open-feedback" role="status" hidden>If WeekPact didn’t open, install the app or open it manually. Then come back to this link and tap Open WeekPact again.</p>
-        <noscript><p class="notice">Enable JavaScript to pass your invitation to the app. For email invitations, you can also find the invite under Crews → Invites.</p></noscript>
+        <noscript><p class="notice">Enable JavaScript to pass your invitation to the app, then tap this link again.</p></noscript>
       </section>
       <div class="install-help">
         <h2 class="eyebrow">New to WeekPact?</h2>
-        <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong>. If you received an email invitation, use that email address.</p>
+        <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong> — your invitation opens in the app, even if you had to set up your profile first.</p>
         {(config.iosInstallUrl || config.androidInstallUrl) ? <div class="install-links">
           {config.iosInstallUrl && <a class="button" href={config.iosInstallUrl} rel="noreferrer"><HugeIcon name="apple" size={19} /> Get it for iPhone</a>}
           {config.androidInstallUrl && <a class="button" href={config.androidInstallUrl} rel="noreferrer"><HugeIcon name="android" size={19} /> Get it for Android</a>}

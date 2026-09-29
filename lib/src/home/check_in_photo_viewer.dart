@@ -6,9 +6,9 @@ import '../widgets/raised_icon.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../theme/weekpact_theme.dart';
 import '../widgets/app_sheet.dart';
 import 'home_backend.dart';
-import 'check_in_photo_frame.dart';
 
 class CheckInPhotoViewer extends StatefulWidget {
   const CheckInPhotoViewer({
@@ -50,47 +50,55 @@ class _CheckInPhotoViewerState extends State<CheckInPhotoViewer> {
           ],
         ),
         const SizedBox(height: 12),
+        // The photo at its own shape: check-ins are the whole camera frame,
+        // so a fixed square would cut most of it away.
         Center(
-          child: SizedBox(
-            width: (MediaQuery.sizeOf(context).height * .65).clamp(
-              120.0,
-              360.0,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * .6,
             ),
-            child: CheckInPhotoFrame(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(WeekPactMetrics.cardCorner),
               child: FutureBuilder<Uint8List>(
                 future: _photo,
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     return Image.memory(
                       snapshot.data!,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       semanticLabel: 'Crew check-in photo',
                     );
                   }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Photo unavailable',
-                            textAlign: TextAlign.center,
-                          ),
-                          TextButton(
-                            onPressed: () => setState(() {
-                              _photo = widget.backend.fetchCheckInPhoto(
-                                widget.path,
-                              );
-                            }),
-                            child: const Text('RETRY'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      semanticsLabel: 'Loading check-in photo',
+                  return SizedBox(
+                    width: 240,
+                    height: 240,
+                    child: ColoredBox(
+                      color: WeekPactColors.neutralInset,
+                      child: snapshot.hasError
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Photo unavailable',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  TextButton(
+                                    onPressed: () => setState(() {
+                                      _photo = widget.backend.fetchCheckInPhoto(
+                                        widget.path,
+                                      );
+                                    }),
+                                    child: const Text('RETRY'),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const Center(
+                              child: CircularProgressIndicator(
+                                semanticsLabel: 'Loading check-in photo',
+                              ),
+                            ),
                     ),
                   );
                 },

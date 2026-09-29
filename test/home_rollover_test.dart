@@ -13,7 +13,7 @@ class RolloverBackend extends DashboardBackend {
   final String completedOn;
 
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final original = await super.fetchWeek(crewId);
     final date = DateTime.parse(today);
     final monday = date.subtract(Duration(days: date.weekday - 1));

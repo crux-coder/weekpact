@@ -9,12 +9,15 @@ class OnboardingGate extends StatefulWidget {
     super.key,
     required this.user,
     required this.backend,
-    required this.onCompleted,
+    this.onCompleted,
     required this.builder,
   });
   final AuthUser user;
   final AuthBackend backend;
-  final VoidCallback onCompleted;
+
+  /// Optional: a caller that has nothing to retire when the profile is saved
+  /// leaves it out rather than passing an empty callback.
+  final VoidCallback? onCompleted;
   final Widget Function(AuthUser) builder;
   @override
   State<OnboardingGate> createState() => _OnboardingGateState();
@@ -30,7 +33,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
       user: widget.user,
       backend: widget.backend,
       onCompleted: (user) {
-        widget.onCompleted();
+        widget.onCompleted?.call();
         setState(() {
           _savedUser = user;
           _complete = true;

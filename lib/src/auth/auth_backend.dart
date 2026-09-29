@@ -24,7 +24,19 @@ class AuthUser {
   final String email;
 }
 
-enum SignUpResult { signedIn, emailConfirmationRequired }
+/// Where every auth email comes back to. The build sets it, and both the
+/// confirmation link and the recovery link read it from here: a recovery mail
+/// pointing at a route the build does not answer opens nothing at all.
+const inviteRedirectBase = String.fromEnvironment(
+  'INVITE_REDIRECT_BASE',
+  defaultValue: 'weekpact://invite',
+);
+
+enum SignUpResult {
+  signedIn,
+  emailConfirmationRequired,
+  emailAlreadyRegistered,
+}
 
 abstract interface class AuthBackend {
   AuthUser? get currentUser;
@@ -95,9 +107,15 @@ class SupabaseAuthBackend implements AuthBackend {
       password: password,
       emailRedirectTo: emailRedirectTo,
     );
-    return response.session == null
-        ? SignUpResult.emailConfirmationRequired
-        : SignUpResult.signedIn;
+    if (response.session != null) return SignUpResult.signedIn;
+    // With confirmations on, Supabase answers a sign-up for an address it
+    // already holds exactly as it answers a new one, except that the user it
+    // hands back carries no identities. Without that check the person is told
+    // to go and confirm an email nobody is going to send.
+    if (response.user?.identities?.isEmpty ?? false) {
+      return SignUpResult.emailAlreadyRegistered;
+    }
+    return SignUpResult.emailConfirmationRequired;
   }
 
   @override
@@ -158,7 +176,7 @@ class SupabaseAuthBackend implements AuthBackend {
 
   @override
   Future<void> requestPasswordReset(String email) => _client.auth
-      .resetPasswordForEmail(email.trim(), redirectTo: 'weekpact://invite');
+      .resetPasswordForEmail(email.trim(), redirectTo: inviteRedirectBase);
 
   @override
   Future<void> resendConfirmation(
@@ -168,7 +186,7 @@ class SupabaseAuthBackend implements AuthBackend {
     await _client.auth.resend(
       type: OtpType.signup,
       email: email.trim(),
-      emailRedirectTo: emailRedirectTo ?? 'weekpact://invite',
+      emailRedirectTo: emailRedirectTo ?? inviteRedirectBase,
     );
   }
 

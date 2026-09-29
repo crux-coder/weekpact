@@ -17,6 +17,11 @@ async function asUser(user, fn) {
     return result;
   } catch (e) { await db.exec('rollback'); throw e; }
 }
+// Free accounts stop at one crew, so the users below hold Pro for the rest of the script.
+async function grantPro(user) {
+  await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year') on conflict (user_id) do update set active=true, expires_at=excluded.expires_at", [user]);
+}
+for (const user of [owner, member]) await grantPro(user);
 const memberships = async user => (await db.query('select crew_id,role from crew_members where user_id=$1 order by crew_id', [user])).rows;
 await asUser(owner, async () => {
   for (const [crew, name] of [[first, 'Climbers'], [second, 'Readers']]) {

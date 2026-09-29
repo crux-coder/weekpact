@@ -17,7 +17,7 @@ import 'support/pump_ui.dart';
 class _CrewBackend extends DashboardBackend {
   int memberCount = 3;
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     fetches++;
     return CrewWeek(
       today: '2026-09-17',

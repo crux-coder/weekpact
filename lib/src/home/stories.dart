@@ -31,6 +31,13 @@ class Story {
   String? get photoUrl => checkIn.photoUrl;
   bool get hasPhoto => checkIn.photoUrl != null;
   DateTime? get keptAt => checkIn.keptAt;
+
+  /// The claps this check-in already has, and whether the viewer gave one.
+  /// The viewer opens on these rather than on zero — a clap is the one thing
+  /// a story asks for, and a page that forgets the ones already given asks
+  /// for it again every time.
+  int get clapCount => checkIn.clapCount;
+  bool get viewerClapped => checkIn.viewerClapped;
 }
 
 /// One member's day, as the rail draws it: their stories, whether they have

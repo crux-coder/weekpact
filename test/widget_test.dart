@@ -19,6 +19,7 @@ import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
+import 'package:weekpact/src/invites/invite_acceptance_page.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
@@ -33,7 +34,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -105,7 +106,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -129,7 +130,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -150,7 +151,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -193,7 +194,7 @@ void main() {
     await tester.pumpWidget(
       WeekPactApp(
         authBackend: auth,
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         inviteLinkSource: FakeInviteLinkSource(
           Uri.parse('weekpact://invite?invite=crew-token'),
@@ -224,7 +225,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -255,7 +256,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -298,7 +299,7 @@ void main() {
 
       await tester.pumpWidget(
         WeekPactApp(
-          homeBackend: DashboardBackend(),
+          homeBackend: DashboardBackend(viewerId: 'user-id'),
           pactsBackend: DashboardPacts(),
           authBackend: auth,
         ),
@@ -345,7 +346,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         captureCheckInPhoto: captureTestCheckInPhoto,
         pactsBackend: DashboardPacts(),
         authBackend: auth,
@@ -381,7 +382,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -419,7 +420,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -471,7 +472,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -503,7 +504,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -524,7 +525,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
       ),
@@ -545,7 +546,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
         crewBackend: crews,
@@ -572,7 +573,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
       await tester.pumpUi();
     }
-    expect(find.text('OWNER'), findsOneWidget);
+    // Your own band names the tint: colour alone said 'you' while the label
+    // said 'owner', and on a crew you started those land on the same row.
+    expect(find.text('YOU · OWNER'), findsOneWidget);
     expect(find.text('Pending invites'), findsNothing);
     expect(find.text('INVITE SOMEONE'), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);
@@ -600,7 +603,7 @@ void main() {
 
     await tester.pumpWidget(
       WeekPactApp(
-        homeBackend: DashboardBackend(),
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
         authBackend: auth,
         crewBackend: crews,
@@ -627,6 +630,153 @@ void main() {
     expect(find.text('Your crew is waiting.'), findsNothing);
     expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
   });
+
+  for (final withLink in [false, true]) {
+    testWidgets(
+      withLink
+          ? 'a broken auth stream with a pending link blames that link'
+          : 'a broken auth stream without a link asks for a plain log in',
+      (tester) async {
+        final auth = FakeAuthBackend();
+        addTearDown(auth.dispose);
+        await tester.pumpWidget(
+          WeekPactApp(
+            homeBackend: DashboardBackend(viewerId: 'user-id'),
+            pactsBackend: DashboardPacts(),
+            authBackend: auth,
+            inviteLinkSource: withLink
+                ? FakeInviteLinkSource(
+                    Uri.parse('weekpact://invite?invite=crew-token'),
+                  )
+                : const NoopInviteLinkSource(),
+          ),
+        );
+        await tester.pumpUi();
+        auth.failStream();
+        await tester.pumpUi();
+
+        expect(
+          find.textContaining('This sign-in link could not be opened'),
+          withLink ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.text('Could not confirm your sign-in. Please log in again.'),
+          withLink ? findsNothing : findsOneWidget,
+        );
+      },
+    );
+  }
+
+  testWidgets('a share link invitation waits through onboarding for a new '
+      'account', (tester) async {
+    final auth = FakeAuthBackend(onboardingCompleted: false);
+    final crews = FakeCrewBackend();
+    addTearDown(auth.dispose);
+
+    await tester.pumpWidget(
+      WeekPactApp(
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+        authBackend: auth,
+        crewBackend: crews,
+        inviteLinkSource: FakeInviteLinkSource(
+          Uri.parse('weekpact://invite?invite=share-token'),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
+    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+    await tester.ensureVisible(find.text('LOG IN'));
+    await tester.tap(find.text('LOG IN'));
+    await tester.pumpUi();
+
+    // A share-link token is not an email invitation, so there is no inbox for
+    // it to fall back to: it has to survive the profile form or it is lost.
+    expect(find.byType(InviteAcceptancePage), findsNothing);
+    await tester.ensureVisible(find.text('LET\u2019S GET STARTED'));
+    await tester.tap(find.text('LET\u2019S GET STARTED'));
+    await tester.pumpUi();
+    await tester.enterText(find.byType(TextFormField).first, 'Ada');
+    await tester.ensureVisible(find.text('LET\u2019S GO'));
+    await tester.tap(find.text('LET\u2019S GO'));
+    await tester.pumpUi();
+
+    expect(find.byType(InviteAcceptancePage), findsOneWidget);
+    await tester.ensureVisible(find.text('ACCEPT INVITE'));
+    await tester.tap(find.text('ACCEPT INVITE'));
+    await tester.pumpUi();
+    expect(crews.acceptedTokens, ['share-token']);
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+  });
+
+  testWidgets('signing up with an address that already has an account is sent '
+      'to log in', (tester) async {
+    final auth = FakeAuthBackend(
+      signUpResult: SignUpResult.emailAlreadyRegistered,
+    );
+    addTearDown(auth.dispose);
+
+    await tester.pumpWidget(
+      WeekPactApp(
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+        authBackend: auth,
+      ),
+    );
+    final mode = find.text('New here?  CREATE ACCOUNT');
+    await tester.ensureVisible(mode);
+    await tester.tap(mode);
+    await tester.pumpUi();
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'taken@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
+    await tester.ensureVisible(find.text('CREATE ACCOUNT'));
+    await tester.tap(find.text('CREATE ACCOUNT'));
+    await tester.pumpUi();
+
+    expect(
+      find.text('An account with this email already exists. Log in instead.'),
+      findsOneWidget,
+    );
+    expect(find.text('Welcome back.'), findsOneWidget);
+    expect(find.text('CONFIRM PASSWORD'), findsNothing);
+    expect(find.text('taken@example.com'), findsOneWidget);
+  });
+
+  testWidgets('switching between log in and create account keeps the typed '
+      'email', (tester) async {
+    final auth = FakeAuthBackend();
+    addTearDown(auth.dispose);
+
+    await tester.pumpWidget(
+      WeekPactApp(
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+        authBackend: auth,
+      ),
+    );
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'person@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'short');
+    await tester.tap(find.text('LOG IN'));
+    await tester.pump();
+    expect(find.text('Use at least 8 characters'), findsOneWidget);
+
+    final mode = find.text('New here?  CREATE ACCOUNT');
+    await tester.ensureVisible(mode);
+    await tester.tap(mode);
+    await tester.pumpUi();
+
+    expect(find.text('person@example.com'), findsOneWidget);
+    expect(find.text('short'), findsNothing);
+    expect(find.text('Use at least 8 characters'), findsNothing);
+  });
 }
 
 class FakeAuthBackend implements AuthBackend {
@@ -641,17 +791,32 @@ class FakeAuthBackend implements AuthBackend {
   Future<void> updatePassword(String password) async {}
   @override
   Future<void> deleteAccount(String password) => signOut();
-  FakeAuthBackend({this.signUpResult = SignUpResult.signedIn});
+  FakeAuthBackend({
+    this.signUpResult = SignUpResult.signedIn,
+    this.onboardingCompleted = true,
+  });
 
   final _controller = StreamController<AuthUser?>.broadcast();
   final SignUpResult signUpResult;
+
+  /// Whether the account this backend hands back has already been through
+  /// onboarding. False is a brand new arrival, who meets the profile form
+  /// before anything else.
+  final bool onboardingCompleted;
   AuthUser? _user;
   int signInCalls = 0;
   int signUpCalls = 0;
   String? lastEmailRedirectTo;
 
+  /// A dropped session or a refused callback, as the SDK reports one.
+  void failStream() => _controller.addError(StateError('auth stream failed'));
+
   void confirmEmail(String email) {
-    _user = AuthUser(email: email, onboardingCompleted: true);
+    _user = AuthUser(
+      id: 'user-id',
+      email: email,
+      onboardingCompleted: onboardingCompleted,
+    );
     _controller.add(_user);
   }
 
@@ -664,7 +829,11 @@ class FakeAuthBackend implements AuthBackend {
   @override
   Future<void> signIn({required String email, required String password}) async {
     signInCalls++;
-    _user = AuthUser(email: email, onboardingCompleted: true);
+    _user = AuthUser(
+      id: 'user-id',
+      email: email,
+      onboardingCompleted: onboardingCompleted,
+    );
     _controller.add(_user);
   }
 
@@ -677,7 +846,11 @@ class FakeAuthBackend implements AuthBackend {
     signUpCalls++;
     lastEmailRedirectTo = emailRedirectTo;
     if (signUpResult == SignUpResult.signedIn) {
-      _user = AuthUser(email: email, onboardingCompleted: true);
+      _user = AuthUser(
+        id: 'user-id',
+        email: email,
+        onboardingCompleted: onboardingCompleted,
+      );
       _controller.add(_user);
     }
     return signUpResult;
@@ -699,6 +872,7 @@ class FakeAuthBackend implements AuthBackend {
   }) async {
     if (avatar != null) savedAvatar = avatar;
     _user = AuthUser(
+      id: _user!.id,
       email: _user!.email,
       firstName: firstName,
       lastName: lastName,
@@ -834,6 +1008,11 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
     crew = _details();
     return crew!;
   }
+
+  CrewInvitePreview? preview;
+
+  @override
+  Future<CrewInvitePreview?> previewInvite(String token) async => preview;
 }
 
 class FakeInviteLinkSource implements InviteLinkSource {

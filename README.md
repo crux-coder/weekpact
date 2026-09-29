@@ -347,8 +347,10 @@ npm run release
 
 This builds a signed release and opens the new archive in Xcode Organizer.
 It uses `.env.json` when present, otherwise `.env`, and reads the release version
-from `pubspec.yaml`. It increments the highest local build number and preserves
-an archive under `build/ios/releases/`. It does not upload automatically.
+from `pubspec.yaml`. The build number is the number of minutes since
+2026-01-01 UTC, so every machine and every clean checkout produces a higher one
+than the last release without sharing any state. It preserves an archive under
+`build/ios/releases/`. It does not upload automatically.
 
 In Organizer, select the archive → **Distribute App → App Store Connect → Upload**
 (the exact labels can vary by Xcode version). Review signing and finish the upload.
@@ -366,9 +368,11 @@ npm run release -- --no-open
 With pnpm, pass options directly, for example `pnpm release --build-number 10`.
 No root dependency installation is needed. The shell script can also be run directly.
 
-If another machine uploaded a higher build, supply a number above it. The local
-counter lives in `.dart_tool/ios-release-build-number`; failed builds also consume
-a number. Set a new marketing version (for example `1.1.0+1`) in `pubspec.yaml`
+A build number can still be chosen by hand, and it has to be above the local
+maximum. That maximum is the highest of the counter in
+`.dart_tool/ios-release-build-number`, the previous archive, and the pubspec
+build number; the clock-based default is raised past it when one of them is
+ahead. Set a new marketing version (for example `1.1.0+1`) in `pubspec.yaml`
 when preparing the next App Store version. Build numbers continue increasing.
 
 Requires macOS, Flutter on PATH, Xcode selected as the developer directory, and
@@ -417,7 +421,7 @@ supabase db lint --local --fail-on error
 
 Signed-in accounts without a completed profile see an introduction, then one page
 containing their optional avatar photo, required display name, and optional surname.
-Successful completion opens Home; received crew invitations remain in Crews → Invites.
+Successful completion opens Home, or the invite acceptance page when the app was opened from a crew link.
 Existing development accounts will also see this flow once.
 
 Names, `avatar_path`, and `onboarding_completed` are saved in Supabase Auth user
@@ -541,10 +545,16 @@ The photo is the pact's own rule, set by its owner and enforced in the database:
 a pact with **Photo check-in** off saves on the selection alone, and one with it
 on is rejected without a matching upload.
 
-Check-ins for a photo pact open a live camera inside the rounded square drawer. The single main button starts as “Take picture” and flips to “Check in” after
-capture. Retake returns to the live preview. The camera stops when
-the app backgrounds or the preview closes. Microphone access is disabled. Images
-are center-cropped to 1024 × 1024 PNG and re-encoded without EXIF metadata.
+Check-ins for a photo pact open the camera over the whole screen, the way a
+phone camera does: the live feed fills the page, a round shutter sits under it
+with the gallery to its left and the front/back lens switch to its right, and
+the picture, taken or chosen, then takes the
+feed's place, full size, above a single “Check in” button with “Retake photo”
+under it. While the camera is live, the strip under it shows where the week
+stands on this pact (one segment per target day, kept ones filled, today's lit)
+and what today's picture adds. The camera stops when the app backgrounds or the page closes.
+Microphone access is disabled. Images keep the whole frame the person saw,
+scaled to a 1280 px long side, and are re-encoded as PNG without EXIF metadata.
 
 Apply `20260915114621_require_check_in_photos.sql`, then redeploy
 `dispatch-notifications` and `delete-account`. Rebuild iOS for the camera usage

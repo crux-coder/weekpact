@@ -45,6 +45,7 @@ class CrewDetails {
     required this.currentUserRole,
     required this.members,
     required this.pendingInvites,
+    this.createdAt,
   });
 
   final String id;
@@ -54,6 +55,14 @@ class CrewDetails {
   final String currentUserRole;
   final List<CrewMember> members;
   final List<CrewInvite> pendingInvites;
+
+  /// When the crew was started, for the line the crew card opens with.
+  ///
+  /// Nullable rather than required: `crews.created_at` has always been there,
+  /// but nothing read it until the card did, and a crew summary is not worth
+  /// making every fake and fixture in the suite restate a date they do not
+  /// care about. The card simply drops the clause when it is absent.
+  final DateTime? createdAt;
 
   bool get isOwner => currentUserRole == 'owner';
 }
@@ -100,6 +109,40 @@ class ReceivedCrewInvite {
       );
 }
 
+/// The little an invitation can say about a crew before anyone has joined it:
+/// its name, how many people are in it, and who started it. Nothing else is
+/// readable through a token, so nothing else is here.
+class CrewInvitePreview {
+  const CrewInvitePreview({
+    required this.crewName,
+    required this.memberCount,
+    required this.ownerName,
+  });
+
+  final String crewName;
+  final int memberCount;
+  final String ownerName;
+
+  static CrewInvitePreview fromJson(Map<String, dynamic> row) =>
+      CrewInvitePreview(
+        crewName: row['crew_name'] as String,
+        memberCount: (row['member_count'] as num).toInt(),
+        ownerName: row['owner_name'] as String,
+      );
+}
+
+/// Thrown when the join itself succeeded and only the crew that followed could
+/// not be read. The person is a member either way, so the page that catches
+/// this sends them on rather than telling them the invitation failed.
+class CrewJoinedWithoutDetails implements Exception {
+  const CrewJoinedWithoutDetails(this.crewId);
+
+  final String crewId;
+
+  @override
+  String toString() => 'Joined crew $crewId, but its details could not load.';
+}
+
 abstract interface class CrewBackend {
   Future<void> leaveCrew({required String crewId, String? successorId});
   Future<void> removeMember({required String crewId, required String userId});
@@ -123,9 +166,26 @@ abstract interface class CrewBackend {
     required String inviteId,
   });
   Future<CrewDetails> acceptInvite(String token);
+
+  /// What the invitation is for, or null when the token is unknown or expired.
+  Future<CrewInvitePreview?> previewInvite(String token);
 }
 
-class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
+/// Ending a crew, for the one person who can.
+///
+/// It sits beside [CrewBackend] rather than in it, the way [CrewSharingBackend]
+/// does: a backend that cannot reach the database can still answer every other
+/// question on that interface from what it holds, and a page asks for this one
+/// before it offers the door.
+abstract interface class CrewDeletionBackend {
+  /// Deletes the crew itself. Row-level security lets only its owner through,
+  /// and the database takes the members, pacts, check-ins, share links and
+  /// finalized weeks with it.
+  Future<void> deleteCrew(String crewId);
+}
+
+class SupabaseCrewBackend
+    implements CrewBackend, CrewSharingBackend, CrewDeletionBackend {
   @override
   Future<CrewShareLink?> manageShareLink(String crewId, String action) async {
     final row = await _client.rpc(
@@ -154,7 +214,7 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
         .from('crew_members')
         .select(
           'crew_id,user_id,email,role,joined_at,'
-          'crews!inner(id,name,timezone,owner_id)',
+          'crews!inner(id,name,timezone,owner_id,created_at)',
         )
         .eq('user_id', userId);
     if (crewId != null) query = query.eq('crew_id', crewId);
@@ -189,6 +249,7 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
       name: crew['name'] as String,
       timezone: crew['timezone'] as String,
       ownerId: crew['owner_id'] as String,
+      createdAt: DateTime.tryParse(crew['created_at'] as String? ?? ''),
       currentUserRole: membership['role'] as String,
       members: memberRows
           .map(
@@ -257,7 +318,28 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
       'accept_crew_invite',
       params: {'p_token': token},
     ) as String;
-    return (await fetchCrew(crewId: crewId))!;
+    // Past this line the membership exists. A crew that will not load is a
+    // reading problem, and reporting it as a refused invitation would leave
+    // someone who is already in the crew asking for a fresh link.
+    CrewDetails? crew;
+    try {
+      crew = await fetchCrew(crewId: crewId);
+    } catch (_) {
+      crew = null;
+    }
+    if (crew == null) throw CrewJoinedWithoutDetails(crewId);
+    return crew;
+  }
+
+  @override
+  Future<CrewInvitePreview?> previewInvite(String token) async {
+    final row = await _client.rpc(
+      'preview_crew_invite',
+      params: {'p_token': token},
+    );
+    return row == null
+        ? null
+        : CrewInvitePreview.fromJson(Map<String, dynamic>.from(row as Map));
   }
 
   @override
@@ -302,6 +384,20 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
     );
   }
 
+  @override
+  Future<void> deleteCrew(String crewId) async {
+    // The row and nothing else: every table hanging off a crew cascades, and
+    // `crews_delete_for_owner` is what decides whether this deletes anything
+    // at all. A member's attempt matches no row rather than raising, so the
+    // deleted row is asked for back and its absence is the refusal.
+    final deleted = await _client
+        .from('crews')
+        .delete()
+        .eq('id', crewId)
+        .select('id');
+    if (deleted.isEmpty) throw StateError('Only the owner can delete a crew.');
+  }
+
   String _requireUserId() {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('You must be signed in.');
@@ -309,8 +405,11 @@ class SupabaseCrewBackend implements CrewBackend, CrewSharingBackend {
   }
 }
 
-class MissingCrewBackend implements CrewBackend {
+class MissingCrewBackend implements CrewBackend, CrewDeletionBackend {
   const MissingCrewBackend();
+
+  @override
+  Future<void> deleteCrew(String crewId) => Future.error(_error);
 
   @override
   Future<List<PactCrew>> fetchCrews() async => [];
@@ -341,6 +440,9 @@ class MissingCrewBackend implements CrewBackend {
 
   @override
   Future<CrewDetails> acceptInvite(String token) => Future.error(_error);
+
+  @override
+  Future<CrewInvitePreview?> previewInvite(String token) async => null;
 
   @override
   Future<CrewDetails> createCrew({

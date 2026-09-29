@@ -70,11 +70,11 @@ class _StoryViewerState extends State<StoryViewer> {
   late int _member = widget.initial.clamp(0, widget.days.length - 1);
   int _story = 0;
 
-  /// Claps this viewer has given while the page has been open, and the counts
-  /// the server answered with. Home's week does not carry a check-in's claps,
-  /// and nothing else reads them back — so the tally appears once the clap
-  /// this page just wrote has been answered, rather than starting at a number
-  /// it would have to guess.
+  /// Claps the viewer has given, and the count each check-in carries. Both are
+  /// seeded from the week the page was opened with and then kept in step with
+  /// whatever the server answers a tap with. They used to start empty, which
+  /// made the pill a tally of this session rather than of the crew: a check-in
+  /// with five claps read "Clap", and a clap given yesterday looked ungiven.
   final _clapped = <String>{};
   final _counts = <String, int>{};
   bool _clapping = false;
@@ -85,6 +85,14 @@ class _StoryViewerState extends State<StoryViewer> {
   @override
   void initState() {
     super.initState();
+    // Seeded before the first build, so a story opened on a clap the viewer
+    // already gave arrives filled rather than popping — see [ClapPop].
+    for (final day in widget.days) {
+      for (final story in day.stories) {
+        _counts[story.id] = story.clapCount;
+        if (story.viewerClapped) _clapped.add(story.id);
+      }
+    }
     widget.onSeen?.call(_current);
   }
 
@@ -112,12 +120,15 @@ class _StoryViewerState extends State<StoryViewer> {
     final story = _current;
     if (backend == null || _clapping) return;
     final clapped = !_clapped.contains(story.id);
+    final before = _counts[story.id] ?? 0;
     setState(() {
       _clapping = true;
       if (clapped) {
         _clapped.add(story.id);
+        _counts[story.id] = before + 1;
       } else {
         _clapped.remove(story.id);
+        _counts[story.id] = math.max(0, before - 1);
       }
     });
     try {
@@ -131,6 +142,7 @@ class _StoryViewerState extends State<StoryViewer> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
+        _counts[story.id] = before;
         if (clapped) {
           _clapped.remove(story.id);
         } else {
@@ -277,9 +289,9 @@ class _StoryViewerState extends State<StoryViewer> {
 ///
 /// It wears `clapInk` only once it has been given, as everywhere else in the
 /// app: brass is the colour of a clap you made, so an unclapped pill is an
-/// outline and a clapped one is filled. The count appears when the server has
-/// answered with one — Home's week does not carry claps, so the pill says
-/// `Clap` rather than opening on a number it would have to invent.
+/// outline and a clapped one is filled. The count is the week's own — the
+/// snapshot carries every check-in's claps — and a check-in nobody has
+/// clapped yet says `Clap` rather than standing a nought there.
 class _ClapPill extends StatelessWidget {
   const _ClapPill({
     super.key,

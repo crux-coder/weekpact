@@ -74,5 +74,29 @@ await asUser(owner, async()=> {
   await remove(other);
 });
 await asUser(member, async()=>assert.rejects(db.query('delete from crew_members where user_id=$1',[other]), e=>e.code==='42501'));
+// The owner ends the crew and everything hanging off it goes: members, pacts,
+// check-ins, invites, and the finalized weeks the streak is read from. The
+// before-delete triggers that guard closed weeks do not stand in the cascade's
+// way — by the time they run the crew row is already gone and they return.
+await asUser(owner, async()=> {
+  await db.exec('reset role');
+  await db.query("insert into private.crew_week_results(crew_id,week_start,timezone,check_ins,active_members,completed_pacts,total_pacts,earned) values($1,current_date-7,'UTC',1,1,1,1,true)",[crew]);
+  await db.exec('set local role authenticated');
+  assert.equal((await db.query('delete from crews where id=$1',[crew])).affectedRows,1);
+  await db.exec('reset role');
+  for (const table of ['crews','crew_members','crew_pacts','pact_check_ins','crew_invites','private.crew_week_results']) {
+    assert.equal((await db.query(`select * from ${table}`)).rows.length,0,`${table} should be empty`);
+  }
+});
+// A member's delete matches no row rather than raising, which is why the app
+// asks for the deleted row back and treats an empty answer as the refusal.
+await asUser(member, async()=> {
+  assert.equal((await db.query('delete from crews where id=$1',[crew])).affectedRows,0);
+  await db.exec('reset role');
+  assert.equal((await db.query('select * from crews')).rows.length,1);
+});
+await asUser(outsider, async()=> {
+  assert.equal((await db.query('delete from crews where id=$1',[crew])).affectedRows,0);
+});
 await db.close();
 console.log(`${passed} membership permission and state checks passed.`);

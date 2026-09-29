@@ -20,6 +20,13 @@ class NudgeFromRailBackend extends StoriesBackend {
   final sent = <String>[];
   int stateReads = 0;
 
+  /// A cooldown that ends eighteen hours from now, wherever "now" happens to
+  /// be: the sheet counts down to it, so a fixed date would read as a
+  /// different span every day the suite is run.
+  static final cooldownEnds = DateTime.now().add(
+    const Duration(hours: 18, minutes: 4),
+  );
+
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async {
     stateReads++;
@@ -27,9 +34,7 @@ class NudgeFromRailBackend extends StoriesBackend {
     return {
       'eli': CrewNudgeState(
         status,
-        nextAllowedAt: status == CrewNudgeStatus.cooldown
-            ? DateTime.utc(2026, 9, 10, 9)
-            : null,
+        nextAllowedAt: status == CrewNudgeStatus.cooldown ? cooldownEnds : null,
       ),
     };
   }
@@ -75,6 +80,28 @@ void main() {
     });
   });
 
+  group('the wait before the next nudge', () {
+    test('is a span rather than a date', () {
+      expect(nudgeCountdown(const Duration(hours: 18)), 'in 18 hours');
+      expect(nudgeCountdown(const Duration(minutes: 40)), 'in 40 minutes');
+      expect(nudgeCountdown(const Duration(hours: 1)), 'in an hour');
+      expect(nudgeCountdown(const Duration(hours: 24)), 'in a day');
+    });
+
+    test('never counts down to nothing', () {
+      // The send is what decides, so a deadline already passed still reads as
+      // a wait rather than as "in 0 minutes" or a negative one.
+      expect(nudgeCountdown(const Duration(seconds: 20)), 'in a minute');
+      expect(nudgeCountdown(Duration.zero), 'in a minute');
+      expect(nudgeCountdown(const Duration(minutes: -5)), 'in a minute');
+    });
+
+    test('rounds up rather than sending someone back early', () {
+      expect(nudgeCountdown(const Duration(minutes: 95)), 'in 2 hours');
+      expect(nudgeCountdown(const Duration(seconds: 100)), 'in 2 minutes');
+    });
+  });
+
   testWidgets('a crewmate who is not in takes a press, and a nudge', (
     tester,
   ) async {
@@ -101,6 +128,22 @@ void main() {
     expect(find.text('Nudged Eli Fisher.'), findsOneWidget);
   });
 
+  testWidgets('a plain tap on a dashed tile opens the same offer', (
+    tester,
+  ) async {
+    // A long press was the only entrance on the one page that draws the rail,
+    // and a gesture with no mark on it is a feature nobody finds. A dashed
+    // tile has nothing else behind a tap, so the tap is the nudge.
+    final backend = NudgeFromRailBackend();
+    await pumpStoriesHome(tester, backend: backend);
+    await tester.tap(_tile('eli'));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('nudge-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('send-nudge')));
+    await tester.pumpUi();
+    expect(backend.sent, ['eli']);
+  });
+
   testWidgets('the offer can be left without sending', (tester) async {
     final backend = NudgeFromRailBackend();
     await pumpStoriesHome(tester, backend: backend);
@@ -120,7 +163,12 @@ void main() {
     await tester.longPress(_tile('eli'));
     await tester.pumpUi();
     expect(find.text('ALREADY NUDGED'), findsOneWidget);
-    expect(find.textContaining('You can nudge again on'), findsOneWidget);
+    // A span, not a date: the cooldown is 24 hours from the send, so "on Sep
+    // 29" sends someone back at nine the next morning to be refused again.
+    expect(
+      find.textContaining('You can nudge again in 18 hours'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('send-nudge')));
     await tester.pumpUi();
     expect(backend.sent, isEmpty);
@@ -172,7 +220,7 @@ void main() {
     await tester.longPress(_tile(''));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
-    // Bea is in, so her tile's gesture is already spoken for: a press opens
+    // Bea is in, so her tile's gestures are already spoken for: a press opens
     // nothing, and a tap opens her stories.
     await tester.longPress(_tile('bea'));
     await tester.pumpUi();

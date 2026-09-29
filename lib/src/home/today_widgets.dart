@@ -24,7 +24,6 @@ import '../widgets/dashed_border.dart';
 import '../widgets/edge_bounce.dart';
 import 'home_backend.dart';
 import '../notifications/notifications_page.dart';
-import 'crew_member_list.dart';
 import 'stories_rail.dart';
 
 const _ink = homeInk;
@@ -59,11 +58,6 @@ const _countSize = 76.0;
 const _countCaptionSize = 18.0;
 const _countCaptionHeight = 1.2;
 
-/// The caption's line box. 18 x 1.2 is 21.6, but a line lays out on whole
-/// pixels, so the floor has to reserve the 22 it actually takes — the missing
-/// .4 is enough to overflow the column.
-const _countCaptionBox = 22.0;
-
 /// The gap between the caption and the bar, and between the bar and the
 /// button. The bar belongs to the count, so the first is much the smaller of
 /// the two — see the note where they are laid out.
@@ -83,7 +77,6 @@ const _contentHeight =
     _titleBudget +
     _titleGap +
     _countSize +
-    _countCaptionBox +
     _captionToBar +
     _segmentHeight +
     _barToAction +
@@ -99,6 +92,7 @@ class _CountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.baseline,
     textBaseline: TextBaseline.alphabetic,
     children: [
@@ -120,6 +114,21 @@ class _CountRow extends StatelessWidget {
           color: homeMutedInk,
         ),
       ),
+      const SizedBox(width: 8),
+      // The caption sits on the number's baseline rather than under it: one
+      // line reads as one fact, and the card gives the line back to the bar.
+      Text(
+        'days this week',
+        maxLines: 1,
+        style: TextStyle(
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          fontSize: _countCaptionSize,
+          height: _countCaptionHeight,
+          fontWeight: FontWeight.w500,
+          color: homeMutedInk,
+        ),
+      ),
     ],
   );
 }
@@ -132,126 +141,6 @@ const _faceSize = 34.0;
 /// still reads as a separate person.
 const _faceRingWidth = 2.0;
 
-/// The whole drawn face, ring included — the step the row is laid out on.
-const _faceBox = _faceSize + _faceRingWidth * 2;
-
-/// How far each face slides under the one before it.
-const _faceOverlap = 9.0;
-
-/// What one more face adds to the row's width.
-const _faceStep = _faceBox - _faceOverlap;
-
-/// How many faces the zone draws before the rest become a count. Four is what
-/// fits beside the number on the narrowest phone the app supports.
-const _maxFaces = 4;
-
-/// Who in the crew has kept this pact today, in the space right of the count.
-///
-/// The card already knew this and never said it: [CrewWeek.checkIns] names the
-/// pact, the person and the day for every check-in in the week, and
-/// [CrewWeek.members] is the roster. It is the one thing the card can say that
-/// the person cannot work out from their own numbers — and the reason a pact
-/// lives in a crew rather than in a notes app.
-///
-/// The whole crew is counted, the viewer included, because the crew strip
-/// higher up Home counts the same crew the same way — `n/${members.length} in
-/// today`. Leaving the viewer out reads as an undercount rather than as a
-/// different question: on a crew of three it says "0 of 2", and the only
-/// sensible response to that is to wonder where the third person went.
-///
-/// A crew of one gets [_PactDaysToGo] instead, where there is no one to count.
-class _PactCrewToday extends StatelessWidget {
-  const _PactCrewToday({
-    super.key,
-    required this.members,
-    required this.userId,
-    required this.keptToday,
-    required this.tint,
-  });
-
-  final List<WeekMember> members;
-
-  /// The viewer, who leads the row the way they lead the crew strip's.
-  final String userId;
-  final Set<String> keptToday;
-
-  /// The card's fill, which rings each face so overlapping ones stay apart.
-  final Color tint;
-
-  @override
-  Widget build(BuildContext context) {
-    // In first, and the viewer first within each group — the same order the
-    // crew strip seats its faces in, so the two rows on one screen do not
-    // disagree about where a person stands.
-    final roster = [...members]
-      ..sort((a, b) {
-        if (a.id == b.id) return 0;
-        if (a.id == userId) return -1;
-        if (b.id == userId) return 1;
-        return 0;
-      });
-    final inToday = roster.where((m) => keptToday.contains(m.id)).toList();
-    final out = roster.where((m) => !keptToday.contains(m.id)).toList();
-    final ordered = [...inToday, ...out];
-    // The last slot becomes "+N" when the crew outruns the row, so a crew of
-    // six shows three faces and a count rather than four faces and a lie.
-    final overflow = ordered.length > _maxFaces
-        ? ordered.length - (_maxFaces - 1)
-        : 0;
-    final shown = ordered
-        .take(overflow > 0 ? _maxFaces - 1 : _maxFaces)
-        .toList();
-    final slots = shown.length + (overflow > 0 ? 1 : 0);
-    return Semantics(
-      label: '${inToday.length} of ${members.length} crew in today',
-      excludeSemantics: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          SizedBox(
-            // A Stack takes no size of its own, and the zone is not a flex
-            // child, so the row states its width: one whole face, plus a step
-            // for every one that slides under it.
-            width: _faceBox + (slots - 1) * _faceStep,
-            height: _faceBox,
-            child: Stack(
-              children: [
-                // Drawn last to first, so each face laps over the one after
-                // it rather than under.
-                for (var slot = slots - 1; slot >= 0; slot--)
-                  Positioned(
-                    left: slot * _faceStep,
-                    child: slot < shown.length
-                        ? _CrewFace(
-                            member: shown[slot],
-                            kept: keptToday.contains(shown[slot].id),
-                            tint: tint,
-                          )
-                        : _CrewFace(kept: false, tint: tint, more: overflow),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${inToday.length} of ${members.length} in today',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: WeekPactType.secondary,
-              fontFamilyFallback: WeekPactType.secondaryFallback,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: homeMutedInk,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// One face. Kept today is a solid, paper-filled seat carrying the person's
 /// picture; not yet is a hole cut in the card, on the same ink the unfilled
 /// segments of the bar are — the two states then read alike wherever they
@@ -263,7 +152,6 @@ class _CrewFace extends StatelessWidget {
     this.member,
     required this.kept,
     required this.tint,
-    this.more,
     this.size = _faceSize,
     this.ring,
   });
@@ -271,9 +159,6 @@ class _CrewFace extends StatelessWidget {
   final WeekMember? member;
   final bool kept;
   final Color tint;
-
-  /// Set instead of [member] for the "+2" that stands for the rest.
-  final int? more;
 
   /// The drawn face, inside its ring. The card's row of crewmates keeps the
   /// default; the race track's faces are smaller, because a track carries the
@@ -289,7 +174,7 @@ class _CrewFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = Text(
-      more != null ? '+$more' : member!.initials,
+      member!.initials,
       style: TextStyle(
         fontFamily: WeekPactType.secondary,
         fontFamilyFallback: WeekPactType.secondaryFallback,
@@ -332,44 +217,6 @@ class _CrewFace extends StatelessWidget {
       ),
     );
   }
-}
-
-/// What the week still wants, for a crew of one.
-///
-/// The count says what has been done; this says what is left, which is the
-/// number that decides whether today is a day you go.
-class _PactDaysToGo extends StatelessWidget {
-  const _PactDaysToGo({required this.remaining});
-  final int remaining;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      Text(
-        remaining == 0 ? 'Week' : '$remaining',
-        style: TextStyle(
-          fontSize: 34,
-          height: 1.1,
-          fontWeight: FontWeight.w700,
-          color: homeMutedInk,
-        ),
-      ),
-      Text(
-        remaining == 0 ? 'kept' : 'to go',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontFamily: WeekPactType.secondary,
-          fontFamilyFallback: WeekPactType.secondaryFallback,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: homeMutedInk,
-        ),
-      ),
-    ],
-  );
 }
 
 /// A title at the largest size that still fits the box it is given.
@@ -607,7 +454,12 @@ class CrewTodayBar extends StatelessWidget {
             ? line
             : '$line, open the crew week',
         child: ExcludeSemantics(
+          // The card curve, not the panel one: this bar stands directly over
+          // the race card at the same width, and two corners that close at
+          // different rates on one column read as a mistake rather than as
+          // two kinds of surface.
           child: CrewHeaderSurface(
+            curve: WeekPactMetrics.cardCurve,
             child: InkWell(
               key: const ValueKey('open-crew-week'),
               onTap: open,
@@ -880,8 +732,7 @@ Widget _scaledToBox(WidgetBuilder child) => LayoutBuilder(
 /// It was a framed block — this card over the day's pull-down, with the crew's
 /// roster behind the grip. The day is the stories rail's now, and a frame
 /// around a single card is a box drawn round one object, so both went and the
-/// card stands on the canvas. [CrewTodayStrip] and [CrewMemberList] are
-/// unchanged and simply not built here.
+/// card stands on the canvas.
 class HomeCrewPanel extends StatefulWidget {
   const HomeCrewPanel({super.key, required this.week, required this.userId});
 
@@ -961,8 +812,8 @@ class HomeCrewPanel extends StatefulWidget {
     final solo = crew.members.length < 2;
     final mine = standings.where((s) => s.isViewer).firstOrNull;
     // Everyone on the same figure is not a first, a second and a third
-    // decided by the roster's order; it is a crew that is level, and saying
-    // so is the honest reading of a Monday morning.
+    // decided by the roster's order; it is a crew that is level, and the
+    // headline says nothing about a place rather than inventing one.
     final level =
         standings.isNotEmpty &&
         standings.every((s) => s.percent == standings.first.percent);
@@ -998,9 +849,7 @@ class HomeCrewPanel extends StatefulWidget {
             ],
             if (solo)
               _figure('${crew.percent(userId)}', '%')
-            else if (level)
-              _figure('LEVEL', null)
-            else
+            else if (!level)
               _figure(
                 '${mine?.place ?? standings.length}',
                 _suffix(mine?.place ?? standings.length),
@@ -1044,35 +893,39 @@ class HomeCrewPanel extends StatefulWidget {
   /// The figure on the right of the line, where the percentage stood: a
   /// number at the headline size with its unit or its ordinal beside it, and
   /// an optional word in front saying whose it is.
-  static Widget _figure(String value, String? tail, {String? lead}) => Text.rich(
-    TextSpan(
-      children: [
-        if (lead != null)
-          TextSpan(
-            text: lead,
-            style: TextStyle(
-              fontSize: 11,
-              letterSpacing: .8,
-              fontWeight: FontWeight.w500,
-              color: homeMutedInk,
-            ),
-          ),
-        TextSpan(text: value),
-        if (tail != null)
-          TextSpan(
-            text: tail,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-      ],
-    ),
-    key: const ValueKey('crew-week-figure'),
-    style: const TextStyle(
-      color: _ink,
-      fontSize: 19,
-      height: 1.1,
-      fontWeight: FontWeight.w600,
-    ),
-  );
+  static Widget _figure(String value, String? tail, {String? lead}) =>
+      Text.rich(
+        TextSpan(
+          children: [
+            if (lead != null)
+              TextSpan(
+                text: lead,
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: .8,
+                  fontWeight: FontWeight.w500,
+                  color: homeMutedInk,
+                ),
+              ),
+            TextSpan(text: value),
+            if (tail != null)
+              TextSpan(
+                text: tail,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+        key: const ValueKey('crew-week-figure'),
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 19,
+          height: 1.1,
+          fontWeight: FontWeight.w600,
+        ),
+      );
 
   /// How much of the week is still to run, today included. Today counts
   /// because today is still a day you can go, which is the whole reason the
@@ -1514,7 +1367,6 @@ class _MemberLane extends StatelessWidget {
     );
   }
 }
-
 
 /// What the week is run over: a lane, and the flag at the end of it.
 ///
@@ -2305,10 +2157,6 @@ class _PactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final checked = week.checkedToday(userId).contains(pact.id);
     final completed = week.days(pact.id, userId);
-    // A crew of one has nobody to count, so the zone says what the week still
-    // wants instead. Above that, the whole crew is shown and counted — see
-    // [_PactCrewToday].
-    final crew = week.members;
     // Completion reads as a cream inset with a green mark, so the cue works on
     // every card tint instead of fighting the warm ones. Its edge is mixed from
     // the card's own colour, which keeps the raised edge in family.
@@ -2387,88 +2235,19 @@ class _PactCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              // The count and the crew sit on the same floor,
-                              // so the faces line up with the caption rather
-                              // than floating over it.
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              // Both sides are flex children, and the row is
-                              // spaced between them. Each part of that matters:
-                              // flex bounds them, so neither can outrun the row
-                              // — an unbounded count runs "days this week" off
-                              // the card at large text — and `spaceBetween`
-                              // hands the slack to the gap rather than trailing
-                              // it after the zone, which is what left the faces
-                              // stopping short of the card's inset.
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: _CountRow(
-                                          completed: completed,
-                                          target: pact.daysPerWeek,
-                                        ),
-                                      ),
-                                      Text(
-                                        'days this week',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontFamily: WeekPactType.secondary,
-                                          fontFamilyFallback:
-                                              WeekPactType.secondaryFallback,
-                                          fontSize: _countCaptionSize,
-                                          height: _countCaptionHeight,
-                                          fontWeight: FontWeight.w500,
-                                          color: homeMutedInk,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // The box right of the count. Empty it read as
-                                // a mistake; what goes in it is the one thing
-                                // the card can say that the person cannot work
-                                // out from their own numbers.
-                                //
-                                // It takes what the count leaves and sits
-                                // flush with the card's inset, scaling itself
-                                // down rather than overflowing when a narrow
-                                // phone leaves it little.
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 14),
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.bottomRight,
-                                      child: crew.length < 2
-                                          ? _PactDaysToGo(
-                                              remaining: math.max(
-                                                0,
-                                                pact.daysPerWeek - completed,
-                                              ),
-                                            )
-                                          : _PactCrewToday(
-                                              key: ValueKey(
-                                                'pact-crew-${pact.id}',
-                                              ),
-                                              members: crew,
-                                              userId: userId,
-                                              keptToday: week.keptToday(
-                                                pact.id,
-                                              ),
-                                              tint: color,
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            // The count line, and nothing beside it. The
+                            // box to its right carried the crew's faces and
+                            // then a days-to-go figure, both of which repeated
+                            // what the rail and the bar already say; the
+                            // count scales down rather than overflowing when
+                            // large text runs the caption past the card.
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: _CountRow(
+                                completed: completed,
+                                target: pact.daysPerWeek,
+                              ),
                             ),
                             const SizedBox(height: _captionToBar),
                             Semantics(
@@ -2750,570 +2529,6 @@ class _CompletedCheckIn extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// Who is in today and who is not, as two tiles the viewer can open.
-class TodayCrewCard extends StatelessWidget {
-  const TodayCrewCard({
-    super.key,
-    required this.week,
-    required this.userId,
-    required this.onOpen,
-    this.crewName = '',
-    this.height = groupHeight,
-    this.showGroups = true,
-    this.now,
-  });
-  final CrewWeek week;
-  final String userId;
-  final String crewName;
-  final VoidCallback onOpen;
-  final DateTime? now;
-  final double height;
-  final bool showGroups;
-  // A count, its caption and a row of faces — no taller than that needs.
-  static const groupHeight = 86.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final checked = week.members
-        .where((m) => week.checkedToday(m.id).isNotEmpty)
-        .toList();
-    final pending = week.members
-        .where((m) => week.checkedToday(m.id).isEmpty)
-        .toList();
-    return SizedBox(
-      key: const ValueKey('crew-board'),
-      height: height,
-      child: Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, space) {
-                if (!showGroups) return const SizedBox.shrink();
-                if (checked.isEmpty || pending.isEmpty) {
-                  final allCheckedIn = checked.isNotEmpty;
-                  return SizedBox(
-                    key: ValueKey(
-                      allCheckedIn ? 'checked-tile' : 'pending-tile',
-                    ),
-                    width: double.infinity,
-                    child: CrewCheckInTile(
-                      userId: userId,
-                      onOpen: onOpen,
-                      members: allCheckedIn ? checked : pending,
-                      done: allCheckedIn,
-                      awaitingFirstCheckIn: !allCheckedIn,
-                      everyoneCheckedIn: allCheckedIn,
-                    ),
-                  );
-                }
-                final available = math.max(0.0, space.maxWidth);
-                final total = checked.length + pending.length;
-                final minimum = math.min(140.0, available / 2);
-                final fraction = total == 0 ? .5 : checked.length / total;
-                final targetWidth = (available * fraction).clamp(
-                  minimum,
-                  available - minimum,
-                );
-                return TweenAnimationBuilder<double>(
-                  tween: Tween(begin: targetWidth, end: targetWidth),
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, width, _) {
-                    final checkedWidth = width.clamp(
-                      minimum,
-                      available - minimum,
-                    );
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          key: const ValueKey('checked-tile'),
-                          width: checkedWidth,
-                          child: CrewCheckInTile(
-                            userId: userId,
-                            onOpen: onOpen,
-                            members: checked,
-                            done: true,
-                          ),
-                        ),
-                        SizedBox(
-                          key: const ValueKey('pending-tile'),
-                          width: available - checkedWidth,
-                          child: CrewCheckInTile(
-                            userId: userId,
-                            onOpen: onOpen,
-                            members: pending,
-                            done: false,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CrewCheckInTile extends StatelessWidget {
-  const CrewCheckInTile({
-    super.key,
-    required this.members,
-    required this.done,
-    required this.userId,
-    required this.onOpen,
-    this.awaitingFirstCheckIn = false,
-    this.everyoneCheckedIn = false,
-    this.expansion = 0,
-    this.showDetails = false,
-    this.expandedHeight = TodayCrewCard.groupHeight,
-    this.backend,
-    this.crewId,
-  });
-  final List<WeekMember> members;
-  final bool done;
-  final bool awaitingFirstCheckIn;
-  final bool everyoneCheckedIn;
-  final String userId;
-  final VoidCallback onOpen;
-  final double expansion;
-  final bool showDetails;
-  final double expandedHeight;
-  final HomeBackend? backend;
-  final String? crewId;
-
-  /// The tile's raised edge, shared by its surface and its outline. The faces
-  /// do not take it: they read as a flat stack, the way the crew roster's do,
-  /// and the ring alone separates them.
-  static Color _tileEdge(bool done) =>
-      done ? WeekPactColors.mintEdge : WeekPactColors.pendingEdge;
-
-  /// The tile's own fill, painted as a ring around each overlapping face. It
-  /// disappears against the tile and shows only where one face crosses the
-  /// next, which is the one place the stack needs a gap to be read as people
-  /// rather than as a single smear.
-  static Color _tileFill(bool done) =>
-      done ? WeekPactColors.mintGreen : WeekPactColors.pendingCheckIns;
-
-  /// The knockout between two overlapping faces.
-  static const _faceRing = 2.0;
-
-  /// The bore of the tap hint punched through each tile.
-  static const _holeSize = 6.0;
-
-  /// Beyond this the stack stops being faces and becomes a number.
-  static const _maxFaces = 3;
-  static const _faceSize = 34.0;
-  static const _minFaceSize = 24.0;
-  static const _overlap = .62;
-
-  /// The words under the count.
-  String get caption => everyoneCheckedIn
-      ? 'whole crew is in'
-      : awaitingFirstCheckIn
-      ? 'be the first in today'
-      : done
-      ? 'checked in'
-      : 'not yet';
-
-  /// The tile's own words. When one side is empty the tile speaks for the whole
-  /// crew, so a bare count would read as a scoreline nobody asked for.
-  String get label => everyoneCheckedIn
-      ? 'Whole crew is in'
-      : awaitingFirstCheckIn
-      ? 'Be the first in today'
-      : '${done ? 'Checked in' : 'Not yet'} · ${members.length}';
-  String get title => everyoneCheckedIn
-      ? 'Whole crew is in today'
-      : awaitingFirstCheckIn
-      ? 'Nobody has checked in today · ${members.length} to go'
-      : '${done ? 'Checked in today' : 'Not yet today'} · ${members.length}';
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    explicitChildNodes: true,
-    label: title,
-    button: true,
-    expanded: showDetails,
-    onTap: onOpen,
-    hint: showDetails ? 'Collapse members' : 'Show all members',
-    child: MouseRegion(
-      cursor: showDetails ? MouseCursor.defer : SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        excludeFromSemantics: true,
-        onTap: showDetails ? null : onOpen,
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: WeekPactMetrics.pactCardShape,
-            shadows: [
-              BoxShadow(
-                color: _tileEdge(done),
-                offset: WeekPactMetrics.raisedOffset,
-              ),
-            ],
-          ),
-          child: HomeSurface(
-            tint: done
-                ? WeekPactColors.mintGreen
-                : WeekPactColors.pendingCheckIns,
-            radius: WeekPactMetrics.cardCorner,
-            shape: WeekPactMetrics.pactCardShape,
-            outlined: true,
-            outlineColor: _tileEdge(done),
-            child: Stack(
-              children: [
-                // A tap hint, floating over the tile's own content so the
-                // count and the faces keep the space they had. Each tile takes
-                // the corner it shares with the other, so the pair reads as
-                // one control with its handles meeting in the middle.
-                if (!showDetails)
-                  Positioned(
-                    right: done ? 8 : null,
-                    left: done ? null : 8,
-                    bottom: 7,
-                    child: Opacity(
-                      opacity: (1 - expansion).clamp(0.0, 1.0),
-                      child: _tapHole(context),
-                    ),
-                  ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (showDetails)
-                      SizedBox(
-                        height: 36,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      label,
-                                      style: const TextStyle(
-                                        color: _ink,
-                                        fontFamily: WeekPactType.secondary,
-                                        fontFamilyFallback:
-                                            WeekPactType.secondaryFallback,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      child: showDetails
-                          ? ClipRect(
-                              child: OverflowBox(
-                                alignment: Alignment.topCenter,
-                                minHeight: expandedHeight - 36,
-                                maxHeight: expandedHeight - 36,
-                                child: Opacity(
-                                  opacity: expansion,
-                                  child: _memberList(context),
-                                ),
-                              ),
-                            )
-                          : GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: onOpen,
-                              child: _collapsed(context),
-                            ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  /// The tap hint, drawn as a hole bored through the tile: the crew week
-  /// surface the tiles sit in shows through the bore, the tile's own material
-  /// darkens its top wall, and a lit rim sits under its bottom lip — the
-  /// inverse of the raised edge every other surface carries, so the light
-  /// still comes from above.
-  Widget _tapHole(BuildContext context) {
-    final bore = CrewHeaderSurface.faceColor(context);
-    return SizedBox.square(
-      dimension: _holeSize,
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: const CircleBorder(),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color.lerp(bore, Colors.black, .45)!, bore],
-            stops: const [0, .7],
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color.lerp(_tileFill(done), Colors.white, .6)!,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Collapsed, the tile leads with the count and lets faces fill the rest.
-  /// Nobody on this side means the count would be a zero nobody asked for, so
-  /// the state's own words take the whole tile instead.
-  Widget _collapsed(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-    child: members.isEmpty
-        ? Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                done ? 'No one yet' : 'All checked in',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: WeekPactColors.mutedLight,
-                  fontFamily: WeekPactType.secondary,
-                  fontFamilyFallback: WeekPactType.secondaryFallback,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          )
-        : Row(
-            key: ValueKey(done ? 'checked-members' : 'pending-members'),
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                // Scale the count and its caption together, so a large text
-                // setting shrinks the block instead of overflowing the tile.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${members.length}',
-                        key: ValueKey(done ? 'checked-count' : 'pending-count'),
-                        style: const TextStyle(
-                          color: _ink,
-                          fontSize: 34,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        caption,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontFamily: WeekPactType.secondary,
-                          fontFamilyFallback: WeekPactType.secondaryFallback,
-                          fontSize: 11,
-                          height: 1.1,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: _faces(context)),
-            ],
-          ),
-  );
-
-  /// Overlapping faces, as many as the tile can hold, with the remainder as a
-  /// “+n” chip. Past that the chip stands alone — the expanded list is where
-  /// a big crew is actually read.
-  Widget _faces(BuildContext context) => LayoutBuilder(
-    builder: (context, space) {
-      if (space.maxWidth < 24 || space.maxHeight < 20) {
-        return const SizedBox.shrink();
-      }
-      // Faces overlap, so each extra one costs well under its own width. Fit as
-      // many slots as the tile allows, shrinking the faces before dropping one,
-      // and never below a size that still reads as a person.
-      final maxSize = math.min(_faceSize, space.maxHeight);
-      var slots = math.min(_maxFaces, members.length);
-      var size = maxSize;
-      while (slots > 0) {
-        size = math.min(maxSize, space.maxWidth / (1 + (slots - 1) * _overlap));
-        if (size >= _minFaceSize) break;
-        slots--;
-      }
-      // Too narrow for a face: the count chip carries the whole crew.
-      if (slots == 0) {
-        if (space.maxWidth < 20) return const SizedBox.shrink();
-        slots = 1;
-        size = math.min(maxSize, space.maxWidth);
-      }
-      final shown = members.length <= slots ? members.length : slots - 1;
-      final overflow = members.length - shown;
-      slots = shown + (overflow > 0 ? 1 : 0);
-      final step = size * _overlap;
-      return Align(
-        alignment: Alignment.centerRight,
-        child: SizedBox(
-          width: size + (slots - 1) * step,
-          height: size,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              for (var i = 0; i < shown; i++)
-                Positioned(
-                  key: ValueKey('crew-member-${members[i].id}'),
-                  left: i * step,
-                  child: _avatar(context, members[i], done, size),
-                ),
-              if (overflow > 0)
-                Positioned(
-                  left: shown * step,
-                  child: Tooltip(
-                    message: shown == 0
-                        ? 'View all ${members.length} members'
-                        : 'View $overflow more members',
-                    child: Container(
-                      key: const ValueKey('crew-overflow'),
-                      width: size,
-                      height: size,
-                      padding: const EdgeInsets.all(_faceRing),
-                      decoration: ShapeDecoration(
-                        color: _tileFill(done),
-                        shape: const AvatarShape(),
-                      ),
-                      child: DecoratedBox(
-                        decoration: const ShapeDecoration(
-                          color: WeekPactColors.cream,
-                          shape: AvatarShape(),
-                        ),
-                        child: Center(
-                          child: FittedBox(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: Text(
-                                '+$overflow',
-                                style: const TextStyle(
-                                  color: _ink,
-                                  fontFamily: WeekPactType.secondary,
-                                  fontFamilyFallback:
-                                      WeekPactType.secondaryFallback,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-
-  Widget _memberList(BuildContext context) => CrewMemberList(
-    members: members,
-    done: done,
-    userId: userId,
-    backend: backend,
-    crewId: crewId,
-  );
-
-  Widget _avatar(
-    BuildContext context,
-    WeekMember member,
-    bool done,
-    double size,
-  ) {
-    final ink = _ink;
-    final fallback = Center(
-      child: Text(
-        member.initials,
-        style: TextStyle(
-          color: ink,
-          fontFamily: WeekPactType.secondary,
-          fontFamilyFallback: WeekPactType.secondaryFallback,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-    return Tooltip(
-      message:
-          '${member.displayName.isEmpty ? 'Crew member' : member.displayName}${member.id == userId ? ' (you)' : ''}: ${done ? 'Checked in' : 'Not yet'}',
-      child: SizedBox(
-        width: size,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              key: ValueKey('crew-avatar-${member.id}'),
-              width: size,
-              height: size,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: Container(
-                      padding: const EdgeInsets.all(_faceRing),
-                      decoration: ShapeDecoration(
-                        shape: const AvatarShape(),
-                        color: _tileFill(done),
-                      ),
-                      child: DecoratedBox(
-                        decoration: const ShapeDecoration(
-                          shape: AvatarShape(),
-                          color: homePaper,
-                        ),
-                        child: AvatarClip(
-                          child: member.avatarUrl == null
-                              ? fallback
-                              : Image.network(
-                                  member.avatarUrl!,
-                                  gaplessPlayback: true,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => fallback,
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class TodaySkeleton extends StatefulWidget {

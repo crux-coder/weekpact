@@ -13,8 +13,13 @@ import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
+import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
+import 'past_week_sheet.dart';
 
+/// The crew's week so far and, under it, one row per finished week walking
+/// back to the crew's first. A row opens that week as a sheet over this page
+/// ([showPastWeekSheet]), so a past week never looks like the live one.
 class CrewWeekPage extends StatefulWidget {
   const CrewWeekPage({
     super.key,
@@ -31,12 +36,19 @@ class CrewWeekPage extends StatefulWidget {
 }
 
 class _CrewWeekPageState extends State<CrewWeekPage> {
-  // Under a full viewport the neighbouring cards peek in at either edge, so
-  // the carousel says it can be swiped without an arrow to explain it.
-  static const _peek = .88;
-  final _pages = PageController(viewportFraction: _peek);
+  /// How many finished weeks one fetch brings back.
+  static const _historyPage = 12;
+
+  /// How much of the past-weeks heading shows under the overview before any
+  /// scrolling: enough to say there is more, not enough to crowd the week.
+  static const _historyPeek = 44.0;
+
   CrewWeek? _week;
   String? _error;
+  List<CrewWeekSummary>? _history;
+  bool _historyFailed = false;
+  bool _moreWeeks = false;
+  bool _loadingMore = false;
   int _request = 0;
   int _index = 0;
   bool _refreshing = false;
@@ -47,29 +59,25 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     _refresh();
   }
 
-  @override
-  void dispose() {
-    _pages.dispose();
-    super.dispose();
-  }
-
   Future<void> _refresh() async {
     final request = ++_request;
     setState(() => _refreshing = true);
+    // The list of past weeks is asked for alongside the week, and a failure
+    // there is its own: the week still shows, and the list says it could not.
+    final history = widget.backend
+        .fetchWeekHistory(widget.crew.id, limit: _historyPage)
+        .then<List<CrewWeekSummary>?>((weeks) => weeks)
+        .catchError((Object _) => null);
     try {
       final week = await widget.backend.fetchWeek(widget.crew.id);
+      final weeks = await history;
       if (!mounted || request != _request) return;
-      final previous = _week?.pacts.elementAtOrNull(_index)?.id;
-      final selected = week.pacts.indexWhere((pact) => pact.id == previous);
       setState(() {
         _week = week;
         _error = null;
-        _index = selected < 0 ? 0 : selected;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && request == _request && _pages.hasClients) {
-          _pages.jumpToPage(_index);
-        }
+        _history = weeks;
+        _historyFailed = weeks == null;
+        _moreWeeks = (weeks?.length ?? 0) >= _historyPage;
       });
     } catch (_) {
       if (mounted && request == _request) {
@@ -82,17 +90,53 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     }
   }
 
-  void _showPact(int index) {
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _pages.jumpToPage(index);
-      return;
+  Future<void> _loadMoreWeeks() async {
+    final history = _history;
+    if (history == null || history.isEmpty || _loadingMore) return;
+    final request = _request;
+    setState(() => _loadingMore = true);
+    try {
+      final more = await widget.backend.fetchWeekHistory(
+        widget.crew.id,
+        before: history.last.weekStart,
+        limit: _historyPage,
+      );
+      if (!mounted || request != _request) return;
+      setState(() {
+        _history = [...history, ...more];
+        _moreWeeks = more.length >= _historyPage;
+      });
+    } catch (_) {
+      if (mounted && request == _request) setState(() => _moreWeeks = false);
+    } finally {
+      if (mounted && request == _request) {
+        setState(() => _loadingMore = false);
+      }
     }
-    _pages.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutBack,
-    );
   }
+
+  Future<void> _openWeek(CrewWeekSummary week) => showPastWeekSheet(
+    context: context,
+    crew: widget.crew,
+    backend: widget.backend,
+    userId: widget.userId,
+    weekStart: week.weekStart,
+    currentWeekStart: _week?.weekStart ?? week.weekStart,
+  );
+
+  /// What the line under the crew's name calls the week on show.
+  String _weekLabel(CrewWeek? week) {
+    if (week == null) return 'This week';
+    final monday = DateTime.parse(week.weekStart);
+    return 'This week · ${crewDateLabel(monday)} – ${crewDateLabel(monday.add(const Duration(days: 6)))}';
+  }
+
+  /// Whether the page carries a past-weeks section under the overview. Only
+  /// when there is something to put there: a crew in its first week has no
+  /// history, and the page stays one viewport rather than promising a list
+  /// it cannot fill.
+  bool get _hasHistory =>
+      _week != null && (_historyFailed || (_history?.isNotEmpty ?? false));
 
   @override
   Widget build(BuildContext context) {
@@ -105,241 +149,345 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
         return a.displayName.compareTo(b.displayName);
       });
     return Scaffold(
-      body: _CrewRefreshViewport(
-        onRefresh: _refresh,
+      body: WeekPactBackground(
         child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                child: LayoutBuilder(
-                  builder: (context, space) {
-                    final extraText = math.max(
-                      0.0,
-                      MediaQuery.textScalerOf(context).scale(1) - 1,
-                    );
-                    // Keep the complete overview in the viewport, including
-                    // compact phones, landscape, and larger system text.
-                    return FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: SizedBox(
-                        width: math.max(space.maxWidth, 360 + extraText * 140),
-                        height: math.max(
-                          space.maxHeight,
-                          700 + extraText * 420,
+          child: LayoutBuilder(
+            builder: (context, viewport) => RefreshIndicator(
+              onRefresh: () {
+                unawaited(
+                  HapticFeedback.mediumImpact().catchError((Object _) {}),
+                );
+                return _refresh();
+              },
+              color: WeekPactColors.black,
+              backgroundColor: WeekPactColors.cream,
+              child: CustomScrollView(
+                key: const ValueKey('crew-refresh-viewport'),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                ),
+                slivers: [
+                  // The overview is one viewport, as it always was. With
+                  // past weeks beneath it gives up the height of their
+                  // heading, so the heading shows under the fold and says
+                  // the page goes on.
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height:
+                          viewport.maxHeight - (_hasHistory ? _historyPeek : 0),
+                      child: _overview(context, week, members),
+                    ),
+                  ),
+                  if (_hasHistory)
+                    SliverToBoxAdapter(
+                      child: _PastWeeks(
+                        weeks: _history ?? const [],
+                        failed: _historyFailed,
+                        more: _moreWeeks,
+                        loadingMore: _loadingMore,
+                        onOpen: _openWeek,
+                        onMore: _loadMoreWeeks,
+                        onRetry: _refreshing ? null : _refresh,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _overview(
+    BuildContext context,
+    CrewWeek? week,
+    List<WeekMember> members,
+  ) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 640),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: LayoutBuilder(
+          builder: (context, space) {
+            final extraText = math.max(
+              0.0,
+              MediaQuery.textScalerOf(context).scale(1) - 1,
+            );
+            // Keep the complete overview in the viewport, including
+            // compact phones, landscape, and larger system text.
+            return FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: math.max(space.maxWidth, 360 + extraText * 140),
+                height: math.max(space.maxHeight, 700 + extraText * 420),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          tooltip: 'Back to home',
+                          onPressed: () => Navigator.pop(context),
+                          icon: const AppIcon(
+                            icon: HugeIconsStrokeRounded.arrowLeft02,
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Back to home',
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: const AppIcon(
-                                    icon: HugeIconsStrokeRounded.arrowLeft02,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              widget.crew.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 34,
-                                height: 1.15,
+                      ],
+                    ),
+                    Text(
+                      widget.crew.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 34,
+                        height: 1.15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _weekLabel(week),
+                      style: TextStyle(color: context.muted, fontSize: 15),
+                    ),
+                    const SizedBox(height: 18),
+                    if (_error != null) ...[
+                      Text(_error!, style: TextStyle(color: context.errorInk)),
+                      TextButton(
+                        onPressed: _refreshing ? null : _refresh,
+                        child: const Text('TRY AGAIN'),
+                      ),
+                    ],
+                    if (week == null)
+                      Expanded(
+                        child: _refreshing
+                            ? const _CrewWeekSkeleton()
+                            // A failure has its own sentence and its own way
+                            // out, above. Standing "Your crew's week" under
+                            // those reads as the page carrying on regardless.
+                            : _error != null
+                            ? const SizedBox.shrink()
+                            : const Center(child: Text('Your crew’s week')),
+                      )
+                    else ...[
+                      _WeekSummary(week: week),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Crew pacts',
+                              style: TextStyle(
+                                fontSize: 23,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                          ),
+                          if (week.pacts.isNotEmpty)
                             Text(
-                              week == null
-                                  ? 'This week'
-                                  : 'This week · ${crewDateLabel(DateTime.parse(week.weekStart))} – ${crewDateLabel(DateTime.parse(week.weekStart).add(const Duration(days: 6)))}',
+                              '${_index + 1} / ${week.pacts.length}',
                               style: TextStyle(
                                 color: context.muted,
-                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 18),
-                            if (_error != null) ...[
-                              Text(
-                                _error!,
-                                style: TextStyle(color: context.errorInk),
-                              ),
-                              TextButton(
-                                onPressed: _refreshing ? null : _refresh,
-                                child: const Text('TRY AGAIN'),
-                              ),
-                            ],
-                            if (week == null)
-                              Expanded(
-                                child: _refreshing
-                                    ? const _CrewWeekSkeleton()
-                                    : const Center(
-                                        child: Text('Your crew’s week'),
-                                      ),
-                              )
-                            else ...[
-                              _WeekSummary(week: week),
-                              const SizedBox(height: 18),
-                              Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text(
-                                      'Crew pacts',
-                                      style: TextStyle(
-                                        fontSize: 23,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  if (week.pacts.isNotEmpty)
-                                    Text(
-                                      '${_index + 1} / ${week.pacts.length}',
-                                      style: TextStyle(
-                                        color: context.muted,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                child: week.pacts.isEmpty
-                                    ? AppSurface(
-                                        builder: (_) => const Center(
-                                          child: Padding(
-                                            padding: EdgeInsets.all(24),
-                                            child: Text(
-                                              'No pacts yet. Your crew’s weekly activity will appear here.',
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    // The carousel alone runs past the page's
-                                    // margin, so the pacts either side reach
-                                    // the screen's edges instead of stopping
-                                    // short of it.
-                                    : LayoutBuilder(
-                                        builder: (context, box) => OverflowBox(
-                                          minWidth:
-                                              box.maxWidth +
-                                              2 * WeekPactMetrics.pageInset,
-                                          maxWidth:
-                                              box.maxWidth +
-                                              2 * WeekPactMetrics.pageInset,
-                                          child: PageView.builder(
-                                            key: const ValueKey(
-                                              'crew-pact-carousel',
-                                            ),
-                                            controller: _pages,
-                                            physics:
-                                                MediaQuery.disableAnimationsOf(
-                                                  context,
-                                                )
-                                                ? const ClampingScrollPhysics()
-                                                : const _CarouselSpringPhysics(),
-                                            itemCount: week.pacts.length,
-                                            onPageChanged: (index) =>
-                                                setState(() => _index = index),
-                                            itemBuilder: (context, index) =>
-                                                Padding(
-                                                  // The card's raised edge is
-                                                  // painted below its own box, and
-                                                  // the carousel clips its pages,
-                                                  // so the page leaves that edge
-                                                  // room to show.
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                        5,
-                                                        0,
-                                                        5,
-                                                        WeekPactMetrics
-                                                                .controlDepth +
-                                                            1,
-                                                      ),
-                                                  child: CrewPactWeekCard(
-                                                    key: ValueKey(
-                                                      week.pacts[index].id,
-                                                    ),
-                                                    week: week,
-                                                    pact: week.pacts[index],
-                                                    tint:
-                                                        WeekPactColors.pactTint(
-                                                          index,
-                                                        ),
-                                                    badge:
-                                                        WeekPactColors.pactBadge(
-                                                          index,
-                                                        ),
-                                                    members: members,
-                                                    userId: widget.userId,
-                                                  ),
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              if (week.pacts.length > 1)
-                                SizedBox(
-                                  height: 44,
-                                  child: Center(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Row(
-                                        children: [
-                                          for (
-                                            var i = 0;
-                                            i < week.pacts.length;
-                                            i++
-                                          )
-                                            Semantics(
-                                              selected: i == _index,
-                                              child: IconButton(
-                                                tooltip:
-                                                    'Show ${week.pacts[i].title}',
-                                                onPressed: () => _showPact(i),
-                                                icon: AnimatedContainer(
-                                                  duration: const Duration(
-                                                    milliseconds: 150,
-                                                  ),
-                                                  width: i == _index ? 20 : 7,
-                                                  height: 7,
-                                                  decoration: BoxDecoration(
-                                                    color: context.ink
-                                                        .withValues(
-                                                          alpha: i == _index
-                                                              ? 1
-                                                              : .25,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                const SizedBox(height: 12),
-                              _TodaySummary(week: week),
-                            ],
-                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: CrewPactCarousel(
+                          week: week,
+                          members: members,
+                          userId: widget.userId,
+                          onIndexChanged: (index) =>
+                              setState(() => _index = index),
                         ),
                       ),
-                    );
-                  },
+                      _TodaySummary(week: week),
+                    ],
+                  ],
                 ),
+              ),
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
+
+/// The finished weeks under the overview, newest first: the dates, seven
+/// segments for how much of the crew was out each day, and the crew's
+/// percentage. Each row opens that week as its own page.
+class _PastWeeks extends StatelessWidget {
+  const _PastWeeks({
+    required this.weeks,
+    required this.failed,
+    required this.more,
+    required this.loadingMore,
+    required this.onOpen,
+    required this.onMore,
+    required this.onRetry,
+  });
+  final List<CrewWeekSummary> weeks;
+  final bool failed;
+  final bool more;
+  final bool loadingMore;
+  final ValueChanged<CrewWeekSummary> onOpen;
+  final VoidCallback onMore;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 640),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+        child: Column(
+          key: const ValueKey('crew-past-weeks'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: _CrewWeekPageState._historyPeek,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Past weeks',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (!failed)
+                    Text(
+                      'Crew progress',
+                      style: TextStyle(color: context.muted, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (failed) ...[
+              Text(
+                'Could not load past weeks.',
+                style: TextStyle(color: context.errorInk),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: onRetry,
+                  child: const Text('TRY AGAIN'),
+                ),
+              ),
+            ] else ...[
+              for (final week in weeks) ...[
+                _PastWeekRow(week: week, onTap: () => onOpen(week)),
+                const SizedBox(height: 10),
+              ],
+              if (more)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: loadingMore ? null : onMore,
+                    child: Text(loadingMore ? 'LOADING…' : 'EARLIER WEEKS'),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _PastWeekRow extends StatelessWidget {
+  const _PastWeekRow({required this.week, required this.onTap});
+  final CrewWeekSummary week;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = DateTime.parse(week.weekStart);
+    final end = start.add(const Duration(days: 6));
+    // The month is said once unless the week crosses into the next one.
+    final dates = end.month == start.month
+        ? '${crewDateLabel(start)} – ${end.day}'
+        : '${crewDateLabel(start)} – ${crewDateLabel(end)}';
+    final kept = week.percent >= 100;
+    return Semantics(
+      button: true,
+      label:
+          'Week of ${crewDateLabel(start)} to ${crewDateLabel(end)}: ${week.percent}% crew progress',
+      child: AppSurface(
+        fillColor: WeekPactColors.neutralInset,
+        // The label above says the whole row; the row's own words would only
+        // be read out again after it.
+        builder: (context) => InkWell(
+          onTap: onTap,
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 92,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        dates,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        for (var day = 0; day < 7; day++) ...[
+                          if (day > 0) const SizedBox(width: 4),
+                          Expanded(
+                            child: _DaySegment(
+                              share: week.shareOut.elementAtOrNull(day) ?? 0,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 50,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${week.percent}%',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 20,
+                          height: 1,
+                          fontWeight: FontWeight.w700,
+                          color: kept ? WeekPactColors.doneMark : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  AppIcon(
+                    icon: HugeIconsStrokeRounded.arrowRight01,
+                    size: 18,
+                    color: context.muted,
+                  ),
+                ],
               ),
             ),
           ),
@@ -349,42 +497,54 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
   }
 }
 
-class _CarouselSpringPhysics extends BouncingScrollPhysics {
-  const _CarouselSpringPhysics({super.parent});
+/// One day of a finished week, as a share of the crew, drawn as the
+/// calendar draws a day: raised, the same kept green when some of the crew
+/// was out and the check mark's deeper green when all of it was, and a flat
+/// pale slot when nobody was. The outline and the 2pt edge are mixed from
+/// the cell's own fill, the way every raised surface here builds its shadow.
+///
+/// A plain rounded rect at `controlRadius`, not the squircle: on a box this
+/// small the continuous corner's path leaves ticks of the outline at the top
+/// and bottom edges, and the metrics name the rounded rect for a cell.
+class _DaySegment extends StatelessWidget {
+  const _DaySegment({required this.share});
+  final double share;
 
   @override
-  _CarouselSpringPhysics applyTo(ScrollPhysics? ancestor) =>
-      _CarouselSpringPhysics(parent: buildParent(ancestor));
-
-  @override
-  SpringDescription get spring =>
-      SpringDescription.withDampingRatio(mass: 1, stiffness: 220, ratio: 0.75);
-}
-
-/// Allows the refresh gesture while keeping the content exactly one viewport.
-class _CrewRefreshViewport extends StatelessWidget {
-  const _CrewRefreshViewport({required this.onRefresh, required this.child});
-  final Future<void> Function() onRefresh;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => WeekPactBackground(
-    child: RefreshIndicator(
-      onRefresh: () {
-        unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
-        return onRefresh();
-      },
-      color: WeekPactColors.black,
-      backgroundColor: WeekPactColors.cream,
-      child: CustomScrollView(
-        key: const ValueKey('crew-refresh-viewport'),
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
+  Widget build(BuildContext context) {
+    final out = share > 0;
+    final face = share >= 1
+        ? WeekPactColors.doneMark
+        : out
+        ? WeekPactColors.keptDay
+        : WeekPactColors.cream.withValues(alpha: .6);
+    return Padding(
+      // Room below for the raised edge, so it does not touch the row's edge.
+      padding: const EdgeInsets.only(bottom: WeekPactMetrics.controlDepth),
+      child: SizedBox(
+        height: 24,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: face,
+            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+            border: Border.all(
+              color: out
+                  ? Color.lerp(face, Colors.black, .28)!
+                  : context.ink.withValues(alpha: .10),
+            ),
+            boxShadow: out
+                ? [
+                    BoxShadow(
+                      color: Color.lerp(face, Colors.black, .22)!,
+                      offset: WeekPactMetrics.raisedOffset,
+                    ),
+                  ]
+                : null,
+          ),
         ),
-        slivers: [SliverFillRemaining(hasScrollBody: true, child: child)],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _WeekSummary extends StatelessWidget {

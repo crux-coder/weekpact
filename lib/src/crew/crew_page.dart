@@ -64,6 +64,17 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   int _request = 0;
   String? _profileCrewId;
   Map<String, WeekMember> _memberProfiles = {};
+
+  /// The crew's week, as the summary card reads it. The page already fetches
+  /// the week to put names and faces on the roster; these two figures came in
+  /// the same answer and used to be dropped on the floor.
+  int? _pactCount;
+  int? _streakWeeks;
+
+  /// Whether that fetch was made and failed. Without it the two figures stay
+  /// null, which the card reads as "still coming" and draws as a bar nobody is
+  /// filling in.
+  bool _weekFailed = false;
   bool _loading = false;
   Future<void>? _crewLoad;
   bool _hasLoaded = false;
@@ -107,6 +118,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       _crews = crews;
       if (crew?.id != _profileCrewId) {
         _memberProfiles = {};
+        _pactCount = null;
+        _streakWeeks = null;
         _profileCrewId = crew?.id;
       }
       if (crew != null && widget.profileBackend != null) {
@@ -116,12 +129,16 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           _memberProfiles = {
             for (final member in week.members) member.id: member,
           };
+          _pactCount = week.pacts.length;
+          _streakWeeks = week.streakWeeks;
+          _weekFailed = false;
         } catch (_) {
+          // The summary card carries this one rather than the page: the roster
+          // still stands on the names the crew itself gave, and the two
+          // figures that did not arrive are the only thing missing. A sentence
+          // below the list would be a second message for one failure.
           if (mounted && request == _request) {
-            setState(
-              () => _error =
-                  'Could not refresh member profiles. Pull down to retry.',
-            );
+            setState(() => _weekFailed = true);
           }
         }
       }
@@ -217,9 +234,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           icon: HugeIconsStrokeRounded.userGroup02,
           iconColor: WeekPactColors.coolGrey,
           title: 'You’re the only member',
+          // Both ways out, now that there are two: hand the crew on, or end
+          // it. Told only the first, the sole owner of a crew nobody joined
+          // had nothing they could do.
           message:
               'Invite another member before leaving, then choose them as the '
-              'new owner.',
+              'new owner — or delete the crew.',
           actions: [AppDialogDismiss(label: 'OK')],
         ),
       );
@@ -353,6 +373,84 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         if (_crew != null) widget.onCrewSelected?.call(_crew!.id);
         widget.onCrewLeft?.call();
       }
+    } catch (error) {
+      if (mounted) setState(() => _error = _messageFor(error));
+    } finally {
+      if (mounted) setState(() => _changingMembership = false);
+    }
+  }
+
+  /// The backend if it can end a crew at all, and null where it cannot.
+  ///
+  /// Deletion is a second interface rather than part of [CrewBackend], the way
+  /// sharing is, so this is the one place that asks.
+  CrewDeletionBackend? get _deletionBackend {
+    final backend = widget.backend;
+    return backend is CrewDeletionBackend
+        ? backend as CrewDeletionBackend
+        : null;
+  }
+
+  /// Ends the crew for everyone in it.
+  ///
+  /// The owner's counterpart to leaving, and the only way out for the person
+  /// who started a crew nobody else joined — that one is told to hand the crew
+  /// over before leaving, which is no help when there is nobody to hand it to.
+  /// Afterwards the page is in the same position as after leaving, so it takes
+  /// the same road back: whatever crew the refresh finds, or the empty state.
+  Future<void> _deleteCrew() async {
+    final crew = _crew;
+    final backend = _deletionBackend;
+    if (crew == null ||
+        !crew.isOwner ||
+        _changingMembership ||
+        backend == null) {
+      return;
+    }
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        icon: HugeIconsStrokeRounded.delete02,
+        iconColor: WeekPactColors.sand,
+        title: 'Delete ${crew.name}?',
+        // Said plainly, because the cascade behind this is not something the
+        // crew can undo and it does not only happen to the person tapping.
+        message:
+            'Everyone in ${crew.name} loses the crew, its pacts, every '
+            'check-in made against them, and the week streak. This cannot be '
+            'undone.',
+        actions: [
+          AppButton(
+            label: 'DELETE CREW',
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          AppDialogDismiss(
+            label: 'Keep crew',
+            onPressed: () => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _changingMembership) return;
+    setState(() {
+      _changingMembership = true;
+      _error = null;
+    });
+    try {
+      await backend.deleteCrew(crew.id);
+      // Discard any fetch begun before the deletion; it still holds the crew.
+      await _crewLoad;
+      if (!mounted) return;
+      setState(() {
+        _crew = null;
+        _selectedCrewId = null;
+      });
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Crew deleted.')));
+      if (_crew != null) widget.onCrewSelected?.call(_crew!.id);
+      widget.onCrewLeft?.call();
     } catch (error) {
       if (mounted) setState(() => _error = _messageFor(error));
     } finally {
@@ -666,26 +764,19 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            CrewAvatarStack(members: members),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '${crew.name.toUpperCase()} · ${crew.members.length} ${crew.members.length == 1 ? 'PERSON' : 'PEOPLE'}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: context.muted,
-                  fontSize: 12,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+        // The crew itself, where a caption used to repeat the header above it
+        // and the faces below it.
+        CrewSummaryCard(
+          people: crew.members.length,
+          startedAt: crew.createdAt,
+          pacts: _pactCount,
+          streakWeeks: _streakWeeks,
+          weekFailed: _weekFailed,
+          onRetry: _loading ? null : _loadCrew,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
+        const CrewSectionLabel('IN THE CREW'),
+        const SizedBox(height: 10),
         CrewRoster(
           children: [
             for (var i = 0; i < members.length; i++)
@@ -701,25 +792,81 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     ? () => _changeMembership(member: crew.members[i])
                     : null,
               ),
-            if (crew.isOwner)
-              CrewInviteBand(
-                onPressed: _changingMembership ? null : _openInviteDrawer,
-              ),
           ],
         ),
-        const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: _changingMembership ? null : () => _changeMembership(),
-          icon: const AppIcon(icon: HugeIconsStrokeRounded.logout01, size: 20),
-          label: const Text('LEAVE CREW'),
-          style: TextButton.styleFrom(
-            foregroundColor: context.ink,
-            minimumSize: const Size.fromHeight(48),
+        // Inviting somebody is not a member of the crew, so it stands after
+        // the roster rather than as its last row. It used to be the same band
+        // at the same size inside the same list, in black.
+        if (crew.isOwner) ...[
+          const SizedBox(height: 14),
+          CrewInviteBand(
+            onPressed: _changingMembership ? null : _openInviteDrawer,
           ),
+        ],
+        const SizedBox(height: 22),
+        // The two ways out, and the only things on this page that cannot be
+        // undone. They sat eight points under the last band with nothing
+        // between the list and the door; their own outlines are that
+        // something. Ending the crew stands beside leaving it rather than
+        // under it, because for a sole owner leaving is refused and this is
+        // the answer they were sent here for.
+        Row(
+          children: [
+            Expanded(
+              child: _exitAction(
+                context,
+                icon: HugeIconsStrokeRounded.logout01,
+                label: 'LEAVE CREW',
+                color: context.muted,
+                onPressed: _changingMembership
+                    ? null
+                    : () => _changeMembership(),
+              ),
+            ),
+            if (crew.isOwner && _deletionBackend != null) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: _exitAction(
+                  context,
+                  icon: HugeIconsStrokeRounded.delete02,
+                  label: 'DELETE CREW',
+                  color: context.errorInk,
+                  onPressed: _changingMembership ? null : _deleteCrew,
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
   }
+
+  /// One of the two doors out of a crew: an outlined row at the tap height
+  /// every primary control here stands at.
+  Widget _exitAction(
+    BuildContext context, {
+    required List<List<dynamic>> icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) => DecoratedBox(
+    decoration: ShapeDecoration(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+        side: BorderSide(color: context.ink.withValues(alpha: .18)),
+      ),
+    ),
+    child: TextButton.icon(
+      onPressed: onPressed,
+      icon: AppIcon(icon: icon, size: 20),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        minimumSize: const Size.fromHeight(48),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
+    ),
+  );
 
   bool _isCurrentUser(CrewMember member) =>
       member.email.toLowerCase() == widget.currentUserEmail.toLowerCase();
@@ -849,6 +996,11 @@ String _messageFor(Object error) {
   if (message.contains('no longer in the crew') ||
       message.contains('new owner must belong')) {
     return 'Membership changed. Refresh the crew and try again.';
+  }
+  // Ahead of the membership answer below, which shares its opening words and
+  // would send someone off to pick a new owner for a crew they are ending.
+  if (message.contains('delete a crew')) {
+    return 'Only the crew’s owner can delete it.';
   }
   if (message.contains('Only the owner') ||
       message.contains('Choose another member')) {

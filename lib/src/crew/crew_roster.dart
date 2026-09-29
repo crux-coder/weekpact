@@ -1,3 +1,6 @@
+import 'crew_pact_week_card.dart' show crewDateLabel;
+import '../home/home_surface.dart';
+import '../widgets/page_frame.dart';
 import '../widgets/avatar_shape.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -54,75 +57,6 @@ class CrewRoster extends StatelessWidget {
       ],
     ],
   );
-}
-
-/// The overlapping faces above the roster: who is here, before the names.
-class CrewAvatarStack extends StatelessWidget {
-  const CrewAvatarStack({super.key, required this.members, this.limit = 5});
-  final List<CrewMember> members;
-  final int limit;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown = members.take(limit).toList();
-    final hidden = members.length - shown.length;
-    final faces = shown.length + (hidden > 0 ? 1 : 0);
-    if (faces == 0) return const SizedBox.shrink();
-    return SizedBox(
-      height: 34,
-      // Faces overlap by a third, so the stack is as wide as the last one's
-      // offset plus a whole face. A Row leaves its width unbounded.
-      width: (faces - 1) * 24 + 34,
-      child: Stack(
-        children: [
-          for (final (index, member) in shown.indexed)
-            Positioned(
-              left: index * 24,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: context.canvas,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: SizedBox.square(
-                  dimension: 30,
-                  child: CrewFace(member: member),
-                ),
-              ),
-            ),
-          if (hidden > 0)
-            Positioned(
-              left: shown.length * 24,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: context.canvas,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: SizedBox.square(
-                  dimension: 30,
-                  child: AvatarClip(
-                    child: ColoredBox(
-                      color: WeekPactColors.stone,
-                      child: Center(
-                        child: Text(
-                          '+$hidden',
-                          style: const TextStyle(
-                            color: WeekPactColors.black,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 /// A member's photo, or the first letter of their name when there is none.
@@ -183,12 +117,19 @@ class CrewPersonBand extends StatelessWidget {
 
   String get _role => member.isOwner ? 'OWNER' : 'MEMBER';
 
+  /// Your own band says so in words as well as in colour.
+  ///
+  /// The tint marked *you* and the label said `OWNER`, and on the crew you
+  /// started those land on the same row — so the two read as one fact, and on
+  /// a crew you did not start they are different rows with nothing saying
+  /// which is which. Naming the tint settles it.
+  String get _standing => isCurrentUser ? 'YOU · $_role' : _role;
+
   Widget _roleLabel(BuildContext context) => Text(
-    _role,
+    _standing,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    // Colour is the only thing marking your own band, which a screen reader
-    // cannot read out.
+    // Colour alone marked your own band, which a screen reader cannot read.
     semanticsLabel: isCurrentUser ? 'You, ${_role.toLowerCase()}' : _role,
     style: TextStyle(
       color: context.muted,
@@ -356,3 +297,266 @@ class BandGlyph extends StatelessWidget {
     return tooltip == null ? square : Tooltip(message: tooltip!, child: square);
   }
 }
+
+/// The crew itself, above the people in it: when it started and where its week
+/// is cut, then the three figures that say how it is going.
+///
+/// It stands where a caption used to — a stack of the crew's own faces beside
+/// `HANGBOARDASI · 3 PEOPLE`, under a header already reading *Hangboardasi*,
+/// over a list of the very faces the stack was showing. Two things said twice
+/// and nothing said once. The page knew all three of these figures already:
+/// [CrewPage] fetches the week for member profiles and was throwing the rest of
+/// it away.
+class CrewSummaryCard extends StatelessWidget {
+  const CrewSummaryCard({
+    super.key,
+    required this.people,
+    this.startedAt,
+    this.pacts,
+    this.streakWeeks,
+    this.weekFailed = false,
+    this.onRetry,
+    this.now,
+  });
+
+  /// The loading state: the card at its own height with its figures not yet
+  /// filled in, so the roster under it does not move when they arrive.
+  const CrewSummaryCard.loading({super.key})
+    : people = null,
+      startedAt = null,
+      pacts = null,
+      streakWeeks = null,
+      weekFailed = false,
+      onRetry = null,
+      now = null;
+
+  /// How many are in the crew. This one the page has from the roster itself.
+  ///
+  /// It is also how the card knows whether it is loading: a crew always has at
+  /// least the person reading the page in it, so a null here is an answer that
+  /// has not arrived rather than a crew of nobody.
+  final int? people;
+
+  /// When the crew was started. The card carried the crew's timezone beside
+  /// this and no longer does: a zone nobody picks, on a page nobody administers
+  /// it from, is a fact with nothing to do — and `Europe/Sarajevo` in small
+  /// caps took more of the line than everything else on it put together.
+  final DateTime? startedAt;
+
+  /// The week's own figures, which arrive with the member profiles. Null while
+  /// they are still coming, or where the page was given no week backend to ask.
+  final int? pacts;
+  final int? streakWeeks;
+
+  /// Whether the week was asked for and did not come.
+  ///
+  /// Distinct from the figures simply being null, and it has to be: a bar that
+  /// never fills is a card that says "any moment now" for as long as the page
+  /// is open, and the crew page's own error sits below the roster where nobody
+  /// reading these two figures is looking. Failed, the figures are a dash and
+  /// the card says so with the door back in it.
+  final bool weekFailed;
+  final VoidCallback? onRetry;
+
+  /// Today, for deciding whether the start date needs its year. Passed in so a
+  /// test can stand in a different year without moving the clock.
+  final DateTime? now;
+
+  /// The card's height with type at its ordinary size, held whether the
+  /// figures have landed or not so the roster does not move when they do.
+  ///
+  /// A floor rather than a fixture: at a large text scale the caption and the
+  /// three figures need more than this, and the crew page scrolls — so the
+  /// card grows there instead of clipping its own labels. Home's cards cannot
+  /// do that, which is why they scale their content into a fixed slot; this
+  /// one has somewhere to grow into.
+  static const height = 92.0;
+
+  /// The line the date stands on, held whether it has one or not.
+  static const _captionHeight = 14.0;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: height),
+    child: AppSurface(
+      key: const ValueKey('crew-summary-card'),
+      fillColor: WeekPactColors.stone,
+      resolveTone: false,
+      borderRadius: WeekPactMetrics.cardCorner,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          // Sized by what it holds, with the floor above doing the rest. Given
+          // the room instead — `spaceBetween` on a column free to grow — the
+          // card took every point its parent would offer, which in a scrolling
+          // page is all of them.
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _caption(context),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _figure(
+                  context,
+                  people?.toString(),
+                  people == 1 ? 'PERSON' : 'PEOPLE',
+                ),
+                _figure(
+                  context,
+                  _weekFigure(pacts),
+                  pacts == 1 ? 'PACT' : 'PACTS',
+                ),
+                // The label names the measure rather than agreeing with the
+                // count, so a crew that has not got a streak going reads as
+                // `0 · WEEK STREAK` rather than `0 · WEEKS RUNNING`, which
+                // says a thing is running that is not. The flame elsewhere in
+                // the app is spent only while a streak is up; a figure in a
+                // row of figures is different, and a nought here is where the
+                // crew actually stands.
+                _figure(context, _weekFigure(streakWeeks), 'WEEK STREAK'),
+              ],
+            ),
+            if (weekFailed) _retryLine(context),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  /// When the crew began.
+  ///
+  /// Three states, not two. Still loading, and it is a bar. Loaded with a
+  /// date, and it is the date. Loaded without one — a crew made before the
+  /// column was read, or a fixture that never set it — and the line is left
+  /// empty rather than stood in for, because `SINCE —` is worse than not
+  /// mentioning when the crew started. The slot keeps its height through all
+  /// three, so the figures under it do not move.
+  Widget _caption(BuildContext context) {
+    final started = startedAt;
+    final loading = people == null;
+    return SizedBox(
+      height: _captionHeight,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: loading
+            ? const SkeletonBar(width: 132, height: 11, color: _summaryGhost)
+            : started == null
+            ? const SizedBox.shrink()
+            : Text(
+                'SINCE '
+                '${crewDateLabel(started, now: now ?? DateTime.now()).toUpperCase()}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: homeMutedInk,
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
+                  fontSize: 11,
+                  letterSpacing: .9,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// A figure the week was meant to supply: the number, a bar while it is on
+  /// its way, and a dash once the asking has failed. A bar left standing there
+  /// would keep promising an answer nobody is still fetching.
+  String? _weekFigure(int? value) =>
+      value?.toString() ?? (weekFailed ? '—' : null);
+
+  /// What the card says when the week did not come, and the way back.
+  ///
+  /// Short, because the two dashes above it have already said which figures
+  /// are missing, and on the card rather than under the roster — this is the
+  /// only part of the page that went wrong, and the retry belongs beside it.
+  Widget _retryLine(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Row(
+      children: [
+        Text(
+          'Couldn’t load',
+          style: TextStyle(
+            color: homeMutedInk,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        TextButton(
+          onPressed: onRetry,
+          style: TextButton.styleFrom(
+            foregroundColor: homeInk,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .4,
+            ),
+          ),
+          child: const Text('RETRY'),
+        ),
+      ],
+    ),
+  );
+
+  /// One figure and what it counts. A figure still coming is a bar rather than
+  /// a zero — nobody has a crew of nobody, and a 0 that turns into a 3 reads
+  /// as the crew having grown in the half-second you were looking at it.
+  Widget _figure(BuildContext context, String? value, String label) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 24,
+          child: value == null
+              ? const Align(
+                  alignment: Alignment.bottomLeft,
+                  child: SkeletonBar(
+                    width: 26,
+                    height: 19,
+                    radius: 5,
+                    color: _summaryGhost,
+                  ),
+                )
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      color: homeInk,
+                      fontSize: 24,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: homeMutedInk,
+            fontFamily: WeekPactType.secondary,
+            fontFamilyFallback: WeekPactType.secondaryFallback,
+            fontSize: 10,
+            height: 1,
+            letterSpacing: .6,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The card's own skeleton ink, mixed from its fill rather than the canvas.
+const _summaryGhost = Color(0x24191B19);

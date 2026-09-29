@@ -16,7 +16,7 @@ import '../test/support/pump_ui.dart';
 
 class MarketingBackend extends DashboardBackend {
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async => CrewWeek(
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async => CrewWeek(
     today: '2026-09-14',
     weekStart: '2026-09-14',
     timezone: 'UTC',

@@ -9,10 +9,13 @@ usage() {
 Usage: ./tool/release_ios.sh [--build-number N] [--env FILE] [--no-open]
 
 Build a signed release archive and open it in Xcode Organizer.
-Version comes from pubspec.yaml. The build number increments the highest
-local counter, previous archive, or pubspec build number.
+Version comes from pubspec.yaml. The build number is minutes elapsed since
+2026-01-01 UTC, so any machine and any clean checkout produces a higher number
+than the last release without sharing state; it is raised past the local
+counter, previous archive, or pubspec build number when one of those is ahead.
 Defaults to .env.json when present, otherwise .env. Relative paths use repo root.
-Use --build-number N if a higher build was uploaded from another machine.
+Use --build-number N to choose one explicitly; it must still exceed the local
+maximum.
 No upload or App Store submission is performed by this script.
 HELP
 }
@@ -49,7 +52,18 @@ for candidate in "${VERSION_LINE#*+}" "$(cat "$COUNTER" 2>/dev/null || true)" "$
     if (( number > highest )); then highest=$number; fi
   fi
 done
-if [[ -z "$BUILD_NUMBER" ]]; then BUILD_NUMBER=$((highest + 1)); fi
+# The default is a clock, not a tally. A counter in .dart_tool is not in version
+# control, so a second machine or a fresh clone started again from whatever
+# pubspec said and App Store Connect rejected the repeat. Minutes since
+# 2026-01-01 UTC only ever go up, agree everywhere without being stored, and
+# stay inside the nine digits Apple allows for well over a thousand years.
+# The local maximum is still a floor, so a number already used cannot be reused
+# if the clock is behind it.
+if [[ -z "$BUILD_NUMBER" ]]; then
+  EPOCH_2026=1767225600
+  minutes=$(( ( $(date -u +%s) - EPOCH_2026 ) / 60 ))
+  BUILD_NUMBER=$(( minutes > highest ? minutes : highest + 1 ))
+fi
 [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]{0,8}$ ]] || fail 'Build number must be a positive integer (up to 9 digits).'
 (( BUILD_NUMBER > highest )) || fail "Build number must exceed the local maximum ($highest)."
 mkdir -p .dart_tool build/ios/releases

@@ -38,10 +38,16 @@ class DashboardPacts extends MissingPactsBackend {
 }
 
 class DashboardBackend implements HomeBackend {
+  /// The member the fake treats as the person holding the phone. It has to
+  /// match the signed-in user's id, or a check-in lands on a stranger and the
+  /// page keeps offering "Check in".
+  final String viewerId;
+
   @override
   Future<Uint8List> fetchCheckInPhoto(String path) =>
       Future.error(StateError('Photo unavailable'));
-  DashboardBackend({DashboardPacts? pacts}) : pacts = pacts ?? DashboardPacts();
+  DashboardBackend({DashboardPacts? pacts, this.viewerId = ''})
+    : pacts = pacts ?? DashboardPacts();
   final DashboardPacts pacts;
   final selected = <String>{'read'};
   Map<String, Uint8List> lastPhotos = {};
@@ -63,6 +69,7 @@ class DashboardBackend implements HomeBackend {
     CrewActivity? before,
     int limit = 20,
   }) async => [];
+
   /// Notifications the fake hands back, newest first. Tests that care set it;
   /// everything else gets an empty list and a quiet badge.
   List<NotificationEntry> notifications = const [];
@@ -101,9 +108,28 @@ class DashboardBackend implements HomeBackend {
     required String day,
     required bool clapped,
   }) async => clapped ? 1 : 0;
+  /// Finished weeks the fake hands back, newest first, and the week the page
+  /// last asked for, so a test can tell which week was opened.
+  List<CrewWeekSummary> history = const [];
+  bool failHistory = false;
+  final requestedWeeks = <String?>[];
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<List<CrewWeekSummary>> fetchWeekHistory(
+    String crewId, {
+    String? before,
+    int limit = 12,
+  }) async {
+    if (failHistory) throw StateError('offline');
+    final start = before == null
+        ? 0
+        : history.indexWhere((week) => week.weekStart == before) + 1;
+    return history.skip(start).take(limit).toList();
+  }
+
+  @override
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     fetches++;
+    requestedWeeks.add(weekStart);
     if (failLoad) throw StateError('offline');
     if (loading != null) return loading!.future;
     return CrewWeek(
@@ -115,15 +141,15 @@ class DashboardBackend implements HomeBackend {
           ? null
           : CrewActivity(
               pactId: selected.last,
-              userId: '',
+              userId: viewerId,
               createdAt: DateTime.utc(2026, 9, 9, 10),
             ),
-      members: const [
-        WeekMember('', 'person@example.com'),
-        WeekMember('other', 'friend@example.com'),
+      members: [
+        WeekMember(viewerId, 'person@example.com'),
+        const WeekMember('other', 'friend@example.com'),
       ],
       checkIns: selected
-          .map((id) => PactCheckIn(id, '', '2026-09-09'))
+          .map((id) => PactCheckIn(id, viewerId, '2026-09-09'))
           .toList(),
     );
   }

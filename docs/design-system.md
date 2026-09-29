@@ -241,15 +241,42 @@ means changing the other.
 
 `lib/src/pacts/pacts_overview.dart` owns the personal weekly progress summary and the management list. `YourWeekCard` reads the current crew week and caps each pact’s completed days at its target. `PactBarList` draws one full-width `PactBar` per pact, a track whose tinted fill spans the share of a seven day week the pact claims, so the list reads as one picture of the week. A pact's colours come from its position in the crew's pact list — `WeekPactColors.pactTint(index)` for the card and `pactBadge(index)` for its `PactIconBadge` — so Home's stack, the crew week carousel and this list all show the same pact the same way. Editing remains owner-only.
 
-### Crews: people first
+### Crews: the crew, then the people in it
 
-`CrewPeopleGrid` lays out square `CrewPersonCard` tiles and the owner-only
-`CrewInviteTile` with 12px gaps. It switches to one column on narrow screens or
-large text settings. The current member uses sage; other tiles alternate the
-shared offwhite and yellow palette. Circular profile images reuse Home's cached
-profile loader, with initials and email fallbacks when profile data is unavailable.
-Pending invitations expand below the grid; incoming invitations live in the header
-inbox. Membership confirmation and owner permissions remain in `CrewPage`.
+The page opens with `CrewSummaryCard`: a stone card carrying when the crew
+started, then three figures — people, pacts, and the week streak. It carried
+the crew's timezone on that first line too, and does not any more: a zone
+nobody picks, on a page nobody administers it from, is a fact with nothing to
+do, and `EUROPE/SARAJEVO` in small caps took more of the line than everything
+else on it together. It stands where a caption used to, a stack of the crew's
+own faces beside `HANGBOARDASI · 3 PEOPLE`, under a header already reading
+*Hangboardasi*, over a list of the very faces the stack was showing. Two things
+said twice and nothing said once. None of the three figures costs a request:
+`CrewPage` already fetches the week to put names and faces on the roster and was
+dropping the rest of the answer. Only `crews.created_at` was new, and it is
+nullable on `CrewDetails` rather than required — the column had always been
+there, nothing read it until this card, and a summary is not worth making every
+fixture in the suite restate a date it does not care about. Its first line has three
+states rather than two: a bar while the answer is coming, the date once it is
+here, and — for a crew made before anything read the column — nothing at all,
+since `SINCE —` is worse than not mentioning when the crew started. The line
+keeps its height through all three, so the figures under it never move. Its height is a floor, not a
+fixture: at a large text scale it grows, because this page scrolls and Home's
+cards, which do not, are the reason that rule reads the other way there.
+
+Under it, `IN THE CREW` labels the roster. `CrewRoster` stacks full-width
+`CrewPersonBand` pills, one a person, each with a face, a name, a standing and
+— for an owner, on everyone but themselves — a `BandGlyph` that removes them.
+Your own band is `coolGrey` where the rest are cream, and says `YOU · OWNER` or
+`YOU · MEMBER` rather than leaving the tint to carry it alone: the colour marks
+*you* and the label marks the role, and on the crew you started those land on
+the same row and read as one fact. `CrewInviteBand` is the same band in black,
+and it now stands *after* the roster instead of as its last row — inviting
+somebody is not a member of the crew. Leaving closes the page inside its own
+outline, set apart from the list, because it is the one thing here that cannot
+be undone and it used to sit eight points under the last band. Pending
+invitations and incoming ones both live in the header inbox. Membership
+confirmation and owner permissions remain in `CrewPage`.
 
 ### Feed: removed
 
@@ -351,7 +378,9 @@ the tooltip and in what a screen reader reads.
 
 Nothing in the rail posts. A check-in is made on the pact card below, photo and
 all, so there is no "+" on your own tile and no camera behind it — a tile only
-opens what is already there, and a member who is not in takes no tap at all.
+opens what is already there. A member who is not in yet is a dashed tile,
+and tapping it (or holding it) offers a nudge, since that tile is the exact
+person the thought is about.
 A tap opens `StoryViewer`: the crew's day full screen, walked with a tap on the
 right and a tap on the left, out of one member's check-ins and into the next
 one's. A check-in kept with a photo shows it, with the pact named in the shot's
@@ -371,14 +400,18 @@ changed. Neither says "kept": the page is a day's check-ins, so the only thing
 left to date them is the hour, which sits under the name. The one thing the page asks of the reader is at its foot: a clap,
 as a pill with the word on it rather than a tally you can tap, since a story is
 one check-in filling the screen and can spare the width. It wears
-`clapInk` only once given, as claps do everywhere, and it opens on the word
-rather than a count — the week snapshot cannot read `check_in_claps`, so the
-number appears when the write answers with one. There is no nudge beside it:
-nudging is the roster's, where the cooldown that governs it is already read. Stories are today's and today's only, and which of them have been
+`clapInk` only once given, as claps do everywhere. The week snapshot carries
+each check-in's clap count and whether the viewer gave one, so a story opens
+on the claps it already has rather than on a tally of this session's tap; the
+pill shows the word alone at zero and the count once there is one. There is
+no nudge beside it: nudging is the rail's dashed tile, where the cooldown that
+governs it is already read. Stories are today's and today's only, and which of them have been
 seen is this device's business: `StorySeenStore` keeps the marks beside the
 crew selection in preferences, under the day they belong to, so yesterday's
 marks cannot leave today's rail looking read. Under the rail sits `CrewTodayBar`: the week drawn small on a
-`CrewHeaderSurface`, at `HomeCrewPanel.cardHeight`. It takes its height from the
+`CrewHeaderSurface` at `cardCurve` rather than the surface's default panel
+curve, since it stands over the race card at the same width and the two corners
+have to close alike; it is at `HomeCrewPanel.cardHeight`. It takes its height from the
 crew card rather than choosing one — the two are the same week read two ways,
 by day and then by member, and a row shorter than the card beneath it read as
 that card's caption instead of as its equal. Seven columns, Monday first off `CrewWeek.weekDays`,

@@ -36,6 +36,19 @@ email invitations and backend support remain intact. QR codes encode the same
 HTTPS invite route for scanning with a phone camera. Links use the existing HTTPS
 invitation landing page and custom-scheme handoff; no automatic message is sent.
 Recipients install/sign in, return to the original link, then explicitly accept.
+A pending token survives onboarding: somebody arriving on a share link who has
+to create an account and set up a profile first lands on the acceptance screen
+afterwards, rather than on Home. Crews → Invites lists `public.crew_invites`
+only, so a share link never appears there, and the handoff pages say to reopen
+the link instead of sending people to that inbox.
+
+`20260928120000_add_crew_invite_preview.sql` adds `preview_crew_invite`, which
+answers a valid unexpired token — share link or email invite, matched by its
+SHA-256 hash — with the crew's name, its member count and its owner's display
+name, and null for anything else. Nothing else about the crew is readable
+before joining. The acceptance screen leads with "Join &lt;crew name&gt;" and
+the member count when the preview arrives, and keeps its generic copy when it
+does not.
 
 Every copy, share, or newly shown QR code creates a new invite link, active for
 seven days.
@@ -98,6 +111,39 @@ upload phase are configured. The simulator/debug build sends no crash report.
 A release-device smoke report must still be verified in Firebase before launch;
 compilation and unit tests alone cannot verify remote delivery/symbolication.
 
+### Android release signing
+
+The release build type used to sign with the debug keystore, which Google Play
+rejects on upload. It now reads `android/key.properties` — `storeFile`,
+`storePassword`, `keyAlias`, `keyPassword` — and signs with the keystore that
+file names. `android/key.properties.example` is the template;
+`android/.gitignore` already holds `key.properties` and `**/*.jks`, so neither
+the file nor the keystore is committed. Without `key.properties` the build still
+runs, signed with the debug keys, and Gradle warns that it did. Keep the
+keystore and its passwords outside the repository and backed up: losing it means
+never updating the Play listing again, since Play identifies an app by the key
+that signed it.
+
+Make one upload keystore, once, and reuse it for every release:
+
+```sh
+keytool -genkey -v -keystore ~/upload-keystore.jks \
+  -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Then copy the template and fill it in (`storeFile` may be absolute, or relative
+to `android/`):
+
+```sh
+cp android/key.properties.example android/key.properties
+```
+
+`flutter build appbundle` then produces a signed bundle. Confirm the signer
+before the first upload — `keytool -printcert -jarfile <bundle>` should show
+your own certificate rather than the Android debug one. Android's Gradle build
+cannot be run in this workspace (no Android SDK), so the configuration has not
+been executed here.
+
 ## Deployment order and validation
 
 The launch-foundation and independent-invite migrations are applied remotely.
@@ -105,6 +151,14 @@ On September 14, 2026, `20260914181828_remove_weekly_recap.sql` was also applied
 the recap RPCs and view records are gone, while finalized streak history remains.
 The updated app was built and installed in the local simulator. Website changes
 still need publishing and distributed app builds need a new release.
+
+Two migrations from September 28, 2026 are not yet applied remotely and the app
+build that carries them depends on both:
+`20260928120000_add_crew_invite_preview.sql` (the invite page names its crew)
+and `20260928120500_add_week_check_in_claps.sql` (stories open on the claps
+they already have). Apply them with `supabase db push` before shipping that
+build; an app without them still works, an app with them against a database
+without them shows the fallback invite copy and zero claps.
 
 Check `cron.job` for `weekpact-finalize-crew-weeks` and `cron.job_run_details` after
 migration. The migration installs/schedules pg_cron when available (PGlite tests

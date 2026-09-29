@@ -17,7 +17,7 @@ import 'support/home_fakes.dart';
 
 class LargeCrewBackend extends DashboardBackend {
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final week = await super.fetchWeek(crewId);
     return CrewWeek(
       today: week.today,

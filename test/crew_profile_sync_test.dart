@@ -13,7 +13,7 @@ import 'widget_test.dart' show FakeAuthBackend, FakeCrewBackend;
 
 class ProfileDashboard extends DashboardBackend {
   @override
-  Future<CrewWeek> fetchWeek(String crewId) async {
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final week = await super.fetchWeek(crewId);
     return CrewWeek(
       today: week.today,

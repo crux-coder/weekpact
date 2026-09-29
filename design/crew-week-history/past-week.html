@@ -1,0 +1,252 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Crew week — telling a past week apart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --canvas:#222A2B; --dark-ink:#EDF3F2; --dark-muted:#AAB8B9; --dark-border:#67797C;
+    --ink:#191B19; --muted:#46535A; --cream:#F0F5F4;
+    --progress:#F2F3AE; --mint:#A8D2CC; --stone:#CDE0DC; --inset:#D7E0DF;
+    --dark-fill:#1F2627; --graphite:#363F40; --graphite-edge:#66716F;
+    --clay:#D0B2A4; --clay-badge:#CBA08B; --sage:#B4C8A2; --sage-badge:#A4C289; --blush:#D6B2B6;
+    --kept:#B8CC8E; --pending:#C6CACB; --done:#3F7A6B; --streak:#E08A45; --salmon:#FF836F;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:44px 24px 120px; background:#121616; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1760px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { color:var(--dark-muted); max-width:78ch; line-height:1.65; font-size:15px; margin:0 0 36px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(392px,1fr)); gap:24px; }
+  .cell { background:#181d1d; border:1px solid #262d2d; border-radius:22px; padding:20px 20px 24px; display:flex; flex-direction:column; }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#121616; background:var(--dark-muted); padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--mint); }
+  .cell > p { color:#9aa5a5; font-size:13px; line-height:1.6; margin:0 0 6px; }
+  .cost { color:#6f7a7a; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .cost b { color:#9aa5a5; font-weight:500; }
+
+  /* Phone: 360pt wide, 12px insets */
+  .phone { width:360px; max-width:100%; margin:12px auto 0; background:var(--canvas); border-radius:28px;
+    padding:14px 12px 14px; color:var(--dark-ink); position:relative; overflow:hidden; }
+  .phone.tall { min-height:720px; }
+  .back { width:24px; height:24px; opacity:.9; margin:2px 0 6px; }
+  .back svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .crew { font-size:34px; line-height:1.15; font-weight:700; margin:0; }
+  .sub { color:var(--dark-muted); font-size:15px; margin:6px 0 0; display:flex; align-items:center; gap:6px; }
+  .sub .chev { width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:var(--graphite); border:1px solid var(--graphite-edge); box-shadow:0 2px 0 var(--graphite-edge); }
+  .sub .chev svg { width:14px; height:14px; fill:none; stroke:var(--dark-ink); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .sub .chev.off { opacity:.3; }
+  .eyebrowh { font-size:23px; font-weight:700; margin:18px 0 12px; display:flex; justify-content:space-between; align-items:baseline; }
+  .eyebrowh span { color:var(--dark-muted); font-size:14px; font-weight:500; }
+
+  /* raised card chassis */
+  .card { --line:color-mix(in srgb,var(--t) 72%,#000); --edge:color-mix(in srgb,var(--t) 76%,#000);
+    background:var(--t); color:var(--ink); border:1px solid var(--line); border-radius:18px; box-shadow:0 2px 0 var(--edge); }
+  .card.deep { box-shadow:0 3px 0 var(--edge); }
+  .card.dark { --t:var(--dark-fill); border-color:var(--dark-border); box-shadow:0 2px 0 var(--dark-border); color:var(--cream); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .stat { padding:14px; }
+  .stat .big { font-size:34px; line-height:1; font-weight:700; }
+  .stat .lab { font-size:13px; font-weight:500; margin-top:5px; }
+  .stat.streak { display:flex; align-items:center; gap:8px; }
+  .stat.streak svg { width:30px; height:30px; fill:none; stroke:var(--dark-muted); stroke-width:1.7; flex:none; }
+  .stat.streak .n { font-size:18px; font-weight:600; }
+  .stat.streak .l { font-size:12px; color:var(--dark-muted); margin-top:4px; }
+
+  /* pact card */
+  .pact { padding:16px; display:flex; flex-direction:column; }
+  .pact .head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .pact .title { font-size:28px; line-height:1.1; font-weight:700; }
+  .pact .per { font-size:13px; font-weight:500; color:var(--muted); margin-top:6px; }
+  .badge { width:44px; height:44px; border-radius:14px; background:var(--b); border:1px solid color-mix(in srgb,var(--b) 72%,#000); box-shadow:0 2px 0 color-mix(in srgb,var(--b) 76%,#000); display:flex; align-items:center; justify-content:center; flex:none; }
+  .badge svg { width:22px; height:22px; fill:none; stroke:var(--ink); stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  .count { margin-top:8px; font-weight:700; line-height:1; }
+  .count b { font-size:42px; } .count span { font-size:28px; }
+  .cap { font-size:10px; letter-spacing:1.5px; color:var(--muted); font-weight:500; margin-top:2px; }
+  .cal { display:grid; grid-template-columns:52px repeat(7,1fr) 44px; gap:2px 4px; margin-top:10px; align-items:center; }
+  .cal .d { text-align:center; font-size:11px; font-weight:600; color:var(--muted); line-height:1.1; padding:6px 0; }
+  .cal .d b { display:block; font-size:15px; font-weight:700; line-height:1.2; }
+  .cal .d.today { background:var(--ink); color:var(--cream); border-radius:8px; padding:4px 0; box-shadow:0 2px 0 #484848; }
+  .cal .d.today b { font-weight:600; }
+  .cal .nm { font-size:13px; font-weight:600; padding-left:2px; }
+  .cal .nm small { display:block; font-size:10px; color:var(--muted); font-weight:500; }
+  .cal .c { height:34px; border-radius:8px; background:var(--pending); border:1px solid color-mix(in srgb,var(--pending) 72%,#000); box-shadow:0 2px 0 color-mix(in srgb,var(--pending) 76%,#000); }
+  .cal .c.k { background:var(--kept); border-color:color-mix(in srgb,var(--kept) 72%,#000); box-shadow:0 2px 0 color-mix(in srgb,var(--kept) 76%,#000); position:relative; }
+  .cal .c.k::after { content:""; position:absolute; left:50%; top:50%; width:8px; height:14px; border:solid var(--done); border-width:0 2.5px 2.5px 0; transform:translate(-50%,-60%) rotate(45deg); }
+  .cal .c.off { background:transparent; border-color:transparent; box-shadow:none; }
+  .cal .ct { text-align:right; font-size:14px; font-weight:600; }
+  .pact hr { border:0; border-top:1px solid color-mix(in srgb,var(--t) 72%,#000); margin:12px 0 10px; opacity:.5; }
+  .pact .tot { display:flex; justify-content:space-between; align-items:center; }
+  .pact .tot .a { font-size:18px; font-weight:600; } .pact .tot .a small { display:block; font-size:12px; color:var(--muted); font-weight:400; margin-top:3px; }
+  .pact .tot .b { text-align:right; font-size:26px; font-weight:700; line-height:1; } .pact .tot .b small { display:block; font-size:9px; letter-spacing:1.5px; color:var(--muted); font-weight:400; margin-top:3px; }
+  .dots { display:flex; gap:10px; justify-content:center; padding:14px 0; }
+  .dots i { width:7px; height:7px; border-radius:99px; background:rgba(237,243,242,.25); display:block; }
+  .dots i.on { width:20px; background:var(--dark-ink); }
+  .today { --t:var(--stone); padding:14px 16px; display:flex; gap:12px; align-items:center; }
+  .today svg { width:30px; height:30px; fill:none; stroke:var(--ink); stroke-width:1.7; flex:none; }
+  .today .t { font-size:17px; font-weight:600; } .today .s { font-size:13px; color:var(--muted); margin-top:3px; }
+
+  /* deck peeks */
+  .deck { position:relative; margin:0 -12px; padding:0 22px; }
+  .deck::before,.deck::after { content:""; position:absolute; top:8px; bottom:11px; width:14px; border-radius:18px; background:var(--sage); border:1px solid color-mix(in srgb,var(--sage) 72%,#000); box-shadow:0 3px 0 color-mix(in srgb,var(--sage) 76%,#000); }
+  .deck::before { left:0; background:var(--blush); border-color:color-mix(in srgb,var(--blush) 72%,#000); box-shadow:0 3px 0 color-mix(in srgb,var(--blush) 76%,#000); }
+  .deck::after { right:0; }
+
+  /* B — week chips */
+  .weeks { display:flex; gap:8px; margin-top:14px; overflow:hidden; justify-content:flex-end; -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000); mask-image:linear-gradient(90deg,transparent,#000 14%,#000); }
+  .wk { flex:none; width:66px; padding:8px 0 7px; border-radius:12px; text-align:center; background:var(--graphite); border:1px solid var(--graphite-edge); box-shadow:0 2px 0 var(--graphite-edge); color:var(--dark-ink); }
+  .wk .l { font-size:10px; letter-spacing:1.2px; font-weight:500; color:var(--dark-muted); }
+  .wk .p { font-size:17px; font-weight:700; margin-top:2px; line-height:1; }
+  .wk .bar { height:4px; border-radius:99px; background:rgba(237,243,242,.18); margin:7px 10px 0; overflow:hidden; }
+  .wk .bar i { display:block; height:100%; background:var(--kept); }
+  .wk.on { width:78px; background:var(--cream); color:var(--ink); border-color:#bfc8c7; box-shadow:0 2px 0 #b0bab9; }
+  .wk.on .l { color:var(--muted); } .wk.on .bar { background:rgba(25,27,25,.12); } .wk.on .bar i { background:var(--done); }
+  .wk.full .p::after { content:" ✓"; color:var(--done); font-size:13px; }
+  .wk.on.full .p::after { color:var(--done); }
+
+  /* C — vertical stack */
+  .scrollhint { position:absolute; left:0; right:0; bottom:0; height:110px; background:linear-gradient(transparent,var(--canvas)); pointer-events:none; }
+  .past { --t:var(--inset); padding:14px 16px; display:flex; align-items:center; gap:12px; margin-top:10px; }
+  .past .wkl { width:64px; flex:none; } .past .wkl b { display:block; font-size:15px; font-weight:600; } .past .wkl small { font-size:11px; color:var(--muted); }
+  .past .segs { flex:1; display:flex; gap:3px; }
+  .past .segs i { flex:1; height:22px; border-radius:6px; background:var(--pending); border:1px solid color-mix(in srgb,var(--pending) 72%,#000); }
+  .past .segs i.k { background:var(--kept); border-color:color-mix(in srgb,var(--kept) 72%,#000); }
+  .past .pct { width:48px; text-align:right; font-size:20px; font-weight:700; flex:none; }
+  .past .pct.full { color:var(--done); }
+  .past .ar { width:16px; height:16px; flex:none; opacity:.5; } .past .ar svg { width:16px; height:16px; fill:none; stroke:var(--ink); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .sect { font-size:15px; font-weight:600; margin:22px 0 2px; display:flex; justify-content:space-between; align-items:baseline; }
+  .sect span { color:var(--dark-muted); font-size:12px; font-weight:400; }
+
+  /* D — card time stack */
+  .stack { position:relative; padding-top:38px; }
+  .stack .ghost { position:absolute; left:14px; right:14px; height:60px; border-radius:18px 18px 0 0; background:var(--clay); border:1px solid color-mix(in srgb,var(--clay) 72%,#000); border-bottom:0; opacity:.55; display:flex; justify-content:center; padding-top:7px; font-size:11px; letter-spacing:1.2px; font-weight:500; color:var(--ink); }
+  .stack .ghost.g2 { top:0; left:26px; right:26px; opacity:.32; }
+  .stack .ghost.g1 { top:14px; }
+  .stack .card { position:relative; }
+  .handle { display:flex; justify-content:center; margin:-4px 0 6px; }
+  .handle i { width:36px; height:4px; border-radius:99px; background:rgba(25,27,25,.22); display:block; }
+  .weektag { display:inline-flex; align-items:center; gap:6px; font-size:11px; letter-spacing:1.2px; font-weight:500; color:var(--muted); background:rgba(25,27,25,.08); padding:4px 9px; border-radius:99px; margin-bottom:8px; }
+  .weektag.now { background:var(--ink); color:var(--cream); }
+  .arrowhint { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--dark-muted); font-size:12px; padding:10px 0 0; }
+  .arrowhint svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+  /* past-week state: read-only tone */
+  .pastweek .cal .d.today { background:transparent; color:var(--muted); box-shadow:none; padding:6px 0; }
+  .pastweek .cal .d.today b { font-weight:700; }
+  .readonly { --t:var(--inset); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+  .readonly .t { font-size:15px; font-weight:600; } .readonly .s { font-size:12px; color:var(--muted); margin-top:2px; }
+  .btn { background:var(--ink); color:var(--cream); font-size:12px; font-weight:600; letter-spacing:.6px; padding:9px 13px; border-radius:11px; box-shadow:0 2px 0 #484848; }
+</style>
+<style>
+  .phone { min-height:auto; }
+  .grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .ref { opacity:.92; }
+  .eyebrowchip { display:inline-flex; align-items:center; gap:6px; font-size:11px; letter-spacing:1.4px; font-weight:500; padding:5px 10px; border-radius:99px; background:var(--graphite); border:1px solid var(--graphite-edge); color:var(--dark-ink); margin:4px 0 8px; }
+  .eyebrowchip i { width:7px; height:7px; border-radius:99px; background:var(--dark-muted); display:block; }
+  .eyebrowchip.live { background:var(--cream); color:var(--ink); border-color:#bfc8c7; }
+  .eyebrowchip.live i { background:var(--streak); }
+  .crew.small { font-size:17px; font-weight:500; color:var(--dark-muted); margin-top:4px; }
+  .banner { --t:var(--mint); padding:14px 16px; display:flex; align-items:center; gap:14px; margin-top:18px; }
+  .banner .pct { font-size:34px; font-weight:700; line-height:1; }
+  .banner .t { font-size:15px; font-weight:600; } .banner .s { font-size:12px; color:var(--muted); margin-top:3px; }
+  .banner .lock { margin-left:auto; width:34px; height:34px; border-radius:11px; background:rgba(25,27,25,.08); display:flex; align-items:center; justify-content:center; flex:none; }
+  .banner .lock svg { width:18px; height:18px; fill:none; stroke:var(--ink); stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  .banner.miss { --t:var(--inset); }
+  /* archive tone */
+  .archive .card.pact { --t:var(--inset) !important; }
+  .archive .cal .c { background:transparent; border-color:rgba(25,27,25,.14); box-shadow:none; }
+  .archive .cal .c.k { background:var(--kept); border-color:color-mix(in srgb,var(--kept) 72%,#000); box-shadow:none; }
+  .archive .badge { --b:#B9C6C4; }
+  .archive .deck::before,.archive .deck::after { background:#C9D3D1; border-color:#9aa5a3; box-shadow:0 3px 0 #9aa5a3; }
+  .stamp { position:absolute; right:14px; top:14px; font-size:10px; letter-spacing:1.6px; font-weight:600; color:var(--muted); border:1.5px solid var(--muted); border-radius:6px; padding:3px 7px; transform:rotate(-6deg); opacity:.8; }
+  /* sheet */
+  .phone.sheetwrap { padding:0; background:#0f1414; }
+  .behind { padding:14px 12px 0; opacity:.35; filter:saturate(.7); height:150px; overflow:hidden; }
+  .sheet { background:var(--canvas); border-radius:16px 16px 0 0; padding:8px 12px 14px; border-top:1px solid var(--dark-border); }
+  .sheet .grab { width:36px; height:4px; border-radius:99px; background:rgba(237,243,242,.3); margin:0 auto 10px; }
+  .sheet .bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .sheet .bar .x { width:30px; height:30px; border-radius:10px; background:var(--graphite); border:1px solid var(--graphite-edge); display:flex; align-items:center; justify-content:center; }
+  .sheet .bar .x svg { width:14px; height:14px; fill:none; stroke:var(--dark-ink); stroke-width:2; stroke-linecap:round; }
+  .sheet .crew { font-size:28px; }
+  /* timeline */
+  .tl { display:flex; align-items:center; gap:0; margin:14px 0 4px; }
+  .tl .n { flex:1; text-align:center; font-size:11px; letter-spacing:1px; font-weight:500; color:var(--dark-muted); padding:8px 0 6px; border-bottom:2px solid rgba(237,243,242,.15); }
+  .tl .n.on { color:var(--dark-ink); border-bottom-color:var(--dark-ink); font-weight:600; }
+  .tl .n.live { color:var(--streak); }
+  .tl .n.on.live { border-bottom-color:var(--streak); }
+</style>
+</head><body><div class="page" style="max-width:2700px">
+<h1>Crew week — telling a past week apart</h1>
+<p class="lede">What shipped opens a finished week on the same page as the live one, and the two look alike: same crew name, same progress pair, same card, only the small subtitle and the bottom panel differ. Five ways to make the past week read as the past at a glance. <b>A + B together</b> is the recommendation: the title changes shape, and the instrument panel becomes a closed-week banner, with no new colour language and no new gesture.</p>
+<div class="grid"><div class="cell ref"><div class="cellHead"><span class="key">NOW</span><h2>This week, as it ships</h2></div>
+<p>For comparison. A past week today looks like this with only the subtitle and the bottom panel changed, which is the problem.</p><p class="cost">&nbsp;</p>
+<div class="phone"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><h3 class="crew">Early birds</h3><div class="sub">This week · Sep 14 – Sep 20</div><div class="row2"><div class="card stat" style="--t:var(--progress)"><div class="big">50%</div><div class="lab">Crew progress</div></div>
+<div class="card dark stat streak"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-3 0 2 1 3 2 3 0-3-1-5 1-8z"/></svg><div><div class="n">Week 1</div><div class="l">Start your first crew streak</div></div></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck"><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person this week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>2</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">1/2</div><div class="nm">Ana</div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">1/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">2 / 4<small>CHECK-INS</small></div></div>
+    </div></div>
+<div class="dots"><i class="on"></i></div><div class="card today"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 18c.5-2 2-3 3.5-3s3.5 1 3.5 3"/></svg><div><div class="t">0 of 2 checked in today</div><div class="s">Sep 17</div></div></div></div></div><div class="cell"><div class="cellHead"><span class="key pick">A</span><h2>The date is the title</h2></div>
+<p>A past week leads with <em>when</em>. The big headline becomes the date range, the crew name drops to a line under it, and a grey "PAST WEEK" chip sits above. The live page keeps its shape (crew name big, "this week" small), so the two are never the same silhouette.</p>
+<p class="cost"><b>Cost:</b> none beyond copy and two text styles. <b>Gain:</b> the difference is in the first thing you read.</p>
+<div class="phone"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><span class="eyebrowchip"><i></i>PAST WEEK</span><h3 class="crew">Sep 7 – 13</h3><div class="crew small">Early birds</div><div class="row2"><div class="card stat" style="--t:var(--mint)"><div class="big">100%</div><div class="lab">Crew progress</div></div>
+<div class="card dark stat streak"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-3 0 2 1 3 2 3 0-3-1-5 1-8z"/></svg><div><div class="n">Week 1</div><div class="l">Start your first crew streak</div></div></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck pastweek"><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person that week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>4</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c k"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">2/2</div><div class="nm">Ana</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="ct">2/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">4 / 4<small>CHECK-INS</small></div></div>
+    </div></div>
+<div class="dots"><i class="on"></i></div><div class="card today"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 18c.5-2 2-3 3.5-3s3.5 1 3.5 3"/></svg><div><div class="t">All 2 hit their target</div><div class="s">Week of Sep 7</div></div></div></div></div><div class="cell"><div class="cellHead"><span class="key pick">B</span><h2>Closed-week banner</h2></div>
+<p>The progress + streak pair is the live week's instrument panel; a finished week does not need a dial. It becomes one wide banner: the percentage, "Week closed", who hit their target, and a lock. The streak card and the "checked in today" panel go. Less on the page, and none of it looks like a thing to act on.</p>
+<p class="cost"><b>Cost:</b> one new banner widget. Combine with A. <b>Gain:</b> the read-only feel comes from the layout, not from a label.</p>
+<div class="phone"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><span class="eyebrowchip"><i></i>PAST WEEK</span><h3 class="crew">Sep 7 – 13</h3><div class="crew small">Early birds</div>
+<div class="card banner"><div class="pct">100%</div><div><div class="t">Week closed</div><div class="s">All 2 hit their target</div></div><div class="lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck pastweek"><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person that week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>4</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c k"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">2/2</div><div class="nm">Ana</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="ct">2/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">4 / 4<small>CHECK-INS</small></div></div>
+    </div></div>
+<div class="dots"><i class="on"></i></div></div></div><div class="cell"><div class="cellHead"><span class="key">C</span><h2>Archive tone</h2></div>
+<p>A finished week is drawn as grey paper. The pact card loses its tint and takes the neutral inset grey, empty day cells go flat, the badge goes grey, a small "CLOSED" mark sits in the corner. Kept days stay green, so the record is still legible. Colour means live; grey means archive.</p>
+<p class="cost"><b>Cost:</b> a second colour language for the card, which the design system says not to add. <b>Risk:</b> a grey card reads as disabled or loading, and a crew's pact colours are how you tell pacts apart.</p>
+<div class="phone archive"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><h3 class="crew">Early birds</h3><div class="sub">Last week · Sep 7 – Sep 13</div>
+<div class="row2"><div class="card stat" style="--t:var(--inset)"><div class="big">100%</div><div class="lab">Crew progress</div></div><div class="card stat" style="--t:var(--inset)"><div class="big" style="font-size:18px;margin-top:6px">Closed</div><div class="lab">Sep 13</div></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck pastweek" style="position:relative"><span class="stamp" style="right:34px;top:-10px;z-index:2;background:var(--canvas)">CLOSED</span><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person that week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>4</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c k"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">2/2</div><div class="nm">Ana</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="ct">2/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">4 / 4<small>CHECK-INS</small></div></div>
+    </div></div>
+<div class="dots"><i class="on"></i></div><div class="card today" style="--t:var(--inset)"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 18c.5-2 2-3 3.5-3s3.5 1 3.5 3"/></svg><div><div class="t">All 2 hit their target</div><div class="s">Week of Sep 7</div></div></div></div></div><div class="cell"><div class="cellHead"><span class="key">D</span><h2>A sheet over this week</h2></div>
+<p>A past week never becomes "the page". It rises as a sheet over the live week, which stays dimmed behind it; a grab handle and an X close it. The title bar carries the date and "Last week", and the crew name is not repeated because it is visible behind. You cannot mistake it for the live page because the live page is still there.</p>
+<p class="cost"><b>Cost:</b> the sheet has to scroll the same tall card, and full-height sheets fight the carousel's horizontal swipe less than you would think but the vertical dismiss can catch. <b>Gain:</b> strongest sense of place.</p>
+<div class="phone sheetwrap"><div class="behind"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><h3 class="crew">Early birds</h3><div class="sub">This week · Sep 14 – Sep 20</div><div class="row2"><div class="card stat" style="--t:var(--progress)"><div class="big">50%</div><div class="lab">Crew progress</div></div>
+<div class="card dark stat streak"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-3 0 2 1 3 2 3 0-3-1-5 1-8z"/></svg><div><div class="n">Week 1</div><div class="l">Start your first crew streak</div></div></div></div></div>
+<div class="sheet"><div class="grab"></div><div class="bar"><div><span class="eyebrowchip" style="margin:0 0 4px"><i></i>LAST WEEK</span><h3 class="crew">Sep 7 – 13</h3></div><div class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div></div>
+<div class="card banner" style="margin-top:12px"><div class="pct">100%</div><div><div class="t">Week closed</div><div class="s">All 2 hit their target</div></div><div class="lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck pastweek"><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person that week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>4</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c k"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">2/2</div><div class="nm">Ana</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="ct">2/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">4 / 4<small>CHECK-INS</small></div></div>
+    </div></div><div class="dots"><i class="on"></i></div></div></div></div><div class="cell"><div class="cellHead"><span class="key">E</span><h2>Week tabs under the name</h2></div>
+<p>A row of week tabs under the crew name shows where you are in time: earlier weeks to the left, "THIS WEEK" on the right in the streak's orange. The selected tab is underlined. Swiping the page sideways moves between weeks; the pact carousel keeps its own swipe inside the card. The live tab is the only warm-coloured one, so a past week reads as "not the orange one".</p>
+<p class="cost"><b>Cost:</b> the tabs and the page's swipe compete with the carousel's. This makes the past-weeks list under the page redundant, so it is really a different feature. <b>Gain:</b> history and position in one control.</p>
+<div class="phone"><div class="back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><h3 class="crew">Early birds</h3>
+<div class="tl"><div class="n">AUG 24</div><div class="n">AUG 31</div><div class="n on">SEP 7</div><div class="n live">THIS WEEK</div></div>
+<div class="sub" style="margin-top:8px">Last week · Sep 7 – Sep 13</div><div class="row2"><div class="card stat" style="--t:var(--mint)"><div class="big">100%</div><div class="lab">Crew progress</div></div>
+<div class="card dark stat streak"><svg viewBox="0 0 24 24"><path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-3 0 2 1 3 2 3 0-3-1-5 1-8z"/></svg><div><div class="n">Week 1</div><div class="l">Start your first crew streak</div></div></div></div>
+<div class="eyebrowh">Crew pacts <span>1 / 1</span></div><div class="deck pastweek"><div class="card deep pact" style="--t:var(--clay);--b:var(--clay-badge)">
+      <div class="head"><div><div class="title">Move for 30 min</div><div class="per">2 days per person that week</div></div><div class="badge"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="1.6"/><path d="M6 20l3-6 3 2 2-5-3-2-3 3M12 11l3 2 2 5"/></svg></div></div>
+      <div class="count"><b>4</b><span> / 4</span></div><div class="cap">CHECK-INS</div>
+      <div class="cal"><div></div><div class="d">Mon<b>7</b></div><div class="d">Tue<b>8</b></div><div class="d">Wed<b>9</b></div><div class="d">Thu<b>10</b></div><div class="d">Fri<b>11</b></div><div class="d">Sat<b>12</b></div><div class="d">Sun<b>13</b></div><div></div><div class="nm">You</div><div class="c k"></div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="ct">2/2</div><div class="nm">Ana</div><div class="c"></div><div class="c k"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c k"></div><div class="ct">2/2</div></div>
+      <hr><div class="tot"><div class="a">Crew total<small>2 members · 1 pact</small></div><div class="b">4 / 4<small>CHECK-INS</small></div></div>
+    </div></div>
+<div class="dots"><i class="on"></i></div><div class="card today"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 18c.5-2 2-3 3.5-3s3.5 1 3.5 3"/></svg><div><div class="t">All 2 hit their target</div><div class="s">Week of Sep 7</div></div></div></div></div></div></div></body></html>

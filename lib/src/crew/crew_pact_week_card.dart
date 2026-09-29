@@ -14,7 +14,14 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/pact_icon_badge.dart';
 
-String crewDateLabel(DateTime date) {
+/// A date as this app writes one: the month's short name and the day.
+///
+/// The year is left off, because almost every date drawn here belongs to the
+/// week being read and saying 2026 three times on one card is noise. Pass
+/// [now] where the date can be an old one — a crew's start, say — and the year
+/// comes back whenever it is not the year we are in: `SEP 7` a few weeks after
+/// the fact is a date, `SEP 7` from a crew started last September is a lie.
+String crewDateLabel(DateTime date, {DateTime? now}) {
   const months = [
     'Jan',
     'Feb',
@@ -29,7 +36,8 @@ String crewDateLabel(DateTime date) {
     'Nov',
     'Dec',
   ];
-  return '${months[date.month - 1]} ${date.day}';
+  final label = '${months[date.month - 1]} ${date.day}';
+  return now == null || date.year == now.year ? label : '$label, ${date.year}';
 }
 
 /// A plain carousel page: one pact and the crew's days aligned in one calendar.
@@ -119,7 +127,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '${pact.daysPerWeek} ${pact.daysPerWeek == 1 ? 'day' : 'days'} per person this week',
+                                '${pact.daysPerWeek} ${pact.daysPerWeek == 1 ? 'day' : 'days'} per person ${week.isOver ? 'that' : 'this'} week',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
@@ -484,7 +492,7 @@ class _MemberDays extends StatelessWidget {
             padding: const EdgeInsets.only(left: 6),
             child: Semantics(
               label:
-                  '$name: ${week.days(pact.id, member.id)} of ${pact.daysPerWeek} check-ins this week',
+                  '$name: ${week.days(pact.id, member.id)} of ${pact.daysPerWeek} check-ins ${week.isOver ? 'that' : 'this'} week',
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(

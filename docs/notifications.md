@@ -5,8 +5,11 @@
 WeekPact has the mobile FCM transport infrastructure. Account → Notifications
 requests permission on demand, remembers device opt-in, registers and refreshes
 the FCM token, and supports turning notifications off. Returning from system
-Settings rechecks authorization without prompting. iOS registration waits for
-APNs readiness; failed registration can be retried.
+Settings rechecks authorization without prompting. Once permission has been
+refused the app cannot ask again, so the card offers **Open settings**, which
+opens WeekPact's own page in the system Settings; the enable button stays as the
+quieter of the two. iOS registration waits for APNs readiness; failed
+registration can be retried.
 
 On iOS, foreground notifications use the native banner. On Android, foreground
 notification payloads use an in-app banner; background notifications use the
@@ -200,8 +203,9 @@ flutter run -d 00008101-001E59E41A51003A \
 ```
 
 1. Sign in, finish onboarding, then open Account → Notifications → Enable Notifications.
-2. Accept the iOS prompt. If already denied, allow notifications in iPhone Settings
-   → Apps → WeekPact → Notifications, then return to the app.
+2. Accept the iOS prompt. If already denied, tap **Open settings** on the card
+   (or go to iPhone Settings → Apps → WeekPact → Notifications), allow them, and
+   return to the app.
 3. Tap **Copy FCM test token** (debug builds only).
 4. Put WeekPact in the background. In Firebase Messaging, create a notification
    message, choose **Send test message**, paste the token, and send the test.
