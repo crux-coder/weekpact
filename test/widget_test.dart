@@ -24,6 +24,16 @@ import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
+/// Through the front door to the log-in form. The first screen a signed-out
+/// phone sees is two doors and this line; every test that logs in walks it.
+Future<void> openLogin(WidgetTester tester) async {
+  await tester.pumpUi();
+  final door = find.text('Already in?  LOG IN');
+  await tester.ensureVisible(door);
+  await tester.tap(door);
+  await tester.pumpUi();
+}
+
 void main() {
   testWidgets('account has no appearance setting and one fixed theme', (
     tester,
@@ -39,6 +49,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'owner@example.com',
@@ -112,6 +123,7 @@ void main() {
       ),
     );
 
+    await openLogin(tester);
     expect(find.text('Welcome back.'), findsOneWidget);
     expect(find.text('CONFIRM PASSWORD'), findsNothing);
 
@@ -135,6 +147,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.tap(find.text('LOG IN'));
     await tester.pump();
 
@@ -156,6 +169,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     final modeButton = find.text('New here?  CREATE ACCOUNT');
     await tester.ensureVisible(modeButton);
     await tester.tap(modeButton);
@@ -202,9 +216,10 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    final mode = find.text('New here?  CREATE ACCOUNT');
-    await tester.ensureVisible(mode);
-    await tester.tap(mode);
+    // The invitation opens on the crew, and joining it is the sign-up.
+    final join = find.textContaining('JOIN ');
+    await tester.ensureVisible(join);
+    await tester.tap(join);
     await tester.pumpUi();
     await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
@@ -230,6 +245,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -261,6 +277,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -304,6 +321,7 @@ void main() {
           authBackend: auth,
         ),
       );
+      await openLogin(tester);
       await tester.enterText(
         find.byType(TextFormField).at(0),
         'person@example.com',
@@ -352,6 +370,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -387,6 +406,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -425,6 +445,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -477,6 +498,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',
@@ -552,6 +574,7 @@ void main() {
         crewBackend: crews,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'owner@example.com',
@@ -612,6 +635,11 @@ void main() {
     );
     await tester.pumpUi();
 
+    // The crew comes before the form. The fake has no preview to give, so the
+    // card says only that a crew is waiting.
+    expect(find.text('YOU’VE BEEN INVITED TO'), findsOneWidget);
+    expect(find.text('A crew that’s waiting.'), findsOneWidget);
+    await openLogin(tester);
     expect(find.textContaining('Crew invite ready'), findsOneWidget);
     await tester.enterText(
       find.byType(TextFormField).at(0),
@@ -685,6 +713,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
+    await openLogin(tester);
     await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.ensureVisible(find.text('LOG IN'));
@@ -694,9 +723,6 @@ void main() {
     // A share-link token is not an email invitation, so there is no inbox for
     // it to fall back to: it has to survive the profile form or it is lost.
     expect(find.byType(InviteAcceptancePage), findsNothing);
-    await tester.ensureVisible(find.text('LET\u2019S GET STARTED'));
-    await tester.tap(find.text('LET\u2019S GET STARTED'));
-    await tester.pumpUi();
     await tester.enterText(find.byType(TextFormField).first, 'Ada');
     await tester.ensureVisible(find.text('LET\u2019S GO'));
     await tester.tap(find.text('LET\u2019S GO'));
@@ -724,6 +750,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     final mode = find.text('New here?  CREATE ACCOUNT');
     await tester.ensureVisible(mode);
     await tester.tap(mode);
@@ -759,6 +786,7 @@ void main() {
         authBackend: auth,
       ),
     );
+    await openLogin(tester);
     await tester.enterText(
       find.byType(TextFormField).at(0),
       'person@example.com',

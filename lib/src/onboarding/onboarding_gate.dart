@@ -11,9 +11,11 @@ class OnboardingGate extends StatefulWidget {
     required this.backend,
     this.onCompleted,
     required this.builder,
+    this.joiningCrewName,
   });
   final AuthUser user;
   final AuthBackend backend;
+  final String? joiningCrewName;
 
   /// Optional: a caller that has nothing to retire when the profile is saved
   /// leaves it out rather than passing an empty callback.
@@ -32,6 +34,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
     return OnboardingPage(
       user: widget.user,
       backend: widget.backend,
+      joiningCrewName: widget.joiningCrewName,
       onCompleted: (user) {
         widget.onCompleted?.call();
         setState(() {

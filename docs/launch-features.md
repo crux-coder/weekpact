@@ -21,12 +21,44 @@ sage three-step section; charcoal closing call to action. Screen content is take
 from Flutter, not generated UI. Build with `ASTRO_TELEMETRY_DISABLED=1 npm run build`
 in `website`. Configure real store/TestFlight links using its existing site config.
 
+## Onboarding: link first
+
+A signed-out phone opens on a front door, not a form: "I have an invite link",
+"Start a new crew", and a line for people already in. A pasted link (full,
+scheme-less, or the bare token) is turned into its token by
+`inviteTokenFromText`, and a link tapped on the phone arrives through the
+deep-link route as before. With a token pending, the page shows the crew before
+any form — its name, member count and owner from `preview_crew_invite`, or
+"A crew that's waiting." when the preview has nothing — and "Join <crew>" is
+the sign-up. The forms carry a "Joining <crew>" chip. A failed email link and
+a log-out open on the log-in form rather than the front door.
+
+The profile step is one screen: "What should the crew call you?", with the
+crew's name in the eyebrow when there is one. A new account with a token then
+lands on the acceptance page. A new account without one is asked "Who are you
+doing this with?" (`CrewStartPage`): a link (pasted into a sheet, then the
+acceptance page), people (the guided setup below), or "Just me, for now",
+which runs the same setup in three steps with the invitation left out.
+"Skip for now" opens Home, whose empty state asks the same question.
+
+### The notification ask
+
+Notifications are asked for once, in the app's own words, on
+`NotificationPrimerPage`, and only when there is something to hear about: on
+accepting an invitation (before Home), and on leaving the setup's invite step
+after a link has been copied, shared or shown as a QR code. A solo crew is
+never asked. The page is skipped when the build has no notification service,
+when notifications are already on, or when the system prompt has already been
+refused; "Not now" asks the system nothing, so Account → Notifications can
+still ask later. Turning them on runs the existing `NotificationService.enable`.
+
 ## Guided activation and sharing
 
-Home's empty state opens a four-step setup: crew, editable starter pact,
-invitation, and an optional first check-in. Creating a crew from Crews also
-continues into this setup. Progress resumes from saved crew/pact data. Members
-can finish later; marking a check-in explicitly means they did the pact today.
+The guided setup is four steps: crew, editable starter pact, invitation, and
+an optional first check-in; solo drops the invitation step. Creating a crew
+from Crews also continues into this setup. Progress resumes from saved
+crew/pact data. Members can finish later; marking a check-in explicitly means
+they did the pact today.
 
 The pact editor has three editable starters. Owners can share an invitation
 through the native share sheet or copy a link from setup and the Invite someone

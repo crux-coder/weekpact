@@ -15,6 +15,7 @@ import '../home/story_seen_store.dart';
 import '../home/home_page.dart';
 import '../invites/invite_acceptance_page.dart';
 import '../invites/invite_links.dart';
+import '../onboarding/crew_start_page.dart';
 import 'auth_backend.dart';
 import 'auth_page.dart';
 import 'password_page.dart';
@@ -48,13 +49,24 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   StreamSubscription<Uri>? _linkSubscription;
   String? _pendingInviteToken;
+  CrewInvitePreview? _invitePreview;
   String? _joinedCrewId;
   String? _joinedUser;
+
+  /// The account that finished the profile form in this session, and so has
+  /// nowhere to be yet. It is asked who it is doing this with before Home,
+  /// which would otherwise open empty. Retired when the fork is answered or
+  /// an invitation takes over.
+  String? _freshUser;
+
+  /// Whether an account has been signed in on this run. A phone that logs out
+  /// is handed the log-in form, not the two doors a new phone gets.
+  bool _hadSession = false;
 
   @override
   void initState() {
     super.initState();
-    _pendingInviteToken = inviteTokenFromUri(Uri.base);
+    _receiveToken(inviteTokenFromUri(Uri.base));
     _linkSubscription = widget.inviteLinkSource.links.listen(_receiveLink);
     _loadInitialLink();
   }
@@ -64,13 +76,43 @@ class _AuthGateState extends State<AuthGate> {
     if (mounted) _receiveLink(uri);
   }
 
-  void _receiveLink(Uri? uri) {
-    final token = inviteTokenFromUri(uri);
+  void _receiveLink(Uri? uri) => _receiveToken(inviteTokenFromUri(uri));
+
+  /// A token from anywhere: the launch URL, a link opened while running, or
+  /// one pasted into the front door or the fork. An invitation answers the
+  /// fork's question, so a fresh account with a token goes to the invite.
+  void _receiveToken(String? token) {
     if (token == null || token == _pendingInviteToken) return;
-    setState(() => _pendingInviteToken = token);
+    setState(() {
+      _pendingInviteToken = token;
+      _invitePreview = null;
+      _freshUser = null;
+    });
+    unawaited(_loadPreview(token));
   }
 
-  void _clearInvite() => setState(() => _pendingInviteToken = null);
+  /// What the invitation may say about its crew, for the pages before the
+  /// join. Decoration only: a preview that fails leaves them saying what they
+  /// said before, because the invitation is still good.
+  Future<void> _loadPreview(String token) async {
+    try {
+      final preview = await widget.crewBackend.previewInvite(token);
+      if (mounted && token == _pendingInviteToken && preview != null) {
+        setState(() => _invitePreview = preview);
+      }
+    } catch (_) {
+      /* The invitation stands whether or not it can introduce itself. */
+    }
+  }
+
+  /// The invitation has been answered, accepted or declined. Either way it
+  /// answered the fork's question too: a member has Home, and somebody who
+  /// declined is offered the same choices by Home's empty state.
+  void _clearInvite() => setState(() {
+    _pendingInviteToken = null;
+    _invitePreview = null;
+    _freshUser = null;
+  });
 
   @override
   void dispose() {
@@ -93,6 +135,8 @@ class _AuthGateState extends State<AuthGate> {
           return AuthPage(
             authBackend: widget.authBackend,
             pendingInviteToken: _pendingInviteToken,
+            invitePreview: _invitePreview,
+            onInviteToken: _receiveToken,
             // The auth stream errors when an email link (sign-in, recovery,
             // confirmation) fails to open, which Supabase reports as an
             // AuthException. Anything else on the stream is not a link, and
@@ -111,8 +155,12 @@ class _AuthGateState extends State<AuthGate> {
           return AuthPage(
             authBackend: widget.authBackend,
             pendingInviteToken: _pendingInviteToken,
+            invitePreview: _invitePreview,
+            onInviteToken: _receiveToken,
+            returning: _hadSession,
           );
         }
+        _hadSession = true;
         if (user.passwordRecoveryRequired) {
           // Email links can arrive while the request-email route is still open.
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -130,6 +178,8 @@ class _AuthGateState extends State<AuthGate> {
           key: ValueKey(user.id.isEmpty ? user.email : user.id),
           user: user,
           backend: widget.authBackend,
+          joiningCrewName: _invitePreview?.crewName,
+          onCompleted: () => _freshUser = user.id,
           // The token outlives onboarding on purpose. Retiring it here left a
           // new arrival from a share link with nothing to accept: the Crews
           // inbox lists public.crew_invites, and a share-link token is not
@@ -148,7 +198,20 @@ class _AuthGateState extends State<AuthGate> {
                 },
               );
             }
+            if (_freshUser == user.id) {
+              return CrewStartPage(
+                crewBackend: widget.crewBackend,
+                pactsBackend: widget.pactsBackend,
+                homeBackend: widget.homeBackend,
+                userId: user.id,
+                firstName: profile.firstName,
+                captureCheckInPhoto: widget.captureCheckInPhoto,
+                onInviteToken: _receiveToken,
+                onDone: () => setState(() => _freshUser = null),
+              );
+            }
             return HomePage(
+              onInviteToken: _receiveToken,
               crewSelectionStore: widget.crewSelectionStore,
               storySeenStore: widget.storySeenStore,
               initialCrewId: _joinedUser == user.id ? _joinedCrewId : null,

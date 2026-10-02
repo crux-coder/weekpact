@@ -22,11 +22,17 @@ class OnboardingPage extends StatefulWidget {
     required this.user,
     required this.onCompleted,
     this.pickAvatar,
+    this.joiningCrewName,
   });
   final AuthBackend backend;
   final AuthUser user;
   final ValueChanged<AuthUser> onCompleted;
   final AvatarPicker? pickAvatar;
+
+  /// The crew a pending invitation is for, when it has introduced itself.
+  /// The page keeps it in view so the form has a reason: the name being asked
+  /// for is the one that crew will see.
+  final String? joiningCrewName;
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
@@ -36,7 +42,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _form = GlobalKey<FormState>();
   late final _first = TextEditingController(text: widget.user.firstName);
   late final _last = TextEditingController(text: widget.user.lastName);
-  bool _details = false;
   bool _saving = false;
   bool _picking = false;
   Uint8List? _avatar;
@@ -58,12 +63,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       if (result.exception != null) throw result.exception!;
       if (result.files?.isNotEmpty == true) {
         final bytes = await prepareAvatarPhoto(result.files!.first);
-        if (mounted) {
-          setState(() {
-            _avatar = bytes;
-            _details = true;
-          });
-        }
+        if (mounted) setState(() => _avatar = bytes);
       }
     } catch (_) {
       if (mounted) {
@@ -187,175 +187,129 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ),
                 const SizedBox(height: 20),
                 WelcomeCard(
-                  title: _details
-                      ? 'Make it you.'
-                      : 'Good habits.\nGreat company.',
-                  subtitle: _details
-                      ? 'A name your crew knows. Photo and surname optional.'
-                      : 'A few small steps. Better together.',
-                  eyebrow: _details ? 'STEP 2 OF 2' : 'STEP 1 OF 2',
-                  color: _details
-                      ? WeekPactColors.coolGrey
-                      : WeekPactColors.stone,
+                  title: 'What should the crew call you?',
+                  subtitle:
+                      'A name your crew knows. Photo and surname optional.',
+                  eyebrow: widget.joiningCrewName == null
+                      ? 'ALMOST THERE'
+                      : 'JOINING ${widget.joiningCrewName!.toUpperCase()}',
+                  color: widget.joiningCrewName == null
+                      ? WeekPactColors.stone
+                      : WeekPactColors.mintGreen,
                 ),
                 const SizedBox(height: 8),
-                if (!_details) ...[
-                  for (final step in [
-                    (
-                      '01',
-                      'Find your crew',
-                      'Invite your people or join a crew.',
-                      WeekPactColors.coolGrey,
-                    ),
-                    (
-                      '02',
-                      'Make a weekly pact',
-                      'Choose pacts you can show up for.',
-                      WeekPactColors.cream,
-                    ),
-                    (
-                      '03',
-                      'Keep showing up',
-                      'Check in. Build a streak together.',
-                      WeekPactColors.cream,
-                    ),
-                  ]) ...[
-                    AppSurface(
-                      fillColor: step.$4,
-                      builder: (context) => Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: _introStep(context, step.$1, step.$2, step.$3),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  AppButton(
-                    label: 'LET’S GET STARTED',
-
-                    onPressed: () => setState(() {
-                      _details = true;
-                      _error = null;
-                    }),
-                  ),
-                ] else
-                  AppSurface(
-                    builder: (context) => Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Form(
-                        key: _form,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Center(
-                              child: Column(
-                                children: [
-                                  Semantics(
-                                    button: true,
-                                    label: 'Choose avatar photo',
-                                    child: InkWell(
-                                      onTap: _saving || _picking
-                                          ? null
-                                          : _choosePhoto,
-                                      borderRadius: WeekPactMetrics.pill,
-                                      child: Container(
-                                        width: 112,
-                                        height: 112,
-                                        decoration: ShapeDecoration(
-                                          shape: AvatarShape(
-                                            side: BorderSide(
-                                              color: context.border,
-                                              width: WeekPactMetrics.border,
-                                            ),
+                AppSurface(
+                  builder: (context) => Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Form(
+                      key: _form,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: Column(
+                              children: [
+                                Semantics(
+                                  button: true,
+                                  label: 'Choose avatar photo',
+                                  child: InkWell(
+                                    onTap: _saving || _picking
+                                        ? null
+                                        : _choosePhoto,
+                                    borderRadius: WeekPactMetrics.pill,
+                                    child: Container(
+                                      width: 112,
+                                      height: 112,
+                                      decoration: ShapeDecoration(
+                                        shape: AvatarShape(
+                                          side: BorderSide(
+                                            color: context.border,
+                                            width: WeekPactMetrics.border,
                                           ),
-                                          color: context.yellow,
                                         ),
-                                        child: AvatarClip(
-                                          child: _avatar == null
-                                              ? Center(
-                                                  child: HugeIcon(
-                                                    icon: HugeIconsStrokeRounded
-                                                        .cameraAdd01,
-                                                    size: 36,
-                                                    color: context.ink,
-                                                  ),
-                                                )
-                                              : Image.memory(
-                                                  _avatar!,
-                                                  fit: BoxFit.cover,
+                                        color: context.yellow,
+                                      ),
+                                      child: AvatarClip(
+                                        child: _avatar == null
+                                            ? Center(
+                                                child: HugeIcon(
+                                                  icon: HugeIconsStrokeRounded
+                                                      .cameraAdd01,
+                                                  size: 36,
+                                                  color: context.ink,
                                                 ),
-                                        ),
+                                              )
+                                            : Image.memory(
+                                                _avatar!,
+                                                fit: BoxFit.cover,
+                                              ),
                                       ),
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: _saving || _picking
-                                        ? null
-                                        : _choosePhoto,
-                                    child: Text(
-                                      _picking
-                                          ? 'Opening photos…'
-                                          : _avatar == null
-                                          ? 'Choose photo'
-                                          : 'Change photo',
-                                    ),
+                                ),
+                                TextButton(
+                                  onPressed: _saving || _picking
+                                      ? null
+                                      : _choosePhoto,
+                                  child: Text(
+                                    _picking
+                                        ? 'Opening photos…'
+                                        : _avatar == null
+                                        ? 'Choose photo'
+                                        : 'Change photo',
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              controller: _first,
-                              onTapOutside: (_) =>
-                                  FocusManager.instance.primaryFocus?.unfocus(),
-                              enabled: !_saving,
-                              textCapitalization: TextCapitalization.words,
-                              textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.givenName],
-                              maxLength: 60,
-                              decoration: const InputDecoration(
-                                labelText: 'Display name',
-                                counterText: '',
-                              ),
-                              validator: _validateName,
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _first,
+                            onTapOutside: (_) =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                            enabled: !_saving,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.givenName],
+                            maxLength: 60,
+                            decoration: const InputDecoration(
+                              labelText: 'Display name',
+                              counterText: '',
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _last,
-                              onTapOutside: (_) =>
-                                  FocusManager.instance.primaryFocus?.unfocus(),
-                              enabled: !_saving,
-                              textCapitalization: TextCapitalization.words,
-                              textInputAction: TextInputAction.done,
-                              autofillHints: const [AutofillHints.familyName],
-                              maxLength: 60,
-                              decoration: const InputDecoration(
-                                labelText: 'Last name (optional)',
-                                counterText: '',
-                              ),
-                              validator: (value) =>
-                                  (value?.trim().length ?? 0) > 60
-                                  ? 'Use up to 60 characters.'
-                                  : null,
-                              onFieldSubmitted: (_) => _save(),
+                            validator: _validateName,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _last,
+                            onTapOutside: (_) =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                            enabled: !_saving,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.familyName],
+                            maxLength: 60,
+                            decoration: const InputDecoration(
+                              labelText: 'Last name (optional)',
+                              counterText: '',
                             ),
-                            const SizedBox(height: 16),
-                            AppButton(
-                              label: 'LET’S GO',
+                            validator: (value) =>
+                                (value?.trim().length ?? 0) > 60
+                                ? 'Use up to 60 characters.'
+                                : null,
+                            onFieldSubmitted: (_) => _save(),
+                          ),
+                          const SizedBox(height: 16),
+                          AppButton(
+                            label: 'LET’S GO',
 
-                              isLoading: _saving,
-                              onPressed: _saving || _picking ? null : _save,
-                            ),
-                            TextButton(
-                              onPressed: _saving || _picking
-                                  ? null
-                                  : () => setState(() => _details = false),
-                              child: const Text('Back'),
-                            ),
-                          ],
-                        ),
+                            isLoading: _saving,
+                            onPressed: _saving || _picking ? null : _save,
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                ),
                 AccountActions(
                   backend: widget.backend,
                   showPasswordReset: false,
@@ -383,42 +337,4 @@ class _OnboardingPageState extends State<OnboardingPage> {
       : value.trim().length > 60
       ? 'Use up to 60 characters.'
       : null;
-  Widget _introStep(
-    BuildContext context,
-    String number,
-    String title,
-    String description,
-  ) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        number,
-        style: TextStyle(
-          fontSize: 20,
-          color: context.ink,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const SizedBox(width: 16),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 20,
-                color: context.ink,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              description,
-              style: TextStyle(fontSize: 16, color: context.ink),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
 }

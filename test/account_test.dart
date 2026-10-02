@@ -163,6 +163,8 @@ void main() {
           ),
         ),
       );
+      await tester.tap(find.text('Already in?  LOG IN'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.text('Forgot password or need a confirmation email?'),
       );
@@ -175,7 +177,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Choose a new password'), findsOneWidget);
       expect(find.text('Account recovery'), findsNothing);
-      expect(find.text('LET’S GET STARTED'), findsNothing);
+      expect(find.text('LET’S GO'), findsNothing);
     },
   );
   testWidgets(
@@ -192,6 +194,8 @@ void main() {
           ),
         ),
       );
+      await tester.tap(find.text('Already in?  LOG IN'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.text('Forgot password or need a confirmation email?'),
       );

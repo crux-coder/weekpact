@@ -54,8 +54,6 @@ Future<void> start(
       ),
     ),
   );
-  await tester.ensureVisible(find.text('LET’S GET STARTED'));
-  await tester.tap(find.text('LET’S GET STARTED'));
   await tester.pumpAndSettle();
 }
 
@@ -199,36 +197,37 @@ void main() {
     expect(completed, isTrue);
     expect(find.text('HOME Ada'), findsOneWidget);
   });
-  testWidgets('completed accounts skip onboarding and new accounts see intro', (
-    tester,
-  ) async {
-    final backend = ProfileBackend();
-    addTearDown(backend.dispose);
-    Widget gate(AuthUser user) => MaterialApp(
-      theme: WeekPactTheme.light,
-      home: OnboardingGate(
-        key: ValueKey(user.id),
-        user: user,
-        backend: backend,
-        onCompleted: () {},
-        builder: (_) => const Text('HOME'),
-      ),
-    );
-    await tester.pumpWidget(gate(backend.profile));
-    await tester.pumpAndSettle();
-    expect(find.text('Good habits.\nGreat company.'), findsOneWidget);
-    expect(find.text('HOME'), findsNothing);
-    await tester.pumpWidget(
-      gate(
-        const AuthUser(
-          id: 'returning',
-          email: 'returning@example.com',
-          onboardingCompleted: true,
+  testWidgets(
+    'completed accounts skip onboarding and new accounts are asked their name',
+    (tester) async {
+      final backend = ProfileBackend();
+      addTearDown(backend.dispose);
+      Widget gate(AuthUser user) => MaterialApp(
+        theme: WeekPactTheme.light,
+        home: OnboardingGate(
+          key: ValueKey(user.id),
+          user: user,
+          backend: backend,
+          onCompleted: () {},
+          builder: (_) => const Text('HOME'),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('HOME'), findsOneWidget);
-    expect(find.text('LET’S GET STARTED'), findsNothing);
-  });
+      );
+      await tester.pumpWidget(gate(backend.profile));
+      await tester.pumpAndSettle();
+      expect(find.text('What should the crew call you?'), findsOneWidget);
+      expect(find.text('HOME'), findsNothing);
+      await tester.pumpWidget(
+        gate(
+          const AuthUser(
+            id: 'returning',
+            email: 'returning@example.com',
+            onboardingCompleted: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('HOME'), findsOneWidget);
+      expect(find.text('LET’S GO'), findsNothing);
+    },
+  );
 }

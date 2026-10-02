@@ -7,6 +7,7 @@ import '../crew/device_timezone.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../crew/crew_sharing.dart';
 import '../home/home_backend.dart';
+import '../notifications/notification_primer_page.dart';
 import '../pacts/pacts_backend.dart';
 import '../pacts/pacts_page.dart';
 import '../theme/weekpact_theme.dart';
@@ -26,6 +27,7 @@ class CrewSetupPage extends StatefulWidget {
     this.initialCrew,
     this.crewId,
     this.captureCheckInPhoto,
+    this.solo = false,
   });
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
@@ -34,6 +36,11 @@ class CrewSetupPage extends StatefulWidget {
   final CrewDetails? initialCrew;
   final String? crewId;
   final CheckInPhotoCapture? captureCheckInPhoto;
+
+  /// A crew of one, for now. The invitation step is left out: there is
+  /// nobody to send it to yet, and the Crews tab offers it whenever that
+  /// changes. Three steps instead of four, and the copy says so.
+  final bool solo;
   @override
   State<CrewSetupPage> createState() => _CrewSetupPageState();
 }
@@ -52,12 +59,31 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
   bool _loading = true;
   bool _busy = false;
   String? _error;
+
+  /// Whether an invitation left this phone during the invite step. Only then
+  /// is there anyone to hear from, so only then is the notification ask made.
+  bool _shared = false;
   static const _titles = [
     'Your people. Your crew.',
     'Make your first pact.',
     'Better with company.',
     'Your first small step.',
   ];
+  static const _soloTitles = [
+    'Just you, for now.',
+    'Make your first pact.',
+    'Better with company.',
+    'Your first small step.',
+  ];
+
+  /// The step after the pact: the invitation, unless there is nobody to
+  /// invite yet.
+  int get _afterPact => widget.solo ? 3 : 2;
+  int get _stepCount => widget.solo ? 3 : 4;
+
+  /// Which of the visible steps [_step] is. Solo skips the invitation, so its
+  /// last step is the third bar, not the fourth.
+  int get _visibleStep => widget.solo && _step == 3 ? 2 : _step;
   @override
   void initState() {
     super.initState();
@@ -96,7 +122,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
             ? 1
             : crew.members.length > 1
             ? 3
-            : 2;
+            : _afterPact;
       });
     } catch (_) {
       if (mounted) {
@@ -158,9 +184,22 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
     if (mounted && pact != null) {
       setState(() {
         _pact = pact;
-        _step = 2;
+        _step = _afterPact;
       });
     }
+  }
+
+  /// On from the invitation. Somebody whose link is out is asked, once, to
+  /// hear it land; somebody who sent nothing has nobody to hear from yet.
+  Future<void> _afterInvite() async {
+    if (_shared) {
+      await NotificationPrimerPage.show(
+        context,
+        crewName: _crew!.name,
+        reason: NotificationPrimerReason.invited,
+      );
+    }
+    if (mounted) setState(() => _step = 3);
   }
 
   Future<void> _checkIn() async {
@@ -220,7 +259,9 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: Scaffold(
-      appBar: AppBar(title: const Text('Start your crew')),
+      appBar: AppBar(
+        title: Text(widget.solo ? 'Start solo' : 'Start your crew'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -234,13 +275,13 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                       children: [
                         Row(
                           children: [
-                            for (var i = 0; i < 4; i++)
+                            for (var i = 0; i < _stepCount; i++)
                               Expanded(
                                 child: Container(
                                   height: 5,
                                   margin: const EdgeInsets.only(right: 6),
                                   decoration: BoxDecoration(
-                                    color: i <= _step
+                                    color: i <= _visibleStep
                                         ? WeekPactColors.mintGreen
                                         : context.muted.withValues(alpha: .25),
                                     borderRadius: WeekPactMetrics.pill,
@@ -251,12 +292,12 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Step ${_step + 1} of 4',
+                          'Step ${_visibleStep + 1} of $_stepCount',
                           style: TextStyle(color: context.muted),
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          _titles[_step],
+                          (widget.solo ? _soloTitles : _titles)[_step],
                           style: TextStyle(
                             color: context.ink,
                             fontSize: 36,
@@ -272,16 +313,20 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 if (_step == 0) ...[
-                                  const Text(
-                                    'A few friends. One little commitment. Give your crew a name to get started.',
+                                  Text(
+                                    widget.solo
+                                        ? 'A crew of one still needs a name. Friends who join later will see it.'
+                                        : 'A few friends. One little commitment. Give your crew a name to get started.',
                                   ),
                                   const SizedBox(height: 20),
                                   TextField(
                                     controller: _name,
                                     maxLength: 60,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Crew name',
-                                      hintText: 'Early Birds',
+                                      hintText: widget.solo
+                                          ? 'My week'
+                                          : 'Early Birds',
                                     ),
                                     onSubmitted: (_) => _create(),
                                   ),
@@ -315,6 +360,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                                           widget.crewBackend
                                               as CrewSharingBackend,
                                       crewId: _crew!.id,
+                                      onShared: () => _shared = true,
                                     )
                                   else
                                     const Text(
@@ -322,9 +368,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                                     ),
                                   const SizedBox(height: 20),
                                   FilledButton(
-                                    onPressed: _busy
-                                        ? null
-                                        : () => setState(() => _step = 3),
+                                    onPressed: _busy ? null : _afterInvite,
                                     child: const Text(
                                       'Continue to first check-in',
                                     ),

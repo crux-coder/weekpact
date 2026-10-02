@@ -5,6 +5,7 @@ import '../widgets/app_icon.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
+import '../notifications/notification_primer_page.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -67,17 +68,11 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
     });
     try {
       final crew = await widget.crewBackend.acceptInvite(widget.token);
-      if (mounted) {
-        widget.onAccepted?.call(crew.id);
-        widget.onFinished();
-      }
+      if (mounted) await _joined(crew.id, crew.name);
     } on CrewJoinedWithoutDetails catch (joined) {
       // The membership exists; only the crew behind it would not load. Saying
       // the invitation failed would send a member off for a fresh link.
-      if (mounted) {
-        widget.onAccepted?.call(joined.crewId);
-        widget.onFinished();
-      }
+      if (mounted) await _joined(joined.crewId, _preview?.crewName);
     } catch (error) {
       if (!mounted) return;
       setState(() => _accepting = false);
@@ -99,6 +94,18 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
         });
       }
     }
+  }
+
+  /// In. The one ask for notifications comes here, while the crew that will
+  /// send them is the thing on screen, and Home follows either answer.
+  Future<void> _joined(String crewId, String? crewName) async {
+    widget.onAccepted?.call(crewId);
+    await NotificationPrimerPage.show(
+      context,
+      crewName: crewName ?? 'the crew',
+      reason: NotificationPrimerReason.joined,
+    );
+    if (mounted) widget.onFinished();
   }
 
   @override

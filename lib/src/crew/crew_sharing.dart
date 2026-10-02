@@ -104,7 +104,11 @@ class _CrewShareControlsState extends State<CrewShareControls> {
         'create',
       );
       if (link?.token == null) throw StateError('Missing invite');
-      if (mounted) setState(() => _qrLink = link);
+      if (mounted) {
+        setState(() => _qrLink = link);
+        // A QR on screen is a link going out, as much as a copy is.
+        widget.onShared?.call();
+      }
     } catch (_) {
       if (mounted) {
         setState(

@@ -55,7 +55,18 @@ void main() {
         theme: dark ? WeekPactTheme.dark : WeekPactTheme.light,
         home: RepaintBoundary(key: boundaryKey, child: child),
       );
-      await tester.pumpWidget(app(AuthPage(authBackend: backend)));
+      await tester.pumpWidget(
+        app(AuthPage(authBackend: backend, onInviteToken: (_) {})),
+      );
+      await capture('welcome');
+      await tester.ensureVisible(find.text('I HAVE AN INVITE LINK'));
+      await tester.tap(find.text('I HAVE AN INVITE LINK'));
+      await capture('link');
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back'));
+      await tester.pumpUi();
+      await tester.ensureVisible(find.text('Already in?  LOG IN'));
+      await tester.tap(find.text('Already in?  LOG IN'));
       await capture('login');
       await tester.ensureVisible(find.text('New here?  CREATE ACCOUNT'));
       await tester.tap(find.text('New here?  CREATE ACCOUNT'));
@@ -69,9 +80,6 @@ void main() {
           ),
         ),
       );
-      await capture('intro');
-      await tester.ensureVisible(find.text('LET’S GET STARTED'));
-      await tester.tap(find.text('LET’S GET STARTED'));
       await capture('profile');
     });
   }
