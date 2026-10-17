@@ -443,15 +443,21 @@ containing their optional avatar photo, required display name, and optional surn
 Successful completion opens Home, or the invite acceptance page when the app was opened from a crew link.
 Existing development accounts will also see this flow once.
 
-Names, `avatar_path`, and `onboarding_completed` are saved in `public.users`,
-one row per Auth user under the same id. A trigger on `auth.users` creates the
-row at sign-up (copying any sign-up metadata), and the row is deleted with the
-Auth user. Each account can read and update only its own row, and these fields
-are used for presentation only, never authorization. To see onboarding again
-with an existing account, run this in the SQL editor and log back in:
+Names, `avatar_path`, and `onboarding_step` are saved in `public.users`, one
+row per Auth user under the same id. A trigger on `auth.users` creates the row
+at sign-up (copying any sign-up metadata), and the row is deleted with the Auth
+user. Each account can read and update only its own row, and these fields are
+used for presentation only, never authorization.
+
+`onboarding_step` is where the person is: `profile` (the name form), `crew`
+(who they are doing this with, or an invitation answering it), then `done`.
+Each step is saved as it is reached, so a launch in between resumes at the same
+place. Every change is also logged to `public.user_onboarding_steps`, which
+keeps the history across restarts. To restart onboarding for an account, run
+this in the SQL editor and log back in:
 
 ```sql
-update public.users set onboarding_completed = false where email = 'you@example.com';
+update public.users set onboarding_step = 'profile' where email = 'you@example.com';
 ```
 
 Photos are resized to at most 512 pixels and re-encoded as PNG without photo
@@ -459,7 +465,8 @@ metadata. The private `avatars` bucket allows each account to read and replace
 only its own `<user-id>/avatar.png`. The Account screen displays the saved profile.
 
 Deploy `20260910110607_create_avatar_storage.sql` and
-`20261017120000_add_public_users.sql` with `supabase db push` before using onboarding against a new Supabase environment. iOS photo-library usage
+`20261017120000_add_public_users.sql` and `20261017130000_add_onboarding_steps.sql`
+with `supabase db push` before using onboarding against a new Supabase environment. iOS photo-library usage
 text is included; rebuild the native app after installing the image-picker dependency.
 
 ## Account settings and App Review

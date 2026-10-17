@@ -15,13 +15,19 @@ await db.query(
   [existing, 'old@example.com', { first_name: '  Ada ', last_name: 'Lovelace', avatar_path: `${existing}/avatar.png`, onboarding_completed: true }],
 );
 const { readFile } = await import('node:fs/promises');
-await db.exec(await readFile(new URL('../supabase/migrations/20261017120000_add_public_users.sql', import.meta.url), 'utf8'));
+for (const file of ['20261017120000_add_public_users.sql', '20261017130000_add_onboarding_steps.sql']) {
+  await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+}
 const carried = (await db.query('select * from public.users where id=$1', [existing])).rows[0];
 assert.equal(carried.email, 'old@example.com');
 assert.equal(carried.first_name, 'Ada');
 assert.equal(carried.last_name, 'Lovelace');
 assert.equal(carried.avatar_path, `${existing}/avatar.png`);
-assert.equal(carried.onboarding_completed, true);
+assert.equal(carried.onboarding_step, 'done');
+assert.deepEqual(
+  (await db.query('select step from public.user_onboarding_steps where user_id=$1', [existing])).rows,
+  [{ step: 'done' }],
+);
 
 // A new Auth user gets a row under the same id; onboarding without a name is not done.
 await db.query(
@@ -31,11 +37,11 @@ await db.query(
 const created = (await db.query('select * from public.users where id=$1', [fresh])).rows[0];
 assert.equal(created.email, 'new@example.com');
 assert.equal(created.first_name, '');
-assert.equal(created.onboarding_completed, false);
+assert.equal(created.onboarding_step, 'profile');
 // A name with no onboarding flag is carried, but onboarding is still to do.
 assert.deepEqual(
-  (await db.query("select first_name,onboarding_completed from public.users where id=$1", [other])).rows[0],
-  { first_name: 'Grace', onboarding_completed: false },
+  (await db.query("select first_name,onboarding_step from public.users where id=$1", [other])).rows[0],
+  { first_name: 'Grace', onboarding_step: 'profile' },
 );
 
 // An email change in Auth follows into the profile.
@@ -64,16 +70,30 @@ await asUser(fresh, async () => {
   assert.equal((await db.query("update public.users set first_name='X' where id=$1 returning id", [other])).rows.length, 0);
   // The profile form's fields can be saved together.
   const saved = (await db.query(
-    "update public.users set first_name='Grace',last_name='Hopper',avatar_path=$1,onboarding_completed=true where id=$2 returning *",
+    "update public.users set first_name='Grace',last_name='Hopper',avatar_path=$1,onboarding_step='crew' where id=$2 returning *",
     [`${fresh}/avatar.png`, fresh],
   )).rows[0];
   assert.equal(saved.first_name, 'Grace');
-  assert.equal(saved.onboarding_completed, true);
+  assert.equal(saved.onboarding_step, 'crew');
+  // Each step reached is recorded; saving the same step again is not a new one.
+  await db.query("update public.users set onboarding_step='done' where id=$1", [fresh]);
+  await db.query("update public.users set first_name='Grace' where id=$1", [fresh]);
+  // Restarting goes back to the form and keeps the first run's history.
+  await db.query("update public.users set onboarding_step='profile' where id=$1", [fresh]);
+  assert.deepEqual(
+    (await db.query('select step from public.user_onboarding_steps where user_id=$1 order by id', [fresh])).rows.map(r => r.step),
+    ['profile', 'crew', 'done', 'profile'],
+  );
+  // History is read-only, and only your own is visible.
+  assert.deepEqual((await db.query('select distinct user_id from public.user_onboarding_steps')).rows.map(r => r.user_id), [fresh]);
+  await rejects("insert into public.user_onboarding_steps(user_id,step) values($1,'done')", [fresh]);
+  await rejects('delete from public.user_onboarding_steps where user_id=$1', [fresh]);
   // Id and email belong to Auth; avatars must be your own; names are capped.
   await rejects("update public.users set email='x@example.com' where id=$1", [fresh]);
   await rejects('update public.users set avatar_path=$1 where id=$2', [`${other}/avatar.png`, fresh]);
   await rejects("update public.users set first_name=repeat('a',61) where id=$1", [fresh]);
-  await rejects("update public.users set first_name='',onboarding_completed=true where id=$1", [fresh]);
+  await rejects("update public.users set first_name='',onboarding_step='crew' where id=$1", [fresh]);
+  await rejects("update public.users set onboarding_step='later' where id=$1", [fresh]);
   await rejects("insert into public.users(id,email) values(gen_random_uuid(),'x@example.com')");
   await rejects('delete from public.users where id=$1', [fresh]);
 });
@@ -81,6 +101,7 @@ await asUser(fresh, async () => {
 // Deleting the Auth user deletes the profile with it.
 await db.query('delete from auth.users where id=$1', [fresh]);
 assert.equal((await db.query('select count(*)::int as n from public.users where id=$1', [fresh])).rows[0].n, 0);
+assert.equal((await db.query('select count(*)::int as n from public.user_onboarding_steps where user_id=$1', [fresh])).rows[0].n, 0);
 
 await db.close();
-console.log('Profile creation, carry-over, email sync, own-row access, field limits, and deletion checks passed.');
+console.log('Profile creation, carry-over, email sync, onboarding steps and history, own-row access, field limits, and deletion checks passed.');

@@ -53,11 +53,10 @@ class _AuthGateState extends State<AuthGate> {
   String? _joinedCrewId;
   String? _joinedUser;
 
-  /// The account that finished the profile form in this session, and so has
-  /// nowhere to be yet. It is asked who it is doing this with before Home,
-  /// which would otherwise open empty. Retired when the fork is answered or
-  /// an invitation takes over.
-  String? _freshUser;
+  /// The account that answered the crew question on this run. Saving that
+  /// answer is best effort: Home opens either way, and a save that failed
+  /// asks the question again on the next launch rather than never.
+  String? _finishedCrewStep;
 
   /// Whether an account has been signed in on this run. A phone that logs out
   /// is handed the log-in form, not the two doors a new phone gets.
@@ -86,7 +85,6 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {
       _pendingInviteToken = token;
       _invitePreview = null;
-      _freshUser = null;
     });
     unawaited(_loadPreview(token));
   }
@@ -111,8 +109,18 @@ class _AuthGateState extends State<AuthGate> {
   void _clearInvite() => setState(() {
     _pendingInviteToken = null;
     _invitePreview = null;
-    _freshUser = null;
   });
+
+  /// The crew question is answered, by setup or by an invitation.
+  void _finishCrewStep(AuthUser user) {
+    if (user.onboardingStep != OnboardingStep.crew) return;
+    setState(() => _finishedCrewStep = user.id);
+    unawaited(
+      widget.authBackend
+          .advanceOnboarding(OnboardingStep.done)
+          .catchError((Object _) {}),
+    );
+  }
 
   @override
   void dispose() {
@@ -184,7 +192,6 @@ class _AuthGateState extends State<AuthGate> {
           user: user,
           backend: widget.authBackend,
           joiningCrewName: _invitePreview?.crewName,
-          onCompleted: () => _freshUser = user.id,
           // The token outlives onboarding on purpose. Retiring it here left a
           // new arrival from a share link with nothing to accept: the Crews
           // inbox lists public.crew_invites, and a share-link token is not
@@ -196,14 +203,20 @@ class _AuthGateState extends State<AuthGate> {
                 email: user.email,
                 token: inviteToken,
                 crewBackend: widget.crewBackend,
-                onFinished: _clearInvite,
+                onFinished: () {
+                  _clearInvite();
+                  _finishCrewStep(profile);
+                },
                 onAccepted: (crewId) {
                   _joinedCrewId = crewId;
                   _joinedUser = user.id;
                 },
               );
             }
-            if (_freshUser == user.id) {
+            // Saved, so a launch between the profile form and this question
+            // comes back to the question instead of an empty Home.
+            if (profile.onboardingStep == OnboardingStep.crew &&
+                _finishedCrewStep != user.id) {
               return CrewStartPage(
                 crewBackend: widget.crewBackend,
                 pactsBackend: widget.pactsBackend,
@@ -212,7 +225,7 @@ class _AuthGateState extends State<AuthGate> {
                 firstName: profile.firstName,
                 captureCheckInPhoto: widget.captureCheckInPhoto,
                 onInviteToken: _receiveToken,
-                onDone: () => setState(() => _freshUser = null),
+                onDone: () => _finishCrewStep(profile),
               );
             }
             return HomePage(

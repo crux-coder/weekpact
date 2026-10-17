@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/app.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/invites/invite_acceptance_page.dart';
 import 'package:weekpact/src/invites/invite_link_entry.dart';
@@ -58,7 +59,7 @@ void main() {
 
   testWidgets('the front door leads a pasted link to its crew, and the crew '
       'to an account', (tester) async {
-    final auth = FakeAuthBackend(onboardingCompleted: false);
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
     final crews = FakeCrewBackend()..preview = _preview;
     addTearDown(auth.dispose);
     await tester.pumpWidget(
@@ -103,11 +104,12 @@ void main() {
     await tester.pumpUi();
     expect(crews.acceptedTokens, ['share-token']);
     expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(auth.advancedSteps, [OnboardingStep.done]);
   });
 
   testWidgets('a new account with no link is asked who it is doing this '
       'with, and a pasted link there opens the invitation', (tester) async {
-    final auth = FakeAuthBackend(onboardingCompleted: false);
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
     final crews = FakeCrewBackend()..preview = _preview;
     addTearDown(auth.dispose);
     await tester.pumpWidget(
@@ -149,11 +151,34 @@ void main() {
     expect(crews.acceptedTokens, ['late-token']);
     expect(find.byType(CrewStartPage), findsNothing);
     expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(auth.advancedSteps, [OnboardingStep.done]);
+  });
+
+  testWidgets('an account that left between its name and the crew question '
+      'is asked the question on its next launch', (tester) async {
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.crew);
+    addTearDown(auth.dispose);
+    await auth.signIn(email: 'mia@example.com', password: 'password');
+    await tester.pumpWidget(
+      WeekPactApp(
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts()..crews = [],
+        authBackend: auth,
+        crewBackend: FakeCrewBackend(),
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.text('What should the crew call you?'), findsNothing);
+    expect(find.byType(CrewStartPage), findsOneWidget);
+    await tester.tap(find.text('Skip for now'));
+    await tester.pumpUi();
+    expect(find.byType(CrewStartPage), findsNothing);
+    expect(auth.advancedSteps, [OnboardingStep.done]);
   });
 
   testWidgets('skipping the question opens Home, whose empty state asks it '
       'again', (tester) async {
-    final auth = FakeAuthBackend(onboardingCompleted: false);
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
     addTearDown(auth.dispose);
     await tester.pumpWidget(
       WeekPactApp(
@@ -172,6 +197,7 @@ void main() {
     await tester.pumpUi();
 
     expect(find.byType(CrewStartPage), findsNothing);
+    expect(auth.advancedSteps, [OnboardingStep.done]);
     expect(find.text('START YOUR CREW'), findsOneWidget);
     await tester.tap(find.text('START YOUR CREW'));
     await tester.pumpUi();

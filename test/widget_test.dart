@@ -697,7 +697,7 @@ void main() {
 
   testWidgets('a share link invitation waits through onboarding for a new '
       'account', (tester) async {
-    final auth = FakeAuthBackend(onboardingCompleted: false);
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
     final crews = FakeCrewBackend();
     addTearDown(auth.dispose);
 
@@ -821,16 +821,18 @@ class FakeAuthBackend implements AuthBackend {
   Future<void> deleteAccount(String password) => signOut();
   FakeAuthBackend({
     this.signUpResult = SignUpResult.signedIn,
-    this.onboardingCompleted = true,
+    this.onboardingStep = OnboardingStep.done,
   });
 
   final _controller = StreamController<AuthUser?>.broadcast();
   final SignUpResult signUpResult;
 
-  /// Whether the account this backend hands back has already been through
-  /// onboarding. False is a brand new arrival, who meets the profile form
-  /// before anything else.
-  final bool onboardingCompleted;
+  /// Where the account this backend hands back is in onboarding. A brand new
+  /// arrival is at [OnboardingStep.profile], and meets the form first.
+  final OnboardingStep onboardingStep;
+
+  /// Every step [advanceOnboarding] was asked to record, in order.
+  final advancedSteps = <OnboardingStep>[];
   AuthUser? _user;
   int signInCalls = 0;
   int signUpCalls = 0;
@@ -843,7 +845,7 @@ class FakeAuthBackend implements AuthBackend {
     _user = AuthUser(
       id: 'user-id',
       email: email,
-      onboardingCompleted: onboardingCompleted,
+      onboardingStep: onboardingStep,
     );
     _controller.add(_user);
   }
@@ -860,7 +862,7 @@ class FakeAuthBackend implements AuthBackend {
     _user = AuthUser(
       id: 'user-id',
       email: email,
-      onboardingCompleted: onboardingCompleted,
+      onboardingStep: onboardingStep,
     );
     _controller.add(_user);
   }
@@ -877,7 +879,7 @@ class FakeAuthBackend implements AuthBackend {
       _user = AuthUser(
         id: 'user-id',
         email: email,
-        onboardingCompleted: onboardingCompleted,
+        onboardingStep: onboardingStep,
       );
       _controller.add(_user);
     }
@@ -905,10 +907,26 @@ class FakeAuthBackend implements AuthBackend {
       firstName: firstName,
       lastName: lastName,
       avatarPath: 'avatar.png',
-      onboardingCompleted: true,
+      onboardingStep: _user!.profileCompleted
+          ? _user!.onboardingStep
+          : OnboardingStep.crew,
     );
     _controller.add(_user);
     return _user!;
+  }
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async {
+    advancedSteps.add(step);
+    final user = _user!;
+    _user = AuthUser(
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarPath: user.avatarPath,
+      onboardingStep: step,
+    );
   }
 
   @override

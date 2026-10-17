@@ -2,6 +2,18 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Where a person is in onboarding, as public.users.onboarding_step stores it.
+/// The profile form comes first, then the question of who they are doing this
+/// with (or an invitation answering it), then Home.
+enum OnboardingStep {
+  profile,
+  crew,
+  done;
+
+  static OnboardingStep parse(Object? value) =>
+      values.firstWhere((step) => step.name == value, orElse: () => profile);
+}
+
 class AuthUser {
   const AuthUser({
     required this.email,
@@ -9,7 +21,7 @@ class AuthUser {
     this.firstName = '',
     this.lastName = '',
     this.avatarPath,
-    this.onboardingCompleted = false,
+    this.onboardingStep = OnboardingStep.profile,
     this.passwordRecoveryRequired = false,
     this.profileLoaded = true,
   });
@@ -17,7 +29,10 @@ class AuthUser {
   final String firstName;
   final String lastName;
   final String? avatarPath;
-  final bool onboardingCompleted;
+  final OnboardingStep onboardingStep;
+
+  /// Whether the profile form is behind them, whatever comes next.
+  bool get profileCompleted => onboardingStep != OnboardingStep.profile;
   final bool passwordRecoveryRequired;
 
   /// False while the profile row is still on its way. Until it arrives the
@@ -58,6 +73,9 @@ abstract interface class AuthBackend {
     required String lastName,
     Uint8List? avatar,
   });
+
+  /// Records that the signed-in account has reached [step].
+  Future<void> advanceOnboarding(OnboardingStep step);
   Future<Uint8List?> loadAvatar();
   Future<void> signOut();
   Future<void> requestPasswordReset(String email);
@@ -223,22 +241,36 @@ class SupabaseAuthBackend implements AuthBackend {
             ),
           );
     }
+    // The same form edits the profile later, from Account; only the first
+    // save moves onboarding on.
+    final firstSave = !(currentUser?.profileCompleted ?? false);
+    await _saveProfile(user.id, {
+      'first_name': first,
+      'last_name': last,
+      'avatar_path': path,
+      if (firstSave) 'onboarding_step': OnboardingStep.crew.name,
+    });
+    return _mapUser(user)!;
+  }
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Sign in before continuing.');
+    await _saveProfile(user.id, {'onboarding_step': step.name});
+  }
+
+  Future<void> _saveProfile(String userId, Map<String, Object?> fields) async {
     final row = await _client
         .from('users')
-        .update({
-          'first_name': first,
-          'last_name': last,
-          'avatar_path': path,
-          'onboarding_completed': true,
-        })
-        .eq('id', user.id)
+        .update(fields)
+        .eq('id', userId)
         .select()
         .single();
-    _profileUserId = user.id;
+    _profileUserId = userId;
     _profileLoad = Future.value(row);
     _profile = row;
     _profileReady = true;
-    return _mapUser(user)!;
   }
 
   @override
@@ -316,8 +348,11 @@ class SupabaseAuthBackend implements AuthBackend {
       firstName: first,
       lastName: last,
       avatarPath: avatar,
-      onboardingCompleted:
-          data['onboarding_completed'] == true && first.isNotEmpty,
+      // A profile without a first name has not left the form, whatever the
+      // row says.
+      onboardingStep: first.isEmpty
+          ? OnboardingStep.profile
+          : OnboardingStep.parse(data['onboarding_step']),
       passwordRecoveryRequired: _recovering,
       profileLoaded: ready,
     );
@@ -371,6 +406,10 @@ class MissingConfigurationAuthBackend implements AuthBackend {
 
   @override
   Future<Uint8List?> loadAvatar() async => null;
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async =>
+      throw StateError(_message);
 
   @override
   Future<AuthUser> completeOnboarding({

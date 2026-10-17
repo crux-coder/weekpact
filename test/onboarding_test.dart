@@ -31,7 +31,7 @@ class ProfileBackend extends FakeAuthBackend {
       firstName: firstName,
       lastName: lastName,
       avatarPath: '${profile.id}/avatar.png',
-      onboardingCompleted: true,
+      onboardingStep: OnboardingStep.crew,
     );
     return profile;
   }
@@ -160,7 +160,7 @@ void main() {
       );
       expect(result!.firstName, 'Ada');
       expect(result!.lastName, 'Lovelace');
-      expect(result!.onboardingCompleted, isTrue);
+      expect(result!.onboardingStep, OnboardingStep.crew);
       expect(backend.savedAvatar, photo);
     },
   );
@@ -186,7 +186,7 @@ void main() {
       firstName: 'Ada',
       lastName: 'Lovelace',
       avatarPath: 'user-id/avatar.png',
-      onboardingCompleted: true,
+      onboardingStep: OnboardingStep.crew,
     );
     await tester.pumpWidget(gate(saved));
     expect(find.byType(OnboardingPage), findsOneWidget);
@@ -221,7 +221,7 @@ void main() {
           const AuthUser(
             id: 'returning',
             email: 'returning@example.com',
-            onboardingCompleted: true,
+            onboardingStep: OnboardingStep.done,
           ),
         ),
       );

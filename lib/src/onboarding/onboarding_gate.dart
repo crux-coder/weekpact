@@ -26,7 +26,7 @@ class OnboardingGate extends StatefulWidget {
 }
 
 class _OnboardingGateState extends State<OnboardingGate> {
-  late bool _complete = widget.user.onboardingCompleted;
+  late bool _complete = widget.user.profileCompleted;
   AuthUser? _savedUser;
   @override
   Widget build(BuildContext context) {
