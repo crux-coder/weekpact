@@ -15,7 +15,11 @@ await db.query(
   [existing, 'old@example.com', { first_name: '  Ada ', last_name: 'Lovelace', avatar_path: `${existing}/avatar.png`, onboarding_completed: true }],
 );
 const { readFile } = await import('node:fs/promises');
-for (const file of ['20261017120000_add_public_users.sql', '20261017130000_add_onboarding_steps.sql']) {
+for (const file of [
+  '20261017120000_add_public_users.sql',
+  '20261017130000_add_onboarding_steps.sql',
+  '20261017140000_onboarding_step_enum.sql',
+]) {
   await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 const carried = (await db.query('select * from public.users where id=$1', [existing])).rows[0];
@@ -24,6 +28,13 @@ assert.equal(carried.first_name, 'Ada');
 assert.equal(carried.last_name, 'Lovelace');
 assert.equal(carried.avatar_path, `${existing}/avatar.png`);
 assert.equal(carried.onboarding_step, 'done');
+// The step is an enum in both places it is stored.
+assert.deepEqual(
+  (await db.query(`select table_name, udt_name from information_schema.columns
+    where (table_name, column_name) in (('users','onboarding_step'),('user_onboarding_steps','step'))
+    order by table_name`)).rows,
+  [{ table_name: 'user_onboarding_steps', udt_name: 'onboarding_step' }, { table_name: 'users', udt_name: 'onboarding_step' }],
+);
 assert.deepEqual(
   (await db.query('select step from public.user_onboarding_steps where user_id=$1', [existing])).rows,
   [{ step: 'done' }],

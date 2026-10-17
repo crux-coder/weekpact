@@ -449,7 +449,7 @@ at sign-up (copying any sign-up metadata), and the row is deleted with the Auth
 user. Each account can read and update only its own row, and these fields are
 used for presentation only, never authorization.
 
-`onboarding_step` is where the person is: `profile` (the name form), `crew`
+`onboarding_step` (the `public.onboarding_step` enum) is where the person is: `profile` (the name form), `crew`
 (who they are doing this with, or an invitation answering it), then `done`.
 Each step is saved as it is reached, so a launch in between resumes at the same
 place. Every change is also logged to `public.user_onboarding_steps`, which
