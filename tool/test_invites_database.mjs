@@ -91,7 +91,7 @@ await asUser(recipient, async () => {
   assert.equal((await inbox()).length,0);
 });
 // The acceptance screen names the crew before anyone has joined it.
-await db.query(`update auth.users set raw_user_meta_data='{"first_name":"Ada","last_name":"Lovelace"}' where id=$1`, [owner]);
+await db.query(`update public.users set first_name='Ada',last_name='Lovelace' where id=$1`, [owner]);
 const shareToken = 'd'.repeat(64), expiredShare = 'e'.repeat(64);
 for (const [token, life] of [[shareToken, "interval '7 days'"], [expiredShare, "-interval '1 second'"]]) {
   await db.query(`insert into private.crew_share_links(crew_id,token_hash,created_by,expires_at) values($1,encode(extensions.digest($2,'sha256'),'hex'),$3,now()+${life})`, [crew, token, owner]);

@@ -55,7 +55,9 @@ Future<void> main() async {
       url: _supabaseUrl,
       publishableKey: _supabasePublishableKey,
     );
-    authBackend = SupabaseAuthBackend(Supabase.instance.client);
+    final supabaseAuth = SupabaseAuthBackend(Supabase.instance.client);
+    await supabaseAuth.restoreProfile();
+    authBackend = supabaseAuth;
     crewBackend = SupabaseCrewBackend(Supabase.instance.client);
     pactsBackend = SupabasePactsBackend(Supabase.instance.client);
     homeBackend = SupabaseHomeBackend(Supabase.instance.client);

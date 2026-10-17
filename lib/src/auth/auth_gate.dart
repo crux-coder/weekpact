@@ -174,6 +174,11 @@ class _AuthGateState extends State<AuthGate> {
             recovery: true,
           );
         }
+        if (!user.profileLoaded) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
         return OnboardingGate(
           key: ValueKey(user.id.isEmpty ? user.email : user.id),
           user: user,

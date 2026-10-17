@@ -11,6 +11,7 @@ class AuthUser {
     this.avatarPath,
     this.onboardingCompleted = false,
     this.passwordRecoveryRequired = false,
+    this.profileLoaded = true,
   });
 
   final String firstName;
@@ -18,6 +19,10 @@ class AuthUser {
   final String? avatarPath;
   final bool onboardingCompleted;
   final bool passwordRecoveryRequired;
+
+  /// False while the profile row is still on its way. Until it arrives the
+  /// name and onboarding fields are unknown, not empty.
+  final bool profileLoaded;
 
   final String id;
 
@@ -75,6 +80,15 @@ class SupabaseAuthBackend implements AuthBackend {
     );
   }
   bool _recovering = false;
+
+  /// The signed-in account's row in public.users, fetched once per account.
+  /// Every auth event for the same account reuses it; only a different
+  /// account, or a saved profile, replaces it.
+  String? _profileUserId;
+  Future<Map<String, dynamic>?>? _profileLoad;
+  Map<String, dynamic>? _profile;
+  bool _profileReady = false;
+
   Future<void> Function()? beforeSignOut;
   void Function()? afterSignOutAttempt;
 
@@ -85,11 +99,59 @@ class SupabaseAuthBackend implements AuthBackend {
 
   @override
   Stream<AuthUser?> get authStateChanges =>
-      _client.auth.onAuthStateChange.map((event) {
+      _client.auth.onAuthStateChange.asyncMap((event) async {
         if (event.event == AuthChangeEvent.passwordRecovery) _recovering = true;
-        if (event.event == AuthChangeEvent.signedOut) _recovering = false;
-        return _mapUser(event.session?.user);
+        if (event.event == AuthChangeEvent.signedOut) {
+          _recovering = false;
+          // The next sign-in, even by the same account, reads a fresh row.
+          _profileUserId = null;
+          _profileLoad = null;
+          _profileReady = false;
+          _profile = null;
+        }
+        final user = event.session?.user;
+        if (user != null) await _loadProfile(user.id);
+        return _mapUser(user);
       });
+
+  /// Fetches the restored session's profile before the first frame, so a
+  /// returning account opens on Home rather than a loading screen. A failure
+  /// here is left for the auth stream to retry and report.
+  Future<void> restoreProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _loadProfile(user.id);
+    } catch (_) {}
+  }
+
+  Future<void> _loadProfile(String userId) {
+    if (_profileUserId == userId && _profileLoad != null) {
+      return _profileLoad!;
+    }
+    _profileUserId = userId;
+    _profileReady = false;
+    _profile = null;
+    final load = _client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle()
+        .then((row) {
+          if (_profileUserId == userId) {
+            _profile = row;
+            _profileReady = true;
+          }
+          return row;
+        });
+    _profileLoad = load;
+    // A failed fetch is not remembered, so the next auth event asks again.
+    load.catchError((Object _) {
+      if (_profileLoad == load) _profileLoad = null;
+      return null;
+    });
+    return load;
+  }
 
   @override
   Future<void> signIn({required String email, required String password}) async {
@@ -161,17 +223,22 @@ class SupabaseAuthBackend implements AuthBackend {
             ),
           );
     }
-    final result = await _client.auth.updateUser(
-      UserAttributes(
-        data: {
+    final row = await _client
+        .from('users')
+        .update({
           'first_name': first,
           'last_name': last,
           'avatar_path': path,
           'onboarding_completed': true,
-        },
-      ),
-    );
-    return _mapUser(result.user)!;
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+    _profileUserId = user.id;
+    _profileLoad = Future.value(row);
+    _profile = row;
+    _profileReady = true;
+    return _mapUser(user)!;
   }
 
   @override
@@ -232,7 +299,8 @@ class SupabaseAuthBackend implements AuthBackend {
 
   AuthUser? _mapUser(User? user) {
     if (user == null) return null;
-    final data = user.userMetadata ?? {};
+    final ready = _profileReady && _profileUserId == user.id;
+    final data = ready ? _profile ?? const {} : const <String, dynamic>{};
     final first = data['first_name'] is String
         ? (data['first_name'] as String).trim()
         : '';
@@ -251,6 +319,7 @@ class SupabaseAuthBackend implements AuthBackend {
       onboardingCompleted:
           data['onboarding_completed'] == true && first.isNotEmpty,
       passwordRecoveryRequired: _recovering,
+      profileLoaded: ready,
     );
   }
 }
