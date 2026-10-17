@@ -336,50 +336,69 @@ flutter build web --release --dart-define-from-file=.env
 Do not commit `.env`, `supabase/functions/.env.local`, or
 `supabase/functions/.env.production`.
 
-## iOS release shortcut
+## Release shortcuts
 
-From the repository root, run:
+From the repository root:
 
 ```sh
-npm run release
-# Or: pnpm release
+pnpm release-ios        # or: npm run release-ios
+pnpm release-android    # or: npm run release-android
 ```
 
-This builds a signed release and opens the new archive in Xcode Organizer.
-It uses `.env.json` when present, otherwise `.env`, and reads the release version
-from `pubspec.yaml`. The build number is the number of minutes since
+`pnpm release` remains an alias for the iOS build. Both scripts use `.env.json`
+when present, otherwise `.env`, and read the release version from `pubspec.yaml`.
+The build number (iOS) or version code (Android) is the number of minutes since
 2026-01-01 UTC, so every machine and every clean checkout produces a higher one
-than the last release without sharing any state. It preserves an archive under
-`build/ios/releases/`. It does not upload automatically.
+than the last release without sharing any state. Neither script uploads.
+
+### iOS
+
+`tool/release_ios.sh` builds a signed release and opens the new archive in Xcode
+Organizer. It preserves an archive under `build/ios/releases/`.
 
 In Organizer, select the archive → **Distribute App → App Store Connect → Upload**
 (the exact labels can vary by Xcode version). Review signing and finish the upload.
 After Apple processes it, select it in TestFlight or attach it to your App Store
 release in App Store Connect.
 
-Options:
-
-```sh
-npm run release -- --env .env.production
-npm run release -- --build-number 10
-npm run release -- --no-open
-```
-
-With pnpm, pass options directly, for example `pnpm release --build-number 10`.
-No root dependency installation is needed. The shell script can also be run directly.
-
-A build number can still be chosen by hand, and it has to be above the local
-maximum. That maximum is the highest of the counter in
-`.dart_tool/ios-release-build-number`, the previous archive, and the pubspec
-build number; the clock-based default is raised past it when one of them is
-ahead. Set a new marketing version (for example `1.1.0+1`) in `pubspec.yaml`
-when preparing the next App Store version. Build numbers continue increasing.
-
 Requires macOS, Flutter on PATH, Xcode selected as the developer directory, and
 your Apple Developer account/team set up in Xcode. If signing fails, open
 `ios/Runner.xcworkspace`, check **Runner → Signing & Capabilities**, then rerun.
 If IPA export fails but Flutter reports an archive was created, you can distribute
 that archive from Xcode; the script verifies it is fresh before opening it.
+
+### Android
+
+`tool/release_android.sh` builds a release App Bundle signed with the upload
+keystore named in `android/key.properties` (see `android/key.properties.example`
+and "Android release signing" in `docs/launch-features.md`). It refuses to run
+without that file, checks the produced bundle was not signed with the debug
+keystore, copies it to `build/android/releases/WeekPact-<version>-<code>.aab`,
+and reveals it in Finder.
+
+In [Play Console](https://play.google.com/console), open WeekPact → **Testing →
+Internal testing** (or **Production**) → **Create new release**, upload the
+`.aab`, add release notes, and roll it out. Play rejects a version code it has
+already seen, so rerun the script for a fresh code after a failed upload.
+
+### Options
+
+```sh
+pnpm release-ios --env .env.production
+pnpm release-android --build-number 10
+pnpm release-ios --no-open
+```
+
+With npm, pass options after `--`, for example `npm run release-android -- --no-open`.
+No root dependency installation is needed. The shell scripts can also be run directly.
+
+A build number can still be chosen by hand, and it has to be above the local
+maximum. That maximum is the highest of the per-platform counter in `.dart_tool/`
+(`ios-release-build-number`, `android-release-build-number`), the previous
+archives or bundles, and the pubspec build number; the clock-based default is
+raised past it when one of them is ahead. Set a new marketing version (for
+example `1.1.0+1`) in `pubspec.yaml` when preparing the next store version.
+Build numbers continue increasing.
 
 ## Checks
 

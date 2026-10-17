@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "release": "bash tool/release_ios.sh",
+    "release-ios": "bash tool/release_ios.sh",
+    "release-android": "bash tool/release_android.sh",
     "firebase:configure": "dart pub global run flutterfire_cli:flutterfire configure --platforms=ios,android --ios-bundle-id=dev.codepeaktrail.weekpact --android-package-name=dev.codepeaktrail.weekpact --out=lib/firebase_options.dart"
   }
 }

@@ -55,4 +55,3 @@ app.*.map.json
 /supabase/.temp/
 /supabase/functions/.env.local
 /supabase/functions/.env.production
-/supabase/functions/.env.produciton

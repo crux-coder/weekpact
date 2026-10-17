@@ -212,7 +212,7 @@ flutter run -d 00008101-001E59E41A51003A \
 5. Tap the delivered notification. It should open WeekPact. Also test while the app
    is open; debug diagnostics show foreground deliveries and notification opens.
 
-For release testing use `pnpm release` or `npm run release` after configuring the
+For release testing use `pnpm release-ios` or `pnpm release-android` after configuring the
 production APNs key. Use a device/emulator with Google Play services for Android.
 The Android channel and notification permission declaration are already included.
 [Firebase message testing](https://firebase.google.com/docs/cloud-messaging/flutter/get-started).
