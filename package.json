@@ -4,7 +4,9 @@
   "scripts": {
     "release": "bash tool/release_ios.sh",
     "release-ios": "bash tool/release_ios.sh",
-    "release-android": "bash tool/release_android.sh",
+    "release-android": "bash tool/release_android.sh --track production",
+    "release-android-test": "bash tool/release_android.sh --track internal",
+    "release-android-build": "bash tool/release_android.sh",
     "firebase:configure": "dart pub global run flutterfire_cli:flutterfire configure --platforms=ios,android --ios-bundle-id=dev.codepeaktrail.weekpact --android-package-name=dev.codepeaktrail.weekpact --out=lib/firebase_options.dart"
   }
 }
