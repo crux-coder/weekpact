@@ -22,6 +22,7 @@ class OnboardingScaffold extends StatelessWidget {
     required this.body,
     this.footer = const [],
     this.centered = false,
+    this.centerBody = false,
   });
 
   final VoidCallback? onBack;
@@ -38,6 +39,11 @@ class OnboardingScaffold extends StatelessWidget {
 
   /// For the screens that are one thing in the middle of the page.
   final bool centered;
+
+  /// For a picture under the title: the body sits in the middle of whatever
+  /// room the title and the pinned footer leave, rather than right under the
+  /// subtitle. It still scrolls when that room runs out.
+  final bool centerBody;
 
   @override
   Widget build(BuildContext context) {
@@ -77,16 +83,36 @@ class OnboardingScaffold extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 20),
-        ...body,
+        if (centerBody)
+          Expanded(
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: body),
+            ),
+          )
+        else
+          ...body,
       ],
     );
     // The answer scrolls; the way on stays pinned above the keyboard and the
     // home bar, so Continue is never below the fold on a small phone.
-    final scroll = SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.only(top: 26, bottom: 12),
-      child: head,
-    );
+    const scrollPadding = EdgeInsets.only(top: 26, bottom: 12);
+    final scroll = centerBody
+        ? LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: scrollPadding,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - scrollPadding.vertical,
+                ),
+                child: IntrinsicHeight(child: head),
+              ),
+            ),
+          )
+        : SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: scrollPadding,
+            child: head,
+          );
     return Scaffold(
       body: SafeArea(
         child: Center(

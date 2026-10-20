@@ -91,21 +91,40 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   late OnboardingDraft _draft =
       widget.draftStore.read() ?? const OnboardingDraft();
-  late final List<_Screen> _history = [_initialScreen()];
+
+  /// The screens on the flow's navigator, bottom to top. The navigator's
+  /// pages are built from it, so pushing, popping and the iOS edge swipe all
+  /// go through this one list.
+  late final List<_Screen> _history = _initialHistory();
   SignInProvider? _signingIn;
   String? _error;
   bool _notify = true;
 
   _Screen get _screen => _history.last;
 
-  _Screen _initialScreen() {
-    if (widget.invite != null) return _Screen.invite;
-    if (widget.initialError != null || widget.returning) return _Screen.logIn;
+  /// Where the flow opens, with the screens that would have come before it
+  /// underneath, so back (and the swipe) from there goes somewhere sensible.
+  List<_Screen> _initialHistory() {
+    const welcome = _Screen.welcome;
+    if (widget.invite != null) return [welcome, _Screen.invite];
+    if (widget.initialError != null || widget.returning) {
+      return [welcome, _Screen.logIn];
+    }
     // Somebody who closed the app halfway comes back where they were.
-    if (_draft.complete) return _Screen.save;
-    if (_draft.crewName?.trim().isNotEmpty ?? false) return _Screen.pact;
-    return _Screen.welcome;
+    if (_draft.complete) {
+      return [welcome, _Screen.crewName, _Screen.pact, _Screen.save];
+    }
+    if (_draft.crewName?.trim().isNotEmpty ?? false) {
+      return [welcome, _Screen.crewName, _Screen.pact];
+    }
+    return [welcome];
   }
+
+  /// One key per place in the history, so a screen keeps its state while
+  /// others are pushed over it, and a screen replaced at the same depth is a
+  /// new page.
+  ValueKey<String> _pageKey(int depth) =>
+      ValueKey('$depth-${_history[depth].name}');
 
   @override
   void didUpdateWidget(covariant OnboardingFlow oldWidget) {
@@ -127,27 +146,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   });
 
   void _back() {
-    if (_history.length > 1) {
-      setState(() {
-        _error = null;
-        final left = _history.removeLast();
-        if (left == _Screen.invite) widget.onClearInvite();
-      });
-      return;
-    }
-    // The first screen of an invite or of a resumed setup has nothing under
-    // it; back from there is the screen that would have come before.
-    setState(() {
-      final here = _screen;
-      if (here == _Screen.invite) widget.onClearInvite();
-      _history
-        ..clear()
-        ..add(switch (here) {
-          _Screen.pact => _Screen.crewName,
-          _Screen.save => _Screen.pact,
-          _ => _Screen.welcome,
-        });
-    });
+    if (_history.length <= 1) return;
+    setState(_popScreen);
+  }
+
+  void _popScreen() {
+    _error = null;
+    final left = _history.removeLast();
+    if (left == _Screen.invite) widget.onClearInvite();
   }
 
   Future<void> _saveDraft(OnboardingDraft draft) async {
@@ -175,54 +181,73 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) => PopScope(
+    // Android's back reaches the outer route first; hand it to the flow.
     canPop: _history.length <= 1,
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) _back();
     },
-    child: switch (_screen) {
-      _Screen.welcome => _welcome(context),
-      _Screen.crewName => _CrewNameScreen(
-        initial: _draft.crewName,
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        onCode: () => _go(_Screen.code),
-        onNext: (name) async {
-          await _saveDraft(_draft.copyWith(crewName: name));
-          _go(_Screen.pact);
-        },
-      ),
-      _Screen.pact => _FirstPactScreen(
-        crewName: _draft.crewName ?? 'your crew',
-        draft: _draft,
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        onNext: (title, icon, days) async {
-          await _saveDraft(
-            _draft.copyWith(pactTitle: title, pactIcon: icon, pactDays: days),
-          );
-          _go(_Screen.save);
-        },
-      ),
-      _Screen.save => _save(context),
-      _Screen.code => OnboardingScaffold(
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        eyebrow: 'JOIN A CREW',
-        title: 'Enter your invite code.',
-        subtitle: 'Six letters and numbers, from the invite message or page.',
-        body: [InviteCodeEntry(showTip: true, onInvite: widget.onInvite)],
-      ),
-      _Screen.invite => _invite(context),
-      _Screen.join => _join(context),
-      _Screen.logIn => _logIn(context),
-    },
+    child: Navigator(
+      pages: [
+        for (var depth = 0; depth < _history.length; depth++)
+          MaterialPage<void>(
+            key: _pageKey(depth),
+            child: _screenFor(context, _history[depth]),
+          ),
+      ],
+      // A page the navigator took off itself (the iOS edge swipe) leaves the
+      // history too. Pages this state removed are already gone from it.
+      onDidRemovePage: (page) {
+        if (page.key == _pageKey(_history.length - 1) && _history.length > 1) {
+          setState(_popScreen);
+        }
+      },
+    ),
   );
+
+  Widget _screenFor(BuildContext context, _Screen screen) => switch (screen) {
+    _Screen.welcome => _welcome(context),
+    _Screen.crewName => _CrewNameScreen(
+      initial: _draft.crewName,
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      onCode: () => _go(_Screen.code),
+      onNext: (name) async {
+        await _saveDraft(_draft.copyWith(crewName: name));
+        _go(_Screen.pact);
+      },
+    ),
+    _Screen.pact => _FirstPactScreen(
+      crewName: _draft.crewName ?? 'your crew',
+      draft: _draft,
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      onNext: (title, icon, days) async {
+        await _saveDraft(
+          _draft.copyWith(pactTitle: title, pactIcon: icon, pactDays: days),
+        );
+        _go(_Screen.save);
+      },
+    ),
+    _Screen.save => _save(context),
+    _Screen.code => OnboardingScaffold(
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      eyebrow: 'JOIN A CREW',
+      title: 'Enter your invite code.',
+      subtitle: 'Six letters and numbers, from the invite message or page.',
+      body: [InviteCodeEntry(showTip: true, onInvite: widget.onInvite)],
+    ),
+    _Screen.invite => _invite(context),
+    _Screen.join => _join(context),
+    _Screen.logIn => _logIn(context),
+  };
 
   Widget _welcome(BuildContext context) => OnboardingScaffold(
     title: 'Good habits.\nGreat company.',
     subtitle:
         'Pick one small thing, keep it a few days a week, and do it alongside '
         'your friends.',
+    centerBody: true,
     body: const [_WelcomeArt()],
     footer: [
       AppButton(
@@ -420,7 +445,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       const SizedBox(height: 4),
       TextButton(
         key: const ValueKey('email-log-in'),
-        onPressed: () => Navigator.of(context).push(
+        onPressed: () => Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute<void>(
             builder: (_) => EmailLogInPage(authBackend: widget.authBackend),
           ),
