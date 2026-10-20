@@ -6,6 +6,9 @@ import { readSiteConfig } from '../lib/config.mjs';
 interface Props { invite?: boolean; }
 const { invite = false } = Astro.props;
 const config = readSiteConfig();
+const stores = config.iosInstallUrl && !config.androidInstallUrl ? 'the App Store'
+  : config.androidInstallUrl && !config.iosInstallUrl ? 'Google Play'
+  : 'the App Store or Google Play';
 ---
 <SiteLayout title={invite ? 'Your crew invitation — WeekPact' : 'Open WeekPact'} description="Open WeekPact to connect with your crew." privatePage tint="var(--sky)">
   <main id="main" class="handoff container" data-handoff data-mode={invite ? 'invite' : 'open'}>
@@ -15,11 +18,26 @@ const config = readSiteConfig();
         <span class="icon-tile handoff-icon"><HugeIcon name="userGroup" size={28} /></span>
         <h1 id="handoff-title">{invite ? 'Your crew is waiting' : 'A good week starts here'}<span class="dot">.</span></h1>
         <p class="handoff-description" id="handoff-description">{invite ? 'Open WeekPact to review the crew and accept your invitation.' : 'Open WeekPact to check in with your crew.'}</p>
-        <a id="open-app" class="button button--wide" href="weekpact://invite">Open WeekPact <HugeIcon name="arrowRight01" size={20} /></a>
+        {invite && <div class="invite-code" id="invite-code" hidden>
+          <span class="invite-code-label">Your invite code</span>
+          <div class="code-boxes" id="code-boxes" role="img" aria-label="Invite code">
+            {Array.from({length: 6}, () => <span class="code-box" aria-hidden="true"></span>)}
+          </div>
+          <ol class="invite-steps">
+            <li><span class="step-number" aria-hidden="true">1</span><span>Get WeekPact from {stores}.</span></li>
+            <li><span class="step-number" aria-hidden="true">2</span><span>Come back here and tap <strong>Open in WeekPact</strong>, or tap the invite link again.</span></li>
+            <li><span class="step-number" aria-hidden="true">3</span><span>No luck? Open the app, tap <strong>I have an invite code</strong> and type <strong class="code-inline" data-code-text></strong>.</span></li>
+          </ol>
+          {(config.iosInstallUrl || config.androidInstallUrl) && <div class="store-links">
+            {config.iosInstallUrl && <a class="button button--quiet" href={config.iosInstallUrl} rel="noreferrer"><HugeIcon name="apple" size={19} /> Get it for iPhone</a>}
+            {config.androidInstallUrl && <a class="button button--quiet" href={config.androidInstallUrl} rel="noreferrer"><HugeIcon name="android" size={19} /> Get it for Android</a>}
+          </div>}
+        </div>}
+        <a id="open-app" class="button button--wide" href="weekpact://invite"><span id="open-app-label">Open WeekPact</span> <HugeIcon name="arrowRight01" size={20} /></a>
         <p class="open-feedback" id="open-feedback" role="status" hidden>If WeekPact didn’t open, install the app or open it manually. Then come back to this link and tap Open WeekPact again.</p>
         <noscript><p class="notice">Enable JavaScript to pass your invitation to the app, then tap this link again.</p></noscript>
       </section>
-      <div class="install-help">
+      <div class="install-help" id="install-help">
         <h2 class="eyebrow">New to WeekPact?</h2>
         <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong> — your invitation opens in the app, even if you had to set up your profile first.</p>
         {(config.iosInstallUrl || config.androidInstallUrl) ? <div class="install-links">
