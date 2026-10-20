@@ -97,41 +97,44 @@ class OnboardingScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 48,
-                    child: Row(
-                      children: [
-                        if (onBack != null)
-                          OnboardingBackButton(onPressed: onBack!)
-                        else
-                          const SizedBox(width: 44),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: step != null && steps != null
-                              ? StepPips(step: step!, steps: steps!)
-                              : const SizedBox.shrink(),
-                        ),
-                        const SizedBox(width: 14),
-                        if (onLogIn != null)
-                          TextButton(
-                            onPressed: onLogIn,
-                            style: TextButton.styleFrom(
-                              foregroundColor: context.muted,
-                              minimumSize: const Size(44, 44),
-                            ),
-                            child: const Text(
-                              'Log in',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
+                  // A screen with nothing to go back to, no progress and no
+                  // Log in (the front door) gives the bar's room to its title.
+                  if (onBack != null || step != null || onLogIn != null)
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          if (onBack != null)
+                            OnboardingBackButton(onPressed: onBack!)
+                          else
+                            const SizedBox(width: 44),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: step != null && steps != null
+                                ? StepPips(step: step!, steps: steps!)
+                                : const SizedBox.shrink(),
+                          ),
+                          const SizedBox(width: 14),
+                          if (onLogIn != null)
+                            TextButton(
+                              onPressed: onLogIn,
+                              style: TextButton.styleFrom(
+                                foregroundColor: context.muted,
+                                minimumSize: const Size(44, 44),
                               ),
-                            ),
-                          )
-                        else
-                          const SizedBox(width: 44),
-                      ],
+                              child: const Text(
+                                'Log in',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 44),
+                        ],
+                      ),
                     ),
-                  ),
                   Expanded(child: centered ? Center(child: scroll) : scroll),
                   ...footer,
                 ],

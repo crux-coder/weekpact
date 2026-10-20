@@ -5,6 +5,7 @@ import '../auth/account_actions.dart';
 import '../auth/auth_backend.dart';
 import '../auth/auth_page.dart';
 import '../crew/crew_backend.dart';
+import '../home/home_surface.dart';
 import '../invites/invite_code_entry.dart';
 import '../invites/invite_links.dart';
 import '../pacts/pact_icons.dart';
@@ -222,7 +223,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     subtitle:
         'Pick one small thing, keep it a few days a week, and do it alongside '
         'your friends.',
-    onLogIn: () => _go(_Screen.logIn),
     body: const [_WelcomeArt()],
     footer: [
       AppButton(
@@ -244,6 +244,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ),
       const SizedBox(height: 4),
       TextButton(
+        key: const ValueKey('welcome-log-in'),
         onPressed: () => _go(_Screen.logIn),
         style: TextButton.styleFrom(foregroundColor: context.muted),
         child: const Text('Already have an account? Log in'),
@@ -435,19 +436,166 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
 String _daysLabel(int days) => days >= 7 ? 'every day' : '$days× a week';
 
-/// The front door's picture: a crew's pact card, mid-week.
+/// The front door's picture: three of a crew's pacts, mid-week, fanned like
+/// a hand of cards and drawn the way Home draws them.
 class _WelcomeArt extends StatelessWidget {
   const _WelcomeArt();
 
+  // Back to front; the last is the one on top.
+  static const _hand = [
+    (index: 2, icon: 'book', title: 'Read before bed', done: 4, days: 5),
+    (index: 4, icon: 'yoga', title: 'Stretch for 10 minutes', done: 3, days: 4),
+    (index: 1, icon: 'run', title: 'Morning run', done: 2, days: 3),
+  ];
+  // Turned about the bottom of the hand, the way cards held in one hand
+  // spread: the back two lean out far enough to show their names and badges.
+  static const _angles = [-.13, .13, 0.0];
+  static const _offsets = [Offset(-40, 0), Offset(40, 0), Offset(0, 64)];
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: _SummaryCard(
-      tint: WeekPactColors.pactTint(1),
-      badge: WeekPactColors.pactBadge(1),
-      icon: PactIcon.find('run').data,
-      title: 'Morning run',
-      caption: '3× A WEEK · 2 OF 3 DONE',
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      height: 316,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = 0; i < _hand.length; i++)
+            Transform.translate(
+              offset: _offsets[i],
+              child: Transform.rotate(
+                angle: _angles[i],
+                alignment: const Alignment(0, 1.6),
+                child: _FanCard(
+                  tint: WeekPactColors.pactTint(_hand[i].index),
+                  badge: WeekPactColors.pactBadge(_hand[i].index),
+                  icon: PactIcon.find(_hand[i].icon).data,
+                  title: _hand[i].title,
+                  done: _hand[i].done,
+                  days: _hand[i].days,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Home's pact card at a glance: name, badge, the week's count and its bar.
+class _FanCard extends StatelessWidget {
+  const _FanCard({
+    required this.tint,
+    required this.badge,
+    required this.icon,
+    required this.title,
+    required this.done,
+    required this.days,
+  });
+
+  final Color tint;
+  final Color badge;
+  final List<List<dynamic>> icon;
+  final String title;
+  final int done;
+  final int days;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 236,
+    height: 236,
+    child: HomeSurface(
+      tint: tint,
+      radius: WeekPactMetrics.cardCorner,
+      raised: true,
+      depth: WeekPactMetrics.cardDepth,
+      shape: WeekPactMetrics.pactCardShape,
+      outlineColor: Color.lerp(tint, Colors.black, .28),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    color: homeInk,
+                    fontSize: 21,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              PactIconBadge(icon: icon, tint: badge, size: 44),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$done',
+                style: const TextStyle(
+                  color: homeInk,
+                  fontSize: 52,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '/ $days',
+                style: TextStyle(
+                  color: homeMutedInk,
+                  fontSize: 26,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'days',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: homeMutedInk,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var day = 0; day < days; day++)
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    margin: EdgeInsets.only(right: day == days - 1 ? 0 : 4),
+                    decoration: ShapeDecoration(
+                      color: day < done
+                          ? homeInk
+                          : homeInk.withValues(alpha: .32),
+                      shape: ContinuousRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          WeekPactMetrics.curveFor(6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }

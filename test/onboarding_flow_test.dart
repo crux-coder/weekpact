@@ -211,7 +211,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('welcome-log-in')));
     await _tap(tester, find.byKey(const ValueKey('sign-in-apple')));
 
     expect(find.text('What should the crew call you?'), findsOneWidget);
@@ -309,7 +309,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('welcome-log-in')));
     await _tap(tester, find.byKey(const ValueKey('sign-in-google')));
     await auth.signOut();
     await tester.pumpUi();

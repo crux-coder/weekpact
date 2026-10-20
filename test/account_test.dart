@@ -167,7 +167,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Log in').first);
+      await tester.tap(find.byKey(const ValueKey('welcome-log-in')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('email-log-in')));
       await tester.pumpAndSettle();
@@ -196,7 +196,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Log in').first);
+      await tester.tap(find.byKey(const ValueKey('welcome-log-in')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('email-log-in')));
       await tester.pumpAndSettle();
