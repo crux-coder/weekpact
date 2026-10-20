@@ -98,6 +98,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   late final List<_Screen> _history = _initialHistory();
   SignInProvider? _signingIn;
   String? _error;
+  final _codeEntry = GlobalKey<InviteCodeEntryState>();
   bool _notify = true;
 
   _Screen get _screen => _history.last;
@@ -231,11 +232,30 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _Screen.save => _save(context),
     _Screen.code => OnboardingScaffold(
       onBack: _back,
-      onLogIn: () => _go(_Screen.logIn),
       eyebrow: 'JOIN A CREW',
       title: 'Enter your invite code.',
-      subtitle: 'Six letters and numbers, from the invite message or page.',
-      body: [InviteCodeEntry(showTip: true, onInvite: widget.onInvite)],
+      centerBody: true,
+      body: [
+        Text(
+          'Six letters and numbers, from the invite message or page.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: context.muted, fontSize: 16, height: 1.4),
+        ),
+        const SizedBox(height: 20),
+        InviteCodeEntry(
+          key: _codeEntry,
+          showButton: false,
+          onInvite: widget.onInvite,
+        ),
+      ],
+      footer: [
+        AppButton(
+          label: 'FIND MY CREW',
+          color: WeekPactColors.mintGreen,
+          height: 56,
+          onPressed: () => _codeEntry.currentState?.submit(),
+        ),
+      ],
     ),
     _Screen.invite => _invite(context),
     _Screen.join => _join(context),

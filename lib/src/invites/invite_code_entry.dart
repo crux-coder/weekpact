@@ -15,30 +15,39 @@ class InviteCodeEntry extends StatefulWidget {
     super.key,
     required this.onInvite,
     this.buttonLabel = 'FIND MY CREW',
-    this.showTip = false,
+    this.showButton = true,
   });
 
   final ValueChanged<InviteRef> onInvite;
   final String buttonLabel;
 
-  /// The "just installed? tap the link again" note, for the front door.
-  final bool showTip;
+  /// Off for a screen that pins its own button to the foot and calls
+  /// [InviteCodeEntryState.submit] from it.
+  final bool showButton;
 
   @override
-  State<InviteCodeEntry> createState() => _InviteCodeEntryState();
+  State<InviteCodeEntry> createState() => InviteCodeEntryState();
 }
 
-class _InviteCodeEntryState extends State<InviteCodeEntry> {
+class InviteCodeEntryState extends State<InviteCodeEntry> {
   final _controller = TextEditingController();
+  final _focus = FocusNode();
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  void submit() {
     final invite = inviteFromText(_controller.text);
     if (invite == null) {
       setState(
@@ -52,95 +61,143 @@ class _InviteCodeEntryState extends State<InviteCodeEntry> {
     widget.onInvite(invite);
   }
 
-  Future<void> _paste() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim();
-    if (text == null || text.isEmpty || !mounted) return;
-    final invite = inviteFromText(text);
-    setState(() {
-      _controller.text = invite != null && invite.code.length == 6
-          ? invite.code
-          : text;
-      _error = null;
-    });
-    if (invite != null) widget.onInvite(invite);
+  void _onChanged(String text) {
+    // A whole link pasted in: a code-and-sender link goes straight through,
+    // as does a legacy token that could never fit the boxes.
+    if (text.length > inviteCodeLength) {
+      final invite = inviteFromText(text);
+      if (invite != null) {
+        if (invite.code.length == inviteCodeLength) {
+          _controller.value = TextEditingValue(
+            text: invite.code,
+            selection: const TextSelection.collapsed(offset: inviteCodeLength),
+          );
+        }
+        FocusScope.of(context).unfocus();
+        widget.onInvite(invite);
+        return;
+      }
+    }
+    final cleaned = text
+        .toUpperCase()
+        .split('')
+        .where(inviteCodeAlphabet.contains)
+        .take(inviteCodeLength)
+        .join();
+    if (cleaned != text) {
+      _controller.value = TextEditingValue(
+        text: cleaned,
+        selection: TextSelection.collapsed(offset: cleaned.length),
+      );
+    }
+    setState(() => _error = null);
   }
 
+  /// One box per character; the real field sits invisibly on top so typing,
+  /// pasting and the keyboard all behave like any other text field.
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      AppSurface(
-        raised: false,
-        borderRadius: WeekPactMetrics.controlRadius,
-        builder: (context) => TextField(
-          key: const ValueKey('invite-code-field'),
-          controller: _controller,
-          autofocus: false,
-          textAlign: TextAlign.center,
-          textCapitalization: TextCapitalization.characters,
-          autocorrect: false,
-          enableSuggestions: false,
-          keyboardType: TextInputType.visiblePassword,
-          textInputAction: TextInputAction.go,
-          onChanged: (_) {
-            if (_error != null) setState(() => _error = null);
-          },
-          onSubmitted: (_) => _submit(),
-          style: TextStyle(
-            color: context.fieldInk,
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 8,
+  Widget build(BuildContext context) {
+    final text = _controller.text;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 64,
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  for (var i = 0; i < inviteCodeLength; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _CodeCell(
+                        char: i < text.length ? text[i] : null,
+                        active:
+                            _focus.hasFocus &&
+                            (i == text.length ||
+                                (i == inviteCodeLength - 1 &&
+                                    text.length == inviteCodeLength)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0,
+                  child: TextField(
+                    key: const ValueKey('invite-code-field'),
+                    controller: _controller,
+                    focusNode: _focus,
+                    showCursor: false,
+                    enableInteractiveSelection: false,
+                    textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    keyboardType: TextInputType.visiblePassword,
+                    textInputAction: TextInputAction.go,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                    ],
+                    onChanged: _onChanged,
+                    onSubmitted: (_) => submit(),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          decoration: InputDecoration(
-            hintText: '7K2QXM',
-            hintStyle: TextStyle(
-              color: context.muted.withValues(alpha: .45),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: context.errorInk,
               fontWeight: FontWeight.w600,
-              letterSpacing: 8,
+              fontSize: 13,
             ),
-            filled: false,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
-        ),
-      ),
-      if (_error != null) ...[
-        const SizedBox(height: 8),
-        Text(
-          _error!,
-          style: TextStyle(
-            color: context.errorInk,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+        ],
+        if (widget.showButton) ...[
+          const SizedBox(height: 24),
+          AppButton(
+            label: widget.buttonLabel,
+            color: WeekPactColors.mintGreen,
+            height: 56,
+            onPressed: submit,
           ),
-        ),
+        ],
       ],
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton(
-          onPressed: _paste,
-          style: TextButton.styleFrom(foregroundColor: context.muted),
-          child: const Text('Paste a code or link'),
+    );
+  }
+}
+
+class _CodeCell extends StatelessWidget {
+  const _CodeCell({required this.char, required this.active});
+
+  final String? char;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => AppSurface(
+    raised: false,
+    borderRadius: WeekPactMetrics.controlRadius,
+    borderWidth: active ? 2.5 : WeekPactMetrics.border,
+    builder: (context) => Center(
+      child: Text(
+        char ?? '',
+        style: TextStyle(
+          color: context.fieldInk,
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      if (widget.showTip) ...[
-        const SizedBox(height: 4),
-        Text(
-          'Just installed? Go back to the message and tap the invite link '
-          'again. Now that WeekPact is on your phone, it opens straight to the '
-          'crew.',
-          style: TextStyle(color: context.muted, fontSize: 14, height: 1.4),
-        ),
-      ],
-      const SizedBox(height: 16),
-      AppButton(
-        label: widget.buttonLabel,
-        color: WeekPactColors.mintGreen,
-        height: 56,
-        onPressed: _submit,
-      ),
-    ],
+    ),
   );
 }
