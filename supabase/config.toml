@@ -154,6 +154,7 @@ additional_redirect_urls = [
   "http://127.0.0.1:3000/**",
   "weekpact://invite",
   "weekpact://invite?invite=*",
+  "weekpact://invite?code=*",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -166,7 +167,8 @@ enable_refresh_token_rotation = true
 # Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
-# Allow/disallow new user signups to your project.
+# Allow/disallow new user signups to your project. Stays on: Apple and Google
+# sign-ins create accounts; only email sign-up is closed below.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
@@ -201,8 +203,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = true
+# New accounts come from Apple or Google. Existing email accounts still log in
+# and reset their password.
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -230,6 +233,11 @@ otp_expiry = 3600
 [auth.email.template.confirmation]
 subject = "Confirm your WeekPact account"
 content_path = "./supabase/templates/confirmation.html"
+
+# Password reset, for accounts made with email before Apple/Google sign-in.
+[auth.email.template.recovery]
+subject = "Reset your WeekPact password"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -307,9 +315,10 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Native Sign in with Apple on iOS: the ID token's audience is the bundle id.
 [auth.external.apple]
-enabled = false
-client_id = ""
+enabled = true
+client_id = "dev.codepeaktrail.weekpact"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 # Overrides the default auth redirectUrl.
@@ -320,6 +329,18 @@ url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+email_optional = false
+
+# Native Google sign-in on iOS and Android. ID tokens carry the web, iOS or
+# Android client ID as their audience, so all three are accepted.
+[auth.external.google]
+enabled = true
+client_id = "705377133061-bu9bmehie9rnr19893854eoetlkr9p9o.apps.googleusercontent.com,705377133061-ls6gpj0ssehgbvhbcgbif5gt5gd3qtqc.apps.googleusercontent.com,705377133061-5ljb1hd38c35ahrvier4aeqt8jk7lkra.apps.googleusercontent.com"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# The iOS Google SDK puts no nonce we can control in its ID token.
+skip_nonce_check = true
 email_optional = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
@@ -392,22 +413,19 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-[functions.invite-crew-member]
-enabled = true
+[functions.apple-token]
+# Stores the Apple refresh token right after Sign in with Apple, so account
+# deletion can revoke it. Needs APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY
+# and APPLE_CLIENT_ID.
 verify_jwt = true
-import_map = "./functions/invite-crew-member/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/invite-crew-member/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/invite-crew-member/*.html" ]
+import_map = "./functions/apple-token/deno.json"
 
 [functions.dispatch-notifications]
 verify_jwt = false
 
 [functions.delete-account]
-# The function validates the bearer token with Auth and verifies the password.
+# The function validates the bearer token with Auth and verifies the password
+# (email accounts) or the typed DELETE (Apple/Google accounts).
 verify_jwt = false
 
 [functions.revenuecat-webhook]

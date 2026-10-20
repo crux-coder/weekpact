@@ -120,10 +120,10 @@ Create the local Edge Function configuration:
 cp supabase/functions/.env.example supabase/functions/.env.local
 ```
 
-Add AWS API credentials, the SES region, and an SES-verified sender (see below). For immediate
-iPhone development, use `APP_BASE_URL=weekpact://invite` for crew emails.
-Authentication callbacks use `weekpact://invite`. Add `weekpact://invite` and
-`weekpact://invite?invite=*` to the Supabase Auth redirect allow-list.
+Add the Sign in with Apple key values (see [Sign in with Apple and Google](#sign-in-with-apple-and-google)).
+Authentication callbacks use `weekpact://invite`. Add `weekpact://invite`,
+`weekpact://invite?code=*` and the legacy `weekpact://invite?invite=*` to the
+Supabase Auth redirect allow-list.
 
 ## 2. Start and test locally
 
@@ -134,16 +134,15 @@ supabase functions serve --env-file supabase/functions/.env.local
 flutter run --dart-define-from-file=.env
 ```
 
-Local Supabase Auth emails appear in Inbucket at
-`http://127.0.0.1:54324`. Crew invitations themselves are sent through AWS SES.
+Local Supabase Auth emails (password resets, email changes) appear in Inbucket at
+`http://127.0.0.1:54324`.
 
-To open a test invite directly in the iOS Simulator:
+To open a test invite directly in the iOS Simulator, use a crew's code (any
+member can read it with `select crew_invite_code('CREW_ID')`):
 
 ```sh
-xcrun simctl openurl booted "weekpact://invite?invite=YOUR_RAW_INVITE_TOKEN"
+xcrun simctl openurl booted "weekpact://invite?code=7K2QXM"
 ```
-
-The raw token only exists in the sent email. The database stores its hash.
 
 ## 3. Deploy Supabase
 
@@ -155,28 +154,42 @@ supabase login
 supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 supabase secrets set --env-file supabase/functions/.env.production
-supabase secrets set 'EMAIL_FROM=WeekPact <invites@YOUR_DOMAIN.com>'
-supabase secrets set APP_BASE_URL=https://app.YOUR_DOMAIN.com/
 supabase secrets set ALLOWED_ORIGIN=https://app.YOUR_DOMAIN.com
-supabase functions deploy invite-crew-member --use-api
+supabase functions deploy apple-token --use-api
+supabase functions deploy delete-account --use-api
+# Email invites are gone; remove the old function from the project.
+supabase functions delete invite-crew-member
 ```
 
 In Supabase Dashboard:
 
-1. Enable Email under **Authentication → Providers**.
-2. Under **Authentication → URL Configuration**, set your production site URL
-   and allow `weekpact://invite` and `weekpact://invite?invite=*` as
-   redirect URLs for the mobile app.
-3. Confirm the migration appears under **Database → Migrations**.
-4. Confirm the invitation configuration values appear under **Edge Functions → Secrets**.
+1. Under **Authentication → Sign In / Providers**, set up Apple and Google as
+   described in [Sign in with Apple and Google](#sign-in-with-apple-and-google).
+2. Under **Authentication → Sign In / Providers → Email**, keep Email enabled
+   (existing accounts still log in and reset their password) but turn off
+   **Allow new users to sign up**. Leave the project-wide **Allow new users to
+   sign up** on, or Apple and Google cannot create accounts.
+3. Under **Authentication → URL Configuration**, set your production site URL
+   and allow `weekpact://invite`, `weekpact://invite?code=*` and
+   `weekpact://invite?invite=*` as redirect URLs for the mobile app.
+4. Under **Authentication → Emails**, paste `supabase/templates/recovery.html`
+   into **Reset password** (subject "Reset your WeekPact password").
+5. Confirm the migration appears under **Database → Migrations**.
+6. Confirm the Apple secrets appear under **Edge Functions → Secrets**.
 
 Only the publishable key belongs in `.env` or your client build configuration.
-Never add a secret/service-role key or AWS credentials to the Flutter build.
+Never add a secret/service-role key or the Apple key to the Flutter build.
 
-## Account confirmation email
+## Account emails
 
-`supabase/templates/confirmation.html` styles Supabase's **Confirm sign up** email
-like the crew invitation. Its button uses `{{ .ConfirmationURL }}`, which verifies
+New accounts come from Apple or Google, so sign-up confirmations are no longer
+sent; `supabase/templates/confirmation.html` remains for email changes, and
+`supabase/templates/recovery.html` is the password reset for accounts made with
+email before. Both are configured locally in `supabase/config.toml` and pasted
+into the hosted Auth email settings.
+
+The notes below describe the original email sign-up flow, which existing links may still use.
+`supabase/templates/confirmation.html` styles Supabase's **Confirm sign up** email. Its button uses `{{ .ConfirmationURL }}`, which verifies
 the email with Supabase before returning to the callback supplied by the app.
 The template is configured locally in `supabase/config.toml` and deployed separately
 to hosted Auth email settings.
@@ -191,50 +204,51 @@ the password instead. The website does not process authentication callbacks.
 Rebuild the app after changing this flow. Already-sent confirmation emails retain
 their original callback and template.
 
-## AWS SES for crew invitations
+## Sign in with Apple and Google
 
-Crew invitations use the SES v2 API from `invite-crew-member`. Supabase Auth
-SMTP (signup confirmations and password resets) is configured independently.
+Accounts are made with Sign in with Apple (iOS) or Google (iOS and Android); the
+app passes the provider's ID token to Supabase `signInWithIdToken`. New profiles
+take their first and last name from the `given_name`/`family_name` (or
+`full_name`/`name`) the provider sends.
 
-1. Verify your sender domain in SES and complete its DKIM DNS setup. Choose
-   the same region in SES and `AWS_REGION`.
-2. Request SES production access in that region to invite arbitrary recipients.
-   While in the sandbox, recipients must also be verified (or use the SES mailbox simulator).
-3. Create AWS API credentials with the policy below, substituting your region,
-   AWS account ID, verified domain, and sender email. These are AWS access keys,
-   **not SES SMTP credentials**.
-4. Copy `supabase/functions/.env.example` to
-   `supabase/functions/.env.production`, then fill in the values. Use
-   `AWS_SESSION_TOKEN` only with temporary credentials; replace those
-   credentials before they expire. An optional `SES_CONFIGURATION_SET`
-   enables your configured SES event tracking and must exist in the same region.
-5. Upload that file with `supabase secrets set --env-file
-   supabase/functions/.env.production`, then deploy `invite-crew-member` using
-   the command above. Keep all AWS credentials out of Flutter's `.env` and `.env.json`.
+**Google** — under **Authentication → Sign In / Providers → Google**, enable the
+provider and enter all three client IDs, comma separated, web first:
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": "ses:SendEmail",
-    "Resource": "arn:aws:ses:REGION:ACCOUNT_ID:identity/YOUR_DOMAIN.com",
-    "Condition": {
-      "StringEquals": { "ses:FromAddress": "invites@YOUR_DOMAIN.com" }
-    }
-  }]
-}
+```
+705377133061-bu9bmehie9rnr19893854eoetlkr9p9o.apps.googleusercontent.com,705377133061-ls6gpj0ssehgbvhbcgbif5gt5gd3qtqc.apps.googleusercontent.com,705377133061-5ljb1hd38c35ahrvier4aeqt8jk7lkra.apps.googleusercontent.com
 ```
 
-Test from a crew owner's account by inviting a recipient, opening the link,
-and accepting with the invited email address. SES acceptance is not a delivery
-guarantee; use SES bounce/complaint monitoring for delivery issues. The function
-disables automatic send retries because SES SendEmail has no idempotency key.
-If sending fails or times out, the matching invite is removed and the owner can
-retry. A timeout can mean SES accepted the email, so that email's link may be
-invalid and a fresh invitation is needed.
+Add the web client's secret, and turn on **Skip nonce checks** (the iOS Google
+SDK does not let the app set the ID token's nonce). Locally the same values live
+in `[auth.external.google]` in `supabase/config.toml`, with the secret read from
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`.
 
-[SES API reference](https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html)
+**Apple** — under **Authentication → Sign In / Providers → Apple**, enable the
+provider and set the client ID to the bundle id, `dev.codepeaktrail.weekpact`.
+Native sign-in needs no secret there.
+
+App Review requires revoking Apple tokens when an account is deleted. After
+sign-in the app sends Apple's one-time `authorizationCode` to the `apple-token`
+function, which exchanges it at `appleid.apple.com/auth/token` and keeps the
+refresh token in `private.apple_tokens`; `delete-account` revokes it before
+deleting the user. Both need a Sign in with Apple key:
+
+1. In the Apple Developer portal, under **Certificates, IDs & Profiles → Keys**,
+   create a key with **Sign in with Apple** enabled for the WeekPact App ID and
+   download the `.p8` (it can be downloaded only once).
+2. Set the secrets (or put them in `supabase/functions/.env.production`):
+
+```sh
+supabase secrets set APPLE_TEAM_ID=YOUR_TEAM_ID APPLE_KEY_ID=YOUR_KEY_ID APPLE_CLIENT_ID=dev.codepeaktrail.weekpact
+supabase secrets set APPLE_PRIVATE_KEY="$(cat AuthKey_YOUR_KEY_ID.p8)"
+supabase functions deploy apple-token --use-api
+```
+
+Without these secrets `apple-token` answers 503 and deletion still succeeds,
+skipping revocation. Neither function logs codes or tokens.
+
+Deleting an account asks for the password when the account has an `email`
+identity, and for the typed word `DELETE` otherwise.
 
 ## 4. Production app links
 
@@ -245,24 +259,20 @@ The Astro site in [`website/`](website/README.md) includes the product homepage,
 invitation handoff, SEO metadata, and configurable domain settings. See its README
 for deployment and native association setup.
 
-### In-app invitation inbox
+### Crew invite codes
 
-The **Crews** page has **Your crew** and **Invites** tabs. Signed-in users with a
-confirmed email see active invitations sent to that email, including invitations
-sent before they registered. Open a crew to preview its members and pact schedules,
-then accept or decline. No email link or hosted page is needed for this flow.
-
-The inbox refreshes when opened, when returning to Crews or resuming the app, and
-on pull-to-refresh. Expired, revoked, accepted, and declined invitations disappear.
-Declining invalidates the email link; the owner can send a new invitation later.
-The existing one-crew-per-user rule still applies.
-
-Apply `20260910091518_add_received_crew_invites.sql` and rebuild the mobile app.
-The preview RPC exposes only crew membership and pact definitions to the verified
-recipient; normal member-only table access and check-in privacy stay intact.
-Email delivery and token-based acceptance continue to work as before.
+Every crew has one invite link and six-character code (`7K2QXM`: letters and
+digits without 0/O/1/I/L, typed in any case). Any member can read it with
+`crew_invite_code`; it stays the same until the owner calls
+`reset_crew_invite_code`, which stops the old one working. Anyone signed in can
+join with it through `accept_crew_invite`, and `preview_crew_invite` shows the
+crew, inviter, member initials and pacts to anyone holding the code, before they
+have an account. Hex share links made before codes keep working until they
+expire. Address-locked email invites and the Invites inbox were removed with
+`20261020120000_crew_invite_codes.sql`.
 
 ```sh
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invite_codes_database.mjs
 PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_invites_database.mjs
 ```
 
@@ -271,8 +281,8 @@ PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/ind
 Members can choose **Leave crew**. Owners can remove non-owner members using the
 remove icon next to their name. Both actions require confirmation. An owner who
 leaves chooses a replacement from current members; a sole owner must first invite
-another member. Leaving returns to Home. Former members lose crew access and need
-a fresh invitation to rejoin; existing check-in history stays stored.
+another member. Leaving returns to Home. Former members lose crew access; the crew's
+code still works for them until the owner resets it. Existing check-in history stays stored.
 
 Apply `20260910104118_add_crew_membership_actions.sql` and rebuild the mobile app.
 Membership permissions are checked by the database, including owner transfer.
@@ -430,8 +440,9 @@ flutter test test/crew_nudge_test.dart test/crew_nudge_backend_test.dart
 ### General checks
 
 ```sh
-deno test --config supabase/functions/invite-crew-member/deno.json --allow-env supabase/functions/invite-crew-member/ses_test.ts
-deno check --config supabase/functions/invite-crew-member/deno.json supabase/functions/invite-crew-member/index.ts
+(cd supabase/functions/_shared && deno test --allow-env)
+(cd supabase/functions/apple-token && deno test && deno check index.ts)
+(cd supabase/functions/delete-account && deno test && deno check index.ts)
 flutter analyze
 flutter test
 supabase db lint --local --fail-on error

@@ -1,6 +1,6 @@
 import { corsHeaders } from "./cors.ts";
 
-Deno.test("preflight permits every header in a Flutter invite request", () => {
+Deno.test("preflight permits every header in a Flutter request", () => {
   const response = new Response("ok", { headers: corsHeaders() });
   const allowed = response.headers.get("Access-Control-Allow-Headers")!
     .split(",").map((value) => value.trim().toLowerCase());
