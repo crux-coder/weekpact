@@ -5,6 +5,7 @@ import '../auth/account_actions.dart';
 import '../auth/auth_backend.dart';
 import '../auth/auth_page.dart';
 import '../crew/crew_backend.dart';
+import '../home/home_surface.dart';
 import '../invites/invite_code_entry.dart';
 import '../invites/invite_links.dart';
 import '../pacts/pact_icons.dart';
@@ -90,21 +91,40 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   late OnboardingDraft _draft =
       widget.draftStore.read() ?? const OnboardingDraft();
-  late final List<_Screen> _history = [_initialScreen()];
+
+  /// The screens on the flow's navigator, bottom to top. The navigator's
+  /// pages are built from it, so pushing, popping and the iOS edge swipe all
+  /// go through this one list.
+  late final List<_Screen> _history = _initialHistory();
   SignInProvider? _signingIn;
   String? _error;
   bool _notify = true;
 
   _Screen get _screen => _history.last;
 
-  _Screen _initialScreen() {
-    if (widget.invite != null) return _Screen.invite;
-    if (widget.initialError != null || widget.returning) return _Screen.logIn;
+  /// Where the flow opens, with the screens that would have come before it
+  /// underneath, so back (and the swipe) from there goes somewhere sensible.
+  List<_Screen> _initialHistory() {
+    const welcome = _Screen.welcome;
+    if (widget.invite != null) return [welcome, _Screen.invite];
+    if (widget.initialError != null || widget.returning) {
+      return [welcome, _Screen.logIn];
+    }
     // Somebody who closed the app halfway comes back where they were.
-    if (_draft.complete) return _Screen.save;
-    if (_draft.crewName?.trim().isNotEmpty ?? false) return _Screen.pact;
-    return _Screen.welcome;
+    if (_draft.complete) {
+      return [welcome, _Screen.crewName, _Screen.pact, _Screen.save];
+    }
+    if (_draft.crewName?.trim().isNotEmpty ?? false) {
+      return [welcome, _Screen.crewName, _Screen.pact];
+    }
+    return [welcome];
   }
+
+  /// One key per place in the history, so a screen keeps its state while
+  /// others are pushed over it, and a screen replaced at the same depth is a
+  /// new page.
+  ValueKey<String> _pageKey(int depth) =>
+      ValueKey('$depth-${_history[depth].name}');
 
   @override
   void didUpdateWidget(covariant OnboardingFlow oldWidget) {
@@ -126,27 +146,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   });
 
   void _back() {
-    if (_history.length > 1) {
-      setState(() {
-        _error = null;
-        final left = _history.removeLast();
-        if (left == _Screen.invite) widget.onClearInvite();
-      });
-      return;
-    }
-    // The first screen of an invite or of a resumed setup has nothing under
-    // it; back from there is the screen that would have come before.
-    setState(() {
-      final here = _screen;
-      if (here == _Screen.invite) widget.onClearInvite();
-      _history
-        ..clear()
-        ..add(switch (here) {
-          _Screen.pact => _Screen.crewName,
-          _Screen.save => _Screen.pact,
-          _ => _Screen.welcome,
-        });
-    });
+    if (_history.length <= 1) return;
+    setState(_popScreen);
+  }
+
+  void _popScreen() {
+    _error = null;
+    final left = _history.removeLast();
+    if (left == _Screen.invite) widget.onClearInvite();
   }
 
   Future<void> _saveDraft(OnboardingDraft draft) async {
@@ -174,55 +181,73 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   @override
   Widget build(BuildContext context) => PopScope(
+    // Android's back reaches the outer route first; hand it to the flow.
     canPop: _history.length <= 1,
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) _back();
     },
-    child: switch (_screen) {
-      _Screen.welcome => _welcome(context),
-      _Screen.crewName => _CrewNameScreen(
-        initial: _draft.crewName,
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        onCode: () => _go(_Screen.code),
-        onNext: (name) async {
-          await _saveDraft(_draft.copyWith(crewName: name));
-          _go(_Screen.pact);
-        },
-      ),
-      _Screen.pact => _FirstPactScreen(
-        crewName: _draft.crewName ?? 'your crew',
-        draft: _draft,
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        onNext: (title, icon, days) async {
-          await _saveDraft(
-            _draft.copyWith(pactTitle: title, pactIcon: icon, pactDays: days),
-          );
-          _go(_Screen.save);
-        },
-      ),
-      _Screen.save => _save(context),
-      _Screen.code => OnboardingScaffold(
-        onBack: _back,
-        onLogIn: () => _go(_Screen.logIn),
-        eyebrow: 'JOIN A CREW',
-        title: 'Enter your invite code.',
-        subtitle: 'Six letters and numbers, from the invite message or page.',
-        body: [InviteCodeEntry(showTip: true, onInvite: widget.onInvite)],
-      ),
-      _Screen.invite => _invite(context),
-      _Screen.join => _join(context),
-      _Screen.logIn => _logIn(context),
-    },
+    child: Navigator(
+      pages: [
+        for (var depth = 0; depth < _history.length; depth++)
+          MaterialPage<void>(
+            key: _pageKey(depth),
+            child: _screenFor(context, _history[depth]),
+          ),
+      ],
+      // A page the navigator took off itself (the iOS edge swipe) leaves the
+      // history too. Pages this state removed are already gone from it.
+      onDidRemovePage: (page) {
+        if (page.key == _pageKey(_history.length - 1) && _history.length > 1) {
+          setState(_popScreen);
+        }
+      },
+    ),
   );
+
+  Widget _screenFor(BuildContext context, _Screen screen) => switch (screen) {
+    _Screen.welcome => _welcome(context),
+    _Screen.crewName => _CrewNameScreen(
+      initial: _draft.crewName,
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      onCode: () => _go(_Screen.code),
+      onNext: (name) async {
+        await _saveDraft(_draft.copyWith(crewName: name));
+        _go(_Screen.pact);
+      },
+    ),
+    _Screen.pact => _FirstPactScreen(
+      crewName: _draft.crewName ?? 'your crew',
+      draft: _draft,
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      onNext: (title, icon, days) async {
+        await _saveDraft(
+          _draft.copyWith(pactTitle: title, pactIcon: icon, pactDays: days),
+        );
+        _go(_Screen.save);
+      },
+    ),
+    _Screen.save => _save(context),
+    _Screen.code => OnboardingScaffold(
+      onBack: _back,
+      onLogIn: () => _go(_Screen.logIn),
+      eyebrow: 'JOIN A CREW',
+      title: 'Enter your invite code.',
+      subtitle: 'Six letters and numbers, from the invite message or page.',
+      body: [InviteCodeEntry(showTip: true, onInvite: widget.onInvite)],
+    ),
+    _Screen.invite => _invite(context),
+    _Screen.join => _join(context),
+    _Screen.logIn => _logIn(context),
+  };
 
   Widget _welcome(BuildContext context) => OnboardingScaffold(
     title: 'Good habits.\nGreat company.',
     subtitle:
         'Pick one small thing, keep it a few days a week, and do it alongside '
         'your friends.',
-    onLogIn: () => _go(_Screen.logIn),
+    centerBody: true,
     body: const [_WelcomeArt()],
     footer: [
       AppButton(
@@ -244,6 +269,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ),
       const SizedBox(height: 4),
       TextButton(
+        key: const ValueKey('welcome-log-in'),
         onPressed: () => _go(_Screen.logIn),
         style: TextButton.styleFrom(foregroundColor: context.muted),
         child: const Text('Already have an account? Log in'),
@@ -419,7 +445,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       const SizedBox(height: 4),
       TextButton(
         key: const ValueKey('email-log-in'),
-        onPressed: () => Navigator.of(context).push(
+        onPressed: () => Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute<void>(
             builder: (_) => EmailLogInPage(authBackend: widget.authBackend),
           ),
@@ -435,19 +461,166 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
 String _daysLabel(int days) => days >= 7 ? 'every day' : '$days× a week';
 
-/// The front door's picture: a crew's pact card, mid-week.
+/// The front door's picture: three of a crew's pacts, mid-week, fanned like
+/// a hand of cards and drawn the way Home draws them.
 class _WelcomeArt extends StatelessWidget {
   const _WelcomeArt();
 
+  // Back to front; the last is the one on top.
+  static const _hand = [
+    (index: 2, icon: 'book', title: 'Read before bed', done: 4, days: 5),
+    (index: 4, icon: 'yoga', title: 'Stretch for 10 minutes', done: 3, days: 4),
+    (index: 1, icon: 'run', title: 'Morning run', done: 2, days: 3),
+  ];
+  // Turned about the bottom of the hand, the way cards held in one hand
+  // spread: the back two lean out far enough to show their names and badges.
+  static const _angles = [-.13, .13, 0.0];
+  static const _offsets = [Offset(-40, 0), Offset(40, 0), Offset(0, 64)];
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: _SummaryCard(
-      tint: WeekPactColors.pactTint(1),
-      badge: WeekPactColors.pactBadge(1),
-      icon: PactIcon.find('run').data,
-      title: 'Morning run',
-      caption: '3× A WEEK · 2 OF 3 DONE',
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      height: 316,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = 0; i < _hand.length; i++)
+            Transform.translate(
+              offset: _offsets[i],
+              child: Transform.rotate(
+                angle: _angles[i],
+                alignment: const Alignment(0, 1.6),
+                child: _FanCard(
+                  tint: WeekPactColors.pactTint(_hand[i].index),
+                  badge: WeekPactColors.pactBadge(_hand[i].index),
+                  icon: PactIcon.find(_hand[i].icon).data,
+                  title: _hand[i].title,
+                  done: _hand[i].done,
+                  days: _hand[i].days,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Home's pact card at a glance: name, badge, the week's count and its bar.
+class _FanCard extends StatelessWidget {
+  const _FanCard({
+    required this.tint,
+    required this.badge,
+    required this.icon,
+    required this.title,
+    required this.done,
+    required this.days,
+  });
+
+  final Color tint;
+  final Color badge;
+  final List<List<dynamic>> icon;
+  final String title;
+  final int done;
+  final int days;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 236,
+    height: 236,
+    child: HomeSurface(
+      tint: tint,
+      radius: WeekPactMetrics.cardCorner,
+      raised: true,
+      depth: WeekPactMetrics.cardDepth,
+      shape: WeekPactMetrics.pactCardShape,
+      outlineColor: Color.lerp(tint, Colors.black, .28),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    color: homeInk,
+                    fontSize: 21,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              PactIconBadge(icon: icon, tint: badge, size: 44),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$done',
+                style: const TextStyle(
+                  color: homeInk,
+                  fontSize: 52,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '/ $days',
+                style: TextStyle(
+                  color: homeMutedInk,
+                  fontSize: 26,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'days',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: homeMutedInk,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var day = 0; day < days; day++)
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    margin: EdgeInsets.only(right: day == days - 1 ? 0 : 4),
+                    decoration: ShapeDecoration(
+                      color: day < done
+                          ? homeInk
+                          : homeInk.withValues(alpha: .32),
+                      shape: ContinuousRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          WeekPactMetrics.curveFor(6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }

@@ -28,7 +28,9 @@ import 'package:weekpact/src/widgets/app_components.dart';
 Future<void> openLogin(WidgetTester tester) async {
   await tester.pumpUi();
   if (find.byKey(const ValueKey('email-log-in')).evaluate().isEmpty) {
-    await tester.tap(find.text('Log in').first);
+    final logIn = find.byKey(const ValueKey('welcome-log-in'));
+    await tester.ensureVisible(logIn);
+    await tester.tap(logIn);
     await tester.pumpUi();
   }
   await tester.tap(find.byKey(const ValueKey('email-log-in')));

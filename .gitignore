@@ -55,3 +55,7 @@ app.*.map.json
 /supabase/.temp/
 /supabase/functions/.env.local
 /supabase/functions/.env.production
+
+# Signing and API keys live in ~/.config/weekpact, never in the repo.
+*.p8
+/.config/

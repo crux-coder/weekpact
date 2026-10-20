@@ -22,6 +22,7 @@ class OnboardingScaffold extends StatelessWidget {
     required this.body,
     this.footer = const [],
     this.centered = false,
+    this.centerBody = false,
   });
 
   final VoidCallback? onBack;
@@ -38,6 +39,11 @@ class OnboardingScaffold extends StatelessWidget {
 
   /// For the screens that are one thing in the middle of the page.
   final bool centered;
+
+  /// For a picture under the title: the body sits in the middle of whatever
+  /// room the title and the pinned footer leave, rather than right under the
+  /// subtitle. It still scrolls when that room runs out.
+  final bool centerBody;
 
   @override
   Widget build(BuildContext context) {
@@ -77,16 +83,36 @@ class OnboardingScaffold extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 20),
-        ...body,
+        if (centerBody)
+          Expanded(
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: body),
+            ),
+          )
+        else
+          ...body,
       ],
     );
     // The answer scrolls; the way on stays pinned above the keyboard and the
     // home bar, so Continue is never below the fold on a small phone.
-    final scroll = SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.only(top: 26, bottom: 12),
-      child: head,
-    );
+    const scrollPadding = EdgeInsets.only(top: 26, bottom: 12);
+    final scroll = centerBody
+        ? LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: scrollPadding,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - scrollPadding.vertical,
+                ),
+                child: IntrinsicHeight(child: head),
+              ),
+            ),
+          )
+        : SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: scrollPadding,
+            child: head,
+          );
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -97,41 +123,44 @@ class OnboardingScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 48,
-                    child: Row(
-                      children: [
-                        if (onBack != null)
-                          OnboardingBackButton(onPressed: onBack!)
-                        else
-                          const SizedBox(width: 44),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: step != null && steps != null
-                              ? StepPips(step: step!, steps: steps!)
-                              : const SizedBox.shrink(),
-                        ),
-                        const SizedBox(width: 14),
-                        if (onLogIn != null)
-                          TextButton(
-                            onPressed: onLogIn,
-                            style: TextButton.styleFrom(
-                              foregroundColor: context.muted,
-                              minimumSize: const Size(44, 44),
-                            ),
-                            child: const Text(
-                              'Log in',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
+                  // A screen with nothing to go back to, no progress and no
+                  // Log in (the front door) gives the bar's room to its title.
+                  if (onBack != null || step != null || onLogIn != null)
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          if (onBack != null)
+                            OnboardingBackButton(onPressed: onBack!)
+                          else
+                            const SizedBox(width: 44),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: step != null && steps != null
+                                ? StepPips(step: step!, steps: steps!)
+                                : const SizedBox.shrink(),
+                          ),
+                          const SizedBox(width: 14),
+                          if (onLogIn != null)
+                            TextButton(
+                              onPressed: onLogIn,
+                              style: TextButton.styleFrom(
+                                foregroundColor: context.muted,
+                                minimumSize: const Size(44, 44),
                               ),
-                            ),
-                          )
-                        else
-                          const SizedBox(width: 44),
-                      ],
+                              child: const Text(
+                                'Log in',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 44),
+                        ],
+                      ),
                     ),
-                  ),
                   Expanded(child: centered ? Center(child: scroll) : scroll),
                   ...footer,
                 ],

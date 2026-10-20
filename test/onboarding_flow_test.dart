@@ -172,6 +172,32 @@ void main() {
     expect(find.text('Early Risers'), findsOneWidget);
   });
 
+  testWidgets('a pop from the navigator itself (the iOS swipe) goes back', (
+    tester,
+  ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend();
+    final drafts = OnboardingDraftStore.memory();
+    await drafts.save(const OnboardingDraft(crewName: 'Early Risers'));
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(authBackend: auth, onboardingDraftStore: drafts),
+    );
+    await tester.pumpUi();
+    expect(find.text('What will Early Risers keep up first?'), findsOneWidget);
+
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await tester.pumpUi();
+    expect(find.text('Name your crew.'), findsOneWidget);
+
+    // The flow's history followed the pop, so the way on still works.
+    await _tap(tester, find.byKey(const ValueKey('crew-name-continue')));
+    expect(find.text('What will Early Risers keep up first?'), findsOneWidget);
+    await _tap(tester, find.byTooltip('Back'));
+    await _tap(tester, find.byTooltip('Back'));
+    expect(find.text('Good habits.\nGreat company.'), findsOneWidget);
+  });
+
   testWidgets('closing the provider sheet keeps the person on Save', (
     tester,
   ) async {
@@ -211,7 +237,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('welcome-log-in')));
     await _tap(tester, find.byKey(const ValueKey('sign-in-apple')));
 
     expect(find.text('What should the crew call you?'), findsOneWidget);
@@ -309,7 +335,7 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('welcome-log-in')));
     await _tap(tester, find.byKey(const ValueKey('sign-in-google')));
     await auth.signOut();
     await tester.pumpUi();
