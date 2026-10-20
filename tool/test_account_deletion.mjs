@@ -29,7 +29,8 @@ for (const [g,creator] of [[pact,owner],[otherPact,other]]) await db.query("inse
 for (const [g,user] of [[pact,owner],[pact,member],[otherPact,owner],[otherPact,other]]) await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,current_date)',[g,user]);
 await db.query('insert into auth.sessions(id,user_id) values($1,$2)',[session,owner]);
 await db.query("insert into private.push_devices(user_id,session_id,token,platform) values($1,$2,repeat('x',30),'ios')",[owner,session]);
-await db.query("insert into crew_invites(crew_id,email,token_hash,invited_by) values($1,'user0@example.com',repeat('a',64),$2)",[crew,other]);
+await db.query("insert into private.crew_invite_codes(crew_id,code,created_by) values($1,'7K2QXM',$2)",[crew,owner]);
+await db.query("select public.save_apple_refresh_token($1,'apple-refresh')",[owner]);
 let passed = 0;
 async function scenario(fn) { await db.exec('begin'); try { await fn(); passed++; } finally { await db.exec('rollback'); } }
 const count = async(sql,args=[]) => (await db.query(sql,args)).rows.length;
@@ -41,7 +42,9 @@ await scenario(async()=>{
  assert.equal(await count('select * from pact_check_ins where pact_id=$1',[pact]),0);
  assert.equal(await count('select * from pact_check_ins where user_id=$1',[owner]),0);
  assert.equal(await count('select * from pact_check_ins where pact_id=$1 and user_id=$2',[otherPact,other]),1);
- assert.equal(await count('select * from crew_invites'),0);
+ // The crew keeps its code after its creator leaves, and the Apple token goes with the account.
+ assert.deepEqual((await db.query('select code,created_by from private.crew_invite_codes')).rows,[{code:'7K2QXM',created_by:null}]);
+ assert.equal(await count('select * from private.apple_tokens'),0);
  assert.equal(await count('select * from auth.sessions where user_id=$1',[owner]),0);
  assert.equal(await count('select * from private.push_devices where user_id=$1',[owner]),0);
  assert.equal(await count('select * from private.notification_events where actor_id=$1',[owner]),0);
@@ -52,6 +55,7 @@ await scenario(async()=>{
  await db.query('delete from auth.users where id=$1',[owner]);
  assert.equal(await count('select * from crews'),0);
  assert.equal(await count('select * from crew_pacts'),0);
+ assert.equal(await count('select * from private.crew_invite_codes'),0);
 });
 await scenario(async()=>{
  await db.query('delete from auth.users where id=$1',[member]);
@@ -74,6 +78,17 @@ await scenario(async()=>{
  await db.query("select set_config('request.jwt.claim.sub',$1,true)",[owner]);
  await db.exec('set local role authenticated');
  await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('avatars',$1)",[`${owner}/avatar.png`]),e=>e.code==='42501');
+});
+// Apple tokens are reachable only by the service role the edge functions use.
+for (const role of ['authenticated','anon']) for (const sql of ['select public.apple_refresh_token($1)',"select public.save_apple_refresh_token($1,'x')",'select * from private.apple_tokens where user_id=$1']) await scenario(async()=>{
+ await db.query("select set_config('request.jwt.claim.sub',$1,true)",[owner]);
+ await db.exec(`set local role ${role}`);
+ await assert.rejects(db.query(sql,[owner]),e=>e.code==='42501');
+});
+await scenario(async()=>{
+ await db.exec('set local role service_role');
+ await db.query("select public.save_apple_refresh_token($1,'rotated')",[owner]);
+ assert.equal((await db.query('select public.apple_refresh_token($1) t',[owner])).rows[0].t,'rotated');
 });
 await db.close();
 console.log(`${passed} account deletion, ownership, cascade and stale-token scenarios passed.`);
