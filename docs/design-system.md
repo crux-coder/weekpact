@@ -161,9 +161,9 @@ Also 1px outlines, 12px page insets, and 48px primary controls. Preserve scroll 
 ## Transactional email
 
 Two templates carry the system outside the app: `supabase/templates/confirmation.html`
-(the auth confirmation, wired up in `supabase/config.toml`) and
-`supabase/functions/invite-crew-member/template.ts` (the crew invitation). Both
-are the same page: the charcoal canvas, the wordmark above it, and one cream
+(the auth confirmation, now sent only for email changes) and
+`supabase/templates/recovery.html` (password reset for accounts made with email),
+both wired up in `supabase/config.toml`. Both are the same page: the charcoal canvas, the wordmark above it, and one cream
 card holding everything else. Card ink is dark, captions are the same
 uppercase letterspaced eyebrow the app uses, and the display face is
 `'Roboto Condensed','Arial Narrow'` with Roboto for body copy. There is no
@@ -180,9 +180,8 @@ so mint `#8CDCAC` carries `#659E7C`/`#6AA783` and sky `#8AC9EC` carries
 buttons and the icon. No blurred shadows and no background gradients.
 
 The primary action is mint on both, so the button reads the same wherever it
-arrives. An accent panel is for content the reader has to take in — the crew
-name on an invitation, in the Crews sky — not for repeating something they
-already know.
+arrives. An accent panel is for content the reader has to take in, in the
+Crews sky — not for repeating something they already know.
 
 Neither template loads an image, and neither should. Most clients block remote
 images until the reader allows them, so an app icon in the header is absent on

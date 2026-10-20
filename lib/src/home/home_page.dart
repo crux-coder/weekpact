@@ -1,7 +1,10 @@
 import 'photo_check_in_page.dart';
 import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
-import '../onboarding/crew_start_page.dart';
+import '../invites/invite_code_entry.dart';
+import '../invites/invite_links.dart';
+import '../widgets/app_icon.dart';
+import '../widgets/app_sheet.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
 
@@ -45,7 +48,7 @@ class HomePage extends StatefulWidget {
     this.captureCheckInPhoto,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
-    this.onInviteToken,
+    this.onInviteCode,
   });
 
   final AuthUser user;
@@ -53,10 +56,10 @@ class HomePage extends StatefulWidget {
   final CrewBackend crewBackend;
   final String? initialCrewId;
 
-  /// Handed the token from an invite link pasted into the "who are you doing
-  /// this with?" page that an empty Home opens. Null where nobody upstream
-  /// can act on one, in which case that page does not offer the link.
-  final ValueChanged<String>? onInviteToken;
+  /// Handed an invite code typed on Home's empty state or on the Crews tab.
+  /// Null where nobody upstream can act on one, in which case neither offers
+  /// it.
+  final ValueChanged<InviteRef>? onInviteCode;
   final CrewSelectionStore? crewSelectionStore;
 
   /// Which of today's stories this device has already opened. Null keeps them
@@ -180,34 +183,45 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// An account with no crew is asked the same question a new one is, rather
-  /// than being sent straight into the four-step setup: a link somebody
-  /// sent, people to invite, or nobody yet.
-  Future<void> _chooseStart() async {
-    final onInviteToken = widget.onInviteToken;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (routeContext) => CrewStartPage(
-          crewBackend: widget.crewBackend,
-          pactsBackend: widget.pactsBackend,
-          homeBackend: widget.homeBackend,
-          userId: widget.user.id,
-          firstName: widget.user.firstName,
-          captureCheckInPhoto: widget.captureCheckInPhoto,
-          onInviteToken: onInviteToken == null
-              ? null
-              : (token) {
-                  Navigator.of(routeContext).pop();
-                  onInviteToken(token);
-                },
-          onDone: () => Navigator.of(routeContext).pop(),
+  /// Somebody with no crew who was given a code: the code goes to whoever
+  /// owns the invite flow, which shows the crew before anyone joins it.
+  Future<void> _joinWithCode() async {
+    final onCode = widget.onInviteCode;
+    if (onCode == null) {
+      _selectDestination(2);
+      return;
+    }
+    final invite = await showAppSheet<InviteRef>(
+      context: context,
+      builder: (sheetContext) => AppSheet(
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Join with a code',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InviteCodeEntry(
+              onInvite: (invite) => Navigator.pop(context, invite),
+            ),
+          ],
         ),
       ),
     );
-    if (mounted) {
-      setState(() => _homeRevision++);
-      _selectDestination(0);
-    }
+    if (invite != null && mounted) onCode(invite);
   }
 
   Future<void> _signOut() async {
@@ -251,8 +265,8 @@ class _HomePageState extends State<HomePage> {
             captureCheckInPhoto: widget.captureCheckInPhoto,
             active: _selectedIndex == 0,
             onStartCrew: _startCrew,
-            onChooseStart: _chooseStart,
-            onOpenCrews: () => _selectDestination(2),
+            onChooseStart: _startCrew,
+            onOpenCrews: _joinWithCode,
             onOpenPacts: () => _selectDestination(1),
           ),
           PactsPage(
@@ -266,7 +280,7 @@ class _HomePageState extends State<HomePage> {
           ),
           CrewPage(
             active: _selectedIndex == 2,
-            onInviteAccepted: () => _selectDestination(0),
+            onInviteCode: widget.onInviteCode,
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
             backend: widget.crewBackend,
@@ -768,7 +782,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         TextButton(
                                           onPressed: widget.onOpenCrews,
                                           child: const Text(
-                                            'Already invited? View invitations',
+                                            'Have an invite code? Join a crew',
                                           ),
                                         ),
                                       ],

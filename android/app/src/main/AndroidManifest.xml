@@ -41,6 +41,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="weekpact" android:host="invite" />
             </intent-filter>
+            <!-- The invite page itself, so a link tapped after installing opens
+                 the app. Verified against the site's assetlinks.json. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="weekpact.codepeaktrail.dev" android:pathPrefix="/invite" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

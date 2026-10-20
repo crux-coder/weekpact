@@ -32,12 +32,12 @@ await asUser(owner, async () => {
 await asUser(outsider, () => db.query("insert into crews(id,name,owner_id) values($1,'Private crew',$2)", [third, outsider]));
 const tokens = await asUser(owner, async () => {
   const tokens = [];
-  for (const crew of [first,second]) tokens.push((await db.query("select manage_crew_share_link($1,'create') as link", [crew])).rows[0].link.token);
+  for (const crew of [first,second]) tokens.push((await db.query('select crew_invite_code($1) as code', [crew])).rows[0].code);
   return tokens;
 });
 await asUser(member, async () => {
   for (const token of tokens) await db.query('select accept_crew_invite($1)', [token]);
-  // Reusing a valid share link leaves the existing membership untouched.
+  // Reusing a valid code leaves the existing membership untouched.
   await db.query('select accept_crew_invite($1)', [tokens[0]]);
   assert.deepEqual(await memberships(member), [{crew_id:first,role:'member'}, {crew_id:second,role:'member'}]);
   assert.deepEqual((await db.query('select id from crews order by id')).rows.map(r=>r.id), [first,second]);
@@ -46,7 +46,7 @@ await asUser(member, async () => {
   await db.query("insert into crews(id,name,owner_id) values($1,'My own crew',$2)", [id(14),member]);
   assert.equal((await memberships(member)).length,3);
 });
-await assert.rejects(asUser(member, () => db.query("select manage_crew_share_link($1,'create')", [second])), /Crew owner required/);
+await assert.rejects(asUser(member, () => db.query('select reset_crew_invite_code($1)', [second])), /Crew owner required/);
 await asUser(owner, async () => {
   await db.query('select accept_crew_invite($1)', [tokens[0]]);
   assert.equal((await memberships(owner))[0].role,'owner');

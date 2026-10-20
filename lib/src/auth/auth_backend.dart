@@ -1,6 +1,25 @@
-import 'dart:typed_data';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Where a person is in onboarding, as public.users.onboarding_step stores it.
+/// `profile` is an account whose name is still missing (Apple can withhold
+/// it), `crew` an account from the old flow that never answered the crew
+/// question, and `done` everyone who has been through the setup.
+enum OnboardingStep {
+  profile,
+  crew,
+  done;
+
+  static OnboardingStep parse(Object? value) =>
+      values.firstWhere((step) => step.name == value, orElse: () => profile);
+}
 
 class AuthUser {
   const AuthUser({
@@ -9,15 +28,28 @@ class AuthUser {
     this.firstName = '',
     this.lastName = '',
     this.avatarPath,
-    this.onboardingCompleted = false,
+    this.onboardingStep = OnboardingStep.profile,
     this.passwordRecoveryRequired = false,
+    this.profileLoaded = true,
+    this.hasPassword = true,
   });
+
+  /// Whether the account signs in with an email and password. Apple and
+  /// Google accounts have no password to confirm a deletion with.
+  final bool hasPassword;
 
   final String firstName;
   final String lastName;
   final String? avatarPath;
-  final bool onboardingCompleted;
+  final OnboardingStep onboardingStep;
+
+  /// Whether the profile form is behind them, whatever comes next.
+  bool get profileCompleted => onboardingStep != OnboardingStep.profile;
   final bool passwordRecoveryRequired;
+
+  /// False while the profile row is still on its way. Until it arrives the
+  /// name and onboarding fields are unknown, not empty.
+  final bool profileLoaded;
 
   final String id;
 
@@ -32,33 +64,54 @@ const inviteRedirectBase = String.fromEnvironment(
   defaultValue: 'weekpact://invite',
 );
 
-enum SignUpResult {
-  signedIn,
-  emailConfirmationRequired,
-  emailAlreadyRegistered,
-}
+/// The OAuth client Supabase verifies Google ID tokens against. Android asks
+/// Google for a token on its behalf, so it has to be the web client.
+const googleWebClientId = String.fromEnvironment(
+  'GOOGLE_WEB_CLIENT_ID',
+  defaultValue: '705377133061-bu9bmehie9rnr19893854eoetlkr9p9o.apps.googleusercontent.com',
+);
+
+/// The iOS OAuth client. It must match GIDClientID and the reversed URL scheme
+/// in ios/Runner/Info.plist.
+const googleIosClientId = String.fromEnvironment(
+  'GOOGLE_IOS_CLIENT_ID',
+  defaultValue: '705377133061-ls6gpj0ssehgbvhbcgbif5gt5gd3qtqc.apps.googleusercontent.com',
+);
+
+/// The ways to make or open an account. Email and password is only for
+/// accounts made before it was retired, so it is not one of these.
+enum SignInProvider { apple, google }
 
 abstract interface class AuthBackend {
   AuthUser? get currentUser;
   Stream<AuthUser?> get authStateChanges;
 
+  /// The providers this device can offer, in the order they are shown. Apple
+  /// is offered on iOS only.
+  List<SignInProvider> get signInProviders;
+
+  /// Signs in with [provider], making the account on first use. Returns false
+  /// when the person closes the provider's sheet without choosing.
+  Future<bool> signInWith(SignInProvider provider);
+
   Future<void> signIn({required String email, required String password});
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? emailRedirectTo,
-  });
   Future<AuthUser> completeOnboarding({
     required String firstName,
     required String lastName,
     Uint8List? avatar,
   });
+
+  /// Records that the signed-in account has reached [step].
+  Future<void> advanceOnboarding(OnboardingStep step);
   Future<Uint8List?> loadAvatar();
   Future<void> signOut();
   Future<void> requestPasswordReset(String email);
   Future<void> resendConfirmation(String email, {String? emailRedirectTo});
   Future<void> updatePassword(String password);
-  Future<void> deleteAccount(String password);
+
+  /// Deletes the account. Email accounts confirm with their [password];
+  /// Apple and Google accounts, which have none, confirm by typing DELETE.
+  Future<void> deleteAccount({String? password});
 }
 
 class SupabaseAuthBackend implements AuthBackend {
@@ -75,6 +128,15 @@ class SupabaseAuthBackend implements AuthBackend {
     );
   }
   bool _recovering = false;
+
+  /// The signed-in account's row in public.users, fetched once per account.
+  /// Every auth event for the same account reuses it; only a different
+  /// account, or a saved profile, replaces it.
+  String? _profileUserId;
+  Future<Map<String, dynamic>?>? _profileLoad;
+  Map<String, dynamic>? _profile;
+  bool _profileReady = false;
+
   Future<void> Function()? beforeSignOut;
   void Function()? afterSignOutAttempt;
 
@@ -85,11 +147,59 @@ class SupabaseAuthBackend implements AuthBackend {
 
   @override
   Stream<AuthUser?> get authStateChanges =>
-      _client.auth.onAuthStateChange.map((event) {
+      _client.auth.onAuthStateChange.asyncMap((event) async {
         if (event.event == AuthChangeEvent.passwordRecovery) _recovering = true;
-        if (event.event == AuthChangeEvent.signedOut) _recovering = false;
-        return _mapUser(event.session?.user);
+        if (event.event == AuthChangeEvent.signedOut) {
+          _recovering = false;
+          // The next sign-in, even by the same account, reads a fresh row.
+          _profileUserId = null;
+          _profileLoad = null;
+          _profileReady = false;
+          _profile = null;
+        }
+        final user = event.session?.user;
+        if (user != null) await _loadProfile(user.id);
+        return _mapUser(user);
       });
+
+  /// Fetches the restored session's profile before the first frame, so a
+  /// returning account opens on Home rather than a loading screen. A failure
+  /// here is left for the auth stream to retry and report.
+  Future<void> restoreProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _loadProfile(user.id);
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>?> _loadProfile(String userId) {
+    if (_profileUserId == userId && _profileLoad != null) {
+      return _profileLoad!;
+    }
+    _profileUserId = userId;
+    _profileReady = false;
+    _profile = null;
+    final load = _client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle()
+        .then((row) {
+          if (_profileUserId == userId) {
+            _profile = row;
+            _profileReady = true;
+          }
+          return row;
+        });
+    _profileLoad = load;
+    // A failed fetch is not remembered, so the next auth event asks again.
+    load.catchError((Object _) {
+      if (_profileLoad == load) _profileLoad = null;
+      return null;
+    });
+    return load;
+  }
 
   @override
   Future<void> signIn({required String email, required String password}) async {
@@ -97,25 +207,183 @@ class SupabaseAuthBackend implements AuthBackend {
   }
 
   @override
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? emailRedirectTo,
-  }) async {
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      emailRedirectTo: emailRedirectTo,
-    );
-    if (response.session != null) return SignUpResult.signedIn;
-    // With confirmations on, Supabase answers a sign-up for an address it
-    // already holds exactly as it answers a new one, except that the user it
-    // hands back carries no identities. Without that check the person is told
-    // to go and confirm an email nobody is going to send.
-    if (response.user?.identities?.isEmpty ?? false) {
-      return SignUpResult.emailAlreadyRegistered;
+  List<SignInProvider> get signInProviders => [
+    if (!kIsWeb && Platform.isIOS) SignInProvider.apple,
+    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid))
+      SignInProvider.google,
+  ];
+
+  @override
+  Future<bool> signInWith(SignInProvider provider) => switch (provider) {
+    SignInProvider.apple => _signInWithApple(),
+    SignInProvider.google => _signInWithGoogle(),
+  };
+
+  Future<bool> _signInWithApple() async {
+    // Apple signs a hash of the nonce into its token; Supabase is handed the
+    // raw value and checks the two agree, so a token cannot be replayed.
+    final rawNonce = _client.auth.generateRawNonce();
+    final AuthorizationCredentialAppleID credential;
+    try {
+      credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: sha256.convert(utf8.encode(rawNonce)).toString(),
+      );
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) return false;
+      rethrow;
     }
-    return SignUpResult.emailConfirmationRequired;
+    final idToken = credential.identityToken;
+    if (idToken == null) {
+      throw StateError('Apple did not return a sign-in token. Try again.');
+    }
+    final response = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.apple,
+      idToken: idToken,
+      nonce: rawNonce,
+    );
+    final user = response.user;
+    if (user == null) return true;
+    // Apple hands the name over on the very first sign-in only, and never
+    // puts it in the token, so it is saved now or not at all.
+    await _saveProviderName(
+      user.id,
+      first: credential.givenName,
+      last: credential.familyName,
+    );
+    // The authorization code is what lets the server revoke Apple's token
+    // when the account is deleted. It expires in minutes, so it goes now;
+    // a failure only costs that revocation, not the sign-in.
+    final code = credential.authorizationCode;
+    unawaited(
+      _client.functions
+          .invoke('apple-token', body: {'authorizationCode': code})
+          .then<void>((_) {}, onError: (Object _) {}),
+    );
+    return true;
+  }
+
+  bool _googleReady = false;
+
+  Future<bool> _signInWithGoogle() async {
+    final google = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await google.initialize(
+        clientId: !kIsWeb && Platform.isIOS ? googleIosClientId : null,
+        serverClientId: googleWebClientId,
+      );
+      _googleReady = true;
+    }
+    final GoogleSignInAccount account;
+    try {
+      account = await google.authenticate(scopeHint: const ['email']);
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled ||
+          error.code == GoogleSignInExceptionCode.interrupted) {
+        return false;
+      }
+      rethrow;
+    }
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw StateError('Google did not return a sign-in token. Try again.');
+    }
+    final response = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+    );
+    final user = response.user;
+    if (user != null) {
+      await _saveProviderName(
+        user.id,
+        first: _metadataString(user, const ['given_name']),
+        last: _metadataString(user, const ['family_name']),
+        full: _metadataString(user, const ['full_name', 'name']),
+      );
+      unawaited(_copyProviderPhoto(user).catchError((Object _) {}));
+    }
+    return true;
+  }
+
+  static String? _metadataString(User user, List<String> keys) {
+    for (final key in keys) {
+      final value = user.userMetadata?[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
+
+  /// Fills an empty profile name from what the provider said. A name the
+  /// person has already set, here or in an earlier sign-in, is never replaced.
+  Future<void> _saveProviderName(
+    String userId, {
+    String? first,
+    String? last,
+    String? full,
+  }) async {
+    var given = first?.trim() ?? '';
+    var family = last?.trim() ?? '';
+    if (given.isEmpty && full != null) {
+      final parts = full.trim().split(RegExp(r'\s+'));
+      given = parts.first;
+      if (family.isEmpty && parts.length > 1) {
+        family = parts.skip(1).join(' ');
+      }
+    }
+    if (given.isEmpty) return;
+    final profile = await _loadProfile(userId);
+    final saved = profile?['first_name'];
+    if (saved is String && saved.trim().isNotEmpty) return;
+    await _saveProfile(userId, {
+      'first_name': _clip(given),
+      'last_name': _clip(family),
+    });
+    // The auth stream already reported this account, nameless. Touching the
+    // user's metadata makes it report again, now with the saved name, so the
+    // name screen is not asked for a name that has just arrived.
+    await _client.auth
+        .updateUser(UserAttributes(data: {'given_name': _clip(given)}))
+        .then<void>((_) {}, onError: (Object _) {});
+  }
+
+  static String _clip(String value) =>
+      value.length > 60 ? value.substring(0, 60) : value;
+
+  /// Google's profile picture becomes the avatar when the account has none,
+  /// so a new arrival is a face to the crew without being asked for one.
+  Future<void> _copyProviderPhoto(User user) async {
+    final picture = _metadataString(user, const ['avatar_url', 'picture']);
+    if (picture == null) return;
+    final profile = await _loadProfile(user.id);
+    if (profile?['avatar_path'] is String) return;
+    // Google serves a 96px thumbnail by default; ask for one worth showing.
+    final uri = Uri.parse(picture.replaceFirst(RegExp(r'=s\d+-c$'), '=s400-c'));
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode != 200) return;
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) return;
+      final path = '${user.id}/avatar.png';
+      await _client.storage
+          .from('avatars')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(
+              contentType:
+                  response.headers.contentType?.mimeType ?? 'image/jpeg',
+              upsert: true,
+            ),
+          );
+      await _saveProfile(user.id, {'avatar_path': path});
+    } finally {
+      client.close();
+    }
   }
 
   @override
@@ -123,6 +391,11 @@ class SupabaseAuthBackend implements AuthBackend {
     await beforeSignOut?.call();
     try {
       await _client.auth.signOut();
+      // Without this Google quietly reuses the last account next time, and
+      // somebody signing in as someone else is never asked which.
+      if (_googleReady) {
+        await GoogleSignIn.instance.signOut().catchError((Object _) {});
+      }
     } finally {
       afterSignOutAttempt?.call();
     }
@@ -161,17 +434,36 @@ class SupabaseAuthBackend implements AuthBackend {
             ),
           );
     }
-    final result = await _client.auth.updateUser(
-      UserAttributes(
-        data: {
-          'first_name': first,
-          'last_name': last,
-          'avatar_path': path,
-          'onboarding_completed': true,
-        },
-      ),
-    );
-    return _mapUser(result.user)!;
+    // The same form edits the profile later, from Account; only the first
+    // save moves onboarding on.
+    final firstSave = !(currentUser?.profileCompleted ?? false);
+    await _saveProfile(user.id, {
+      'first_name': first,
+      'last_name': last,
+      'avatar_path': path,
+      if (firstSave) 'onboarding_step': OnboardingStep.crew.name,
+    });
+    return _mapUser(user)!;
+  }
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Sign in before continuing.');
+    await _saveProfile(user.id, {'onboarding_step': step.name});
+  }
+
+  Future<void> _saveProfile(String userId, Map<String, Object?> fields) async {
+    final row = await _client
+        .from('users')
+        .update(fields)
+        .eq('id', userId)
+        .select()
+        .single();
+    _profileUserId = userId;
+    _profileLoad = Future.value(row);
+    _profile = row;
+    _profileReady = true;
   }
 
   @override
@@ -198,7 +490,7 @@ class SupabaseAuthBackend implements AuthBackend {
   }
 
   @override
-  Future<void> deleteAccount(String password) async {
+  Future<void> deleteAccount({String? password}) async {
     final session = _client.auth.currentSession;
     if (session == null) {
       throw StateError('Sign in before deleting your account.');
@@ -211,7 +503,7 @@ class SupabaseAuthBackend implements AuthBackend {
       } catch (_) {}
       await _client.functions.invoke(
         'delete-account',
-        body: {'password': password},
+        body: password == null ? {'confirm': 'DELETE'} : {'password': password},
         headers: {'Authorization': 'Bearer ${session.accessToken}'},
       );
       // The server has deleted the account and its sessions. Clear this device.
@@ -232,7 +524,8 @@ class SupabaseAuthBackend implements AuthBackend {
 
   AuthUser? _mapUser(User? user) {
     if (user == null) return null;
-    final data = user.userMetadata ?? {};
+    final ready = _profileReady && _profileUserId == user.id;
+    final data = ready ? _profile ?? const {} : const <String, dynamic>{};
     final first = data['first_name'] is String
         ? (data['first_name'] as String).trim()
         : '';
@@ -248,9 +541,16 @@ class SupabaseAuthBackend implements AuthBackend {
       firstName: first,
       lastName: last,
       avatarPath: avatar,
-      onboardingCompleted:
-          data['onboarding_completed'] == true && first.isNotEmpty,
+      // A profile without a first name has not left the form, whatever the
+      // row says.
+      onboardingStep: first.isEmpty
+          ? OnboardingStep.profile
+          : OnboardingStep.parse(data['onboarding_step']),
       passwordRecoveryRequired: _recovering,
+      hasPassword:
+          user.identities?.any((identity) => identity.provider == 'email') ??
+          user.appMetadata['provider'] == 'email',
+      profileLoaded: ready,
     );
   }
 }
@@ -274,13 +574,11 @@ class MissingConfigurationAuthBackend implements AuthBackend {
   }
 
   @override
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? emailRedirectTo,
-  }) {
-    throw StateError(_message);
-  }
+  List<SignInProvider> get signInProviders => const [];
+
+  @override
+  Future<bool> signInWith(SignInProvider provider) =>
+      throw StateError(_message);
 
   @override
   Future<void> requestPasswordReset(String email) async =>
@@ -294,7 +592,7 @@ class MissingConfigurationAuthBackend implements AuthBackend {
   Future<void> updatePassword(String password) async =>
       throw StateError(_message);
   @override
-  Future<void> deleteAccount(String password) async =>
+  Future<void> deleteAccount({String? password}) async =>
       throw StateError(_message);
 
   @override
@@ -302,6 +600,10 @@ class MissingConfigurationAuthBackend implements AuthBackend {
 
   @override
   Future<Uint8List?> loadAvatar() async => null;
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async =>
+      throw StateError(_message);
 
   @override
   Future<AuthUser> completeOnboarding({

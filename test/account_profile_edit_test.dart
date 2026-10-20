@@ -15,7 +15,7 @@ void main() {
   testWidgets('profile editor validates and updates the account header', (
     tester,
   ) async {
-    final backend = FakeAuthBackend();
+    final backend = FakeAuthBackend(firstName: '');
     addTearDown(backend.dispose);
     await backend.signIn(email: 'jasmin@example.com', password: 'password');
     await tester.pumpWidget(

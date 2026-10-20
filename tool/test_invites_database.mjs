@@ -1,38 +1,18 @@
-import { notificationTestSchema } from './notification_test_schema.mjs';
-import { storageTestSchema } from './storage_test_schema.mjs';
+// Legacy seven-day share links and the removal of address-locked email invites.
+// Crew invite codes have their own script, test_invite_codes_database.mjs.
 // PGLITE_MODULE may point to a local @electric-sql/pglite installation.
-import { readFile, readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const { PGlite } = await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
-const db = new PGlite();
+import { createTestDatabase } from './database_test_schema.mjs';
+const db = await createTestDatabase();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const [owner, recipient, outsider, unverified, otherOwner] = [1,2,3,4,5].map(id);
-const crew = id(11), otherCrew = id(12), invite = id(21), expired = id(22), otherInvite = id(23);
-const rawToken = 'a'.repeat(64);
-await db.exec(`
-  create role anon; create role authenticated; create role service_role;
-  create schema auth; create schema extensions;
-  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
-  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to authenticated;
-  grant execute on function auth.uid() to authenticated;
-  create function extensions.digest(value text, algorithm text) returns bytea language sql as $$ select sha256(convert_to(value, 'UTF8')) $$;
-`);
-await db.exec(storageTestSchema);
-await db.exec(notificationTestSchema);
-const directory = new URL('../supabase/migrations/', import.meta.url);
-for (const file of (await readdir(directory)).filter(f => f.endsWith('.sql')).sort()) {
-  await db.exec((await readFile(new URL(file, directory), 'utf8')).replace('create extension if not exists pgcrypto with schema extensions;', ''));
-}
-for (const [user, email, confirmed] of [[owner,'owner@example.com',true],[recipient,'Member@Example.com',true],[outsider,'outsider@example.com',true],[unverified,'unverified@example.com',false],[otherOwner,'other@example.com',true]]) {
+const [owner, recipient, outsider, unverified] = [1,2,3,4].map(id);
+const crew = id(11), otherCrew = id(12);
+for (const [user, email, confirmed] of [[owner,'owner@example.com',true],[recipient,'Member@Example.com',true],[outsider,'outsider@example.com',true],[unverified,'unverified@example.com',false]]) {
   await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,case when $3 then now() else null end)', [user,email,confirmed]);
 }
-await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2),($3,'Other Crew',$4)", [crew,owner,otherCrew,otherOwner]);
+await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2),($3,'Other Crew',$4)", [crew,owner,otherCrew,outsider]);
+await db.query("update public.users set first_name='Ada',last_name='Lovelace' where id=$1", [owner]);
 await db.query("insert into crew_pacts(crew_id,title,frequency,days_per_week,created_by) values($1,'Morning walk','weekly',3,$2)", [crew,owner]);
-await db.query("insert into crew_invites(id,crew_id,email,token_hash,invited_by) values($1,$2,'member@example.com',encode(extensions.digest($3,'sha256'),'hex'),$4),($5,$6,'outsider@example.com',repeat('b',64),$7)", [invite,crew,rawToken,owner,otherInvite,otherCrew,otherOwner]);
-await db.query("insert into crew_invites(id,crew_id,email,token_hash,invited_by,created_at,expires_at) values($1,$2,'member@example.com',repeat('c',64),$3,now()-interval '8 days',now()-interval '1 day')", [expired,otherCrew,otherOwner]);
-const inbox = async () => (await db.query('select public.received_crew_invites() as data')).rows[0].data;
-const respond = (invitation, accept) => db.query('select public.respond_to_crew_invite($1,$2)', [invitation,accept]);
 let passed = 0;
 async function asUser(user, fn, role='authenticated') {
   await db.exec('begin');
@@ -43,90 +23,51 @@ async function asUser(user, fn, role='authenticated') {
     passed++;
   } finally { await db.exec('rollback'); }
 }
-await asUser(recipient, async () => {
-  const rows = await inbox();
-  assert.equal(rows.length,1);
-  assert.equal(rows[0].id,invite);
-  assert.equal(rows[0].name,'Early Birds');
-  assert.equal(rows[0].members[0].email,'owner@example.com');
-  assert.equal(rows[0].pacts[0].title,'Morning walk');
-  assert.equal(rows[0].pacts[0].days_per_week,3);
-  assert.ok(!JSON.stringify(rows).includes('token_hash'));
-  // Preview access does not grant normal member data access.
-  for (const table of ['crews','crew_members','crew_pacts','crew_invites']) {
-    assert.equal((await db.query(`select * from ${table}`)).rows.length,0);
-  }
-});
-await asUser(outsider, async () => assert.equal((await inbox())[0].id, otherInvite));
-await asUser(owner, async () => assert.equal((await inbox()).length,0));
-await asUser(unverified, async () => assert.rejects(inbox(), /Confirm your email/));
-await asUser('', async () => assert.rejects(inbox(), /signed in/));
-await asUser('', async () => assert.rejects(inbox(), e => e.code === '42501'), 'anon');
-for (const accept of [true,false]) {
-  await asUser(outsider, async () => assert.rejects(respond(invite,accept), /no longer available/));
-  await asUser(unverified, async () => assert.rejects(respond(invite,accept), /Confirm your email/));
-  await asUser(recipient, async () => assert.rejects(respond(expired,accept), /no longer available/));
-  await asUser(recipient, async () => assert.rejects(respond(id(999),accept), /no longer available/));
-}
-await asUser(recipient, async () => {
-  await respond(invite,true);
-  assert.equal((await inbox()).length,0);
-  const membership = (await db.query('select * from crew_members where user_id=$1',[recipient])).rows[0];
-  assert.equal(membership.crew_id,crew);
-  assert.equal(membership.role,'member');
-  assert.equal(membership.email,'member@example.com');
-});
-await asUser(recipient, async () => {
-  await respond(invite,true);
-  await assert.rejects(respond(invite,true), /no longer available/);
-});
-await asUser(recipient, async () => {
-  await respond(invite,false);
-  assert.equal((await inbox()).length,0);
-  assert.equal((await db.query('select * from crew_members where user_id=$1',[recipient])).rows.length,0);
-  await assert.rejects(db.query('select accept_crew_invite($1)',[rawToken]), /invalid or has already been used/);
-});
-await asUser(recipient, async () => {
-  await db.query('select accept_crew_invite($1)',[rawToken]);
-  assert.equal((await inbox()).length,0);
-});
-// The acceptance screen names the crew before anyone has joined it.
-await db.query(`update auth.users set raw_user_meta_data='{"first_name":"Ada","last_name":"Lovelace"}' where id=$1`, [owner]);
+// Email invites and their inbox are gone from the API and the schema.
+const gone = (await db.query(`select
+  to_regclass('public.crew_invites')::text invites,
+  to_regprocedure('public.received_crew_invites()')::text inbox,
+  to_regprocedure('public.respond_to_crew_invite(uuid,boolean)')::text respond,
+  to_regprocedure('private.accept_email_crew_invite(text)')::text email_accept,
+  to_regprocedure('private.accept_any_crew_invite(text)')::text any_accept`)).rows[0];
+assert.deepEqual(gone, {invites:null, inbox:null, respond:null, email_accept:null, any_accept:null});
+// Share links made before codes keep working until they expire.
 const shareToken = 'd'.repeat(64), expiredShare = 'e'.repeat(64);
 for (const [token, life] of [[shareToken, "interval '7 days'"], [expiredShare, "-interval '1 second'"]]) {
   await db.query(`insert into private.crew_share_links(crew_id,token_hash,created_by,expires_at) values($1,encode(extensions.digest($2,'sha256'),'hex'),$3,now()+${life})`, [crew, token, owner]);
 }
-const expiredEmailToken = 'f'.repeat(64);
-await db.query("update crew_invites set token_hash=encode(extensions.digest($1,'sha256'),'hex') where id=$2", [expiredEmailToken, expired]);
 const preview = token => db.query('select public.preview_crew_invite($1) as data', [token]).then(r => r.rows[0].data);
-await asUser(outsider, async () => {
-  const shared = await preview(shareToken);
-  assert.deepEqual(shared, {crew_name:'Early Birds', member_count:1, owner_name:'Ada Lovelace'});
-  // Email tokens preview the same way, and neither kind says anything more.
-  assert.equal((await preview(rawToken)).crew_name, 'Early Birds');
-  for (const unusable of [expiredShare, expiredEmailToken, '0'.repeat(64), 'not-a-token', null]) {
-    assert.equal(await preview(unusable), null, `${unusable} previews nothing`);
-  }
+const accept = token => db.query('select public.accept_crew_invite($1) as crew', [token]).then(r => r.rows[0].crew);
+for (const role of ['authenticated', 'anon']) {
+  await asUser(role === 'anon' ? '' : outsider, async () => {
+    const shared = await preview(shareToken);
+    assert.equal(shared.crew_name, 'Early Birds');
+    assert.equal(shared.owner_name, 'Ada Lovelace');
+    assert.equal(shared.inviter_name, 'Ada Lovelace');
+    assert.deepEqual(shared.pacts, [{title:'Morning walk', icon_key:'target', days_per_week:3}]);
+    assert.equal(shared.is_member, false);
+    for (const unusable of [expiredShare, '0'.repeat(64), 'D'.repeat(64), 'not-a-token', '', null]) {
+      assert.equal(await preview(unusable), null, `${unusable} previews nothing`);
+    }
+  }, role);
+}
+await asUser(owner, async () => assert.equal((await preview(shareToken)).is_member, true));
+await asUser(recipient, async () => {
+  assert.equal(await accept(shareToken), crew);
+  assert.equal(await accept(shareToken), crew, 'accepting twice is harmless');
+  const membership = (await db.query('select * from crew_members where user_id=$1', [recipient])).rows;
+  assert.equal(membership.length, 1);
+  assert.equal(membership[0].role, 'member');
+  assert.equal(membership[0].email, 'member@example.com');
 });
-await asUser('', async () => assert.rejects(preview(shareToken), /Sign in to view this invite/));
-await asUser('', async () => assert.rejects(preview(shareToken), e => e.code === '42501'), 'anon');
-// Free accounts stop at one crew, so the users below hold Pro for the rest of the script.
-async function grantPro(user) {
-  await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year') on conflict (user_id) do update set active=true, expires_at=excluded.expires_at", [user]);
-}
-await grantPro(recipient);
-// Existing members can join another crew through either email tokens or the inbox.
-await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,'member@example.com','member')",[otherCrew,recipient]);
-for (const join of [() => respond(invite,true), () => db.query('select accept_crew_invite($1)',[rawToken])]) {
-  await asUser(recipient, async () => {
-    await join();
-    assert.deepEqual((await db.query('select crew_id from crew_members where user_id=$1 order by crew_id',[recipient])).rows.map(r=>r.crew_id),[crew,otherCrew]);
-  });
-}
-await asUser(recipient, async () => { await respond(invite,false); assert.equal((await inbox()).length,0); });
-// Owner revocation takes effect immediately, including already-open previews.
-await db.query('delete from crew_invites where id=$1',[invite]);
-await asUser(recipient, async () => assert.equal((await inbox()).length,0));
-await asUser(recipient, async () => assert.rejects(respond(invite,true), /no longer available/));
-console.log(`${passed} invite inbox, preview, response and access-control scenarios passed.`);
+await asUser(recipient, async () => assert.rejects(accept(expiredShare), /expired/));
+await asUser(recipient, async () => assert.rejects(accept('0'.repeat(64)), /no longer valid/));
+await asUser(unverified, async () => assert.rejects(accept(shareToken), /Confirm your email/));
+await asUser('', async () => assert.rejects(accept(shareToken), /Sign in/));
+await asUser('', async () => assert.rejects(accept(shareToken), e => e.code === '42501'), 'anon');
+// One crew without Pro: the outsider owns one already, so joining a second through a link is refused with WPPRO.
+await asUser(outsider, async () => assert.rejects(accept(shareToken), e => e.code === 'WPPRO'));
+await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year')", [outsider]);
+await asUser(outsider, async () => assert.equal(await accept(shareToken), crew));
+console.log(`${passed} legacy share link, email-invite removal and access-control scenarios passed.`);
 await db.close();

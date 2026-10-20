@@ -10,7 +10,8 @@ import '../widgets/app_icon.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
-import 'crew_invites_pane.dart';
+import '../invites/invite_code_entry.dart';
+import '../invites/invite_links.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_sheet.dart';
@@ -31,7 +32,7 @@ class CrewPage extends StatefulWidget {
     this.active = true,
     this.selectedCrewId,
     this.onCrewSelected,
-    this.onInviteAccepted,
+    this.onInviteCode,
     this.onCrewLeft,
     this.onCrewCreated,
   });
@@ -42,7 +43,10 @@ class CrewPage extends StatefulWidget {
   final bool active;
   final CrewBackend backend;
   final String currentUserEmail;
-  final VoidCallback? onInviteAccepted;
+
+  /// Handed a code typed into "Join with a code". Whoever owns the invite
+  /// flow takes it from there; null hides the button.
+  final ValueChanged<InviteRef>? onInviteCode;
   final VoidCallback? onCrewLeft;
   final ValueChanged<CrewDetails>? onCrewCreated;
 
@@ -51,9 +55,6 @@ class CrewPage extends StatefulWidget {
 }
 
 class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
-  bool _invitesOpen = false;
-  int _receivedInviteCount = 0;
-  final _invitesKey = GlobalKey<CrewInvitesPaneState>();
   final _crewNameController = TextEditingController();
   final _createFormKey = GlobalKey<FormState>();
 
@@ -87,7 +88,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadCrew();
-    _loadInviteCount();
   }
 
   @override
@@ -463,7 +463,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     if (crew == null || !crew.isOwner) return;
     await showAppSheet<void>(
       context: context,
-      builder: (context) => _InviteDrawer(crew: crew, backend: widget.backend),
+      builder: (context) => _InviteDrawer(
+        crew: crew,
+        backend: widget.backend,
+        inviterId: crew.members
+            .where(_isCurrentUser)
+            .map((member) => member.userId)
+            .where((id) => id.isNotEmpty)
+            .firstOrNull,
+      ),
     );
   }
 
@@ -487,113 +495,46 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   }
 
   Future<void> _refresh() async {
-    await Future.wait([
-      _loadCrew(),
-      _loadInviteCount(),
-      if (_invitesKey.currentState != null) _invitesKey.currentState!.refresh(),
-    ]);
-  }
-
-  Future<void> _joinedCrew(String crewId) async {
-    _selectedCrewId = crewId;
-    widget.onCrewSelected?.call(crewId);
-    // A refresh started before acceptance may still contain the old membership.
-    await _crewLoad;
-    if (!mounted) return;
     await _loadCrew();
-    if (!mounted) return;
-    if (_invitesOpen && _invitesKey.currentContext != null) {
-      Navigator.of(_invitesKey.currentContext!).pop();
-    }
-    widget.onInviteAccepted?.call();
   }
 
   Widget _crewCard({required Widget child}) =>
       AppSectionCard(title: 'Your crew', builder: (_) => child);
 
-  Future<void> _loadInviteCount() async {
-    try {
-      final invites = await widget.backend.fetchReceivedInvites();
-      if (mounted) setState(() => _receivedInviteCount = invites.length);
-    } catch (_) {
-      // Keep the last badge state; the drawer provides retry and error feedback.
-    }
-  }
-
-  Future<void> _openInvites() async {
-    setState(() => _invitesOpen = true);
-    await showAppSheet<void>(
+  Future<void> _openJoinWithCode() async {
+    final onCode = widget.onInviteCode;
+    if (onCode == null) return;
+    final invite = await showAppSheet<InviteRef>(
       context: context,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, updateDrawer) => AppSheet(
-          builder: (context) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Invites',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+      builder: (sheetContext) => AppSheet(
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Join with a code',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
                   ),
-                  IconButton(
-                    tooltip: 'Close invites',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
-                  ),
-                ],
-              ),
-              if ((_crew?.isOwner ?? false) &&
-                  _crew!.pendingInvites.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Sent',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
-                for (final invite in _crew!.pendingInvites)
-                  _InviteRow(
-                    invite: invite,
-                    onRevoke: () async {
-                      await _revokeInvite(invite);
-                      if (sheetContext.mounted) updateDrawer(() {});
-                    },
-                  ),
-                if (_error != null)
-                  Text(_error!, style: TextStyle(color: context.errorInk)),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
+                ),
               ],
-              CrewInvitesPane(
-                key: _invitesKey,
-                backend: widget.backend,
-                onAccepted: _joinedCrew,
-                showEmptyState: !(_crew?.pendingInvites.isNotEmpty ?? false),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            InviteCodeEntry(
+              onInvite: (invite) => Navigator.pop(context, invite),
+            ),
+          ],
         ),
       ),
     );
-    if (!mounted) return;
-    setState(() => _invitesOpen = false);
-    await _loadInviteCount();
-  }
-
-  Future<void> _revokeInvite(CrewInvite invite) async {
-    final crew = _crew;
-    if (crew == null) return;
-    try {
-      final updated = await widget.backend.revokeInvite(
-        crewId: crew.id,
-        inviteId: invite.id,
-      );
-      if (mounted) setState(() => _crew = updated);
-    } catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error));
-    }
+    if (invite != null && mounted) onCode(invite);
   }
 
   String? _validateCrewName(String? value) {
@@ -639,18 +580,12 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             ),
         ],
         actions: [
-          IconButton(
-            tooltip: 'Invites',
-            onPressed: _invitesOpen ? null : _openInvites,
-            icon: Badge(
-              key: const ValueKey('crew-invites-badge'),
-              isLabelVisible:
-                  _receivedInviteCount > 0 ||
-                  (_crew?.pendingInvites.isNotEmpty ?? false),
-              backgroundColor: WeekPactColors.stone,
-              child: const AppIcon(icon: HugeIconsStrokeRounded.inbox),
+          if (widget.onInviteCode != null)
+            IconButton(
+              tooltip: 'Join with a code',
+              onPressed: _openJoinWithCode,
+              icon: const AppIcon(icon: HugeIconsStrokeRounded.userAdd01),
             ),
-          ),
         ],
       ),
       loading: !_hasLoaded && _loading,
@@ -873,10 +808,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
 }
 
 class _InviteDrawer extends StatelessWidget {
-  const _InviteDrawer({required this.crew, required this.backend});
+  const _InviteDrawer({
+    required this.crew,
+    required this.backend,
+    this.inviterId,
+  });
 
   final CrewDetails crew;
   final CrewBackend backend;
+  final String? inviterId;
 
   @override
   Widget build(BuildContext context) => AppSheet(
@@ -909,6 +849,9 @@ class _InviteDrawer extends StatelessWidget {
           CrewShareControls(
             backend: backend as CrewSharingBackend,
             crewId: crew.id,
+            crewName: crew.name,
+            inviterId: inviterId,
+            isOwner: crew.isOwner,
             showHeading: false,
           )
         else
@@ -918,67 +861,6 @@ class _InviteDrawer extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// Reserves the same square tiles as the loaded people grid.
-class _InviteRow extends StatelessWidget {
-  const _InviteRow({required this.invite, required this.onRevoke});
-  final CrewInvite invite;
-  final VoidCallback onRevoke;
-
-  @override
-  Widget build(BuildContext context) {
-    final remaining = invite.expiresAt.difference(DateTime.now()).inDays + 1;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  invite.email,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'EXPIRES IN $remaining ${remaining == 1 ? 'DAY' : 'DAYS'}',
-                  style: TextStyle(
-                    color: context.ink,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: .3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onRevoke,
-            style: TextButton.styleFrom(
-              foregroundColor: context.ink,
-              backgroundColor: context.pink,
-              side: BorderSide(
-                color: context.border,
-                width: WeekPactMetrics.border,
-              ),
-              shape: WeekPactMetrics.buttonShape,
-            ),
-            child: const Text(
-              'REVOKE',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 String _messageFor(Object error) {

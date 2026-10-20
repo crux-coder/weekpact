@@ -360,6 +360,9 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                                           widget.crewBackend
                                               as CrewSharingBackend,
                                       crewId: _crew!.id,
+                                      crewName: _crew!.name,
+                                      inviterId: widget.userId,
+                                      isOwner: _crew!.isOwner,
                                       onShared: () => _shared = true,
                                     )
                                   else

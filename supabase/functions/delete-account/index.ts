@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
-import { corsHeaders } from "../invite-crew-member/cors.ts";
+import { appleConfigFromEnv, revokeAppleToken } from "../_shared/apple.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 import { deleteAccount } from "./service.ts";
 
 Deno.serve(async (request) => {
@@ -12,9 +13,6 @@ Deno.serve(async (request) => {
   if (!authorization?.startsWith("Bearer ")) return respond({ error: "Authentication required" }, 401);
   try {
     const payload = await request.json();
-    if (typeof payload?.password !== "string" || payload.password.length === 0 || payload.password.length > 4096) {
-      return respond({ error: "Current password required" }, 400);
-    }
     const url = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -22,10 +20,14 @@ Deno.serve(async (request) => {
     const options = { auth: { persistSession: false, autoRefreshToken: false } };
     const admin = createClient(url, serviceKey, options);
     const verifier = createClient(url, anonKey, options);
-    const result = await deleteAccount(authorization.slice(7), payload.password, {
+    const apple = appleConfigFromEnv((name) => Deno.env.get(name));
+    const result = await deleteAccount(authorization.slice(7), payload, {
       async identify(token) {
         const { data, error } = await admin.auth.getUser(token);
-        return error || !data.user?.email ? null : { id: data.user.id, email: data.user.email };
+        if (error || !data.user) return null;
+        const identities = data.user.identities?.map((identity) => identity.provider) ?? [];
+        const providers = identities.length ? identities : (data.user.app_metadata?.providers as string[] | undefined) ?? [];
+        return { id: data.user.id, email: data.user.email ?? null, providers };
       },
       async verify(email, password) {
         const { data, error } = await verifier.auth.signInWithPassword({ email, password });
@@ -49,6 +51,15 @@ Deno.serve(async (request) => {
           if (removeError) throw removeError;
         }
       },
+      async appleRefreshToken(id) {
+        const { data, error } = await admin.rpc("apple_refresh_token", { p_user: id });
+        if (error) throw error;
+        return typeof data === "string" && data ? data : null;
+      },
+      async revokeApple(refreshToken) {
+        if (!apple) throw new Error("Apple secrets missing");
+        if (!await revokeAppleToken(refreshToken, apple)) throw new Error("Apple refused revocation");
+      },
       async removeUser(id) {
         const { error } = await admin.auth.admin.deleteUser(id, false);
         if (error) throw error;
@@ -56,7 +67,7 @@ Deno.serve(async (request) => {
     });
     return respond(result.body, result.status);
   } catch (_) {
-    // Never log passwords, JWTs or potentially identifying upstream errors.
+    // Never log passwords, JWTs, Apple tokens or potentially identifying upstream errors.
     return respond({ error: "Could not finish deletion. Please try again." }, 500);
   }
 });

@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
+import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crew_roster.dart';
 import 'package:weekpact/src/onboarding/crew_setup_page.dart';
@@ -44,7 +45,6 @@ class SetupCrew extends MissingCrewBackend {
           joinedAt: DateTime.now(),
         ),
       ],
-      pendingInvites: [],
     );
   }
 }
@@ -86,28 +86,32 @@ class SetupPacts extends DashboardPacts {
 }
 
 class Sharing implements CrewSharingBackend {
-  CrewShareLink? link;
-  int created = 0;
+  String code = '7K2QXM';
+  int fetches = 0;
+  int resets = 0;
   bool fail = false;
   @override
-  Future<CrewShareLink?> manageShareLink(String crewId, String action) async {
+  Future<String> inviteCode(String crewId) async {
+    fetches++;
     if (fail) throw StateError('offline');
-    if (action == 'create') {
-      created++;
-      return link = CrewShareLink(
-        expiresAt: DateTime.now().add(const Duration(days: 7)),
-        token: created.toRadixString(16).padLeft(64, '0'),
-      );
-    }
-    return link;
+    return code;
+  }
+
+  @override
+  Future<String> resetInviteCode(String crewId) async {
+    if (fail) throw StateError('offline');
+    resets++;
+    return code = 'ABCDEF';
   }
 }
 
 class SharingCrew extends SetupCrew implements CrewSharingBackend {
   final sharing = Sharing();
   @override
-  Future<CrewShareLink?> manageShareLink(String crewId, String action) =>
-      sharing.manageShareLink(crewId, action);
+  Future<String> inviteCode(String crewId) => sharing.inviteCode(crewId);
+  @override
+  Future<String> resetInviteCode(String crewId) =>
+      sharing.resetInviteCode(crewId);
 }
 
 class ShareFake implements AppShare {
@@ -282,81 +286,74 @@ void main() {
     expect(find.text('Share invite link'), findsOneWidget);
     await tester.tap(find.text('Copy invite link'));
     await tester.pumpUi();
-    expect(clipboard, backend.sharing.link!.url.toString());
+    expect(clipboard, inviteUrl('7K2QXM').toString());
     expect(find.text('Link copied'), findsOneWidget);
-    expect(backend.sharing.created, 1);
-    final firstClipboard = clipboard;
+    // One code per crew: copying again does not mint another.
     await tester.tap(find.text('Link copied'));
     await tester.pumpUi();
-    expect(backend.sharing.created, 2);
-    expect(clipboard, isNot(firstClipboard));
-    expect(find.text('Revoke invite link'), findsNothing);
-    expect(find.text('Invite links are active for 7 days.'), findsOneWidget);
+    expect(backend.sharing.fetches, 1);
+    expect(
+      find.text(
+        'Share the link, or read out the code. Both work until you reset them.',
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
-  testWidgets(
-    'QR invitations retry failures and create a new code when reopened',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 640);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final backend = Sharing()..fail = true;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: const TextScaler.linear(1.5)),
-            child: child!,
-          ),
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: CrewShareControls(backend: backend, crewId: 'crew'),
+  testWidgets('the QR code carries the same link and survives large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = Sharing();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(1.5)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CrewShareControls(
+              backend: backend,
+              crewId: 'crew',
+              crewName: 'Early Birds',
             ),
           ),
         ),
-      );
-      await tester.tap(find.text('Show QR code'));
-      await tester.pumpUi();
-      expect(
-        find.text('Could not create the QR code. Please try again.'),
-        findsOneWidget,
-      );
-      expect(find.byType(QrImageView), findsNothing);
-      backend.fail = false;
-      await tester.tap(find.text('Show QR code'));
-      await tester.pumpUi();
-      expect(find.byType(QrImageView), findsOneWidget);
-      expect(find.text('Scan to join your crew'), findsOneWidget);
-      expect(
-        find.text('Could not create the QR code. Please try again.'),
-        findsNothing,
-      );
-      expect(backend.created, 1);
-      final firstToken = backend.link!.token;
-      await tester.ensureVisible(find.text('Hide QR code'));
-      await tester.tap(find.text('Hide QR code'));
-      await tester.pumpUi();
-      expect(find.byType(QrImageView), findsNothing);
-      await tester.tap(find.text('Show QR code'));
-      await tester.pumpUi();
-      expect(backend.created, 2);
-      expect(backend.link!.token, isNot(firstToken));
-      expect(find.byType(QrImageView), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
-  testWidgets('each share action creates a new invite link', (tester) async {
+      ),
+    );
+    await tester.pumpUi();
+    await tester.tap(find.text('Show QR code'));
+    await tester.pumpUi();
+    expect(find.byType(QrImageView), findsOneWidget);
+    expect(find.text('Scan to join your crew'), findsOneWidget);
+    await tester.ensureVisible(find.text('Hide QR code'));
+    await tester.tap(find.text('Hide QR code'));
+    await tester.pumpUi();
+    expect(find.byType(QrImageView), findsNothing);
+    expect(backend.fetches, 1);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('sharing sends the link and the code, and retries failures', (
+    tester,
+  ) async {
     final backend = Sharing();
     final share = ShareFake()..fail = true;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: CrewShareControls(
-            backend: backend,
-            crewId: 'crew',
-            share: share,
+          body: SingleChildScrollView(
+            child: CrewShareControls(
+              backend: backend,
+              crewId: 'crew',
+              crewName: 'Early Birds',
+              share: share,
+            ),
           ),
         ),
       ),
@@ -364,7 +361,6 @@ void main() {
     await tester.pumpUi();
     await tester.tap(find.text('Share invite link'));
     await tester.pumpUi();
-    expect(backend.created, 1);
     expect(
       find.text('Could not share the link. Please try again.'),
       findsOneWidget,
@@ -372,14 +368,37 @@ void main() {
     share.fail = false;
     await tester.tap(find.text('Share invite link'));
     await tester.pumpUi();
-    expect(backend.created, 2);
-    expect(share.texts.single, contains('/invite/?invite='));
-    final firstShared = share.texts.single;
-    await tester.tap(find.text('Share invite link'));
+    expect(share.texts.single, contains('/invite/?code=7K2QXM'));
+    expect(share.texts.single, contains('Enter the code 7K2QXM'));
+    expect(share.texts.single, contains('Early Birds'));
+    // Members share; only the owner can reset.
+    expect(find.textContaining('Reset code'), findsNothing);
+  });
+  testWidgets('the owner can reset the code, and the old one goes', (
+    tester,
+  ) async {
+    final backend = Sharing();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CrewShareControls(
+              backend: backend,
+              crewId: 'crew',
+              crewName: 'Early Birds',
+              isOwner: true,
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.pumpUi();
-    expect(backend.created, 3);
-    expect(share.texts.last, isNot(firstShared));
-    expect(find.text('Revoke invite link'), findsNothing);
-    expect(find.text('Share invite link'), findsOneWidget);
+    expect(find.text('7'), findsOneWidget);
+    await tester.ensureVisible(find.textContaining('Reset code'));
+    await tester.tap(find.textContaining('Reset code'));
+    await tester.pumpUi();
+    expect(backend.resets, 1);
+    expect(find.text('7'), findsNothing);
+    expect(find.text('A'), findsOneWidget);
   });
 }

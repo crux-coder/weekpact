@@ -27,7 +27,7 @@ await db.query("insert into crews(id,name,owner_id) values($1,'Early Birds',$2)"
 for (const [user,email] of [[member,'user1@example.com'],[other,'user2@example.com']]) await db.query("insert into crew_members(crew_id,user_id,email,role) values($1,$2,$3,'member')",[crew,user,email]);
 await db.query("insert into crew_pacts(id,crew_id,title,frequency,days_per_week,created_by) values($1,$2,'Read','weekly',3,$3)",[pact,crew,owner]);
 await db.query('insert into pact_check_ins(pact_id,user_id,completed_on) values($1,$2,current_date)',[pact,member]);
-await db.query("insert into crew_invites(crew_id,email,token_hash,invited_by) values($1,'user1@example.com',repeat('a',64),$2)",[crew,owner]);
+await db.query("insert into private.crew_invite_codes(crew_id,code,created_by) values($1,'7K2QXM',$2)",[crew,owner]);
 let passed=0;
 async function asUser(user, run, role='authenticated') {
   await db.exec('begin');
@@ -45,7 +45,6 @@ await asUser(member, async()=> {
   await db.exec('reset role');
   assert.equal((await db.query('select * from crew_members where user_id=$1',[member])).rows.length,0);
   assert.equal((await db.query('select * from pact_check_ins where user_id=$1',[member])).rows.length,1);
-  assert.equal((await db.query('select * from crew_invites')).rows.length,0);
   // The former member is free to create a crew.
   await db.exec('set local role authenticated');
   await db.query("insert into crews(name,owner_id) values('New crew',$1)",[member]);
@@ -53,7 +52,9 @@ await asUser(member, async()=> {
 await asUser(owner, async()=> {
   await remove(member);
   assert.equal((await db.query('select * from crew_members')).rows.length,2);
-  assert.equal((await db.query('select * from crew_invites')).rows.length,0);
+  await db.exec('reset role');
+  // The crew's code is untouched by a removal; resetting it is the owner's call.
+  assert.equal((await db.query('select code from private.crew_invite_codes')).rows[0].code,'7K2QXM');
 });
 await asUser(member, async()=>assert.rejects(remove(other),/Only the owner/));
 await asUser(outsider, async()=>assert.rejects(remove(member),/Only the owner/));
@@ -75,7 +76,7 @@ await asUser(owner, async()=> {
 });
 await asUser(member, async()=>assert.rejects(db.query('delete from crew_members where user_id=$1',[other]), e=>e.code==='42501'));
 // The owner ends the crew and everything hanging off it goes: members, pacts,
-// check-ins, invites, and the finalized weeks the streak is read from. The
+// check-ins, the invite code, and the finalized weeks the streak is read from. The
 // before-delete triggers that guard closed weeks do not stand in the cascade's
 // way — by the time they run the crew row is already gone and they return.
 await asUser(owner, async()=> {
@@ -84,7 +85,7 @@ await asUser(owner, async()=> {
   await db.exec('set local role authenticated');
   assert.equal((await db.query('delete from crews where id=$1',[crew])).affectedRows,1);
   await db.exec('reset role');
-  for (const table of ['crews','crew_members','crew_pacts','pact_check_ins','crew_invites','private.crew_week_results']) {
+  for (const table of ['crews','crew_members','crew_pacts','pact_check_ins','private.crew_invite_codes','private.crew_week_results']) {
     assert.equal((await db.query(`select * from ${table}`)).rows.length,0,`${table} should be empty`);
   }
 });

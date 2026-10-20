@@ -19,18 +19,19 @@ import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
-import 'package:weekpact/src/invites/invite_acceptance_page.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
-/// Through the front door to the log-in form. The first screen a signed-out
-/// phone sees is two doors and this line; every test that logs in walks it.
+/// Through the front door to the email log-in form, the way an account made
+/// before Apple and Google sign-in gets back in.
 Future<void> openLogin(WidgetTester tester) async {
   await tester.pumpUi();
-  final door = find.text('Already in?  LOG IN');
-  await tester.ensureVisible(door);
-  await tester.tap(door);
+  if (find.byKey(const ValueKey('email-log-in')).evaluate().isEmpty) {
+    await tester.tap(find.text('Log in').first);
+    await tester.pumpUi();
+  }
+  await tester.tap(find.byKey(const ValueKey('email-log-in')));
   await tester.pumpUi();
 }
 
@@ -89,7 +90,6 @@ void main() {
       // The header used to carry the page's name through the load. It
       // carries the page's controls now, and they stand through it too.
       expect(find.text('Crews'), findsNothing);
-      expect(find.byTooltip('Invites'), findsOneWidget);
       expect(find.byType(SkeletonBar), findsWidgets);
       expect(find.text('CREATE CREW'), findsNothing);
       expect(find.byTooltip('Refresh crew'), findsNothing);
@@ -111,31 +111,6 @@ void main() {
     },
   );
 
-  testWidgets('switches between login and signup', (tester) async {
-    final auth = FakeAuthBackend();
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-      ),
-    );
-
-    await openLogin(tester);
-    expect(find.text('Welcome back.'), findsOneWidget);
-    expect(find.text('CONFIRM PASSWORD'), findsNothing);
-
-    final modeButton = find.text('New here?  CREATE ACCOUNT');
-    await tester.ensureVisible(modeButton);
-    await tester.tap(modeButton);
-    await tester.pumpUi();
-
-    expect(find.text('Make it official.'), findsOneWidget);
-    expect(find.text('CONFIRM PASSWORD'), findsOneWidget);
-  });
-
   testWidgets('validates login fields before calling Supabase', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
@@ -152,85 +127,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Email is required'), findsOneWidget);
-    expect(find.text('Use at least 8 characters'), findsOneWidget);
-    expect(auth.signInCalls, 0);
-  });
-
-  testWidgets('submits signup and handles email confirmation', (tester) async {
-    final auth = FakeAuthBackend(
-      signUpResult: SignUpResult.emailConfirmationRequired,
-    );
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-      ),
-    );
-    await openLogin(tester);
-    final modeButton = find.text('New here?  CREATE ACCOUNT');
-    await tester.ensureVisible(modeButton);
-    await tester.tap(modeButton);
-    await tester.pumpUi();
-
-    await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
-    final submitButton = find.text('CREATE ACCOUNT');
-    await tester.ensureVisible(submitButton);
-    await tester.tap(submitButton);
-    await tester.pumpUi();
-
-    expect(auth.signUpCalls, 1);
-    expect(auth.lastEmailRedirectTo, 'weekpact://invite');
-    expect(
-      find.text('Check your email to confirm your account.'),
-      findsOneWidget,
-    );
-    expect(find.text('Welcome back.'), findsOneWidget);
-    // Supabase emits the signed-in session after exchanging the email callback.
-    auth.confirmEmail('new@example.com');
-    await tester.pumpUi();
-    expect(find.text('Welcome back.'), findsNothing);
-    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
-    expect(auth.signInCalls, 0);
-  });
-
-  testWidgets('signup confirmation retains the pending crew invitation', (
-    tester,
-  ) async {
-    final auth = FakeAuthBackend(
-      signUpResult: SignUpResult.emailConfirmationRequired,
-    );
-    addTearDown(auth.dispose);
-    await tester.pumpWidget(
-      WeekPactApp(
-        authBackend: auth,
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        inviteLinkSource: FakeInviteLinkSource(
-          Uri.parse('weekpact://invite?invite=crew-token'),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    // The invitation opens on the crew, and joining it is the sign-up.
-    final join = find.textContaining('JOIN ');
-    await tester.ensureVisible(join);
-    await tester.tap(join);
-    await tester.pumpUi();
-    await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
-    await tester.ensureVisible(find.text('CREATE ACCOUNT'));
-    await tester.tap(find.text('CREATE ACCOUNT'));
-    await tester.pumpUi();
-    expect(auth.lastEmailRedirectTo, 'weekpact://invite?invite=crew-token');
-    auth.confirmEmail('new@example.com');
-    await tester.pumpUi();
-    expect(find.text('Your crew is waiting.'), findsOneWidget);
+    expect(find.text('Enter your password'), findsOneWidget);
     expect(auth.signInCalls, 0);
   });
 
@@ -613,56 +510,13 @@ void main() {
     expect(find.text('Share invite link'), findsOneWidget);
     expect(find.text('Copy invite link'), findsOneWidget);
     expect(find.text('Show QR code'), findsOneWidget);
-    expect(crews.invitedEmails, isEmpty);
-  });
-
-  testWidgets('keeps an invite through login and accepts it', (tester) async {
-    final auth = FakeAuthBackend();
-    final crews = FakeCrewBackend();
-    final links = FakeInviteLinkSource(
-      Uri.parse('weekpact://invite?invite=secret-token'),
-    );
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-        crewBackend: crews,
-        inviteLinkSource: links,
-      ),
-    );
-    await tester.pumpUi();
-
-    // The crew comes before the form. The fake has no preview to give, so the
-    // card says only that a crew is waiting.
-    expect(find.text('YOU’VE BEEN INVITED TO'), findsOneWidget);
-    expect(find.text('A crew that’s waiting.'), findsOneWidget);
-    await openLogin(tester);
-    expect(find.textContaining('Crew invite ready'), findsOneWidget);
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'member@example.com',
-    );
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.ensureVisible(find.text('LOG IN'));
-    await tester.tap(find.text('LOG IN'));
-    await tester.pumpUi();
-
-    expect(find.text('Your crew is waiting.'), findsOneWidget);
-    await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpUi();
-
-    expect(crews.acceptedTokens, ['secret-token']);
-    expect(find.text('Your crew is waiting.'), findsNothing);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.text('7'), findsOneWidget);
   });
 
   for (final withLink in [false, true]) {
     testWidgets(
       withLink
-          ? 'a broken auth stream with a pending link blames that link'
+          ? 'a broken auth stream with a pending link asks for a log in'
           : 'a broken auth stream without a link asks for a plain log in',
       (tester) async {
         final auth = FakeAuthBackend();
@@ -674,7 +528,7 @@ void main() {
             authBackend: auth,
             inviteLinkSource: withLink
                 ? FakeInviteLinkSource(
-                    Uri.parse('weekpact://invite?invite=crew-token'),
+                    Uri.parse('weekpact://invite?code=7K2QXM'),
                   )
                 : const NoopInviteLinkSource(),
           ),
@@ -683,128 +537,19 @@ void main() {
         auth.failStream();
         await tester.pumpUi();
 
+        // Only a failed email link is blamed on the link; anything else on
+        // the stream asks for a plain log in, invite or not.
         expect(
-          find.textContaining('This sign-in link could not be opened'),
-          withLink ? findsOneWidget : findsNothing,
+          find.textContaining('This link could not be opened'),
+          findsNothing,
         );
         expect(
           find.text('Could not confirm your sign-in. Please log in again.'),
-          withLink ? findsNothing : findsOneWidget,
+          findsOneWidget,
         );
       },
     );
   }
-
-  testWidgets('a share link invitation waits through onboarding for a new '
-      'account', (tester) async {
-    final auth = FakeAuthBackend(onboardingCompleted: false);
-    final crews = FakeCrewBackend();
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-        crewBackend: crews,
-        inviteLinkSource: FakeInviteLinkSource(
-          Uri.parse('weekpact://invite?invite=share-token'),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    await openLogin(tester);
-    await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.ensureVisible(find.text('LOG IN'));
-    await tester.tap(find.text('LOG IN'));
-    await tester.pumpUi();
-
-    // A share-link token is not an email invitation, so there is no inbox for
-    // it to fall back to: it has to survive the profile form or it is lost.
-    expect(find.byType(InviteAcceptancePage), findsNothing);
-    await tester.enterText(find.byType(TextFormField).first, 'Ada');
-    await tester.ensureVisible(find.text('LET\u2019S GO'));
-    await tester.tap(find.text('LET\u2019S GO'));
-    await tester.pumpUi();
-
-    expect(find.byType(InviteAcceptancePage), findsOneWidget);
-    await tester.ensureVisible(find.text('ACCEPT INVITE'));
-    await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpUi();
-    expect(crews.acceptedTokens, ['share-token']);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
-  });
-
-  testWidgets('signing up with an address that already has an account is sent '
-      'to log in', (tester) async {
-    final auth = FakeAuthBackend(
-      signUpResult: SignUpResult.emailAlreadyRegistered,
-    );
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-      ),
-    );
-    await openLogin(tester);
-    final mode = find.text('New here?  CREATE ACCOUNT');
-    await tester.ensureVisible(mode);
-    await tester.tap(mode);
-    await tester.pumpUi();
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'taken@example.com',
-    );
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
-    await tester.ensureVisible(find.text('CREATE ACCOUNT'));
-    await tester.tap(find.text('CREATE ACCOUNT'));
-    await tester.pumpUi();
-
-    expect(
-      find.text('An account with this email already exists. Log in instead.'),
-      findsOneWidget,
-    );
-    expect(find.text('Welcome back.'), findsOneWidget);
-    expect(find.text('CONFIRM PASSWORD'), findsNothing);
-    expect(find.text('taken@example.com'), findsOneWidget);
-  });
-
-  testWidgets('switching between log in and create account keeps the typed '
-      'email', (tester) async {
-    final auth = FakeAuthBackend();
-    addTearDown(auth.dispose);
-
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-      ),
-    );
-    await openLogin(tester);
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'person@example.com',
-    );
-    await tester.enterText(find.byType(TextFormField).at(1), 'short');
-    await tester.tap(find.text('LOG IN'));
-    await tester.pump();
-    expect(find.text('Use at least 8 characters'), findsOneWidget);
-
-    final mode = find.text('New here?  CREATE ACCOUNT');
-    await tester.ensureVisible(mode);
-    await tester.tap(mode);
-    await tester.pumpUi();
-
-    expect(find.text('person@example.com'), findsOneWidget);
-    expect(find.text('short'), findsNothing);
-    expect(find.text('Use at least 8 characters'), findsNothing);
-  });
 }
 
 class FakeAuthBackend implements AuthBackend {
@@ -817,36 +562,48 @@ class FakeAuthBackend implements AuthBackend {
   }) async {}
   @override
   Future<void> updatePassword(String password) async {}
+
+  /// What the last deletion was confirmed with: the password, or null for an
+  /// Apple or Google account.
+  String? deletedWithPassword;
+  int deletions = 0;
+
   @override
-  Future<void> deleteAccount(String password) => signOut();
+  Future<void> deleteAccount({String? password}) {
+    deletions++;
+    deletedWithPassword = password;
+    return signOut();
+  }
+
   FakeAuthBackend({
-    this.signUpResult = SignUpResult.signedIn,
-    this.onboardingCompleted = true,
+    this.onboardingStep = OnboardingStep.done,
+    this.firstName = 'Mia',
+    this.providerName = 'Mia',
+    this.cancelSignIn = false,
   });
 
   final _controller = StreamController<AuthUser?>.broadcast();
-  final SignUpResult signUpResult;
 
-  /// Whether the account this backend hands back has already been through
-  /// onboarding. False is a brand new arrival, who meets the profile form
-  /// before anything else.
-  final bool onboardingCompleted;
+  /// Where the account this backend hands back is in onboarding.
+  final OnboardingStep onboardingStep;
+
+  /// The name an email log-in comes back with.
+  final String firstName;
+
+  /// The name Apple or Google hands over. Empty is Apple's "hide my name".
+  final String providerName;
+
+  /// The person closes the provider's sheet.
+  final bool cancelSignIn;
+
+  /// Every step [advanceOnboarding] was asked to record, in order.
+  final advancedSteps = <OnboardingStep>[];
+  final providerSignIns = <SignInProvider>[];
   AuthUser? _user;
   int signInCalls = 0;
-  int signUpCalls = 0;
-  String? lastEmailRedirectTo;
 
   /// A dropped session or a refused callback, as the SDK reports one.
   void failStream() => _controller.addError(StateError('auth stream failed'));
-
-  void confirmEmail(String email) {
-    _user = AuthUser(
-      id: 'user-id',
-      email: email,
-      onboardingCompleted: onboardingCompleted,
-    );
-    _controller.add(_user);
-  }
 
   @override
   Stream<AuthUser?> get authStateChanges => _controller.stream;
@@ -855,33 +612,38 @@ class FakeAuthBackend implements AuthBackend {
   AuthUser? get currentUser => _user;
 
   @override
+  List<SignInProvider> get signInProviders => const [
+    SignInProvider.apple,
+    SignInProvider.google,
+  ];
+
+  @override
+  Future<bool> signInWith(SignInProvider provider) async {
+    providerSignIns.add(provider);
+    if (cancelSignIn) return false;
+    _user = AuthUser(
+      id: 'user-id',
+      email: '${provider.name}@example.com',
+      firstName: providerName,
+      onboardingStep: providerName.isEmpty
+          ? OnboardingStep.profile
+          : onboardingStep,
+      hasPassword: false,
+    );
+    _controller.add(_user);
+    return true;
+  }
+
+  @override
   Future<void> signIn({required String email, required String password}) async {
     signInCalls++;
     _user = AuthUser(
       id: 'user-id',
       email: email,
-      onboardingCompleted: onboardingCompleted,
+      firstName: firstName,
+      onboardingStep: onboardingStep,
     );
     _controller.add(_user);
-  }
-
-  @override
-  Future<SignUpResult> signUp({
-    required String email,
-    required String password,
-    String? emailRedirectTo,
-  }) async {
-    signUpCalls++;
-    lastEmailRedirectTo = emailRedirectTo;
-    if (signUpResult == SignUpResult.signedIn) {
-      _user = AuthUser(
-        id: 'user-id',
-        email: email,
-        onboardingCompleted: onboardingCompleted,
-      );
-      _controller.add(_user);
-    }
-    return signUpResult;
   }
 
   @override
@@ -905,10 +667,28 @@ class FakeAuthBackend implements AuthBackend {
       firstName: firstName,
       lastName: lastName,
       avatarPath: 'avatar.png',
-      onboardingCompleted: true,
+      onboardingStep: _user!.profileCompleted
+          ? _user!.onboardingStep
+          : OnboardingStep.crew,
+      hasPassword: _user!.hasPassword,
     );
     _controller.add(_user);
     return _user!;
+  }
+
+  @override
+  Future<void> advanceOnboarding(OnboardingStep step) async {
+    advancedSteps.add(step);
+    final user = _user!;
+    _user = AuthUser(
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarPath: user.avatarPath,
+      onboardingStep: step,
+      hasPassword: user.hasPassword,
+    );
   }
 
   @override
@@ -918,12 +698,18 @@ class FakeAuthBackend implements AuthBackend {
 }
 
 class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
+  String code = '7K2QXM';
+  int resets = 0;
+
   @override
-  Future<CrewShareLink?> manageShareLink(String crewId, String action) async =>
-      CrewShareLink(
-        expiresAt: DateTime.now().add(const Duration(days: 7)),
-        token: 'a' * 64,
-      );
+  Future<String> inviteCode(String crewId) async => code;
+
+  @override
+  Future<String> resetInviteCode(String crewId) async {
+    resets++;
+    code = 'NEWC0D'.replaceAll('0', 'Q');
+    return code;
+  }
 
   @override
   Future<void> leaveCrew({required String crewId, String? successorId}) async {
@@ -936,19 +722,14 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
     required String userId,
   }) async {}
 
-  @override
-  Future<List<ReceivedCrewInvite>> fetchReceivedInvites() async => [];
-  @override
-  Future<void> respondToInvite({
-    required String inviteId,
-    required bool accept,
-  }) async {}
-
   CrewDetails? crew;
-  final invitedEmails = <String>[];
   final acceptedTokens = <String>[];
+  final createdCrews = <String>[];
 
-  CrewDetails _details({List<CrewInvite> invites = const []}) => CrewDetails(
+  /// Thrown by [acceptInvite] when set.
+  Object? acceptError;
+
+  CrewDetails _details() => CrewDetails(
     id: '11111111-1111-4111-8111-111111111111',
     name: crew?.name ?? 'Weekend Warriors',
     timezone: 'UTC',
@@ -962,7 +743,6 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
         joinedAt: DateTime(2026),
       ),
     ],
-    pendingInvites: invites,
   );
 
   @override
@@ -985,6 +765,7 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
     required String name,
     required String timezone,
   }) async {
+    createdCrews.add(name);
     crew = CrewDetails(
       id: '11111111-1111-4111-8111-111111111111',
       name: name,
@@ -992,55 +773,27 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
       ownerId: 'owner-id',
       currentUserRole: 'owner',
       members: _details().members,
-      pendingInvites: const [],
     );
     return crew!;
   }
 
   @override
-  Future<CrewDetails> inviteMember({
-    required String crewId,
-    required String email,
-  }) async {
-    invitedEmails.add(email);
-    crew = CrewDetails(
-      id: crew!.id,
-      name: crew!.name,
-      timezone: crew!.timezone,
-      ownerId: crew!.ownerId,
-      currentUserRole: crew!.currentUserRole,
-      members: crew!.members,
-      pendingInvites: [
-        CrewInvite(
-          id: 'invite-id',
-          email: email,
-          expiresAt: DateTime.now().add(const Duration(days: 7)),
-        ),
-      ],
-    );
-    return crew!;
-  }
-
-  @override
-  Future<CrewDetails> revokeInvite({
-    required String crewId,
-    required String inviteId,
-  }) async {
-    crew = _details();
-    return crew!;
-  }
-
-  @override
-  Future<CrewDetails> acceptInvite(String token) async {
-    acceptedTokens.add(token);
+  Future<CrewDetails> acceptInvite(String code) async {
+    acceptedTokens.add(code);
+    final error = acceptError;
+    if (error != null) throw error;
     crew = _details();
     return crew!;
   }
 
   CrewInvitePreview? preview;
+  final previewedFrom = <String?>[];
 
   @override
-  Future<CrewInvitePreview?> previewInvite(String token) async => preview;
+  Future<CrewInvitePreview?> previewInvite(String code, {String? from}) async {
+    previewedFrom.add(from);
+    return preview;
+  }
 }
 
 class FakeInviteLinkSource implements InviteLinkSource {

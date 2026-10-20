@@ -47,7 +47,6 @@ class MembershipBackend extends FakeCrewBackend implements CrewDeletionBackend {
       ownerId: c.ownerId,
       currentUserRole: c.currentUserRole,
       members: c.members.where((m) => m.userId != userId).toList(),
-      pendingInvites: [],
     );
   }
 }
@@ -75,7 +74,6 @@ CrewDetails details({bool owner = false, bool alone = false}) => CrewDetails(
         joinedAt: DateTime(2026),
       ),
   ],
-  pendingInvites: [],
 );
 Future<void> showCrew(
   WidgetTester tester,

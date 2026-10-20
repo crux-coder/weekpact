@@ -39,7 +39,6 @@ class MultipleCrews extends FakeCrewBackend {
     ownerId: 'owner-id',
     currentUserRole: 'owner',
     members: [],
-    pendingInvites: [],
   );
   @override
   Future<List<PactCrew>> fetchCrews() async => loading != null
@@ -455,7 +454,6 @@ void main() {
             joinedAt: DateTime(2026),
           ),
       ],
-      pendingInvites: [],
     );
     await tester.pumpWidget(
       MaterialApp(

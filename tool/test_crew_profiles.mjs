@@ -10,7 +10,7 @@ await db.query('insert into auth.users(id,email) values ($1,$2),($3,$4),($5,$6)'
 await db.query('insert into public.crews (id,name,owner_id) values ($1,$2,$3)', [crew,'Test Crew',owner]);
 await db.query("insert into public.crew_members (crew_id,user_id,email,role) values ($1,$2,'member@example.com','member')", [crew,member]);
 
-await db.query("update auth.users set raw_user_meta_data=$1 where id=$2", [{first_name:'Jane',last_name:'Doe',avatar_path:`${member}/avatar.png`},member]);
+await db.query("update public.users set first_name='Jane',last_name='Doe',avatar_path=$1 where id=$2", [`${member}/avatar.png`,member]);
 await db.query("insert into storage.objects(bucket_id,name) values('avatars',$1)",[`${member}/avatar.png`]);
 async function asUser(user,fn) { await db.exec('begin'); try { await db.query("select set_config('request.jwt.claim.sub',$1,true)",[user]); await db.exec('set local role authenticated'); await fn(); } finally {await db.exec('rollback');} }
 await asUser(owner, async()=>{
