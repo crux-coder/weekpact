@@ -22,6 +22,8 @@ import 'invites/invite_links.dart';
 import 'onboarding/onboarding_draft.dart';
 import 'subscriptions/subscription_scope.dart';
 import 'theme/weekpact_theme.dart';
+import 'updates/update_check.dart';
+import 'updates/update_prompt.dart';
 
 class WeekPactApp extends StatefulWidget {
   const WeekPactApp({
@@ -37,6 +39,7 @@ class WeekPactApp extends StatefulWidget {
     this.captureCheckInPhoto,
     this.inviteLinkSource = const NoopInviteLinkSource(),
     this.subscriptions,
+    this.updates,
   });
 
   final AuthBackend authBackend;
@@ -53,6 +56,9 @@ class WeekPactApp extends StatefulWidget {
   final CheckInPhotoCapture? captureCheckInPhoto;
   final InviteLinkSource inviteLinkSource;
   final SubscriptionController? subscriptions;
+
+  /// Whether this build is behind the store. Null never checks.
+  final UpdateCheck? updates;
 
   @override
   State<WeekPactApp> createState() => _WeekPactAppState();
@@ -86,6 +92,7 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       });
       unawaited(notifications.initialize());
     }
+    unawaited(widget.updates?.check());
   }
 
   @override
@@ -96,6 +103,8 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       // A subscription can be cancelled or lapse in the App Store while the
       // app is backgrounded, so re-read entitlements on the way back in.
       unawaited(widget.subscriptions?.refresh());
+      // Throttled: a resume within a few hours of the last check is skipped.
+      unawaited(widget.updates?.check());
     }
   }
 
@@ -129,17 +138,27 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
             ? scoped
             : SubscriptionScope(controller: subscriptions, child: scoped);
       },
-      home: AuthGate(
-        crewSelectionStore: widget.crewSelectionStore,
-        storySeenStore: widget.storySeenStore,
-        onboardingDraftStore: widget.onboardingDraftStore,
-        authBackend: widget.authBackend,
-        crewBackend: widget.crewBackend,
-        pactsBackend: widget.pactsBackend,
-        homeBackend: widget.homeBackend,
-        captureCheckInPhoto: widget.captureCheckInPhoto,
-        inviteLinkSource: widget.inviteLinkSource,
+      home: _requiredUpdate(
+        AuthGate(
+          updates: widget.updates,
+          crewSelectionStore: widget.crewSelectionStore,
+          storySeenStore: widget.storySeenStore,
+          onboardingDraftStore: widget.onboardingDraftStore,
+          authBackend: widget.authBackend,
+          crewBackend: widget.crewBackend,
+          pactsBackend: widget.pactsBackend,
+          homeBackend: widget.homeBackend,
+          captureCheckInPhoto: widget.captureCheckInPhoto,
+          inviteLinkSource: widget.inviteLinkSource,
+        ),
       ),
     );
+  }
+
+  Widget _requiredUpdate(Widget child) {
+    final updates = widget.updates;
+    return updates == null
+        ? child
+        : UpdatePrompt.required(updates: updates, child: child);
   }
 }

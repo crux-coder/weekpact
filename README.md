@@ -410,6 +410,43 @@ raised past it when one of them is ahead. Set a new marketing version (for
 example `1.1.0+1`) in `pubspec.yaml` when preparing the next store version.
 Build numbers continue increasing.
 
+### Announcing a release in the app
+
+Installed apps read their store's row in `public.app_releases` on launch and
+when they come back to the foreground (at most once every four hours). A build
+older than `latest_version` offers the update once per version, over Home only,
+so nobody is interrupted while signing in. A build older than `min_version`
+shows a dialog that cannot be dismissed, on any screen, until it is updated.
+Update opens Google Play's in-app update on Android (flexible for the optional
+prompt, immediate for the forced one), falling back to the Play Store page, and
+the App Store page on iOS. Offline, a missing row or a bad version is silent.
+
+Once a release is **live in the store** — approved and rolled out, not just
+uploaded — mark it from the same checkout, so `pubspec.yaml` has its version:
+
+```sh
+pnpm mark-released ios
+pnpm mark-released android --message "Faster check-ins and a fixed streak bug."
+```
+
+Never run it on upload: the prompt sends people to the store, and a version
+they cannot download yet is a dead end (Android internal-testing builds are not
+a release either). Each store is marked separately because they go live at
+different times.
+
+When a backend change breaks older builds, add `--min` to also raise
+`min_version` to the pubspec version, or `--min 1.3.0` for an earlier one.
+Every build below it is blocked until it updates, so ship and mark the fixed
+release first. The script writes to the project from `supabase link`
+(`--local` for the local stack), refuses to move `latest_version` backwards,
+and `--dry-run` prints the SQL instead. Set `APP_STORE_ID` (the numeric Apple ID
+from App Store Connect) in the env file so iOS opens the app's own page rather
+than a store search.
+
+```sh
+PGLITE_MODULE=/tmp/weekpact-pacts-sql/node_modules/@electric-sql/pglite/dist/index.js node tool/test_app_releases_database.mjs
+```
+
 ## Checks
 
 ### Crew nudges
