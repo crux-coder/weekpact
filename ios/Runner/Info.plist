@@ -43,7 +43,17 @@
 				<string>weekpact</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.705377133061-ls6gpj0ssehgbvhbcgbif5gt5gd3qtqc</string>
+			</array>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>705377133061-ls6gpj0ssehgbvhbcgbif5gt5gd3qtqc.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>705377133061-bu9bmehie9rnr19893854eoetlkr9p9o.apps.googleusercontent.com</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>FlutterDeepLinkingEnabled</key>

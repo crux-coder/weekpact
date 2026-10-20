@@ -178,17 +178,20 @@ class _AccountActionsState extends State<AccountActions> {
   String? _error;
 
   Future<void> _delete() async {
-    final password = await showAppDialog<String>(
+    // Apple and Google accounts have no password to confirm with; they type
+    // DELETE instead, and the server checks which kind of account it is.
+    final hasPassword = widget.backend.currentUser?.hasPassword ?? true;
+    final answer = await showAppDialog<String>(
       context: context,
-      builder: (_) => const _DeleteAccountDialog(),
+      builder: (_) => _DeleteAccountDialog(hasPassword: hasPassword),
     );
-    if (password == null || !mounted) return;
+    if (answer == null || !mounted) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await widget.backend.deleteAccount(password);
+      await widget.backend.deleteAccount(password: hasPassword ? answer : null);
     } catch (error) {
       if (mounted) {
         setState(
@@ -256,7 +259,9 @@ class _AccountActionsState extends State<AccountActions> {
 }
 
 class _DeleteAccountDialog extends StatefulWidget {
-  const _DeleteAccountDialog();
+  const _DeleteAccountDialog({required this.hasPassword});
+
+  final bool hasPassword;
   @override
   State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
 }
@@ -269,6 +274,10 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     _password.dispose();
     super.dispose();
   }
+
+  bool get _ready => widget.hasPassword
+      ? _password.text.isNotEmpty
+      : _password.text.trim().toUpperCase() == 'DELETE';
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -283,12 +292,20 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           ),
           const SizedBox(height: 16),
           TextField(
+            key: const ValueKey('delete-confirmation'),
             controller: _password,
-            obscureText: true,
+            obscureText: widget.hasPassword,
             autocorrect: false,
             enableSuggestions: false,
+            textCapitalization: widget.hasPassword
+                ? TextCapitalization.none
+                : TextCapitalization.characters,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(labelText: 'Current password'),
+            decoration: InputDecoration(
+              labelText: widget.hasPassword
+                  ? 'Current password'
+                  : 'Type DELETE to confirm',
+            ),
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -305,7 +322,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         child: const Text('Cancel'),
       ),
       TextButton(
-        onPressed: _confirmed && _password.text.isNotEmpty
+        onPressed: _confirmed && _ready
             ? () => Navigator.pop(context, _password.text)
             : null,
         child: const Text('Permanently delete'),

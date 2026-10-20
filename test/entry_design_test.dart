@@ -6,8 +6,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_page.dart';
-import 'package:weekpact/src/auth/auth_backend.dart';
-import 'package:weekpact/src/onboarding/onboarding_page.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/invites/invite_links.dart';
+import 'package:weekpact/src/onboarding/onboarding_draft.dart';
+import 'package:weekpact/src/onboarding/onboarding_flow.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/fonts.dart';
@@ -55,32 +57,67 @@ void main() {
         theme: dark ? WeekPactTheme.dark : WeekPactTheme.light,
         home: RepaintBoundary(key: boundaryKey, child: child),
       );
-      await tester.pumpWidget(
-        app(AuthPage(authBackend: backend, onInviteToken: (_) {})),
-      );
+      final drafts = OnboardingDraftStore.memory();
+      Widget flow({InviteRef? invite, CrewInvitePreview? preview}) =>
+          OnboardingFlow(
+            authBackend: backend,
+            draftStore: drafts,
+            invite: invite,
+            invitePreview: preview,
+            onInvite: (_) {},
+            onClearInvite: () {},
+            onJoinIntent: (_) {},
+          );
+      Future<void> tap(Finder finder) async {
+        await tester.ensureVisible(finder);
+        await tester.tap(finder);
+      }
+
+      await tester.pumpWidget(app(flow()));
       await capture('welcome');
-      await tester.ensureVisible(find.text('I HAVE AN INVITE LINK'));
-      await tester.tap(find.text('I HAVE AN INVITE LINK'));
-      await capture('link');
-      await tester.ensureVisible(find.text('Back'));
-      await tester.tap(find.text('Back'));
+      await tap(find.byKey(const ValueKey('get-started')));
+      await capture('crew-name');
+      await tap(find.byKey(const ValueKey('crew-name-continue')));
+      await capture('pact');
+      await tap(find.text('Something else'));
+      await capture('pact-custom');
+      await tap(find.text('Run'));
       await tester.pumpUi();
-      await tester.ensureVisible(find.text('Already in?  LOG IN'));
-      await tester.tap(find.text('Already in?  LOG IN'));
-      await capture('login');
-      await tester.ensureVisible(find.text('New here?  CREATE ACCOUNT'));
-      await tester.tap(find.text('New here?  CREATE ACCOUNT'));
-      await capture('register');
+      await tap(find.byKey(const ValueKey('pact-continue')));
+      await capture('save');
+      await tap(find.text('Log in'));
+      await capture('log-in');
+      await tester.pumpWidget(app(EmailLogInPage(authBackend: backend)));
+      await capture('email-log-in');
       await tester.pumpWidget(
         app(
-          OnboardingPage(
-            backend: backend,
-            user: const AuthUser(email: 'person@example.com'),
-            onCompleted: (_) {},
+          flow(
+            invite: const InviteRef('7K2QXM'),
+            preview: const CrewInvitePreview(
+              crewName: 'Early Birds',
+              memberCount: 4,
+              ownerName: 'Amra',
+              inviterName: 'Edin',
+              memberInitials: ['AM', 'EK', 'LS', 'NH'],
+              pacts: [
+                InvitePact(
+                  title: 'Go for a run',
+                  iconKey: 'run',
+                  daysPerWeek: 3,
+                ),
+                InvitePact(
+                  title: 'Read before bed',
+                  iconKey: 'book',
+                  daysPerWeek: 5,
+                ),
+              ],
+            ),
           ),
         ),
       );
-      await capture('profile');
+      await capture('invite');
+      await tap(find.byKey(const ValueKey('join-crew')));
+      await capture('join');
     });
   }
 }

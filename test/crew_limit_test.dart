@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/invites/invite_acceptance_page.dart';
+import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/subscriptions/paywall_page.dart';
 import 'package:weekpact/src/subscriptions/pro_upgrade.dart';
 import 'package:weekpact/src/subscriptions/subscription_backend.dart';
@@ -238,17 +239,17 @@ void main() {
         home: SubscriptionScope(
           controller: SubscriptionController(store),
           child: InviteAcceptancePage(
-            email: 'friend@example.com',
-            token: 'a' * 64,
+            invite: const InviteRef('7K2QXM'),
             crewBackend: backend,
-            onFinished: () => finished = true,
+            onJoined: (_) => finished = true,
+            onDismiss: () {},
           ),
         ),
       ),
     );
     await tester.pumpUi();
-    await tester.ensureVisible(find.text('ACCEPT INVITE'));
-    await tester.tap(find.text('ACCEPT INVITE'));
+    await tester.ensureVisible(find.byKey(const ValueKey('accept-invite')));
+    await tester.tap(find.byKey(const ValueKey('accept-invite')));
     await tester.pumpUi();
 
     expect(find.text('One crew on the free plan'), findsOneWidget);

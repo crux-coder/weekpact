@@ -3,290 +3,317 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/app.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
-import 'package:weekpact/src/invites/invite_acceptance_page.dart';
-import 'package:weekpact/src/invites/invite_link_entry.dart';
-import 'package:weekpact/src/onboarding/crew_setup_page.dart';
-import 'package:weekpact/src/onboarding/crew_start_page.dart';
-import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/invites/invite_links.dart';
+import 'package:weekpact/src/onboarding/onboarding_draft.dart';
 
-import 'launch_flows_test.dart' show SetupCrew, SetupPacts;
+import 'launch_flows_test.dart' show SetupPacts;
 import 'support/home_fakes.dart';
-import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
-import 'widget_test.dart' show FakeAuthBackend, FakeCrewBackend;
+import 'widget_test.dart'
+    show FakeAuthBackend, FakeCrewBackend, FakeInviteLinkSource;
+
+const _inviter = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b';
 
 const _preview = CrewInvitePreview(
   crewName: 'Early Birds',
-  memberCount: 3,
-  ownerName: 'Ada Lovelace',
+  memberCount: 4,
+  ownerName: 'Amra',
+  inviterName: 'Edin',
+  inviterInitials: 'EK',
+  memberInitials: ['AM', 'EK', 'LS', 'NH'],
+  pacts: [InvitePact(title: 'Go for a run', iconKey: 'run', daysPerWeek: 3)],
 );
 
-Future<void> _signUp(WidgetTester tester) async {
-  await tester.enterText(find.byType(TextFormField).at(0), 'new@example.com');
-  await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-  await tester.enterText(find.byType(TextFormField).at(2), 'password123');
-  await tester.ensureVisible(find.text('CREATE ACCOUNT'));
-  await tester.tap(find.text('CREATE ACCOUNT'));
-  await tester.pumpUi();
+/// A phone-sized screen, the size the flow is designed for.
+void _phone(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
 }
 
-Future<void> _giveName(WidgetTester tester) async {
-  await tester.enterText(find.byType(TextFormField).first, 'Mia');
-  await tester.ensureVisible(find.text('LET’S GO'));
-  await tester.tap(find.text('LET’S GO'));
+Future<void> _tap(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.tap(finder);
   await tester.pumpUi();
 }
 
 void main() {
-  test('a pasted link gives up its token in any of the shapes it is sent', () {
-    expect(
-      inviteTokenFromText('https://weekpact.app/invite?invite=abc123'),
-      'abc123',
-    );
-    expect(
-      inviteTokenFromText(' weekpact.app/invite/?invite=abc123 '),
-      'abc123',
-    );
-    expect(inviteTokenFromText('weekpact://invite?invite=abc123'), 'abc123');
-    expect(
-      inviteTokenFromText('Qm7xk2pLw9vRt4sYd8nHf3'),
-      'Qm7xk2pLw9vRt4sYd8nHf3',
-    );
-    expect(inviteTokenFromText('hello'), isNull);
-    expect(inviteTokenFromText('https://weekpact.app/'), isNull);
-    expect(inviteTokenFromText(''), isNull);
+  group('invite codes', () {
+    test('a code is six letters and digits, typed in any case', () {
+      expect(normalizeInviteCode('7k2qxm'), '7K2QXM');
+      expect(normalizeInviteCode(' 7K2 QXM '), '7K2QXM');
+      expect(normalizeInviteCode('7K2-QXM'), '7K2QXM');
+      // Look-alikes are not in the alphabet, so a typo is caught, not sent.
+      expect(normalizeInviteCode('7K2QX0'), isNull);
+      expect(normalizeInviteCode('7K2QXI'), isNull);
+      expect(normalizeInviteCode('7K2QX'), isNull);
+      expect(normalizeInviteCode('7K2QXMM'), isNull);
+    });
+
+    test('links carry the code and who shared it', () {
+      expect(
+        inviteFromUri(
+          Uri.parse(
+            'https://weekpact.codepeaktrail.dev/invite/?code=7k2qxm&from=$_inviter',
+          ),
+        ),
+        const InviteRef('7K2QXM', from: _inviter),
+      );
+      expect(
+        inviteFromUri(Uri.parse('weekpact://invite?code=7K2QXM&from=nope')),
+        const InviteRef('7K2QXM'),
+      );
+      // Links shared before codes keep working until they expire.
+      final legacy = 'a' * 64;
+      expect(
+        inviteFromUri(Uri.parse('weekpact://invite?invite=$legacy')),
+        InviteRef(legacy),
+      );
+      expect(
+        inviteFromUri(Uri.parse('weekpact://invite?invite=short')),
+        isNull,
+      );
+    });
+
+    test('typed text can be a code, a link, or a link without its scheme', () {
+      expect(inviteFromText('7k2qxm'), const InviteRef('7K2QXM'));
+      expect(
+        inviteFromText('weekpact.codepeaktrail.dev/invite/?code=7K2QXM'),
+        const InviteRef('7K2QXM'),
+      );
+      expect(inviteFromText('hello'), isNull);
+      expect(inviteFromText(''), isNull);
+    });
+
+    test('the share link points at the invite page', () {
+      expect(
+        inviteUrl('7K2QXM', from: _inviter).toString(),
+        'https://weekpact.codepeaktrail.dev/invite/?code=7K2QXM&from=$_inviter',
+      );
+    });
   });
 
-  testWidgets('the front door leads a pasted link to its crew, and the crew '
-      'to an account', (tester) async {
-    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
-    final crews = FakeCrewBackend()..preview = _preview;
-    addTearDown(auth.dispose);
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-        crewBackend: crews,
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.text('Good habits.\nGreat company.'), findsOneWidget);
-    expect(find.byType(TextFormField), findsNothing);
-
-    await tester.tap(find.text('I HAVE AN INVITE LINK'));
-    await tester.pumpUi();
-    await tester.enterText(
-      find.byType(TextFormField),
-      'https://weekpact.app/invite?invite=share-token',
-    );
-    await tester.tap(find.text('FIND MY CREW'));
-    await tester.pumpUi();
-
-    // The crew, before any form: only what the invitation may say about it.
-    expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.text('3 members · started by Ada Lovelace'), findsOneWidget);
-    await tester.tap(find.text('JOIN EARLY BIRDS'));
-    await tester.pumpUi();
-    expect(find.text('Make it official.'), findsOneWidget);
-    expect(find.text('Joining Early Birds'), findsOneWidget);
-
-    await _signUp(tester);
-    expect(auth.lastEmailRedirectTo, 'weekpact://invite?invite=share-token');
-    expect(find.text('JOINING EARLY BIRDS'), findsOneWidget);
-    await _giveName(tester);
-
-    // A joiner is never asked who they are doing this with.
-    expect(find.byType(CrewStartPage), findsNothing);
-    expect(find.byType(InviteAcceptancePage), findsOneWidget);
-    expect(find.text('Join Early Birds'), findsOneWidget);
-    await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpUi();
-    expect(crews.acceptedTokens, ['share-token']);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
-    expect(auth.advancedSteps, [OnboardingStep.done]);
-  });
-
-  testWidgets('a new account with no link is asked who it is doing this '
-      'with, and a pasted link there opens the invitation', (tester) async {
-    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
-    final crews = FakeCrewBackend()..preview = _preview;
-    addTearDown(auth.dispose);
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-        crewBackend: crews,
-      ),
-    );
-    await tester.pumpUi();
-    await tester.tap(find.text('START A NEW CREW'));
-    await tester.pumpUi();
-    await _signUp(tester);
-    expect(find.text('ALMOST THERE'), findsOneWidget);
-    await _giveName(tester);
-
-    expect(find.byType(CrewStartPage), findsOneWidget);
-    expect(find.text('Who are you doing this with, Mia?'), findsOneWidget);
-    await tester.tap(find.text('I’ve got a link'));
-    await tester.pumpUi();
-    await tester.enterText(find.byType(TextFormField), 'not a link');
-    await tester.tap(find.text('FIND MY CREW'));
-    await tester.pumpUi();
-    expect(
-      find.text('That doesn’t look like a WeekPact invite link.'),
-      findsOneWidget,
-    );
-    await tester.enterText(
-      find.byType(TextFormField),
-      'weekpact.app/invite?invite=late-token',
-    );
-    await tester.tap(find.text('FIND MY CREW'));
-    await tester.pumpUi();
-
-    expect(find.byType(InviteAcceptancePage), findsOneWidget);
-    await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpUi();
-    expect(crews.acceptedTokens, ['late-token']);
-    expect(find.byType(CrewStartPage), findsNothing);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
-    expect(auth.advancedSteps, [OnboardingStep.done]);
-  });
-
-  testWidgets('an account that left between its name and the crew question '
-      'is asked the question on its next launch', (tester) async {
-    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.crew);
-    addTearDown(auth.dispose);
-    await auth.signIn(email: 'mia@example.com', password: 'password');
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts()..crews = [],
-        authBackend: auth,
-        crewBackend: FakeCrewBackend(),
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.text('What should the crew call you?'), findsNothing);
-    expect(find.byType(CrewStartPage), findsOneWidget);
-    await tester.tap(find.text('Skip for now'));
-    await tester.pumpUi();
-    expect(find.byType(CrewStartPage), findsNothing);
-    expect(auth.advancedSteps, [OnboardingStep.done]);
-  });
-
-  testWidgets('skipping the question opens Home, whose empty state asks it '
-      'again', (tester) async {
-    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
-    addTearDown(auth.dispose);
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts()..crews = [],
-        authBackend: auth,
-        crewBackend: FakeCrewBackend(),
-      ),
-    );
-    await tester.pumpUi();
-    await tester.tap(find.text('START A NEW CREW'));
-    await tester.pumpUi();
-    await _signUp(tester);
-    await _giveName(tester);
-    await tester.tap(find.text('Skip for now'));
-    await tester.pumpUi();
-
-    expect(find.byType(CrewStartPage), findsNothing);
-    expect(auth.advancedSteps, [OnboardingStep.done]);
-    expect(find.text('START YOUR CREW'), findsOneWidget);
-    await tester.tap(find.text('START YOUR CREW'));
-    await tester.pumpUi();
-    expect(find.byType(CrewStartPage), findsOneWidget);
-    expect(find.text('I’ve got a link'), findsOneWidget);
-  });
-
-  testWidgets('going solo runs the setup without the invitation step', (
+  testWidgets('a new crew: name, pact, Apple, invite later, first check-in', (
     tester,
   ) async {
-    final crews = SetupCrew();
+    _phone(tester);
+    final auth = FakeAuthBackend(onboardingStep: OnboardingStep.profile);
+    final crews = FakeCrewBackend();
     final pacts = SetupPacts();
-    final home = DashboardBackend(pacts: pacts);
-    home.selected.clear();
-    var done = 0;
+    final home = DashboardBackend(viewerId: 'user-id', pacts: pacts);
+    final drafts = OnboardingDraftStore.memory();
+    addTearDown(auth.dispose);
     await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.light,
-        home: CrewStartPage(
-          crewBackend: crews,
-          pactsBackend: pacts,
-          homeBackend: home,
-          userId: '',
-          captureCheckInPhoto: captureTestCheckInPhoto,
-          onInviteToken: (_) {},
-          onDone: () => done++,
+      WeekPactApp(
+        authBackend: auth,
+        crewBackend: crews,
+        pactsBackend: pacts,
+        homeBackend: home,
+        onboardingDraftStore: drafts,
+      ),
+    );
+    await tester.pumpUi();
+
+    expect(find.text('Good habits.\nGreat company.'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('get-started')));
+
+    // Prefilled, so Continue works without typing.
+    expect(find.text('Name your crew.'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField), 'Morning Runners');
+    await _tap(tester, find.byKey(const ValueKey('crew-name-continue')));
+    expect(drafts.read()?.crewName, 'Morning Runners');
+
+    expect(
+      find.text('What will Morning Runners keep up first?'),
+      findsOneWidget,
+    );
+    await _tap(tester, find.text('Read'));
+    await _tap(tester, find.byTooltip('More days'));
+    await _tap(tester, find.byKey(const ValueKey('pact-continue')));
+    expect(drafts.read()?.complete, isTrue);
+
+    expect(find.text('Save your week.'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('sign-in-apple')));
+
+    expect(auth.providerSignIns, [SignInProvider.apple]);
+    expect(crews.createdCrews, ['Morning Runners']);
+    expect(pacts.pacts.single.title, 'Read');
+    expect(pacts.pacts.single.daysPerWeek, 4);
+    expect(pacts.pacts.single.photoRequired, isFalse);
+    expect(drafts.read(), isNull, reason: 'the draft is now a crew');
+    expect(auth.advancedSteps, [OnboardingStep.done]);
+
+    expect(find.text('Bring your people.'), findsOneWidget);
+    expect(find.text('7'), findsOneWidget, reason: 'the code is on screen');
+    await _tap(tester, find.byKey(const ValueKey('invite-later')));
+
+    expect(find.text('You’re in, Mia.'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('first-check-in')));
+    expect(home.selected, contains('new'));
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+  });
+
+  testWidgets('a half-finished setup reopens where it was left', (
+    tester,
+  ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend();
+    final drafts = OnboardingDraftStore.memory();
+    await drafts.save(const OnboardingDraft(crewName: 'Early Risers'));
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(authBackend: auth, onboardingDraftStore: drafts),
+    );
+    await tester.pumpUi();
+
+    expect(find.text('What will Early Risers keep up first?'), findsOneWidget);
+    await _tap(tester, find.byTooltip('Back'));
+    expect(find.text('Name your crew.'), findsOneWidget);
+    expect(find.text('Early Risers'), findsOneWidget);
+  });
+
+  testWidgets('closing the provider sheet keeps the person on Save', (
+    tester,
+  ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend(cancelSignIn: true);
+    final drafts = OnboardingDraftStore.memory();
+    await drafts.save(
+      const OnboardingDraft(
+        crewName: 'Early Risers',
+        pactTitle: 'Read',
+        pactIcon: 'book',
+        pactDays: 3,
+      ),
+    );
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(authBackend: auth, onboardingDraftStore: drafts),
+    );
+    await tester.pumpUi();
+    await _tap(tester, find.byKey(const ValueKey('sign-in-google')));
+
+    expect(find.text('Save your week.'), findsOneWidget);
+    expect(drafts.read()?.complete, isTrue);
+  });
+
+  testWidgets('Apple keeping the name private asks for a first name', (
+    tester,
+  ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend(providerName: '');
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(
+        authBackend: auth,
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+      ),
+    );
+    await tester.pumpUi();
+    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('sign-in-apple')));
+
+    expect(find.text('What should the crew call you?'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField), 'Jasmin');
+    await _tap(tester, find.byKey(const ValueKey('name-continue')));
+    expect(auth.currentUser?.firstName, 'Jasmin');
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+  });
+
+  testWidgets('an invite link: the inviter first, then one tap to join', (
+    tester,
+  ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend();
+    final crews = FakeCrewBackend()..preview = _preview;
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(
+        authBackend: auth,
+        crewBackend: crews,
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+        inviteLinkSource: FakeInviteLinkSource(
+          Uri.parse('weekpact://invite?code=7K2QXM&from=$_inviter'),
         ),
       ),
     );
-    await tester.tap(find.text('Just me, for now'));
-    await tester.pumpUi();
-    expect(find.byType(CrewSetupPage), findsOneWidget);
-    expect(find.text('Start solo'), findsOneWidget);
-    expect(find.text('Step 1 of 3'), findsOneWidget);
-    expect(find.text('Just you, for now.'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField), 'My week');
-    await tester.tap(find.text('Create crew'));
-    await tester.pumpUi();
-    expect(crews.created, 1);
-    expect(find.text('Step 2 of 3'), findsOneWidget);
-    await tester.tap(find.text('Choose a starter pact'));
-    await tester.pumpUi();
-    await tester.tap(find.text('Read 20 pages'));
-    await tester.pumpUi();
-    final save = find.text('SAVE PACT');
-    await tester.ensureVisible(save);
-    await tester.tap(save);
     await tester.pumpUi();
 
-    // Straight from the pact to the first check-in: nobody to invite yet.
-    expect(find.text('Step 3 of 3'), findsOneWidget);
-    expect(find.text('Continue to first check-in'), findsNothing);
-    expect(find.text('I did it today'), findsOneWidget);
-    await tester.ensureVisible(find.text('I did it today'));
-    await tester.tap(find.text('I did it today'));
-    await tester.pumpUi();
-    await submitTestPhoto(tester);
-    expect(home.selected, {'new'});
-    expect(done, 1);
-    expect(tester.takeException(), isNull);
+    expect(crews.previewedFrom, contains(_inviter));
+    expect(find.text('Edin invited you.'), findsOneWidget);
+    expect(find.text('Go for a run'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('join-crew')));
+
+    expect(find.text('Join Early Birds.'), findsOneWidget);
+    await _tap(tester, find.byKey(const ValueKey('sign-in-google')));
+
+    // They tapped Join already; signing in is the join.
+    expect(crews.acceptedTokens, ['7K2QXM']);
+    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
   });
 
-  testWidgets('logging out returns to the log-in form, not the front door', (
+  testWidgets('a code that no longer works says so', (tester) async {
+    _phone(tester);
+    final auth = FakeAuthBackend();
+    final crews = FakeCrewBackend();
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(
+      WeekPactApp(
+        authBackend: auth,
+        crewBackend: crews,
+        inviteLinkSource: FakeInviteLinkSource(
+          Uri.parse('weekpact://invite?code=7K2QXM'),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+
+    expect(find.text('This invite doesn’t work anymore.'), findsOneWidget);
+    await _tap(tester, find.text('ENTER A DIFFERENT CODE'));
+    expect(find.text('Enter your invite code.'), findsOneWidget);
+  });
+
+  testWidgets('a code typed on the crew-name screen opens that crew', (
     tester,
   ) async {
+    _phone(tester);
+    final auth = FakeAuthBackend();
+    final crews = FakeCrewBackend()..preview = _preview;
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(WeekPactApp(authBackend: auth, crewBackend: crews));
+    await tester.pumpUi();
+    await _tap(tester, find.byKey(const ValueKey('get-started')));
+    await _tap(tester, find.text('Got an invite code instead?'));
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-code-field')),
+      '7k2qxm',
+    );
+    await _tap(tester, find.text('FIND MY CREW'));
+    expect(find.text('Edin invited you.'), findsOneWidget);
+  });
+
+  testWidgets('logging out opens on Log in, not the front door', (
+    tester,
+  ) async {
+    _phone(tester);
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
     await tester.pumpWidget(
       WeekPactApp(
+        authBackend: auth,
         homeBackend: DashboardBackend(viewerId: 'user-id'),
         pactsBackend: DashboardPacts(),
-        authBackend: auth,
       ),
     );
     await tester.pumpUi();
-    await tester.tap(find.text('Already in?  LOG IN'));
-    await tester.pumpUi();
-    await tester.enterText(find.byType(TextFormField).at(0), 'a@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.tap(find.text('LOG IN'));
-    await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('nav-account')));
-    await tester.pumpUi();
-    await tester.ensureVisible(find.text('Log out'));
-    await tester.tap(find.text('Log out'));
+    await _tap(tester, find.text('Log in').first);
+    await _tap(tester, find.byKey(const ValueKey('sign-in-google')));
+    await auth.signOut();
     await tester.pumpUi();
     expect(find.text('Welcome back.'), findsOneWidget);
-    expect(find.text('START A NEW CREW'), findsNothing);
-    expect(auth.currentUser, isNull);
+    expect(find.text('Good habits.\nGreat company.'), findsNothing);
   });
 }

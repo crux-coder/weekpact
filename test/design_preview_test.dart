@@ -87,13 +87,6 @@ void main() {
                       joinedAt: DateTime(2026),
                     ),
                   ],
-                  pendingInvites: [
-                    CrewInvite(
-                      id: 'invite',
-                      email: 'alex@example.com',
-                      expiresAt: DateTime(2027),
-                    ),
-                  ],
                 ),
               pactsBackend: backend.pacts,
               homeBackend: backend,

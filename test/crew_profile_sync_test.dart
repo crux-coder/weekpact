@@ -55,7 +55,6 @@ void main() {
               joinedAt: DateTime(2026),
             ),
           ],
-          pendingInvites: [],
         );
       await tester.pumpWidget(
         MaterialApp(

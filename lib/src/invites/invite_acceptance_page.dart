@@ -1,35 +1,59 @@
 import 'package:flutter/material.dart';
-
-import '../widgets/app_icon.dart';
-
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_backend.dart';
-import '../notifications/notification_primer_page.dart';
+import '../onboarding/onboarding_flow.dart';
+import '../onboarding/onboarding_widgets.dart';
+import '../onboarding/setup_pages.dart';
 import '../subscriptions/pro_upgrade.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
-import '../widgets/page_frame.dart';
+import '../widgets/app_icon.dart';
+import '../widgets/app_sheet.dart';
+import 'invite_code_entry.dart';
+import 'invite_links.dart';
 
+/// A signed-in account holding an invite.
+///
+/// Somebody who tapped Join before signing in has already decided, so with
+/// [autoJoin] the join happens at once. Anyone else — a member opening a
+/// friend's link, or a code typed on Home — sees the crew first and joins
+/// with one tap.
 class InviteAcceptancePage extends StatefulWidget {
   const InviteAcceptancePage({
     super.key,
-    required this.email,
-    required this.token,
     required this.crewBackend,
-    required this.onFinished,
-    this.onAccepted,
+    required this.invite,
+    required this.onJoined,
+    required this.onDismiss,
+    this.preview,
+    this.previewMissing = false,
+    this.autoJoin = false,
+    this.notify = true,
+    this.onNewInvite,
   });
 
-  final String email;
-  final String token;
   final CrewBackend crewBackend;
-  final VoidCallback onFinished;
+  final InviteRef invite;
+  final CrewInvitePreview? preview;
+
+  /// The preview answered nothing: an unknown or reset code.
+  final bool previewMissing;
+  final bool autoJoin;
+
+  /// The notification switch's starting position.
+  final bool notify;
 
   /// The crew that was joined, by id. It is the id rather than the crew
   /// itself because a join can succeed while the crew that follows it will
   /// not load, and Home only ever wanted the id.
-  final ValueChanged<String>? onAccepted;
+  final ValueChanged<String> onJoined;
+
+  /// Leaves the invite unused and goes on to Home.
+  final VoidCallback onDismiss;
+
+  /// A different code, typed after this one turned out not to work.
+  final ValueChanged<InviteRef>? onNewInvite;
 
   @override
   State<InviteAcceptancePage> createState() => _InviteAcceptancePageState();
@@ -37,25 +61,17 @@ class InviteAcceptancePage extends StatefulWidget {
 
 class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
   bool _accepting = false;
+  bool _invalid = false;
   String? _error;
-  bool _canRetry = false;
-  CrewInvitePreview? _preview;
+  late bool _notify = widget.notify;
 
   @override
   void initState() {
     super.initState();
-    _loadPreview();
-  }
-
-  /// The card reads better with the crew's name on it, and it is only ever
-  /// decoration: a preview that fails or answers nothing leaves the page
-  /// saying what it said before, because the invitation is still good.
-  Future<void> _loadPreview() async {
-    try {
-      final preview = await widget.crewBackend.previewInvite(widget.token);
-      if (mounted && preview != null) setState(() => _preview = preview);
-    } catch (_) {
-      /* The invitation stands whether or not it can introduce itself. */
+    if (widget.autoJoin && !widget.previewMissing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _accept();
+      });
     }
   }
 
@@ -64,15 +80,14 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
     setState(() {
       _accepting = true;
       _error = null;
-      _canRetry = false;
     });
+    String? crewId;
     try {
-      final crew = await widget.crewBackend.acceptInvite(widget.token);
-      if (mounted) await _joined(crew.id, crew.name);
+      crewId = (await widget.crewBackend.acceptInvite(widget.invite.code)).id;
     } on CrewJoinedWithoutDetails catch (joined) {
-      // The membership exists; only the crew behind it would not load. Saying
-      // the invitation failed would send a member off for a fresh link.
-      if (mounted) await _joined(joined.crewId, _preview?.crewName);
+      // The membership exists; only the crew behind it would not load.
+      // Saying the invite failed would send a member off for a fresh code.
+      crewId = joined.crewId;
     } catch (error) {
       if (!mounted) return;
       setState(() => _accepting = false);
@@ -86,207 +101,134 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
         }
         return;
       }
-      final known = _knownInviteProblem(error);
-      if (mounted) {
-        setState(() {
-          _error = known ?? _unreachable;
-          _canRetry = known == null;
-        });
+      if (_isDeadInvite(error)) {
+        setState(() => _invalid = true);
+        return;
       }
+      setState(
+        () => _error =
+            'Could not reach WeekPact. Check your connection and try again.',
+      );
+      return;
     }
+    if (!mounted) return;
+    if (_notify && !(widget.preview?.isMember ?? false)) {
+      await askForNotifications(context);
+    }
+    if (mounted) widget.onJoined(crewId);
   }
 
-  /// In. The one ask for notifications comes here, while the crew that will
-  /// send them is the thing on screen, and Home follows either answer.
-  Future<void> _joined(String crewId, String? crewName) async {
-    widget.onAccepted?.call(crewId);
-    await NotificationPrimerPage.show(
-      context,
-      crewName: crewName ?? 'the crew',
-      reason: NotificationPrimerReason.joined,
-    );
-    if (mounted) widget.onFinished();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final preview = _preview;
-    return Scaffold(
-      body: PageFrame(
-        child: Column(
+  Future<void> _enterAnother() async {
+    final onNew = widget.onNewInvite;
+    if (onNew == null) {
+      widget.onDismiss();
+      return;
+    }
+    final invite = await showAppSheet<InviteRef>(
+      context: context,
+      builder: (sheetContext) => AppSheet(
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'CREW INVITATION',
-              style: TextStyle(
-                color: context.muted,
-                fontFamily: WeekPactType.secondary,
-                fontFamilyFallback: WeekPactType.secondaryFallback,
-                fontSize: 10,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            AppSurface(
-              fillColor: WeekPactColors.cream,
-              borderWidth: 0,
-              builder: (context) => Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: WeekPactColors.coolGrey,
-                          borderRadius: BorderRadius.circular(
-                            WeekPactMetrics.controlRadius,
-                          ),
-                        ),
-                        child: AppIcon(
-                          icon: HugeIconsStrokeRounded.userGroup,
-                          size: 32,
-                          color: context.ink,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      preview == null
-                          ? 'Your crew is waiting.'
-                          : 'Join ${preview.crewName}',
-                      style: TextStyle(
-                        color: context.ink,
-                        fontSize: 38,
-                        height: 1.05,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -.7,
-                      ),
-                    ),
-                    if (preview != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        preview.memberCount == 1
-                            ? '1 member'
-                            : '${preview.memberCount} members',
-                        style: TextStyle(
-                          color: context.muted,
-                          fontFamily: WeekPactType.secondary,
-                          fontFamilyFallback: WeekPactType.secondaryFallback,
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Text(
-                      preview == null
-                          ? 'Build your habits together. Join the crew to see its pacts and check in with your people.'
-                          : '${preview.ownerName} is building habits with their people. Join to see the crew’s pacts and check in alongside them.',
-                      style: TextStyle(
-                        color: context.muted,
-                        fontFamily: WeekPactType.secondary,
-                        fontFamilyFallback: WeekPactType.secondaryFallback,
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                        height: 1.55,
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    AppButton(
-                      label: 'ACCEPT INVITE',
-                      icon: HugeIconsStrokeRounded.arrowRight01,
-                      isLoading: _accepting,
-                      onPressed: _accept,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'SIGNED IN AS',
-              style: TextStyle(
-                color: context.muted,
-                fontFamily: WeekPactType.secondary,
-                fontFamilyFallback: WeekPactType.secondaryFallback,
-                fontSize: 10,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.email,
-              style: TextStyle(
-                color: context.ink,
-                fontFamily: WeekPactType.secondary,
-                fontFamilyFallback: WeekPactType.secondaryFallback,
-                fontWeight: FontWeight.w400,
-                fontSize: 15,
-                height: 1.5,
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 18),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: TextStyle(
-                    color: context.errorInk,
-                    fontFamily: WeekPactType.secondary,
-                    fontFamilyFallback: WeekPactType.secondaryFallback,
-                    fontSize: 14,
-                    height: 1.5,
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Join with a code',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
                   ),
                 ),
-              ),
-              if (_canRetry) ...[
-                const SizedBox(height: 12),
-                AppButton(
-                  label: 'TRY AGAIN',
-                  isLoading: _accepting,
-                  onPressed: _accept,
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
                 ),
               ],
-            ],
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _accepting ? null : widget.onFinished,
-              style: TextButton.styleFrom(foregroundColor: context.muted),
-              child: const Text('NOT NOW'),
+            ),
+            const SizedBox(height: 12),
+            InviteCodeEntry(
+              onInvite: (invite) => Navigator.pop(context, invite),
             ),
           ],
         ),
       ),
     );
+    if (invite != null && mounted) onNew(invite);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = widget.preview;
+    if (_invalid || widget.previewMissing) {
+      return InviteProblemView(
+        problem: InviteProblem.invalid,
+        onPrimary: _enterAnother,
+        onSecondary: widget.onDismiss,
+      );
+    }
+    if (preview?.isMember ?? false) {
+      return InviteProblemView(
+        problem: InviteProblem.member,
+        crewName: preview!.crewName,
+        onPrimary: _accept,
+      );
+    }
+    if (widget.autoJoin && _error == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return OnboardingScaffold(
+      onBack: _accepting ? null : widget.onDismiss,
+      title: preview == null
+          ? 'Your crew is waiting.'
+          : '${preview.inviterName} invited you.',
+      subtitle: 'To keep each other honest, one small pact at a time.',
+      body: [
+        if (preview == null)
+          const Center(child: CircularProgressIndicator())
+        else
+          InvitePreviewCard(preview: preview),
+        const SizedBox(height: 10),
+        NotifySwitchCard(
+          title: 'Tell me when they check in',
+          value: _notify,
+          onChanged: (value) => setState(() => _notify = value),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(_error!, style: TextStyle(color: context.errorInk)),
+        ],
+      ],
+      footer: [
+        AppButton(
+          key: const ValueKey('accept-invite'),
+          label: _error != null
+              ? 'TRY AGAIN'
+              : preview == null
+              ? 'JOIN THE CREW'
+              : 'JOIN ${preview.crewName.toUpperCase()}',
+          color: WeekPactColors.mintGreen,
+          height: 56,
+          isLoading: _accepting,
+          onPressed: _accept,
+        ),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: _accepting ? null : widget.onDismiss,
+          style: TextButton.styleFrom(foregroundColor: context.muted),
+          child: const Text('Not now'),
+        ),
+      ],
+    );
   }
 }
 
-const _unreachable =
-    'Could not reach WeekPact. Check your connection and try again.';
-
-/// The refusals the database actually has a name for. Everything else — a
-/// phone with no signal, a gateway having a bad minute — used to be told it
-/// was a bad invitation, which sent people to the crew owner for a link that
-/// was never the problem.
-String? _knownInviteProblem(Object error) {
+/// The refusals that mean the invite itself is no good, as opposed to the
+/// network having a bad minute.
+bool _isDeadInvite(Object error) {
   final message = error.toString();
-  for (final known in [
-    'Invite is invalid or has already been used',
-    'Invite has expired',
-    'This invite link has expired',
-    'Confirm your email before joining',
-    'Sign in with the email address that received this invite',
-  ]) {
-    if (message.contains(known)) return known;
-  }
-  return null;
+  return message.contains('no longer valid') ||
+      message.contains('Invalid invite') ||
+      message.contains('has expired') ||
+      message.contains('already been used');
 }

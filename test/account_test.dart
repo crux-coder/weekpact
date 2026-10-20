@@ -56,10 +56,14 @@ class AccountBackend extends FakeAuthBackend {
     updatedPassword = password;
   }
 
+  /// Whether the last deletion was confirmed by typing DELETE.
+  bool deletedWithoutPassword = false;
+
   @override
-  Future<void> deleteAccount(String password) async {
+  Future<void> deleteAccount({String? password}) async {
     if (fail) throw const FunctionException(status: 403);
     deletedPassword = password;
+    deletedWithoutPassword = password == null;
   }
 
   @override
@@ -163,14 +167,12 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Already in?  LOG IN'));
+      await tester.tap(find.text('Log in').first);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.text('Forgot password or need a confirmation email?'),
-      );
-      await tester.tap(
-        find.text('Forgot password or need a confirmation email?'),
-      );
+      await tester.tap(find.byKey(const ValueKey('email-log-in')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Forgot your password?'));
+      await tester.tap(find.text('Forgot your password?'));
       await tester.pumpAndSettle();
       expect(find.text('Account recovery'), findsOneWidget);
       backend.recover();
@@ -194,14 +196,12 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Already in?  LOG IN'));
+      await tester.tap(find.text('Log in').first);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.text('Forgot password or need a confirmation email?'),
-      );
-      await tester.tap(
-        find.text('Forgot password or need a confirmation email?'),
-      );
+      await tester.tap(find.byKey(const ValueKey('email-log-in')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Forgot your password?'));
+      await tester.tap(find.text('Forgot your password?'));
       await tester.pumpAndSettle();
       backend.changes.addError(const AuthException('Expired link'));
       await tester.pumpAndSettle();
@@ -266,4 +266,36 @@ void main() {
       expect(find.text('Delete account'), findsOneWidget);
     },
   );
+  testWidgets('an Apple or Google account confirms deletion by typing DELETE', (
+    tester,
+  ) async {
+    final backend = AccountBackend()
+      ..user = const AuthUser(
+        id: 'user-id',
+        email: 'apple@privaterelay.appleid.com',
+        firstName: 'Mia',
+        hasPassword: false,
+      );
+    addTearDown(backend.dispose);
+    await tester.pumpWidget(
+      frame(Scaffold(body: AccountActions(backend: backend))),
+    );
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Current password'), findsNothing);
+    expect(find.text('Type DELETE to confirm'), findsOneWidget);
+    await tester.ensureVisible(find.byType(CheckboxListTile));
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.enterText(find.byType(TextField), 'delet');
+    await tester.pump();
+    await tester.tap(find.text('Permanently delete'));
+    await tester.pump();
+    expect(backend.deletedWithoutPassword, isFalse);
+    await tester.enterText(find.byType(TextField), 'delete');
+    await tester.pump();
+    await tester.tap(find.text('Permanently delete'));
+    await tester.pumpAndSettle();
+    expect(backend.deletedWithoutPassword, isTrue);
+    expect(backend.deletedPassword, isNull);
+  });
 }

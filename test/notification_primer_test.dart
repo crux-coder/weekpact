@@ -16,7 +16,7 @@ import 'notifications_test.dart' show FakeMessaging;
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
 import 'widget_test.dart'
-    show FakeAuthBackend, FakeCrewBackend, FakeInviteLinkSource, openLogin;
+    show FakeAuthBackend, FakeCrewBackend, FakeInviteLinkSource;
 
 void main() {
   late FakeMessaging client;
@@ -111,9 +111,60 @@ void main() {
     expect(NotificationPrimerPage.wanted(service), isFalse);
   });
 
-  testWidgets('joining a crew asks, and either answer opens Home', (
-    tester,
-  ) async {
+  for (final notify in [true, false]) {
+    testWidgets(
+      notify
+          ? 'joining with the switch on asks once, then opens Home'
+          : 'joining with the switch off never asks',
+      (tester) async {
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await service.initialize();
+        final auth = FakeAuthBackend();
+        final crews = FakeCrewBackend()
+          ..preview = const CrewInvitePreview(
+            crewName: 'Early Birds',
+            memberCount: 3,
+            ownerName: 'Ada Lovelace',
+          );
+        addTearDown(auth.dispose);
+        // The app owns the service it is given, and disposes it on the way
+        // out.
+        await tester.pumpWidget(
+          WeekPactApp(
+            homeBackend: DashboardBackend(viewerId: 'user-id'),
+            pactsBackend: DashboardPacts(),
+            authBackend: auth,
+            crewBackend: crews,
+            notifications: service,
+            inviteLinkSource: FakeInviteLinkSource(
+              Uri.parse('weekpact://invite?code=7K2QXM'),
+            ),
+          ),
+        );
+        await tester.pumpUi();
+        await tester.tap(find.byKey(const ValueKey('join-crew')));
+        await tester.pumpUi();
+        if (!notify) {
+          await tester.tap(find.byKey(const ValueKey('notify-switch')));
+          await tester.pumpUi();
+        }
+        await tester.tap(find.byKey(const ValueKey('sign-in-google')));
+        await tester.pumpUi();
+
+        expect(crews.acceptedTokens, ['7K2QXM']);
+        expect(client.requests, notify ? 1 : 0);
+        expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets('without a notification service, joining goes straight to '
+      'Home', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     final auth = FakeAuthBackend();
     final crews = FakeCrewBackend()
       ..preview = const CrewInvitePreview(
@@ -122,49 +173,6 @@ void main() {
         ownerName: 'Ada Lovelace',
       );
     addTearDown(auth.dispose);
-    // The app owns the service it is given, and disposes it on the way out.
-    await tester.pumpWidget(
-      WeekPactApp(
-        homeBackend: DashboardBackend(viewerId: 'user-id'),
-        pactsBackend: DashboardPacts(),
-        authBackend: auth,
-        crewBackend: crews,
-        notifications: service,
-        inviteLinkSource: FakeInviteLinkSource(
-          Uri.parse('weekpact://invite?invite=share-token'),
-        ),
-      ),
-    );
-    await openLogin(tester);
-    await tester.enterText(find.byType(TextFormField).at(0), 'a@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.ensureVisible(find.text('LOG IN'));
-    await tester.tap(find.text('LOG IN'));
-    await tester.pumpUi();
-    await tester.ensureVisible(find.text('ACCEPT INVITE'));
-    await tester.tap(find.text('ACCEPT INVITE'));
-    await tester.pumpUi();
-
-    expect(crews.acceptedTokens, ['share-token']);
-    expect(find.byType(NotificationPrimerPage), findsOneWidget);
-    // Named after the crew the join actually returned, not the preview.
-    expect(
-      find.text('Hear it when Weekend Warriors shows up.'),
-      findsOneWidget,
-    );
-    await tester.ensureVisible(find.text('TURN ON NOTIFICATIONS'));
-    await tester.tap(find.text('TURN ON NOTIFICATIONS'));
-    await tester.pumpUi();
-    expect(client.requests, 1);
-    expect(find.byType(NotificationPrimerPage), findsNothing);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
-  });
-
-  testWidgets('without a notification service, joining goes straight to '
-      'Home', (tester) async {
-    final auth = FakeAuthBackend();
-    final crews = FakeCrewBackend();
-    addTearDown(auth.dispose);
     await tester.pumpWidget(
       WeekPactApp(
         homeBackend: DashboardBackend(viewerId: 'user-id'),
@@ -172,18 +180,14 @@ void main() {
         authBackend: auth,
         crewBackend: crews,
         inviteLinkSource: FakeInviteLinkSource(
-          Uri.parse('weekpact://invite?invite=share-token'),
+          Uri.parse('weekpact://invite?code=7K2QXM'),
         ),
       ),
     );
-    await openLogin(tester);
-    await tester.enterText(find.byType(TextFormField).at(0), 'a@example.com');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-    await tester.ensureVisible(find.text('LOG IN'));
-    await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
-    await tester.ensureVisible(find.text('ACCEPT INVITE'));
-    await tester.tap(find.text('ACCEPT INVITE'));
+    await tester.tap(find.byKey(const ValueKey('join-crew')));
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('sign-in-apple')));
     await tester.pumpUi();
     expect(find.byType(NotificationPrimerPage), findsNothing);
     expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);

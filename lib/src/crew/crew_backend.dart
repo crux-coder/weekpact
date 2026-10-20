@@ -24,18 +24,6 @@ class CrewMember {
   bool get isOwner => role == 'owner';
 }
 
-class CrewInvite {
-  const CrewInvite({
-    required this.id,
-    required this.email,
-    required this.expiresAt,
-  });
-
-  final String id;
-  final String email;
-  final DateTime expiresAt;
-}
-
 class CrewDetails {
   const CrewDetails({
     required this.id,
@@ -44,7 +32,6 @@ class CrewDetails {
     required this.ownerId,
     required this.currentUserRole,
     required this.members,
-    required this.pendingInvites,
     this.createdAt,
   });
 
@@ -54,7 +41,6 @@ class CrewDetails {
   final String ownerId;
   final String currentUserRole;
   final List<CrewMember> members;
-  final List<CrewInvite> pendingInvites;
 
   /// When the crew was started, for the line the crew card opens with.
   ///
@@ -67,68 +53,70 @@ class CrewDetails {
   bool get isOwner => currentUserRole == 'owner';
 }
 
-class ReceivedCrewInvite {
-  const ReceivedCrewInvite({
-    required this.id,
-    required this.crewId,
-    required this.name,
-    required this.timezone,
-    required this.expiresAt,
-    required this.members,
-    required this.pacts,
-  });
-
-  final String id;
-  final String crewId;
-  final String name;
-  final String timezone;
-  final DateTime expiresAt;
-  final List<CrewMember> members;
-  final List<CrewPact> pacts;
-
-  factory ReceivedCrewInvite.fromJson(Map<String, dynamic> row) =>
-      ReceivedCrewInvite(
-        id: row['id'] as String,
-        crewId: row['crew_id'] as String,
-        name: row['name'] as String,
-        timezone: row['timezone'] as String,
-        expiresAt: DateTime.parse(row['expires_at'] as String),
-        members: (row['members'] as List)
-            .map(
-              (m) => CrewMember(
-                userId: m['user_id'] as String,
-                email: m['email'] as String,
-                role: m['role'] as String,
-                joinedAt: DateTime.parse(m['joined_at'] as String),
-              ),
-            )
-            .toList(growable: false),
-        pacts: (row['pacts'] as List)
-            .map((g) => CrewPact.fromJson(Map<String, dynamic>.from(g as Map)))
-            .toList(growable: false),
-      );
-}
-
-/// The little an invitation can say about a crew before anyone has joined it:
-/// its name, how many people are in it, and who started it. Nothing else is
-/// readable through a token, so nothing else is here.
+/// What a crew's invite may say about it before anyone has joined: its name,
+/// who is in it, who sent the invite, and what they keep. Readable without an
+/// account, so nothing here identifies anyone beyond a first name.
 class CrewInvitePreview {
   const CrewInvitePreview({
     required this.crewName,
     required this.memberCount,
     required this.ownerName,
-  });
+    String? inviterName,
+    this.inviterInitials = '',
+    this.memberInitials = const [],
+    this.pacts = const [],
+    this.isMember = false,
+  }) : inviterName = inviterName ?? ownerName;
 
   final String crewName;
   final int memberCount;
   final String ownerName;
+
+  /// Whoever shared the link, or the owner when the code was typed.
+  final String inviterName;
+  final String inviterInitials;
+  final List<String> memberInitials;
+  final List<InvitePact> pacts;
+
+  /// The signed-in account is already in this crew.
+  final bool isMember;
 
   static CrewInvitePreview fromJson(Map<String, dynamic> row) =>
       CrewInvitePreview(
         crewName: row['crew_name'] as String,
         memberCount: (row['member_count'] as num).toInt(),
         ownerName: row['owner_name'] as String,
+        inviterName: row['inviter_name'] as String?,
+        inviterInitials: row['inviter_initials'] as String? ?? '',
+        memberInitials: [
+          for (final initials in row['member_initials'] as List? ?? const [])
+            initials as String,
+        ],
+        pacts: [
+          for (final pact in row['pacts'] as List? ?? const [])
+            InvitePact.fromJson(Map<String, dynamic>.from(pact as Map)),
+        ],
+        isMember: row['is_member'] as bool? ?? false,
       );
+}
+
+/// A pact as an invite shows it.
+class InvitePact {
+  const InvitePact({
+    required this.title,
+    required this.iconKey,
+    required this.daysPerWeek,
+  });
+
+  final String title;
+  final String iconKey;
+  final int daysPerWeek;
+
+  static InvitePact fromJson(Map<String, dynamic> row) => InvitePact(
+    title: row['title'] as String,
+    iconKey: row['icon_key'] as String? ?? 'target',
+    daysPerWeek: (row['days_per_week'] as num?)?.toInt() ?? 7,
+  );
 }
 
 /// Thrown when the join itself succeeded and only the crew that followed could
@@ -146,29 +134,20 @@ class CrewJoinedWithoutDetails implements Exception {
 abstract interface class CrewBackend {
   Future<void> leaveCrew({required String crewId, String? successorId});
   Future<void> removeMember({required String crewId, required String userId});
-  Future<List<ReceivedCrewInvite>> fetchReceivedInvites();
-  Future<void> respondToInvite({
-    required String inviteId,
-    required bool accept,
-  });
   Future<List<PactCrew>> fetchCrews();
   Future<CrewDetails?> fetchCrew({String? crewId});
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
   });
-  Future<CrewDetails> inviteMember({
-    required String crewId,
-    required String email,
-  });
-  Future<CrewDetails> revokeInvite({
-    required String crewId,
-    required String inviteId,
-  });
-  Future<CrewDetails> acceptInvite(String token);
 
-  /// What the invitation is for, or null when the token is unknown or expired.
-  Future<CrewInvitePreview?> previewInvite(String token);
+  /// Joins the crew behind [code] (or a legacy link token). Joining a crew
+  /// you are already in is not an error.
+  Future<CrewDetails> acceptInvite(String code);
+
+  /// What the invite is for, or null when the code is unknown or was reset.
+  /// [from] is the member who shared the link, when it said.
+  Future<CrewInvitePreview?> previewInvite(String code, {String? from});
 }
 
 /// Ending a crew, for the one person who can.
@@ -187,15 +166,14 @@ abstract interface class CrewDeletionBackend {
 class SupabaseCrewBackend
     implements CrewBackend, CrewSharingBackend, CrewDeletionBackend {
   @override
-  Future<CrewShareLink?> manageShareLink(String crewId, String action) async {
-    final row = await _client.rpc(
-      'manage_crew_share_link',
-      params: {'p_crew': crewId, 'p_action': action},
-    );
-    return row == null
-        ? null
-        : CrewShareLink.fromJson(Map<String, dynamic>.from(row as Map));
-  }
+  Future<String> inviteCode(String crewId) async =>
+      await _client.rpc('crew_invite_code', params: {'p_crew': crewId})
+          as String;
+
+  @override
+  Future<String> resetInviteCode(String crewId) async =>
+      await _client.rpc('reset_crew_invite_code', params: {'p_crew': crewId})
+          as String;
 
   const SupabaseCrewBackend(this._client);
 
@@ -233,17 +211,6 @@ class SupabaseCrewBackend
         .eq('crew_id', selectedId)
         .order('joined_at');
 
-    List<dynamic> inviteRows = const [];
-    if (membership['role'] == 'owner') {
-      inviteRows = await _client
-          .from('crew_invites')
-          .select('id,email,expires_at')
-          .eq('crew_id', selectedId)
-          .isFilter('accepted_at', null)
-          .gt('expires_at', DateTime.now().toUtc().toIso8601String())
-          .order('created_at', ascending: false);
-    }
-
     return CrewDetails(
       id: selectedId,
       name: crew['name'] as String,
@@ -258,15 +225,6 @@ class SupabaseCrewBackend
               email: row['email'] as String,
               role: row['role'] as String,
               joinedAt: DateTime.parse(row['joined_at'] as String),
-            ),
-          )
-          .toList(growable: false),
-      pendingInvites: inviteRows
-          .map(
-            (row) => CrewInvite(
-              id: row['id'] as String,
-              email: row['email'] as String,
-              expiresAt: DateTime.parse(row['expires_at'] as String),
             ),
           )
           .toList(growable: false),
@@ -288,35 +246,10 @@ class SupabaseCrewBackend
   }
 
   @override
-  Future<CrewDetails> inviteMember({
-    required String crewId,
-    required String email,
-  }) async {
-    await _client.functions.invoke(
-      'invite-crew-member',
-      body: {'crewId': crewId, 'email': email.trim().toLowerCase()},
-    );
-    return (await fetchCrew(crewId: crewId))!;
-  }
-
-  @override
-  Future<CrewDetails> revokeInvite({
-    required String crewId,
-    required String inviteId,
-  }) async {
-    await _client
-        .from('crew_invites')
-        .delete()
-        .eq('id', inviteId)
-        .eq('crew_id', crewId);
-    return (await fetchCrew(crewId: crewId))!;
-  }
-
-  @override
-  Future<CrewDetails> acceptInvite(String token) async {
+  Future<CrewDetails> acceptInvite(String code) async {
     final crewId = await _client.rpc(
       'accept_crew_invite',
-      params: {'p_token': token},
+      params: {'p_code': code},
     ) as String;
     // Past this line the membership exists. A crew that will not load is a
     // reading problem, and reporting it as a refused invitation would leave
@@ -332,37 +265,14 @@ class SupabaseCrewBackend
   }
 
   @override
-  Future<CrewInvitePreview?> previewInvite(String token) async {
+  Future<CrewInvitePreview?> previewInvite(String code, {String? from}) async {
     final row = await _client.rpc(
       'preview_crew_invite',
-      params: {'p_token': token},
+      params: {'p_code': code, 'p_from': from},
     );
     return row == null
         ? null
         : CrewInvitePreview.fromJson(Map<String, dynamic>.from(row as Map));
-  }
-
-  @override
-  Future<List<ReceivedCrewInvite>> fetchReceivedInvites() async {
-    final rows = await _client.rpc('received_crew_invites') as List;
-    return rows
-        .map(
-          (row) => ReceivedCrewInvite.fromJson(
-            Map<String, dynamic>.from(row as Map),
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  @override
-  Future<void> respondToInvite({
-    required String inviteId,
-    required bool accept,
-  }) async {
-    await _client.rpc(
-      'respond_to_crew_invite',
-      params: {'p_invite_id': inviteId, 'p_accept': accept},
-    );
   }
 
   @override
@@ -422,15 +332,6 @@ class MissingCrewBackend implements CrewBackend, CrewDeletionBackend {
   Future<void> removeMember({required String crewId, required String userId}) =>
       Future.error(_error);
 
-  @override
-  Future<List<ReceivedCrewInvite>> fetchReceivedInvites() async => [];
-
-  @override
-  Future<void> respondToInvite({
-    required String inviteId,
-    required bool accept,
-  }) => Future.error(_error);
-
   static StateError get _error => StateError(
     'Supabase is not configured. Add the URL and publishable key first.',
   );
@@ -439,26 +340,15 @@ class MissingCrewBackend implements CrewBackend, CrewDeletionBackend {
   Future<CrewDetails?> fetchCrew({String? crewId}) async => null;
 
   @override
-  Future<CrewDetails> acceptInvite(String token) => Future.error(_error);
+  Future<CrewDetails> acceptInvite(String code) => Future.error(_error);
 
   @override
-  Future<CrewInvitePreview?> previewInvite(String token) async => null;
+  Future<CrewInvitePreview?> previewInvite(String code, {String? from}) async =>
+      null;
 
   @override
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
-  }) => Future.error(_error);
-
-  @override
-  Future<CrewDetails> inviteMember({
-    required String crewId,
-    required String email,
-  }) => Future.error(_error);
-
-  @override
-  Future<CrewDetails> revokeInvite({
-    required String crewId,
-    required String inviteId,
   }) => Future.error(_error);
 }

@@ -18,6 +18,7 @@ import 'src/pacts/pacts_backend.dart';
 import 'src/auth/auth_backend.dart';
 import 'src/crew/crew_backend.dart';
 import 'src/invites/invite_links.dart';
+import 'src/onboarding/onboarding_draft.dart';
 import 'src/subscriptions/subscription_backend.dart';
 import 'src/subscriptions/subscription_identity.dart';
 import 'src/subscriptions/subscription_scope.dart';
@@ -102,6 +103,7 @@ Future<void> main() async {
     WeekPactApp(
       crewSelectionStore: CrewSelectionStore(preferences),
       storySeenStore: StorySeenStore(preferences),
+      onboardingDraftStore: OnboardingDraftStore(preferences),
       authBackend: authBackend,
       notifications: notifications,
       crewBackend: crewBackend,

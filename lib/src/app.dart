@@ -19,6 +19,7 @@ import 'crew/crew_backend.dart';
 import 'crew/crew_selection_store.dart';
 import 'home/story_seen_store.dart';
 import 'invites/invite_links.dart';
+import 'onboarding/onboarding_draft.dart';
 import 'subscriptions/subscription_scope.dart';
 import 'theme/weekpact_theme.dart';
 
@@ -29,6 +30,7 @@ class WeekPactApp extends StatefulWidget {
     this.notifications,
     this.crewSelectionStore,
     this.storySeenStore,
+    this.onboardingDraftStore,
     this.crewBackend = const MissingCrewBackend(),
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
@@ -41,6 +43,10 @@ class WeekPactApp extends StatefulWidget {
   final NotificationService? notifications;
   final CrewSelectionStore? crewSelectionStore;
   final StorySeenStore? storySeenStore;
+
+  /// Where a new person's setup answers wait for their account. Null keeps
+  /// them for the run of the app.
+  final OnboardingDraftStore? onboardingDraftStore;
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
@@ -126,6 +132,7 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       home: AuthGate(
         crewSelectionStore: widget.crewSelectionStore,
         storySeenStore: widget.storySeenStore,
+        onboardingDraftStore: widget.onboardingDraftStore,
         authBackend: widget.authBackend,
         crewBackend: widget.crewBackend,
         pactsBackend: widget.pactsBackend,
