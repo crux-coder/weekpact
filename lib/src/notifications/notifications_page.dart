@@ -290,6 +290,21 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         bottom: WeekPactMetrics.sectionGap,
                       ),
                       child: CrewPageHeading(
+                        // The page's name, where Pacts and Crews name their
+                        // crew: centred on the row, in the same type.
+                        switcher: Text(
+                          'Notifications',
+                          key: const ValueKey('notifications-title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: context.ink,
+                            fontSize: 22,
+                            height: 1.15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         actions: [
                           IconButton(
                             tooltip: 'Close notifications',

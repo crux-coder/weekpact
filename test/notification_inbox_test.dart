@@ -88,7 +88,7 @@ void main() {
     await pumpNotifications(tester, backend);
 
     expect(find.byTooltip('Close notifications'), findsOneWidget);
-    expect(find.text('Notifications'), findsNothing);
+    expect(find.text('Notifications'), findsOneWidget);
     expect(
       find.textContaining('completed Climb twice.'),
       findsOneWidget,
@@ -177,6 +177,17 @@ void main() {
     );
     await tester.pumpUi();
     expect(find.text('That’s everything'), findsOneWidget);
+  });
+
+  testWidgets('the page is named, beside its close', (tester) async {
+    await pumpNotifications(tester, DashboardBackend());
+    final title = find.byKey(const ValueKey('notifications-title'));
+    expect(title, findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    // Level with the close button, in the middle of the row.
+    final close = tester.getRect(find.byTooltip('Close notifications'));
+    expect(tester.getCenter(title).dy, closeTo(close.center.dy, 1));
+    expect(close.left, greaterThanOrEqualTo(tester.getRect(title).right));
   });
 
   testWidgets('an empty list says so', (tester) async {
