@@ -1,5 +1,8 @@
--- A push when a crewmate writes in the crew chat: the crew's name as the
--- title, "Ana: running late" as the body.
+-- A push when a crewmate writes in the crew chat.
+--
+-- The message itself is sealed on the sender's phone, so the server has
+-- nothing to put in a push but who wrote and where: "Ana sent a message in
+-- Runners." That is the same metadata the chat already leaves in the clear.
 --
 -- Chat pushes are push-only. The inbox is a list of things worth reading back;
 -- a line per chat message would bury the claps and nudges it is for, and the
@@ -73,9 +76,7 @@ begin
       'actor_name', coalesce(actor_name, 'A crew member'),
       'crew_name', coalesce(crew_name, 'your crew'),
       'message_id', new.id,
-      'sent_at', new.created_at,
-      -- Enough for a lock screen; the chat has the rest.
-      'text', left(new.body, 200)))
+      'sent_at', new.created_at))
   on conflict (dedupe_key) do nothing returning id into event;
   if event is null then return new; end if;
 
@@ -91,21 +92,6 @@ $$;
 revoke all on function private.notify_chat_message() from public, anon, authenticated;
 create trigger chat_message_notification after insert on public.chat_messages
 for each row execute function private.notify_chat_message();
-
--- An unsent message's words do not linger in the queue it left behind.
-create function private.forget_unsent_chat_message() returns trigger
-language plpgsql security definer set search_path = '' as $$
-begin
-  update private.notification_events
-  set payload = payload - 'text'
-  where dedupe_key = 'chat_message:' || new.id;
-  return new;
-end;
-$$;
-revoke all on function private.forget_unsent_chat_message() from public, anon, authenticated;
-create trigger chat_message_unsent after update of deleted_at on public.chat_messages
-for each row when (old.deleted_at is null and new.deleted_at is not null)
-execute function private.forget_unsent_chat_message();
 
 -- As before, plus: a chat push is dropped once its message is unsent, or once
 -- the recipient has read up to it.
