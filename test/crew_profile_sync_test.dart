@@ -71,6 +71,8 @@ void main() {
       await tester.pumpUi();
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
       await tester.pumpUi();
+      await tester.tap(find.byKey(const ValueKey('crew-card-crew')));
+      await tester.pumpUi();
       final member = tester
           .widget<CrewPersonBand>(find.byType(CrewPersonBand))
           .member;

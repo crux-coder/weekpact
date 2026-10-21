@@ -6,11 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weekpact/src/crew/crew_selection_store.dart';
 import 'package:weekpact/src/crew/crew_switcher.dart';
 import 'package:weekpact/src/crew/crew_page_layout.dart';
-import 'package:weekpact/src/pacts/pacts_overview.dart';
-import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crews_page.dart';
 import 'package:weekpact/src/crew/crew_roster.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
@@ -26,6 +25,9 @@ import 'subscription_test.dart' show FakeSubscriptionBackend;
 
 class MultipleCrews extends FakeCrewBackend {
   Completer<List<PactCrew>>? loading;
+
+  /// Holds [fetchCrew] while set, the way [loading] holds the list.
+  Completer<void>? crewLoading;
   final entries = <CrewDetails>[];
   final fetched = <String>[];
   MultipleCrews() {
@@ -54,6 +56,7 @@ class MultipleCrews extends FakeCrewBackend {
         ];
   @override
   Future<CrewDetails?> fetchCrew({String? crewId}) async {
+    await crewLoading?.future;
     final selected =
         entries.where((c) => c.id == crewId).firstOrNull ?? entries.first;
     fetched.add(selected.id);
@@ -104,14 +107,15 @@ class DeletableCrews extends MultipleCrews implements CrewDeletionBackend {
 void main() {
   for (final scale in [1.0, 2.0]) {
     testWidgets(
-      'Pacts and Crews share the loading shell at text scale $scale',
+      'the crews list and a crew share the loading shell at text scale $scale',
       (tester) async {
         tester.view.physicalSize = const Size(390, 844);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        final crews = MultipleCrews()..loading = Completer<List<PactCrew>>();
-        final pacts = CrewPacts()..loading = Completer<List<PactCrew>>();
+        final crews = MultipleCrews()
+          ..loading = Completer<List<PactCrew>>()
+          ..crewLoading = Completer<void>();
         Future<void> render(Widget page) async {
           await tester.pumpWidget(
             MaterialApp(
@@ -128,28 +132,24 @@ void main() {
         }
 
         await render(
-          PactsPage(
-            backend: pacts,
-            userId: '',
-            loadWeek: DashboardBackend(pacts: pacts).fetchWeek,
-            onOpenCrews: () {},
-          ),
+          CrewsPage(backend: crews, currentUserEmail: 'owner@example.com'),
         );
         // Each page stands in for its own content, so only the shared shell
-        // above the progress line has to line up: switching tabs mid-load must
-        // not shift the progress line.
+        // above the progress line has to line up: opening a crew mid-load
+        // must not shift the progress line.
         final skeletonTop = tester.getTopLeft(find.byType(CrewPageSkeleton));
         final indicatorBounds = tester.getRect(
           find.byType(LinearProgressIndicator),
         );
-        // The crew's name is the page's title now and lives in the header, so
-        // the loading shell no longer stands a card in for a control that
-        // lands somewhere else.
-        expect(find.byType(CrewHeaderSurface), findsNothing);
+        // The list chooses the crew, so neither page carries a switcher.
         expect(find.byType(CrewSwitcher), findsNothing);
-        expect(find.byType(PactsSkeletonBody), findsOneWidget);
+        expect(find.byType(CrewsListSkeleton), findsOneWidget);
         await render(
-          CrewPage(backend: crews, currentUserEmail: 'owner@example.com'),
+          CrewPage(
+            crewId: 'crew',
+            backend: crews,
+            currentUserEmail: 'owner@example.com',
+          ),
         );
         expect(tester.getTopLeft(find.byType(CrewPageSkeleton)), skeletonTop);
         expect(
@@ -157,7 +157,7 @@ void main() {
           indicatorBounds,
         );
         expect(find.byType(CrewRosterSkeleton), findsOneWidget);
-        expect(find.byType(PactsSkeletonBody), findsNothing);
+        expect(find.byType(CrewsListSkeleton), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
@@ -181,7 +181,7 @@ void main() {
               ),
             ),
             child: Scaffold(
-              body: CrewPage(
+              body: CrewsPage(
                 backend: backend,
                 currentUserEmail: 'owner@example.com',
                 onCrewSelected: (id) => selected = id,
@@ -206,18 +206,20 @@ void main() {
         'Weekend Walkers',
       ]);
       expect(selected, 'third');
-      expect(find.text('Weekend Walkers'), findsOneWidget);
-      await tester.tap(find.byTooltip('Switch crew'));
+      // Every crew is still listed, the new one with them.
+      for (final name in ['Early Birds', 'Night Owls', 'Weekend Walkers']) {
+        expect(find.text(name), findsOneWidget);
+      }
+      await tester.tap(find.text('Early Birds'));
       await tester.pumpUi();
-      await tester.tap(find.text('Early Birds').last);
-      await tester.pumpUi();
+      expect(find.byType(CrewPage), findsOneWidget);
       expect(backend.fetched.last, 'crew');
       expect(selected, 'crew');
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('crew selection follows the user between Home, Pacts and Crews', (
+  testWidgets('crew selection follows the user between Home and Crews', (
     tester,
   ) async {
     final crews = MultipleCrews();
@@ -241,14 +243,14 @@ void main() {
     );
     await launch();
     await tester.pumpUi();
-    // The crew is switched from Pacts here, and Home is expected to have
-    // followed it when you come back — Home carries a switcher of its own,
-    // which the test below drives.
-    await tester.tap(find.text('Pacts').last);
+    // Opening a crew from the list makes it the crew Home shows.
+    await tester.tap(find.text('Crews').last);
     await tester.pumpUi();
-    await tester.tap(find.byTooltip('Switch crew'));
+    await tester.tap(find.text('Night Owls'));
     await tester.pumpUi();
-    await tester.tap(find.text('Night Owls').last);
+    expect(find.byType(CrewPage), findsOneWidget);
+    expect(crews.fetched.last, 'second');
+    await tester.tap(find.byTooltip('Back to crews'));
     await tester.pumpUi();
     await tester.tap(find.text('Home').last);
     await tester.pumpUi();
@@ -259,47 +261,6 @@ void main() {
     await launch();
     await tester.pumpUi();
     expect(home.requested, ['second']);
-    await tester.drag(
-      find.byKey(const ValueKey('home-refresh-viewport')),
-      const Offset(0, 500),
-    );
-    await tester.pumpUi();
-    expect(home.requested.last, 'second');
-    final beforePacts = home.requested.length;
-    await tester.tap(find.text('Pacts').last);
-    await tester.pumpUi();
-    expect(home.requested.length, greaterThan(beforePacts));
-    expect(home.requested.last, 'second');
-    // Where the crew's name actually lands, which is what somebody crossing
-    // between tabs sees. The switcher's own box fills whatever slot the page
-    // leaves it, and those differ — Crews keeps two controls clear at either
-    // end of the row and Pacts keeps none — so the box is not the thing to
-    // measure here.
-    final pactsName = tester.getRect(find.text('Night Owls').hitTestable());
-    final pactsSelectorBounds = tester.getRect(
-      find.byType(CrewSwitcher).hitTestable(),
-    );
-    await tester.tap(find.text('Crews').last);
-    await tester.pumpUi();
-    expect(crews.fetched.last, 'second');
-    // The name does not move between tabs: the controls are laid over the row
-    // rather than set beside the name, and the row keeps the page's middle
-    // either way.
-    expect(tester.getRect(find.text('Night Owls').hitTestable()), pactsName);
-    // And the slot itself stays on the page's middle, at one height.
-    final crewsSelectorBounds = tester.getRect(
-      find.byType(CrewSwitcher).hitTestable(),
-    );
-    expect(crewsSelectorBounds.center, pactsSelectorBounds.center);
-    expect(crewsSelectorBounds.height, pactsSelectorBounds.height);
-    await tester.tap(find.byTooltip('Switch crew'));
-    await tester.pumpUi();
-    await tester.tap(find.text('Early Birds').last);
-    await tester.pumpUi();
-    await tester.tap(find.text('Home').last);
-    await tester.pumpUi();
-    expect(home.requested.last, 'crew');
-    expect(store.read('owner@example.com'), 'crew');
     expect(tester.takeException(), isNull);
   });
 
@@ -376,9 +337,6 @@ void main() {
     // The control keeps its slot in the heading through the switch, rather
     // than going down with the page while the new week loads.
     expect(find.byKey(const ValueKey('home-crew-switcher')), findsOneWidget);
-    await tester.tap(find.text('Pacts').last);
-    await tester.pumpUi();
-    expect(find.text('Night Owls'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -436,7 +394,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final crews = MultipleCrews()..loading = Completer<List<PactCrew>>();
+    final crews = MultipleCrews()..crewLoading = Completer<void>();
     crews.entries[0] = CrewDetails(
       id: 'crew',
       name: 'Early Birds',
@@ -460,6 +418,7 @@ void main() {
         theme: WeekPactTheme.dark,
         home: Scaffold(
           body: CrewPage(
+            crewId: 'crew',
             backend: crews,
             currentUserEmail: 'member-0@example.com',
           ),
@@ -479,12 +438,7 @@ void main() {
         tester.getTopLeft(find.byType(CrewBand).first).dy -
         tester.getTopLeft(card).dy;
 
-    final gate = crews.loading!;
-    // Cleared before the gate opens: `fetchCrews` waits on this very completer
-    // while it is set, so asking the fake for the answer it is about to give
-    // would be asking it to wait for itself.
-    crews.loading = null;
-    gate.complete(await crews.fetchCrews());
+    crews.crewLoading!.complete();
     await tester.pumpAndSettle();
 
     expect(find.byType(CrewRosterSkeleton), findsNothing);
@@ -497,38 +451,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('deleting the crew you are reading falls back to another one', (
-    tester,
-  ) async {
-    final crews = DeletableCrews();
-    final selected = <String>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: Scaffold(
-          body: CrewPage(
-            backend: crews,
-            currentUserEmail: 'owner@example.com',
-            selectedCrewId: 'second',
-            onCrewSelected: selected.add,
+  testWidgets(
+    'deleting a crew from its page goes back to the list without it',
+    (tester) async {
+      final crews = DeletableCrews();
+      final selected = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: WeekPactTheme.dark,
+          home: Scaffold(
+            body: CrewsPage(
+              backend: crews,
+              currentUserEmail: 'owner@example.com',
+              onCrewSelected: selected.add,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.text('Night Owls'), findsOneWidget);
+      );
+      await tester.pumpUi();
+      await tester.tap(find.text('Night Owls'));
+      await tester.pumpUi();
+      expect(selected.last, 'second');
 
-    await tester.ensureVisible(find.text('DELETE CREW').first);
-    await tester.tap(find.text('DELETE CREW').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('DELETE CREW').last);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Crew options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete crew'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('DELETE CREW'));
+      await tester.pumpAndSettle();
 
-    // The crew that is left, not the empty state and not the crew that is gone.
-    expect(crews.entries.map((c) => c.id), ['crew']);
-    expect(find.text('Early Birds'), findsOneWidget);
-    expect(find.text('CREATE CREW'), findsNothing);
-    expect(selected.last, 'crew');
-    expect(tester.takeException(), isNull);
-  });
+      // Back on the list, which has the crew that is left and not the one gone.
+      expect(crews.entries.map((c) => c.id), ['crew']);
+      expect(find.byType(CrewPage), findsNothing);
+      expect(find.text('Early Birds'), findsOneWidget);
+      expect(find.text('Night Owls'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

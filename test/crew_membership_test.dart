@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crews_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'package:weekpact/src/home/home_backend.dart';
@@ -81,33 +82,53 @@ Future<void> showCrew(
   VoidCallback? onLeft,
   HomeBackend? profileBackend,
 }) async {
+  // Pushed over a page of its own, the way the Crews list opens it, so that
+  // leaving or ending the crew has somewhere to go back to.
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.light,
-      home: Scaffold(
-        body: CrewPage(
-          backend: backend,
-          profileBackend: profileBackend,
-          currentUserEmail: backend.crew!.isOwner
-              ? 'owner@example.com'
-              : 'member@example.com',
-          onCrewLeft: onLeft,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CrewPage(
+                    crewId: 'crew',
+                    backend: backend,
+                    profileBackend: profileBackend,
+                    currentUserEmail: backend.crew!.isOwner
+                        ? 'owner@example.com'
+                        : 'member@example.com',
+                    onCrewLeft: onLeft,
+                  ),
+                ),
+              ),
+              child: const Text('OPEN CREW'),
+            ),
+          ),
         ),
       ),
     ),
   );
+  await tester.tap(find.text('OPEN CREW'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> openMenu(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Crew options'));
   await tester.pumpAndSettle();
 }
 
 Future<void> tapDelete(WidgetTester tester) async {
-  await tester.ensureVisible(find.text('DELETE CREW').first);
-  await tester.tap(find.text('DELETE CREW').first);
+  await openMenu(tester);
+  await tester.tap(find.text('Delete crew'));
   await tester.pumpAndSettle();
 }
 
 Future<void> tapLeave(WidgetTester tester) async {
-  await tester.ensureVisible(find.text('LEAVE CREW'));
-  await tester.tap(find.text('LEAVE CREW'));
+  await openMenu(tester);
+  await tester.tap(find.text('Leave crew'));
   await tester.pumpAndSettle();
 }
 
@@ -128,7 +149,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(backend.leaves, 1);
     expect(left, isTrue);
-    expect(find.text('CREATE CREW'), findsOneWidget);
+    // The page is about a crew they are no longer in, so it closes.
+    expect(find.byType(CrewPage), findsNothing);
+    expect(find.text('You left the crew.'), findsOneWidget);
   });
   testWidgets('the create form asks for a name and nothing else', (
     tester,
@@ -138,7 +161,7 @@ void main() {
       MaterialApp(
         theme: WeekPactTheme.light,
         home: Scaffold(
-          body: CrewPage(
+          body: CrewsPage(
             backend: backend,
             currentUserEmail: 'owner@example.com',
           ),
@@ -221,8 +244,9 @@ void main() {
   testWidgets('a member is offered no way to delete the crew', (tester) async {
     final backend = MembershipBackend()..crew = details();
     await showCrew(tester, backend);
-    expect(find.text('LEAVE CREW'), findsOneWidget);
-    expect(find.text('DELETE CREW'), findsNothing);
+    await openMenu(tester);
+    expect(find.text('Leave crew'), findsOneWidget);
+    expect(find.text('Delete crew'), findsNothing);
   });
   testWidgets('the owner is told what deleting costs and can keep the crew', (
     tester,
@@ -237,19 +261,17 @@ void main() {
     expect(backend.deleted, isEmpty);
     expect(find.text('Sam'), findsOneWidget);
   });
-  testWidgets('deleting ends the crew and lands on the empty state', (
-    tester,
-  ) async {
+  testWidgets('deleting ends the crew and closes its page', (tester) async {
     final backend = MembershipBackend()..crew = details(owner: true);
     var left = false;
     await showCrew(tester, backend, onLeft: () => left = true);
     await tapDelete(tester);
-    // The dialog's own action, not the button on the page behind it.
-    await tester.tap(find.text('DELETE CREW').last);
+    await tester.tap(find.text('DELETE CREW'));
     await tester.pumpAndSettle();
     expect(backend.deleted, ['crew']);
     expect(left, isTrue);
-    expect(find.text('CREATE CREW'), findsOneWidget);
+    expect(find.byType(CrewPage), findsNothing);
+    expect(find.text('Crew deleted.'), findsOneWidget);
   });
   testWidgets('a delete that fails leaves the crew and says so', (
     tester,
@@ -259,7 +281,7 @@ void main() {
       ..deleteFailure = StateError('offline');
     await showCrew(tester, backend);
     await tapDelete(tester);
-    await tester.tap(find.text('DELETE CREW').last);
+    await tester.tap(find.text('DELETE CREW'));
     await tester.pumpAndSettle();
     expect(find.text('Sam'), findsOneWidget);
     expect(

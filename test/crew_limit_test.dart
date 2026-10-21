@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:weekpact/src/crew/crew_backend.dart';
-import 'package:weekpact/src/crew/crew_page.dart';
+import 'package:weekpact/src/crew/crews_page.dart';
 import 'package:weekpact/src/invites/invite_acceptance_page.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
 import 'package:weekpact/src/subscriptions/paywall_page.dart';
@@ -64,7 +64,7 @@ Future<SubscriptionController> pumpCrewPage(
       home: SubscriptionScope(
         controller: controller,
         child: Scaffold(
-          body: CrewPage(
+          body: CrewsPage(
             backend: backend,
             currentUserEmail: 'owner@example.com',
           ),
@@ -177,7 +177,7 @@ void main() {
           home: SubscriptionScope(
             controller: SubscriptionController(FakeSubscriptionBackend()),
             child: Scaffold(
-              body: CrewPage(
+              body: CrewsPage(
                 backend: MultipleCrews(),
                 currentUserEmail: 'owner@example.com',
               ),

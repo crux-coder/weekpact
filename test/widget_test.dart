@@ -77,38 +77,49 @@ void main() {
   testWidgets(
     'crew shows skeletons and preserves content during pull to refresh',
     (tester) async {
-      final crews = DelayedCrewBackend();
+      final crews = DelayedCrewBackend()
+        ..crew = CrewDetails(
+          id: 'crew',
+          name: 'Weekend Warriors',
+          timezone: 'UTC',
+          ownerId: 'owner-id',
+          currentUserRole: 'owner',
+          members: [
+            CrewMember(
+              userId: 'owner-id',
+              email: 'owner@example.com',
+              role: 'owner',
+              joinedAt: DateTime(2026),
+            ),
+          ],
+        );
       await tester.pumpWidget(
         MaterialApp(
           theme: WeekPactTheme.light,
-          home: Scaffold(
-            body: CrewPage(
-              backend: crews,
-              currentUserEmail: 'owner@example.com',
-            ),
+          home: CrewPage(
+            crewId: 'crew',
+            backend: crews,
+            currentUserEmail: 'owner@example.com',
           ),
         ),
       );
-      // The header used to carry the page's name through the load. It
-      // carries the page's controls now, and they stand through it too.
-      expect(find.text('Crews'), findsNothing);
       expect(find.byType(SkeletonBar), findsWidgets);
-      expect(find.text('CREATE CREW'), findsNothing);
+      expect(find.text('INVITE SOMEONE'), findsNothing);
       expect(find.byTooltip('Refresh crew'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      crews.pending.complete(null);
+      crews.pending.complete(crews.crew);
       await tester.pumpUi();
-      expect(find.text('CREATE CREW'), findsOneWidget);
+      expect(find.text('INVITE SOMEONE'), findsOneWidget);
       crews.pending = Completer<CrewDetails?>();
       await tester.dragFrom(const Offset(400, 80), const Offset(0, 600));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       expect(crews.fetches, 2);
-      expect(find.text('CREATE CREW'), findsOneWidget);
+      expect(find.text('INVITE SOMEONE'), findsOneWidget);
       crews.pending.completeError(Exception('Network unavailable'));
       await tester.pumpUi();
-      expect(find.text('CREATE CREW'), findsOneWidget);
+      expect(find.text('INVITE SOMEONE'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -495,6 +506,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-crews')));
       await tester.pumpUi();
     }
+    await tester.tap(find.text('Weekend Warriors'));
+    await tester.pumpUi();
     // Your own band names the tint: colour alone said 'you' while the label
     // said 'owner', and on a crew you started those land on the same row.
     expect(find.text('YOU · OWNER'), findsOneWidget);

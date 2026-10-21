@@ -30,7 +30,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../auth/auth_backend.dart';
 import '../crew/crew_backend.dart';
-import '../crew/crew_page.dart';
+import '../crew/crews_page.dart';
 import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -278,16 +278,16 @@ class _HomePageState extends State<HomePage> {
             onCrewSelected: _selectCrew,
             onOpenCrews: () => _selectDestination(2),
           ),
-          CrewPage(
+          CrewsPage(
             active: _selectedIndex == 2,
             onInviteCode: widget.onInviteCode,
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
             backend: widget.crewBackend,
-            selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
-            profileBackend: widget.homeBackend,
+            weekBackend: widget.homeBackend,
             pactsBackend: widget.pactsBackend,
+            userId: widget.user.id,
             currentUserEmail: widget.user.email,
           ),
           AccountPage(

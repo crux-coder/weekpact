@@ -2,7 +2,6 @@ import 'crew_page_layout.dart';
 import '../pacts/pact_editor.dart';
 import '../pacts/pacts_backend.dart';
 import '../pacts/pacts_overview.dart';
-import 'crew_switcher.dart';
 import 'crew_sharing.dart';
 
 import 'package:flutter/material.dart';
@@ -12,8 +11,6 @@ import '../widgets/app_icon.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
-import '../invites/invite_code_entry.dart';
-import '../invites/invite_links.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_sheet.dart';
@@ -21,54 +18,41 @@ import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import '../home/home_backend.dart';
 import 'crew_roster.dart';
-import 'device_timezone.dart';
-import '../subscriptions/pro_upgrade.dart';
-import '../subscriptions/subscription_scope.dart';
 
+/// One crew's own page, opened from the Crews list: its pacts, the people in
+/// it, and the ways out of it.
 class CrewPage extends StatefulWidget {
   const CrewPage({
     super.key,
     required this.backend,
     required this.currentUserEmail,
+    this.crewId,
     this.profileBackend,
     this.pactsBackend,
-    this.active = true,
-    this.selectedCrewId,
-    this.onCrewSelected,
-    this.onInviteCode,
     this.onCrewLeft,
-    this.onCrewCreated,
   });
 
+  /// The crew this page is about. Null opens the first crew the account is
+  /// in, which is what a screen showing only one crew wants.
+  final String? crewId;
   final HomeBackend? profileBackend;
 
   /// Where the crew's pacts are saved. Null leaves the page without its pacts
   /// section, for the screens that only ever show the roster.
   final PactsBackend? pactsBackend;
-  final String? selectedCrewId;
-  final ValueChanged<String>? onCrewSelected;
-  final bool active;
   final CrewBackend backend;
   final String currentUserEmail;
 
-  /// Handed a code typed into "Join with a code". Whoever owns the invite
-  /// flow takes it from there; null hides the button.
-  final ValueChanged<InviteRef>? onInviteCode;
+  /// Told when the person reading the page is no longer in the crew, having
+  /// left it or ended it. The page closes itself afterwards.
   final VoidCallback? onCrewLeft;
-  final ValueChanged<CrewDetails>? onCrewCreated;
 
   @override
   State<CrewPage> createState() => _CrewPageState();
 }
 
 class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
-  final _crewNameController = TextEditingController();
-  final _createFormKey = GlobalKey<FormState>();
-
   CrewDetails? _crew;
-  List<PactCrew> _crews = [];
-  String? _selectedCrewId;
-  bool _showCreate = false;
   int _request = 0;
   String? _profileCrewId;
   Map<String, WeekMember> _memberProfiles = {};
@@ -90,7 +74,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   bool _loading = false;
   Future<void>? _crewLoad;
   bool _hasLoaded = false;
-  bool _creating = false;
   bool _changingMembership = false;
   String? _error;
 
@@ -104,7 +87,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _crewNameController.dispose();
     super.dispose();
   }
 
@@ -119,14 +101,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       });
     }
     try {
-      final crews = await widget.backend.fetchCrews();
+      final crew = await widget.backend.fetchCrew(crewId: widget.crewId);
       if (!mounted || request != _request) return;
-      final wanted = _selectedCrewId ?? widget.selectedCrewId ?? _crew?.id;
-      final selected =
-          crews.where((c) => c.id == wanted).firstOrNull ?? crews.firstOrNull;
-      final crew = await widget.backend.fetchCrew(crewId: selected?.id);
-      if (!mounted || request != _request) return;
-      _crews = crews;
       if (crew?.id != _profileCrewId) {
         _memberProfiles = {};
         _pactCount = null;
@@ -164,73 +140,22 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       }
     } catch (error) {
       if (mounted && request == _request) {
-        setState(() => _error = _messageFor(error));
+        setState(() => _error = crewErrorMessage(error));
       }
     } finally {
       if (mounted && request == _request) setState(() => _loading = false);
     }
   }
 
-  Future<void> _createCrew() async {
-    if (!(_createFormKey.currentState?.validate() ?? false)) return;
-    setState(() {
-      _creating = true;
-      _error = null;
-    });
-    try {
-      final crew = await widget.backend.createCrew(
-        name: _crewNameController.text,
-        timezone: await deviceTimezone(),
-      );
-      if (mounted) {
-        setState(() {
-          _crew = crew;
-          _selectedCrewId = crew.id;
-          _showCreate = false;
-        });
-        _crewNameController.clear();
-        widget.onCrewSelected?.call(crew.id);
-        await _loadCrew();
-        if (!mounted) return;
-        widget.onCrewCreated?.call(crew);
-      }
-    } catch (error) {
-      if (!mounted) return;
-      // Postgres has the final say: entitlements can lapse between opening the
-      // form and submitting it, and the SDK's view can be stale.
-      if (isCrewLimitError(error)) {
-        if (await showCrewLimitUpgrade(
-              context,
-              reason: CrewLimitReason.creating,
-            ) &&
-            mounted) {
-          await _createCrew();
-          return;
-        }
-        if (mounted) setState(() => _showCreate = false);
-      } else {
-        setState(() => _error = _messageFor(error));
-      }
-    } finally {
-      if (mounted) setState(() => _creating = false);
-    }
-  }
-
-  /// Opens the new-crew form, or explains why it cannot be opened. Someone who
-  /// upgrades from the dialog lands straight in the form.
-  Future<void> _toggleCreate() async {
-    if (_showCreate) {
-      setState(() => _showCreate = false);
-      return;
-    }
-    if (_crews.isNotEmpty && !context.isPro) {
-      final upgraded = await showCrewLimitUpgrade(
-        context,
-        reason: CrewLimitReason.creating,
-      );
-      if (!upgraded || !mounted) return;
-    }
-    setState(() => _showCreate = true);
+  /// Out of the crew, by leaving it or by ending it: the person is told, the
+  /// app is told, and the page — which is about a crew they are no longer in
+  /// — closes.
+  void _leftCrew(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+    widget.onCrewLeft?.call();
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
   }
 
   Future<void> _changeMembership({CrewMember? member}) async {
@@ -370,24 +295,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       await _crewLoad;
       if (!mounted) return;
       if (leaving) {
-        setState(() {
-          _crew = null;
-          _selectedCrewId = null;
-        });
+        _leftCrew('You left the crew.');
+        return;
       }
       await _refresh();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(leaving ? 'You left the crew.' : 'Member removed.'),
-        ),
-      );
-      if (leaving) {
-        if (_crew != null) widget.onCrewSelected?.call(_crew!.id);
-        widget.onCrewLeft?.call();
-      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Member removed.')));
     } catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error));
+      if (mounted) setState(() => _error = crewErrorMessage(error));
     } finally {
       if (mounted) setState(() => _changingMembership = false);
     }
@@ -397,6 +313,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   ///
   /// Deletion is a second interface rather than part of [CrewBackend], the way
   /// sharing is, so this is the one place that asks.
+
   CrewDeletionBackend? get _deletionBackend {
     final backend = widget.backend;
     return backend is CrewDeletionBackend
@@ -410,7 +327,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   /// who started a crew nobody else joined — that one is told to hand the crew
   /// over before leaving, which is no help when there is nobody to hand it to.
   /// Afterwards the page is in the same position as after leaving, so it takes
-  /// the same road back: whatever crew the refresh finds, or the empty state.
+  /// the same road back to the list.
   Future<void> _deleteCrew() async {
     final crew = _crew;
     final backend = _deletionBackend;
@@ -454,18 +371,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       // Discard any fetch begun before the deletion; it still holds the crew.
       await _crewLoad;
       if (!mounted) return;
-      setState(() {
-        _crew = null;
-        _selectedCrewId = null;
-      });
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Crew deleted.')));
-      if (_crew != null) widget.onCrewSelected?.call(_crew!.id);
-      widget.onCrewLeft?.call();
+      _leftCrew('Crew deleted.');
     } catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error));
+      if (mounted) setState(() => _error = crewErrorMessage(error));
     } finally {
       if (mounted) setState(() => _changingMembership = false);
     }
@@ -614,12 +522,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant CrewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selectedCrewId != oldWidget.selectedCrewId) {
-      _selectedCrewId = widget.selectedCrewId;
-    }
-    if ((widget.active &&
-            (!oldWidget.active ||
-                widget.selectedCrewId != oldWidget.selectedCrewId)) ||
+    if (widget.crewId != oldWidget.crewId ||
         widget.profileBackend != oldWidget.profileBackend) {
       _refresh();
     }
@@ -627,194 +530,146 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && widget.active) _refresh();
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   Future<void> _refresh() async {
     await _loadCrew();
   }
 
-  Widget _crewCard({required Widget child}) =>
-      AppSectionCard(title: 'Your crew', builder: (_) => child);
-
-  Future<void> _openJoinWithCode() async {
-    final onCode = widget.onInviteCode;
-    if (onCode == null) return;
-    final invite = await showAppSheet<InviteRef>(
-      context: context,
-      builder: (sheetContext) => AppSheet(
-        builder: (context) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Join with a code',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+  @override
+  Widget build(BuildContext context) {
+    final crew = _crew;
+    final canPop = Navigator.of(context).canPop();
+    return Scaffold(
+      body: PageFrame(
+        header: CrewPageHeading(
+          switcher: crew == null
+              ? null
+              : Text(
+                  crew.name,
+                  key: const ValueKey('crew-page-title'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: context.ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
+          leading: [
+            if (canPop)
+              IconButton(
+                tooltip: 'Back to crews',
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const AppIcon(icon: HugeIconsStrokeRounded.arrowLeft01),
+              ),
+          ],
+          actions: [if (crew != null) _crewMenu(context, crew)],
+        ),
+        loading: !_hasLoaded && _loading,
+        skeleton: const CrewPageSkeleton(),
+        onRefresh: _refresh,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_loading && crew != null && !_hasLoaded)
+              const CrewPageSkeleton()
+            else if (crew != null)
+              _buildCrewState(context, crew)
+            else if (_hasLoaded)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'This crew is no longer available.',
+                  key: const ValueKey('crew-unavailable'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.muted, fontSize: 16),
+                ),
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 18),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.errorInk,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (!_hasLoaded) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Pull down to try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.muted),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            InviteCodeEntry(
-              onInvite: (invite) => Navigator.pop(context, invite),
-            ),
+            ],
           ],
         ),
       ),
     );
-    if (invite != null && mounted) onCode(invite);
   }
 
-  String? _validateCrewName(String? value) {
-    final name = value?.trim() ?? '';
-    if (name.length < 2) return 'Use at least 2 characters';
-    if (name.length > 60) return 'Use no more than 60 characters';
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return PageFrame(
-      header: CrewPageHeading(
-        switcher: _crews.isEmpty || _showCreate
-            ? null
-            : CrewSwitcher(
-                crews: _crews,
-                selectedId: _loading
-                    ? (_selectedCrewId ?? widget.selectedCrewId ?? _crew?.id)
-                    : _crew?.id,
-                onSelected: _changingMembership || _loading
-                    ? null
-                    : (id) {
-                        _selectedCrewId = id;
-                        widget.onCrewSelected?.call(id);
-                        _loadCrew();
-                      },
-              ),
-        // Making another crew leads the row; the invites that other people
-        // sent you close it. They are not a pair, so they do not sit as one.
-        leading: [
-          if (_crew != null)
-            IconButton(
-              tooltip: _showCreate ? 'Cancel new crew' : 'Create another crew',
-              onPressed: _creating || _changingMembership
-                  ? null
-                  : _toggleCreate,
-              icon: AppIcon(
-                icon: _showCreate
-                    ? HugeIconsStrokeRounded.cancel01
-                    : HugeIconsStrokeRounded.add01,
-              ),
-            ),
-        ],
-        actions: [
-          if (widget.onInviteCode != null)
-            IconButton(
-              tooltip: 'Join with a code',
-              onPressed: _openJoinWithCode,
-              icon: const AppIcon(icon: HugeIconsStrokeRounded.userAdd01),
-            ),
-        ],
-      ),
-      loading: !_hasLoaded && _loading,
-      skeleton: const CrewPageSkeleton(),
-      onRefresh: _refresh,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_loading && !_showCreate && _crew != null)
-            const CrewPageSkeleton()
-          else if (_crew != null && !_showCreate) ...[
-            _buildCrewState(context, _crew!),
-          ] else if (_hasLoaded)
-            AppSurfaceTheme(builder: (context) => _buildCreateState(context)),
-          if (_error != null) ...[
-            const SizedBox(height: 18),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: context.errorInk,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (!_hasLoaded) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Pull down to try again.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: context.muted),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCreateState(BuildContext context) {
-    return Form(
-      key: _createFormKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _crewCard(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Start your crew',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 20),
-                  AppTextField(
-                    label: 'CREW NAME',
-                    hint: 'Early Birds',
-                    controller: _crewNameController,
-                    validator: _validateCrewName,
-                    textInputAction: TextInputAction.done,
-                  ),
-                  const SizedBox(height: 22),
-                  // The crew's week runs on the zone this device is in, taken
-                  // from the device when the crew is made. It used to be shown
-                  // here, in a read-only box beside a globe, holding whatever
-                  // zone the app was built with — a field nobody could act on,
-                  // telling most people the wrong thing. There is nothing to
-                  // choose and so nothing to show.
-                  Text(
-                    'Your week runs Monday to Sunday.',
-                    style: TextStyle(
-                      color: context.muted,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  AppButton(
-                    label: 'CREATE CREW',
-                    icon: HugeIconsStrokeRounded.userGroup02,
-
-                    isLoading: _creating,
-                    onPressed: _createCrew,
-                  ),
-                ],
-              ),
+  /// The rare things done to a crew, kept off the page itself: they cannot be
+  /// undone, and they used to stand under the roster on every visit.
+  Widget _crewMenu(BuildContext context, CrewDetails crew) =>
+      PopupMenuButton<VoidCallback>(
+        key: const ValueKey('crew-menu'),
+        tooltip: 'Crew options',
+        enabled: !_changingMembership,
+        color: context.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(WeekPactMetrics.cardCorner),
+          side: BorderSide(color: context.border),
+        ),
+        position: PopupMenuPosition.under,
+        onSelected: (action) => action(),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: () => _changeMembership(),
+            child: _menuEntry(
+              context,
+              icon: HugeIconsStrokeRounded.logout01,
+              label: 'Leave crew',
+              color: context.ink,
             ),
           ),
+          if (crew.isOwner && _deletionBackend != null)
+            PopupMenuItem(
+              value: _deleteCrew,
+              child: _menuEntry(
+                context,
+                icon: HugeIconsStrokeRounded.delete02,
+                label: 'Delete crew',
+                color: context.errorInk,
+              ),
+            ),
         ],
+        icon: const AppIcon(icon: HugeIconsStrokeRounded.moreVertical),
+      );
+
+  Widget _menuEntry(
+    BuildContext context, {
+    required List<List<dynamic>> icon,
+    required String label,
+    required Color color,
+  }) => Row(
+    children: [
+      AppIcon(icon: icon, color: color, size: 20),
+      const SizedBox(width: 12),
+      Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
       ),
-    );
-  }
+    ],
+  );
 
   CrewMember _withProfile(CrewMember member) {
     final profile = _memberProfiles[member.userId];
@@ -878,71 +733,11 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             onPressed: _changingMembership ? null : _openInviteDrawer,
           ),
         ],
-        const SizedBox(height: 22),
-        // The two ways out, and the only things on this page that cannot be
-        // undone. They sat eight points under the last band with nothing
-        // between the list and the door; their own outlines are that
-        // something. Ending the crew stands beside leaving it rather than
-        // under it, because for a sole owner leaving is refused and this is
-        // the answer they were sent here for.
-        Row(
-          children: [
-            Expanded(
-              child: _exitAction(
-                context,
-                icon: HugeIconsStrokeRounded.logout01,
-                label: 'LEAVE CREW',
-                color: context.muted,
-                onPressed: _changingMembership
-                    ? null
-                    : () => _changeMembership(),
-              ),
-            ),
-            if (crew.isOwner && _deletionBackend != null) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: _exitAction(
-                  context,
-                  icon: HugeIconsStrokeRounded.delete02,
-                  label: 'DELETE CREW',
-                  color: context.errorInk,
-                  onPressed: _changingMembership ? null : _deleteCrew,
-                ),
-              ),
-            ],
-          ],
-        ),
       ],
     );
   }
 
-  /// One of the two doors out of a crew: an outlined row at the tap height
   /// every primary control here stands at.
-  Widget _exitAction(
-    BuildContext context, {
-    required List<List<dynamic>> icon,
-    required String label,
-    required Color color,
-    required VoidCallback? onPressed,
-  }) => DecoratedBox(
-    decoration: ShapeDecoration(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-        side: BorderSide(color: context.ink.withValues(alpha: .18)),
-      ),
-    ),
-    child: TextButton.icon(
-      onPressed: onPressed,
-      icon: AppIcon(icon: icon, size: 20),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        minimumSize: const Size.fromHeight(48),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-      ),
-    ),
-  );
-
   bool _isCurrentUser(CrewMember member) =>
       member.email.toLowerCase() == widget.currentUserEmail.toLowerCase();
 }
@@ -1003,7 +798,7 @@ class _InviteDrawer extends StatelessWidget {
   );
 }
 
-String _messageFor(Object error) {
+String crewErrorMessage(Object error) {
   final message = error.toString();
 
   if (message.contains('already in this crew')) {
