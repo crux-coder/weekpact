@@ -198,11 +198,8 @@ void main() {
 
     expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
-    await tester.pumpUi();
-
-    expect(find.text('Pacts'), findsWidgets);
-    expect(find.byKey(const ValueKey('pacts-heading')), findsOneWidget);
+    // Pacts are kept on each crew's own page, so there is no tab for them.
+    expect(find.byKey(const ValueKey('nav-pacts')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
@@ -254,7 +251,7 @@ void main() {
         tester.getCenter(homeIcon).dy,
         lessThan(tester.getCenter(homeLabel).dy),
       );
-      for (final label in ['Crews', 'Pacts', 'Account']) {
+      for (final label in ['Crews', 'Account']) {
         final destination = find.byKey(ValueKey('nav-${label.toLowerCase()}'));
         expect(
           tester.getSize(destination).width,
@@ -329,7 +326,7 @@ void main() {
         .getTopLeft(find.byKey(const ValueKey('home-crew-panel')))
         .dx;
     // The adjacent destination keeps Home mounted through the slide.
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+    await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -339,7 +336,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('Pacts'), findsWidgets);
+    expect(find.text('Crews'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (

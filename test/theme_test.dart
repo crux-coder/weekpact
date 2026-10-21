@@ -48,10 +48,11 @@ void main() {
     // The five the palette holds at full chroma. They were the destinations'
     // full stops until the page titles went; `salmon` still carries the
     // notification badge and the rest are unspent, but the set is the app's
-    // identity colours and has to keep reading as five colours.
+    // identity colours and has to keep reading as five colours. Lavender was
+    // the Pacts tab's, and is spare now that pacts live on the crew page.
     const dots = {
       'Home': WeekPactColors.salmon,
-      'Pacts': WeekPactColors.lavender,
+      'Lavender': WeekPactColors.lavender,
       'Crews': WeekPactColors.sky,
       'Account': WeekPactColors.lantern,
     };

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crews_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
+import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
+import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'multiple_crews_test.dart' show MultipleCrews;
 import 'support/home_fakes.dart';
 import 'support/pump_ui.dart';
+import 'widget_test.dart' show FakeCrewBackend;
 
 /// Weeks for the list: a streak on every crew, and the crews named in
 /// [failing] refused.
@@ -129,5 +134,60 @@ void main() {
     expect(find.byType(CrewPage), findsNothing);
     expect(find.text('Night Owls'), findsNothing);
     expect(find.byType(CrewListCard), findsOneWidget);
+  });
+
+  testWidgets('a member with no pacts yet is sent from Home to the crew', (
+    tester,
+  ) async {
+    final home = DashboardBackend();
+    home.pacts
+      ..crews = [
+        const PactCrew(
+          id: 'crew',
+          name: 'Early Birds',
+          timezone: 'UTC',
+          isOwner: false,
+        ),
+      ]
+      ..pacts = [];
+    final crews = FakeCrewBackend()
+      ..crew = CrewDetails(
+        id: 'crew',
+        name: 'Early Birds',
+        timezone: 'UTC',
+        ownerId: 'owner',
+        currentUserRole: 'member',
+        members: [
+          CrewMember(
+            userId: 'me',
+            email: 'person@example.com',
+            role: 'member',
+            joinedAt: DateTime(2026),
+          ),
+        ],
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: HomePage(
+          user: const AuthUser(email: 'person@example.com'),
+          authBackend: const MissingConfigurationAuthBackend(),
+          crewBackend: crews,
+          pactsBackend: home.pacts,
+          homeBackend: home,
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    await tester.ensureVisible(find.text('VIEW PACTS'));
+    await tester.tap(find.text('VIEW PACTS'));
+    await tester.pumpUi();
+
+    expect(find.byType(CrewPage), findsOneWidget);
+    expect(
+      find.text('Your crew owner hasn’t added any pacts yet.'),
+      findsOneWidget,
+    );
+    expect(find.text('ADD PACT'), findsNothing);
   });
 }

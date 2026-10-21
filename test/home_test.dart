@@ -308,7 +308,7 @@ void main() {
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
     expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+    await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
     backend.pacts.pacts = [];
     await tester.tap(find.byKey(const ValueKey('nav-home')));

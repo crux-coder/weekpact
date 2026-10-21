@@ -26,87 +26,15 @@ void main() {
         ],
       );
 
-  Future<void> render(WidgetTester tester, CrewWeek week) => tester.pumpWidget(
-    MaterialApp(
-      theme: WeekPactTheme.dark,
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: YourWeekCard(week: week, userId: 'me'),
-        ),
-      ),
-    ),
-  );
-
-  testWidgets('weekly progress uses personal distinct days capped per target', (
-    tester,
-  ) async {
-    await render(tester, sample(today: '2026-09-17'));
-    expect(find.text('Your week so far'), findsOneWidget);
-    expect(find.text('4 of 10 check-ins done'), findsOneWidget);
-    expect(find.text('1 / 7'), findsOneWidget);
-    expect(find.text('3 / 3'), findsOneWidget);
-    expect(
-      find.text('6 left · 4 days remaining, including today'),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
-          .value,
-      .4,
-    );
-  });
-
-  testWidgets('week uses supplied crew date and handles empty pacts', (
-    tester,
-  ) async {
-    await render(tester, sample(today: '2026-09-20'));
-    expect(find.text('6 left · Today is the last day'), findsOneWidget);
-    await render(tester, sample(empty: true));
-    expect(find.text('Add a pact to start your week.'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
-  });
-
-  testWidgets('completed week celebrates targets and handles large text', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final week = sample(today: '2026-09-20');
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
-        ),
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: YourWeekCard(
-              userId: 'me',
-              week: CrewWeek(
-                today: week.today,
-                weekStart: week.weekStart,
-                timezone: week.timezone,
-                pacts: week.pacts,
-                members: [],
-                checkIns: [
-                  for (final pact in week.pacts)
-                    for (var day = 14; day <= 20; day++)
-                      PactCheckIn(pact.id, 'me', '2026-09-$day'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    expect(find.text('10 of 10 check-ins done'), findsOneWidget);
-    expect(find.text('All weekly targets met. Nice work!'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+  // The crews list reads your week off these, so the counting rules the
+  // Pacts tab's week card used to show are held here instead.
+  test('weekly progress uses personal distinct days capped per target', () {
+    final week = sample(today: '2026-09-17');
+    expect(week.target, 10);
+    expect(week.completed('me'), 4);
+    expect(week.days('move', 'me'), 1);
+    expect(week.days('read', 'me'), 4);
+    expect(sample(empty: true).target, 0);
   });
 
   for (final settings in [(390.0, 1.0), (320.0, 2.0)]) {

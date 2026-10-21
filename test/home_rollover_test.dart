@@ -107,7 +107,7 @@ void main() {
     final backend = RolloverBackend('2026-09-15');
     await pumpHome(tester, backend);
     await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+    await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
     backend.today = '2026-09-16';
     await tester.tap(find.byKey(const ValueKey('nav-home')));

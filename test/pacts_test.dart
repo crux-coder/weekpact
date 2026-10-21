@@ -2,11 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
-import 'package:weekpact/src/pacts/pacts_page.dart';
 import 'package:weekpact/src/pacts/pact_icons.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
+
+import 'support/home_fakes.dart';
+import 'widget_test.dart' show FakeCrewBackend;
 
 const ownerCrew = PactCrew(
   id: 'a',
@@ -108,27 +112,75 @@ Future<void> openPactMenu(
   await tester.pumpAndSettle();
 }
 
-Future<void> pumpPacts(WidgetTester tester, FakePacts backend) async {
+/// The crews [FakePacts] knows, as the crew page asks for them, held while
+/// [loading] is set.
+class PactsCrews extends FakeCrewBackend {
+  PactsCrews(this.pacts);
+  final FakePacts pacts;
+  Completer<void>? loading;
+
+  @override
+  Future<CrewDetails?> fetchCrew({String? crewId}) async {
+    await loading?.future;
+    final crew = pacts.crews
+        .where((c) => crewId == null || c.id == crewId)
+        .firstOrNull;
+    if (crew == null) return null;
+    return CrewDetails(
+      id: crew.id,
+      name: crew.name,
+      timezone: crew.timezone,
+      ownerId: crew.isOwner ? 'me' : 'owner',
+      currentUserRole: crew.isOwner ? 'owner' : 'member',
+      members: [
+        CrewMember(
+          userId: 'me',
+          email: 'me@example.com',
+          role: crew.isOwner ? 'owner' : 'member',
+          joinedAt: DateTime(2026),
+        ),
+      ],
+    );
+  }
+}
+
+/// The week the crew page reads its pacts from: whatever [FakePacts] holds.
+class PactsWeek extends DashboardBackend {
+  PactsWeek(this.backend);
+  final FakePacts backend;
+
+  @override
+  Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async =>
+      CrewWeek(
+        today: '2026-09-15',
+        weekStart: '2026-09-14',
+        timezone: 'UTC',
+        pacts: await backend.fetchPacts(crewId),
+        members: [],
+        checkIns: [],
+      );
+}
+
+Future<PactsCrews> pumpPacts(
+  WidgetTester tester,
+  FakePacts backend, {
+  String? crewId,
+  Completer<void>? loading,
+}) async {
+  final crews = PactsCrews(backend)..loading = loading;
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.light,
-      home: Scaffold(
-        body: PactsPage(
-          backend: backend,
-          userId: 'me',
-          loadWeek: (id) async => CrewWeek(
-            today: '2026-09-15',
-            weekStart: '2026-09-14',
-            timezone: 'UTC',
-            pacts: await backend.fetchPacts(id),
-            members: [],
-            checkIns: [],
-          ),
-          onOpenCrews: () {},
-        ),
+      home: CrewPage(
+        crewId: crewId ?? backend.crews.first.id,
+        backend: crews,
+        profileBackend: PactsWeek(backend),
+        pactsBackend: backend,
+        currentUserEmail: 'me@example.com',
       ),
     ),
   );
+  return crews;
 }
 
 void main() {
@@ -190,7 +242,7 @@ void main() {
       expect(backend.pacts.single.title, 'Read every day');
       expect(backend.pacts.single.daysPerWeek, 7);
       expect(backend.pacts.single.iconKey, 'book');
-      expect(find.text('Read every day'), findsNWidgets(2));
+      expect(find.text('Read every day'), findsOneWidget);
     },
   );
 
@@ -207,21 +259,19 @@ void main() {
     );
     await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
-    expect(find.text('Read'), findsNWidgets(2));
+    expect(find.text('Read'), findsOneWidget);
     expect(find.byTooltip('Read options'), findsNothing);
   });
 
   testWidgets('shows skeleton while loading and a crew-specific empty state', (
     tester,
   ) async {
-    final backend = FakePacts()..loading = Completer<List<PactCrew>>();
-    await pumpPacts(tester, backend);
-    // The page opened with its own name here. It has none now — the tab at
-    // the bottom of the screen is the one that says where this is.
-    expect(find.text('Pacts'), findsNothing);
+    final backend = FakePacts()..crews = [ownerCrew];
+    final loading = Completer<void>();
+    await pumpPacts(tester, backend, loading: loading);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('ADD PACT'), findsNothing);
-    backend.loading!.complete([ownerCrew]);
+    loading.complete();
     await tester.pumpAndSettle();
     expect(find.text('Small steps start here.'), findsOneWidget);
     expect(find.text('ADD PACT'), findsOneWidget);
@@ -256,7 +306,7 @@ void main() {
     expect(backend.pacts.single.daysPerWeek, 7);
     expect(backend.pacts.single.frequency, PactFrequency.daily);
     expect(backend.pacts.single.crewId, 'a');
-    expect(find.text('Read 20 pages'), findsNWidgets(2));
+    expect(find.text('Read 20 pages'), findsOneWidget);
 
     await tester.ensureVisible(find.text('ADD PACT'));
     await tester.tap(find.text('ADD PACT'));
@@ -279,10 +329,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.ensureVisible(find.byTooltip('Switch crew'));
-    await tester.tap(find.byTooltip('Switch crew'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Weekend Crew').last);
+    // Another crew's page shows that crew's pacts, and a member gets no way
+    // to add one.
+    await tester.pumpWidget(const SizedBox());
+    await pumpPacts(tester, backend, crewId: 'b');
     await tester.pumpAndSettle();
     expect(find.text('Read 20 pages'), findsNothing);
     expect(find.text('ADD PACT'), findsNothing);
@@ -425,9 +475,9 @@ void main() {
     expect(backend.deleted, ['g']);
     expect(backend.pacts.single.id, 'h');
     // The page reloads the week rather than trusting its own list, so the bar
-    // is gone from the list and from the progress card above it.
+    // is gone and the summary card counts one pact.
     expect(find.text('Read'), findsNothing);
-    expect(find.text('Walk'), findsNWidgets(2));
+    expect(find.text('Walk'), findsOneWidget);
   });
 
   testWidgets('members are offered no pact menu at all', (tester) async {
@@ -444,12 +494,5 @@ void main() {
     await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('pact-menu-g')), findsNothing);
-  });
-
-  testWidgets('users without crews get a crews action', (tester) async {
-    await pumpPacts(tester, FakePacts()..crews = []);
-    await tester.pumpAndSettle();
-    expect(find.text('GO TO CREWS'), findsOneWidget);
-    expect(find.text('ADD PACT'), findsNothing);
   });
 }

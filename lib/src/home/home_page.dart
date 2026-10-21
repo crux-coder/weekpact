@@ -24,12 +24,12 @@ import 'package:flutter/material.dart';
 
 import '../crew/crew_switcher.dart';
 import '../pacts/pacts_backend.dart';
-import '../pacts/pacts_page.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../auth/auth_backend.dart';
 import '../crew/crew_backend.dart';
+import '../crew/crew_page.dart';
 import '../crew/crews_page.dart';
 import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
@@ -79,11 +79,6 @@ class _HomePageState extends State<HomePage> {
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
       color: WeekPactColors.stone,
-    ),
-    AppNavigationItem(
-      label: 'Pacts',
-      icon: HugeIconsStrokeRounded.agreement02,
-      color: WeekPactColors.mintGreen,
     ),
     AppNavigationItem(
       label: 'Crews',
@@ -147,6 +142,26 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  /// Where Crews stands in [_navigationItems].
+  static const _crewsTab = 1;
+
+  /// The crew Home is showing, opened on its own page: where a member is sent
+  /// to read the pacts the owner has set.
+  Future<void> _openSelectedCrew() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CrewPage(
+          crewId: _selectedCrewId,
+          backend: widget.crewBackend,
+          profileBackend: widget.homeBackend,
+          pactsBackend: widget.pactsBackend,
+          currentUserEmail: widget.user.email,
+          onCrewLeft: () => _selectDestination(0),
+        ),
+      ),
+    );
+  }
+
   void _selectDestination(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
@@ -188,7 +203,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _joinWithCode() async {
     final onCode = widget.onInviteCode;
     if (onCode == null) {
-      _selectDestination(2);
+      _selectDestination(_crewsTab);
       return;
     }
     final invite = await showAppSheet<InviteRef>(
@@ -267,19 +282,10 @@ class _HomePageState extends State<HomePage> {
             onStartCrew: _startCrew,
             onChooseStart: _startCrew,
             onOpenCrews: _joinWithCode,
-            onOpenPacts: () => _selectDestination(1),
-          ),
-          PactsPage(
-            active: _selectedIndex == 1,
-            backend: widget.pactsBackend,
-            loadWeek: widget.homeBackend.fetchWeek,
-            userId: widget.user.id,
-            selectedCrewId: _selectedCrewId,
-            onCrewSelected: _selectCrew,
-            onOpenCrews: () => _selectDestination(2),
+            onOpenPacts: _openSelectedCrew,
           ),
           CrewsPage(
-            active: _selectedIndex == 2,
+            active: _selectedIndex == _crewsTab,
             onInviteCode: widget.onInviteCode,
             onCrewLeft: () => _selectDestination(0),
             onCrewCreated: _startCrew,
@@ -614,9 +620,9 @@ class _HomeDestinationState extends State<_HomeDestination>
     active: widget.active,
   );
 
-  /// The crew's name at the top of Home, as Pacts and Crews carry it: the
-  /// same title in the same place, so the page says which crew it is about
-  /// and switching is one gesture wherever you are. Null until the crews are
+  /// The crew's name at the top of Home, where a crew's own page carries it
+  /// too, so the page says which crew it is about and switching is one
+  /// gesture. Null until the crews are
   /// in — the page does not know its own subject yet, and a title guessing at
   /// one is worse than no title.
   Widget? _selector() {

@@ -92,8 +92,9 @@ abstract final class WeekPactColors {
   static const sand = Color(0xFFE0D9C0);
   static const brass = Color(0xFFE6D7A6);
 
-  /// The four destinations' full stops: `salmon` Home, `lavender` Pacts,
-  /// `sky` Crews and `lantern` Account. `lime` is kept for a fifth.
+  /// The destinations' full stops: `salmon` Home, `sky` Crews and `lantern`
+  /// Account. `lavender` was the Pacts tab's, before pacts moved onto each
+  /// crew's page; it and `lime` are kept spare.
   ///
   /// A page's dot is a 32pt full stop — six pixels of colour against cream
   /// ink, on a canvas the app never leaves. The card tints and the quay's warm

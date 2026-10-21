@@ -52,50 +52,56 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: dark ? WeekPactTheme.dark : WeekPactTheme.light,
-          home: RepaintBoundary(
-            key: capture,
-            child: HomePage(
-              user: const AuthUser(email: 'person@example.com'),
-              authBackend: auth,
-              crewBackend: FakeCrewBackend()
-                ..crew = CrewDetails(
-                  id: 'crew',
-                  name: 'Hangboardasi',
-                  timezone: 'UTC',
-                  ownerId: 'person',
-                  currentUserRole: 'owner',
-                  members: [
-                    CrewMember(
-                      userId: 'person',
-                      email: 'person@example.com',
-                      displayName: 'Jasmin',
-                      role: 'owner',
-                      joinedAt: DateTime(2026),
-                    ),
-                    CrewMember(
-                      userId: 'two',
-                      email: 'jasmin@example.com',
-                      displayName: 'Jasmin',
-                      role: 'member',
-                      joinedAt: DateTime(2026),
-                    ),
-                    CrewMember(
-                      userId: 'three',
-                      email: 'mirnes@example.com',
-                      displayName: 'Mirnes',
-                      role: 'member',
-                      joinedAt: DateTime(2026),
-                    ),
-                  ],
-                ),
-              pactsBackend: backend.pacts,
-              homeBackend: backend,
-            ),
+          // Around the navigator rather than Home, so a crew's own page,
+          // pushed over the tabs, is in the picture too.
+          builder: (context, child) =>
+              RepaintBoundary(key: capture, child: child!),
+          home: HomePage(
+            user: const AuthUser(email: 'person@example.com'),
+            authBackend: auth,
+            crewBackend: FakeCrewBackend()
+              ..crew = CrewDetails(
+                id: 'crew',
+                name: 'Hangboardasi',
+                timezone: 'UTC',
+                ownerId: 'person',
+                currentUserRole: 'owner',
+                members: [
+                  CrewMember(
+                    userId: 'person',
+                    email: 'person@example.com',
+                    displayName: 'Jasmin',
+                    role: 'owner',
+                    joinedAt: DateTime(2026),
+                  ),
+                  CrewMember(
+                    userId: 'two',
+                    email: 'jasmin@example.com',
+                    displayName: 'Jasmin',
+                    role: 'member',
+                    joinedAt: DateTime(2026),
+                  ),
+                  CrewMember(
+                    userId: 'three',
+                    email: 'mirnes@example.com',
+                    displayName: 'Mirnes',
+                    role: 'member',
+                    joinedAt: DateTime(2026),
+                  ),
+                ],
+              ),
+            pactsBackend: backend.pacts,
+            homeBackend: backend,
           ),
         ),
       );
-      for (final tab in ['home', 'pacts', 'crews', 'account']) {
-        await tester.tap(find.byKey(ValueKey('nav-$tab')));
+      for (final tab in ['home', 'crews', 'crew', 'account']) {
+        if (tab == 'crew') {
+          // A crew's own page, pushed from the list rather than a tab.
+          await tester.tap(find.byKey(const ValueKey('crew-card-crew')));
+        } else {
+          await tester.tap(find.byKey(ValueKey('nav-$tab')));
+        }
         await tester.pumpUi();
         expect(tester.takeException(), isNull);
         expect(find.byType(Icon), findsNothing);
@@ -106,7 +112,7 @@ void main() {
                   : [tab]) {
             if (preview == 'home-empty') {
               backend.selected.clear();
-              await tester.tap(find.byKey(const ValueKey('nav-pacts')));
+              await tester.tap(find.byKey(const ValueKey('nav-crews')));
               await tester.pumpUi();
               await tester.tap(find.byKey(const ValueKey('nav-home')));
               await tester.pumpUi();
@@ -133,6 +139,10 @@ void main() {
               image.dispose();
             });
           }
+        }
+        if (tab == 'crew') {
+          await tester.tap(find.byTooltip('Back to crews'));
+          await tester.pumpUi();
         }
       }
       await tester.pumpWidget(const SizedBox());

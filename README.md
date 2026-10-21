@@ -11,7 +11,7 @@ project and test delivery. Run `npm run firebase:configure` after installing the
 
 ## What is implemented
 
-- Each user can create and join multiple crews. Switch crews from Home, Pacts, or Crews; use the + button on Crews to create another.
+- Each user can create and join multiple crews. Crews lists them all; tap one to open its page, or use the + button to create another. Home has its own crew switcher.
 - A crew owner can create a crew, invite an email address, list members, and
   revoke pending invitations.
 - Invitations expire after seven days, are stored as SHA-256 hashes, can only
@@ -39,8 +39,8 @@ worker after the database cutover.
 
 ## Crew pacts
 
-The Pacts page lists your crews and stores recurring pacts under the selected
-crew. Owners can add and edit pacts, including their Hugeicons icon; all crew members can read them. Choose **Every day**
+Pacts live on each crew's page, opened from the Crews list, above the crew's
+members. Owners can add and edit pacts, including their Hugeicons icon; all crew members can read them. Choose **Every day**
 (seven days per week) or **Days per week** (one to seven distinct days). The
 **Photo check-in** switch decides whether keeping the pact has to be shown: on,
 checking in opens the camera; off, a tap is the whole check-in. New pacts start
@@ -66,8 +66,8 @@ nothing on Home currently opens the crew week page. Members level with one anoth
 a place, and a crew that is level all the way down says so instead. A crew of
 one keeps the plain bar. A running crew streak sits beside the place.
 
-Every crew-scoped page — Home, Pacts, Crews — leads with the crew's name,
-centred, with a chevron that opens a plain list of your crews. A member of one
+Home leads with the crew's name, centred, with a chevron that opens a plain
+list of your crews; a crew's own page leads with its name and a back button. A member of one
 crew sees the name without the chevron. Long-pressing the tile of a
 crewmate who has not checked in today offers a nudge, with the day they last
 kept a pact and the one-per-24-hours rule; the crew roster still sends nudges

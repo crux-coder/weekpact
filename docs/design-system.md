@@ -41,7 +41,13 @@ and over, 600 below it; a small-caps eyebrow or a caption is 500; body is 400.
   the right. They are laid over rather than set beside it — the same way Home
   hangs its bell, and for the same reason — with the name padded clear of them
   at both ends, so a crew stays in the page's middle whether the page carries
-  two controls, as Crews does, or none, as Pacts does.
+  a control at each end, as a crew's own page does with its back button and
+  its menu, or none.
+- `lib/src/crew/crews_page.dart`: `CrewsPage`, the Crews tab. One
+  `CrewListCard` per crew with its streak, faces, pact count and this week
+  (yours and the crew's); a tap pushes that crew's `CrewPage`, where its
+  pacts and its members are managed together. There is no Pacts tab: a pact
+  belongs to one crew, so it is kept on that crew's page.
 - `lib/src/home/home_surface.dart`: the home carousel's light accent-card variant of `AppSurface`. Its fixed dark foreground keeps contrast against pale pact and crew surfaces on any tint.
 - `lib/src/widgets/pact_icon_badge.dart`: `PactIconBadge`, the raised squircle
   carrying a pact's glyph in its badge colour. Its outline and edge are mixed
@@ -282,8 +288,8 @@ confirmation and owner permissions remain in `CrewPage`.
 There is no Feed destination. `lib/src/home/stories_rail.dart` carries today's
 check-ins and the notification list behind Home's bell carries everything the
 crew has told you, which between them is what the feed was for. The navigation
-bar has four destinations: Home, Pacts, Crews, Account. `lime` is unspoken for
-in the destination-dot group, kept for a fifth.
+bar has three destinations: Home, Crews, Account. `lavender` (the old Pacts
+tab's) and `lime` are unspoken for in the destination-dot group.
 
 ### Account: profile hub
 

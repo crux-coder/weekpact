@@ -10,7 +10,7 @@ import 'crew_roster.dart';
 /// Shared heading geometry for every crew-scoped management screen: the crew
 /// this page is about, and what the page can be asked to do, on one line.
 ///
-/// It carried the destination's name too — `Crews.`, `Pacts.`, with the full
+/// It carried the destination's name too — `Crews.`, with the full
 /// stop in that destination's own tint — on a line of its own under the crew.
 /// The name is gone: every one of these pages is reached by tapping its own
 /// tab, which is lit and labelled at the bottom of the screen the whole time,
@@ -41,8 +41,8 @@ class CrewPageHeading extends StatelessWidget {
   /// row keeps the same width clear at *both* ends, whichever end the controls
   /// are actually on, so the crew's name is centred on the page rather than on
   /// whatever they left over. Without it a crew moves sideways as you cross
-  /// from Pacts, which carries no controls, to Crews, which carries one at
-  /// either end.
+  /// from a page that carries no controls to one that carries one at either
+  /// end.
   static const _actionSlot = 48.0;
 
   /// The row's height, which has to be given rather than grown into: every
@@ -105,8 +105,8 @@ class CrewPageHeading extends StatelessWidget {
   }
 }
 
-/// The shared loading shell: the same progress line on Pacts and Crews, so
-/// switching tabs mid-load does not shift the page. Below that each page
+/// The shared loading shell: the same progress line on the Crews list and on
+/// a crew's own page, so opening a crew mid-load does not shift the page. Below that each page
 /// stands in for its own content — [body] — because a skeleton that shows the
 /// wrong shapes is a worse promise than none.
 ///

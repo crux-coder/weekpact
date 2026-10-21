@@ -13,10 +13,9 @@ import '../widgets/app_components.dart';
 /// Which crew a page is about, and the way to change it: the crew's name at
 /// the top of the page with a chevron after it, opening a plain list.
 ///
-/// It is a page title first and a control second. Every crew-scoped page —
-/// Home, Pacts, Crews — leads with it, so the name of the crew you are
-/// reading about is in the same place wherever you are, and switching is the
-/// same one gesture.
+/// It is a page title first and a control second. Home leads with it, so the
+/// name of the crew you are reading about is at the top, and switching is one
+/// gesture. The Crews tab lists every crew instead, and so carries none.
 ///
 /// A member of one crew gets the name without the chevron and without a tap.
 /// The title is still worth having — it says what the page is about — but a
