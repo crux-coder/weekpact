@@ -9,7 +9,7 @@ import '../crew/crew_sharing.dart';
 import '../home/home_backend.dart';
 import '../notifications/notification_primer_page.dart';
 import '../pacts/pacts_backend.dart';
-import '../pacts/pacts_page.dart';
+import '../pacts/pact_editor.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';

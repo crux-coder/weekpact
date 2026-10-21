@@ -1,5 +1,7 @@
 import 'crew_page_layout.dart';
+import '../pacts/pact_editor.dart';
 import '../pacts/pacts_backend.dart';
+import '../pacts/pacts_overview.dart';
 import 'crew_switcher.dart';
 import 'crew_sharing.dart';
 
@@ -29,6 +31,7 @@ class CrewPage extends StatefulWidget {
     required this.backend,
     required this.currentUserEmail,
     this.profileBackend,
+    this.pactsBackend,
     this.active = true,
     this.selectedCrewId,
     this.onCrewSelected,
@@ -38,6 +41,10 @@ class CrewPage extends StatefulWidget {
   });
 
   final HomeBackend? profileBackend;
+
+  /// Where the crew's pacts are saved. Null leaves the page without its pacts
+  /// section, for the screens that only ever show the roster.
+  final PactsBackend? pactsBackend;
   final String? selectedCrewId;
   final ValueChanged<String>? onCrewSelected;
   final bool active;
@@ -71,6 +78,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   /// the same answer and used to be dropped on the floor.
   int? _pactCount;
   int? _streakWeeks;
+
+  /// The crew's pacts, from the same week. Null until it has arrived.
+  List<CrewPact>? _pacts;
+  String? _deletingPact;
 
   /// Whether that fetch was made and failed. Without it the two figures stay
   /// null, which the card reads as "still coming" and draws as a bar nobody is
@@ -120,6 +131,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         _memberProfiles = {};
         _pactCount = null;
         _streakWeeks = null;
+        _pacts = null;
         _profileCrewId = crew?.id;
       }
       if (crew != null && widget.profileBackend != null) {
@@ -130,6 +142,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             for (final member in week.members) member.id: member,
           };
           _pactCount = week.pacts.length;
+          _pacts = week.pacts;
           _streakWeeks = week.streakWeeks;
           _weekFailed = false;
         } catch (_) {
@@ -458,6 +471,129 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     }
   }
 
+  PactCrew _pactCrew(CrewDetails crew) => PactCrew(
+    id: crew.id,
+    name: crew.name,
+    timezone: crew.timezone,
+    isOwner: crew.isOwner,
+  );
+
+  Future<void> _editPact([CrewPact? existing]) async {
+    final crew = _crew;
+    final backend = widget.pactsBackend;
+    if (crew == null || !crew.isOwner || backend == null) return;
+    final pact = await showAppSheet<CrewPact>(
+      context: context,
+      builder: (_) =>
+          PactEditor(crew: _pactCrew(crew), backend: backend, pact: existing),
+    );
+    if (!mounted || pact == null || _crew?.id != pact.crewId) return;
+    // Reload the week rather than splice the pact in: the summary card counts
+    // the same pacts, and an overlapping load could otherwise hide the new one.
+    await _loadCrew();
+  }
+
+  Future<void> _deletePact(CrewPact pact) async {
+    final crew = _crew;
+    final backend = widget.pactsBackend;
+    if (crew == null ||
+        !crew.isOwner ||
+        backend == null ||
+        _deletingPact != null) {
+      return;
+    }
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        icon: HugeIconsStrokeRounded.delete02,
+        iconColor: WeekPactColors.sand,
+        title: 'Delete pact?',
+        // What goes with it, said plainly: the cascade behind this takes every
+        // check-in ever made against the pact, for the whole crew, and that is
+        // not something the crew can undo afterwards.
+        message:
+            '“${pact.title}” and every check-in the crew has ever made '
+            'against it will be gone. This cannot be undone.',
+        actions: [
+          AppButton(
+            label: 'DELETE',
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          AppDialogDismiss(
+            label: 'CANCEL',
+            onPressed: () => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _deletingPact = pact.id;
+      _error = null;
+    });
+    try {
+      await backend.deletePact(pactId: pact.id, crewId: pact.crewId);
+      if (!mounted) return;
+      await _loadCrew();
+    } catch (error) {
+      if (mounted) setState(() => _error = pactErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _deletingPact = null);
+    }
+  }
+
+  Widget _buildPacts(BuildContext context, CrewDetails crew) {
+    final pacts = _pacts;
+    final canEdit = crew.isOwner && _deletingPact == null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const CrewSectionLabel('PACTS'),
+        const SizedBox(height: 10),
+        if (pacts == null)
+          // The week failed; the summary card above already says so and
+          // carries the retry, so this only keeps the section's place.
+          const SizedBox.shrink()
+        else if (pacts.isEmpty)
+          AppSurface(
+            key: const ValueKey('crew-pacts-empty'),
+            builder: (context) => Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Small steps start here.',
+                    style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    crew.isOwner
+                        ? 'Add your first shared pact. Choose every day or a few days each week.'
+                        : 'Your crew owner hasn’t added any pacts yet.',
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          PactBarList(
+            pacts: pacts,
+            onEdit: canEdit ? (pact) => _editPact(pact) : null,
+            onDelete: canEdit ? _deletePact : null,
+          ),
+        if (crew.isOwner && pacts != null) ...[
+          const SizedBox(height: 14),
+          AppButton(
+            label: 'ADD PACT',
+            icon: HugeIconsStrokeRounded.add01,
+            onPressed: _changingMembership ? null : () => _editPact(),
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _openInviteDrawer() async {
     final crew = _crew;
     if (crew == null || !crew.isOwner) return;
@@ -709,6 +845,10 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           weekFailed: _weekFailed,
           onRetry: _loading ? null : _loadCrew,
         ),
+        if (widget.pactsBackend != null) ...[
+          const SizedBox(height: 18),
+          _buildPacts(context, crew),
+        ],
         const SizedBox(height: 18),
         const CrewSectionLabel('IN THE CREW'),
         const SizedBox(height: 10),

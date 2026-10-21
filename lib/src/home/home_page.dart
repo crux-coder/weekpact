@@ -287,6 +287,7 @@ class _HomePageState extends State<HomePage> {
             selectedCrewId: _selectedCrewId,
             onCrewSelected: _selectCrew,
             profileBackend: widget.homeBackend,
+            pactsBackend: widget.pactsBackend,
             currentUserEmail: widget.user.email,
           ),
           AccountPage(

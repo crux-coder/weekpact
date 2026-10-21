@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crews hub concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #222A2B;
+    --canvas-ink: #EDF3F2;
+    --canvas-muted: #AAB8B9;
+    --canvas-border: #67797C;
+    --ink: #161C23;
+    --muted: #4A5859;
+    --cream: #F0F5F4;
+    --stone: #CDE0DC;
+    --cool: #9FCBD9;
+    --mint: #A8D2CC;
+    --inset: #D7E0DF;
+    --clay: #D0B2A4;
+    --sage: #B4C8A2;
+    --blush: #D6B2B6;
+    --olive: #BEC596;
+    --straw: #D6CCAE;
+    --streak: #E8743B;
+    --done: #2F6B43;
+    --error: #FFA8AE;
+    --sky: #87CFFA;
+    --salmon: #FF836F;
+    --lantern: #F0B858;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 24px 96px;
+    background: #141a1b; color: var(--canvas-ink);
+    font-family: Rubik, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .page { max-width: 1320px; margin: 0 auto; }
+  h1 { font-size: 34px; font-weight: 700; margin: 0 0 10px; letter-spacing: -.5px; }
+  .lede { margin: 0 0 8px; color: var(--canvas-muted); max-width: 78ch; line-height: 1.6; }
+  .section { margin-top: 44px; }
+  .section h2 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+  .section > p { color: var(--canvas-muted); margin: 0 0 22px; max-width: 78ch; line-height: 1.6; font-size: 14px; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .shot { display: flex; flex-direction: column; gap: 12px; width: 310px; }
+  .caption { font-size: 13px; color: var(--canvas-muted); line-height: 1.55; }
+  .caption b { color: var(--canvas-ink); font-weight: 600; }
+  .tag { display: inline-block; font-size: 10px; letter-spacing: 1.4px; font-weight: 600;
+    color: var(--ink); background: var(--mint); padding: 3px 8px; border-radius: 6px; margin-bottom: 6px; }
+  .tag.alt { background: var(--lantern); }
+
+  /* compare strip */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; }
+  .cmp { background: #1a2122; border: 1px solid #2c3637; border-radius: 18px; padding: 18px 20px; }
+  .cmp h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+  .cmp ol { margin: 0; padding-left: 18px; color: var(--canvas-muted); font-size: 13px; line-height: 1.75; }
+  .cmp .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .cmp .tabs span { font-size: 11px; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--canvas-border); color: var(--canvas-muted); }
+  .cmp .tabs span.gone { text-decoration: line-through; opacity: .55; }
+  .cmp .tabs span.on { background: var(--canvas-ink); color: var(--ink); border-color: var(--canvas-ink); }
+
+  /* phone */
+  .phone { width: 310px; height: 660px; border-radius: 44px; padding: 11px; background: #000;
+    border: 1px solid #2d3536; box-shadow: 0 24px 50px rgba(0,0,0,.45); }
+  .screen { width: 100%; height: 100%; border-radius: 34px; overflow: hidden; background: var(--canvas);
+    position: relative; display: flex; flex-direction: column; }
+  .status { display: flex; justify-content: space-between; font-size: 10px; color: var(--canvas-muted); padding: 14px 22px 6px; }
+  .body { flex: 1; overflow: hidden; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  .topbar { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+  .topbar .title { flex: 1; text-align: center; font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
+  .topbar .title.left { text-align: left; padding-left: 4px; font-size: 24px; }
+  .ib { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--canvas-ink); flex: none; }
+  .ib.raised { background: #2c3637; border: 1px solid var(--canvas-border); border-bottom-width: 2px; }
+  svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  svg.s { width: 16px; height: 16px; }
+  svg.xs { width: 13px; height: 13px; }
+
+  .card { border-radius: 20px; color: var(--ink); border: 1px solid rgba(0,0,0,.28);
+    border-bottom-width: 3px; padding: 14px; }
+  .eyebrow { font-size: 10px; letter-spacing: 1.6px; font-weight: 500; color: var(--canvas-muted); padding: 2px 4px 0; }
+  .card .eyebrow { color: var(--muted); padding: 0; }
+
+  /* crew list card */
+  .crew { display: flex; flex-direction: column; gap: 10px; }
+  .crew .head { display: flex; align-items: center; gap: 8px; }
+  .crew .name { font-size: 19px; font-weight: 700; flex: 1; letter-spacing: -.2px; }
+  .streakpill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+    background: rgba(22,28,35,.1); padding: 4px 8px; border-radius: 999px; }
+  .streakpill svg { color: var(--streak); }
+  .faces { display: flex; align-items: center; }
+  .face { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--fill, var(--stone)); margin-left: -7px;
+    display: grid; place-items: center; font-size: 10px; font-weight: 600; color: var(--ink); }
+  .face:first-child { margin-left: 0; }
+  .faces .more { font-size: 12px; color: var(--muted); margin-left: 8px; font-weight: 500; }
+  .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 4px 8px;
+    border-radius: 8px; border: 1px solid rgba(0,0,0,.22); }
+  .bar { height: 8px; border-radius: 999px; background: rgba(22,28,35,.13); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ink); border-radius: 999px; }
+
+  .btnrow { display: flex; gap: 8px; }
+  .btn { flex: 1; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 7px;
+    font-size: 12px; font-weight: 600; letter-spacing: 1.1px; color: var(--ink); background: var(--cream);
+    border: 1px solid rgba(0,0,0,.3); border-bottom-width: 2px; }
+  .btn.ghost { background: transparent; color: var(--canvas-ink); border-color: var(--canvas-border); }
+  .btn.danger { background: transparent; color: var(--error); border-color: #6b4a4c; }
+  .btn.dark { background: var(--ink); color: var(--canvas-ink); border-color: #000; }
+
+  /* crew detail */
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 4px; }
+  .summary b { display: block; font-size: 22px; font-weight: 700; }
+  .summary span { font-size: 10px; letter-spacing: 1.2px; color: var(--muted); font-weight: 500; }
+  .sechead { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+  .sechead .eyebrow { padding: 0; }
+  .add { font-size: 11px; font-weight: 600; letter-spacing: 1px; color: var(--canvas-ink); display: inline-flex; align-items: center; gap: 4px; }
+  .pact { display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 16px; }
+  .badge { width: 36px; height: 36px; border-radius: 11px; background: rgba(255,255,255,.45); border: 1px solid rgba(0,0,0,.22);
+    border-bottom-width: 2px; display: grid; place-items: center; flex: none; }
+  .pact .t { flex: 1; min-width: 0; }
+  .pact .t b { display: block; font-size: 15px; font-weight: 600; }
+  .pact .t span { font-size: 12px; color: var(--muted); }
+  .pact .n { font-size: 14px; font-weight: 600; }
+  .pact .dots { display: flex; gap: 3px; margin-top: 5px; }
+  .pact .dots i { width: 14px; height: 5px; border-radius: 999px; background: rgba(22,28,35,.16); }
+  .pact .dots i.on { background: var(--ink); }
+  .stack { display: flex; flex-direction: column; gap: 7px; }
+  .member { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 14px; }
+  .member .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600;
+    border: 1px solid rgba(0,0,0,.25); }
+  .member .nm { flex: 1; font-size: 14px; font-weight: 500; }
+  .member .role { font-size: 10px; letter-spacing: 1.2px; color: var(--muted); font-weight: 500; }
+  .invite { border: 1.5px dashed var(--canvas-border); border-radius: 14px; height: 44px; display: flex; align-items: center;
+    justify-content: center; gap: 7px; font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--canvas-ink); }
+
+  .seg { display: flex; background: #2c3637; border: 1px solid var(--canvas-border); border-radius: 12px; padding: 3px; gap: 3px; }
+  .seg span { flex: 1; text-align: center; font-size: 13px; font-weight: 500; padding: 7px 0; border-radius: 9px; color: var(--canvas-muted); }
+  .seg span.on { background: var(--canvas-ink); color: var(--ink); font-weight: 600; }
+
+  .menu { position: absolute; right: 14px; top: 92px; width: 190px; background: var(--cream); color: var(--ink);
+    border-radius: 16px; border: 1px solid rgba(0,0,0,.3); border-bottom-width: 2px; padding: 6px; box-shadow: 0 14px 30px rgba(0,0,0,.45); z-index: 3; }
+  .menu div { display: flex; gap: 9px; align-items: center; padding: 10px 10px; font-size: 13px; font-weight: 500; border-radius: 10px; }
+  .menu div.red { color: #A3343C; }
+  .menu hr { border: 0; border-top: 1px solid rgba(0,0,0,.12); margin: 4px 6px; }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 2; }
+
+  /* nav */
+  .nav { display: flex; justify-content: space-around; padding: 8px 14px 20px; border-top: 1px solid #2f3a3b; background: var(--canvas); }
+  .nav .it { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--canvas-muted); width: 72px; }
+  .nav .it .tile { width: 46px; height: 30px; border-radius: 10px; display: grid; place-items: center; }
+  .nav .it.on { color: var(--canvas-ink); font-weight: 600; }
+  .nav .it.on .tile { background: var(--canvas-ink); color: var(--ink); }
+
+  .empty { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  .empty .card h3 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+  .empty .card p { margin: 0 0 16px; font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+  .notes { max-width: 900px; display: grid; gap: 10px; }
+  .note { background: #1a2122; border: 1px solid #2c3637; border-radius: 14px; padding: 14px 16px; font-size: 13.5px; line-height: 1.6; color: var(--canvas-muted); }
+  .note b { color: var(--canvas-ink); font-weight: 600; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="useradd" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 19c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><path d="M18 8v6M15 11h6"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="18.5" r="1.2"/></symbol>
+    <symbol id="flame" viewBox="0 0 24 24"><path d="M12 21c3.6 0 6-2.5 6-6 0-4-3.5-6-4.5-10-2 1.5-3.5 4-3.5 6.5C9 10 8 9 7.8 8 6.6 9.6 6 11.4 6 15c0 3.5 2.4 6 6 6z"/></symbol>
+    <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19c.7-3 3-4.6 6-4.6s5.3 1.6 6 4.6"/><path d="M15.5 5.5a3 3 0 010 6M17.5 14.6c1.8.5 3 1.9 3.5 4.4"/></symbol>
+    <symbol id="home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V20H4z"/><path d="M10 20v-5h4v5"/></symbol>
+    <symbol id="account" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18c1.2-2 3-3 5.4-3s4.2 1 5.4 3"/></symbol>
+    <symbol id="pact" viewBox="0 0 24 24"><path d="M3 12l4-4 4 2 3-3 7 5-5 5-4-3"/><path d="M3 12l5 5 2-1"/></symbol>
+    <symbol id="run" viewBox="0 0 24 24"><circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2V12l-3-1.5L7 13"/><path d="M12.5 12l2.5 2.5h3.5"/></symbol>
+    <symbol id="book" viewBox="0 0 24 24"><path d="M4 5.5c2.5-1 5.5-1 8 .5v13c-2.5-1.5-5.5-1.5-8-.5z"/><path d="M20 5.5c-2.5-1-5.5-1-8 .5v13c2.5-1.5 5.5-1.5 8-.5z"/></symbol>
+    <symbol id="drop" viewBox="0 0 24 24"><path d="M12 3.5c3 4 6 7 6 10.5a6 6 0 01-12 0c0-3.5 3-6.5 6-10.5z"/></symbol>
+    <symbol id="moon" viewBox="0 0 24 24"><path d="M19 14.5A7.5 7.5 0 119.5 5a6 6 0 009.5 9.5z"/></symbol>
+    <symbol id="leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/></symbol>
+    <symbol id="pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/></symbol>
+    <symbol id="logout" viewBox="0 0 24 24"><path d="M14 4H6v16h8"/><path d="M11 12h9M17 9l3 3-3 3"/></symbol>
+    <symbol id="trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+    <symbol id="key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <h1>Crews as the hub, no Pacts tab</h1>
+  <p class="lede">Pacts already belong to a crew. Today the Pacts tab and the Crews tab each carry their own crew switcher over the same crew. Here the Crews tab lists every crew you're in, and tapping one opens that crew's page, where its pacts and members are managed together. The tab bar drops to three tabs.</p>
+
+  <div class="section">
+    <h2>What changes</h2>
+    <div class="compare">
+      <div class="cmp">
+        <h3>Now</h3>
+        <div class="tabs"><span>Home</span><span>Pacts</span><span>Crews</span><span>Account</span></div>
+        <ol>
+          <li>Pacts tab → switcher → pick a crew → see or edit its pacts</li>
+          <li>Crews tab → switcher → pick the crew again → members</li>
+          <li>The two pages share one selected crew, but nothing on either page says so</li>
+        </ol>
+      </div>
+      <div class="cmp">
+        <h3>Proposed</h3>
+        <div class="tabs"><span class="on">Home</span><span class="gone">Pacts</span><span class="on">Crews</span><span class="on">Account</span></div>
+        <ol>
+          <li>Crews tab → list of your crews (with their week at a glance)</li>
+          <li>Tap a crew → its page: pacts, members, invite, leave</li>
+          <li>Crews no longer needs a switcher; Home keeps the one it has</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FLOW ============ -->
+  <div class="section">
+    <h2>1 · The flow</h2>
+    <p>Crews list → crew page. One page per crew, opened by a normal push, with a back chevron. The ⋯ menu holds the rare actions (rename, leave, delete) so they don't sit at the bottom of every crew page.</p>
+    <div class="row">
+
+      <!-- Crews list -->
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="title left">Crews</div>
+              <div class="ib raised"><svg class="i"><use href="#key"/></svg></div>
+              <div class="ib raised"><svg class="i"><use href="#plus"/></svg></div>
+            </div>
+
+            <div class="card crew" style="background:var(--stone)">
+              <div class="head">
+                <div class="name">Early Birds</div>
+                <span class="streakpill"><svg class="i xs"><use href="#flame"/></svg>6 wk</span>
+              </div>
+              <div class="meta">
+                <div class="faces">
+                  <div class="face" style="background:var(--clay)">JM</div>
+                  <div class="face" style="background:var(--sage)">AK</div>
+                  <div class="face" style="background:var(--blush)">LS</div>
+                  <div class="face" style="background:var(--olive)">EH</div>
+                  <span class="more">+1</span>
+                </div>
+                <span>3 pacts</span>
+              </div>
+              <div class="bar"><i style="width:62%"></i></div>
+              <div class="meta"><span>You: 5 of 8 this week</span><span>Crew 64%</span></div>
+            </div>
+
+            <div class="card crew" style="background:var(--cream)">
+              <div class="head">
+                <div class="name">Book Club</div>
+                <span class="streakpill"><svg class="i xs"><use href="#flame"/></svg>2 wk</span>
+              </div>
+              <div class="meta">
+                <div class="faces" style="--fill:var(--cream)">
+                  <div class="face" style="background:var(--clay)">JM</div>
+                  <div class="face" style="background:var(--straw)">RT</div>
+                </div>
+                <span>1 pact</span>
+              </div>
+              <div class="bar"><i style="width:25%"></i></div>
+              <div class="meta"><span>You: 1 of 4 this week</span><span>Crew 38%</span></div>
+            </div>
+
+            <div class="card crew" style="background:var(--mint)">
+              <div class="head">
+                <div class="name">Office Hydration</div>
+                <span class="streakpill" style="opacity:.6">new</span>
+              </div>
+              <div class="meta">
+                <div class="faces" style="--fill:var(--mint)">
+                  <div class="face" style="background:var(--clay)">JM</div>
+                  <div class="face" style="background:var(--sage)">DP</div>
+                  <div class="face" style="background:var(--blush)">NV</div>
+                </div>
+                <span>0 pacts</span>
+              </div>
+              <div class="meta" style="color:var(--ink);font-weight:500"><span>No pacts yet. Add one to start the week.</span></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag">CREWS TAB</span><br><b>Every crew you're in, one card each.</b> The card shows your week and the crew's, so you can tell which crew needs you without opening it. Header: join with a code, start a crew.</div>
+      </div>
+
+      <!-- Crew page, single scroll -->
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="ib"><svg class="i"><use href="#back"/></svg></div>
+              <div class="title">Early Birds</div>
+              <div class="ib"><svg class="i"><use href="#more"/></svg></div>
+            </div>
+
+            <div class="card summary" style="background:var(--stone);padding:12px 8px">
+              <div><b>5</b><span>PEOPLE</span></div>
+              <div><b>3</b><span>PACTS</span></div>
+              <div><b>6 wk</b><span>STREAK</span></div>
+            </div>
+
+            <div class="sechead"><span class="eyebrow">PACTS</span><span class="add"><svg class="i s"><use href="#plus"/></svg>ADD</span></div>
+            <div class="stack">
+              <div class="card pact" style="background:var(--clay)">
+                <div class="badge"><svg class="i"><use href="#run"/></svg></div>
+                <div class="t"><b>Morning run</b><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+                <div class="n">2 / 3</div>
+              </div>
+              <div class="card pact" style="background:var(--sage)">
+                <div class="badge"><svg class="i"><use href="#book"/></svg></div>
+                <div class="t"><b>Read 20 pages</b><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+                <div class="n">3 / 4</div>
+              </div>
+              <div class="card pact" style="background:var(--blush)">
+                <div class="badge"><svg class="i"><use href="#moon"/></svg></div>
+                <div class="t"><b>Phone off by 11</b><span>Every day</span></div>
+                <div class="n">0 / 7</div>
+              </div>
+            </div>
+
+            <div class="sechead" style="margin-top:4px"><span class="eyebrow">IN THE CREW</span><span class="add"><svg class="i s"><use href="#useradd"/></svg>INVITE</span></div>
+            <div class="stack">
+              <div class="card member" style="background:var(--cool)"><div class="av" style="background:var(--clay)">JM</div><div class="nm">Jasmin (you)</div><div class="role">OWNER</div></div>
+              <div class="card member" style="background:var(--cream)"><div class="av" style="background:var(--sage)">AK</div><div class="nm">Amra</div><div class="role">MEMBER</div></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag">CREW PAGE · A</span><br><b>One scroll: summary, pacts, members.</b> Pacts come first since they change week to week and the roster rarely does. Tap a pact to edit it, ADD opens the existing pact sheet, INVITE opens the invite drawer.</div>
+      </div>
+
+      <!-- Overflow menu -->
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="ib"><svg class="i"><use href="#back"/></svg></div>
+              <div class="title">Early Birds</div>
+              <div class="ib raised"><svg class="i"><use href="#more"/></svg></div>
+            </div>
+            <div class="card summary" style="background:var(--stone);padding:12px 8px">
+              <div><b>5</b><span>PEOPLE</span></div>
+              <div><b>3</b><span>PACTS</span></div>
+              <div><b>6 wk</b><span>STREAK</span></div>
+            </div>
+            <div class="sechead"><span class="eyebrow">PACTS</span><span class="add"><svg class="i s"><use href="#plus"/></svg>ADD</span></div>
+            <div class="stack">
+              <div class="card pact" style="background:var(--clay)"><div class="badge"><svg class="i"><use href="#run"/></svg></div><div class="t"><b>Morning run</b></div><div class="n">2 / 3</div></div>
+              <div class="card pact" style="background:var(--sage)"><div class="badge"><svg class="i"><use href="#book"/></svg></div><div class="t"><b>Read 20 pages</b></div><div class="n">3 / 4</div></div>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="menu">
+            <div><svg class="i s"><use href="#pen"/></svg>Rename crew</div>
+            <div><svg class="i s"><use href="#link"/></svg>Share invite link</div>
+            <div><svg class="i s"><use href="#flame"/></svg>Past weeks</div>
+            <hr>
+            <div><svg class="i s"><use href="#logout"/></svg>Leave crew</div>
+            <div class="red"><svg class="i s"><use href="#trash"/></svg>Delete crew</div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag">CREW PAGE · ⋯ MENU</span><br><b>The rare actions move into a menu.</b> Today LEAVE / DELETE sit under the roster on every visit. Delete only appears for the owner. "Past weeks" could link to the existing crew week history.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ALTERNATIVE ============ -->
+  <div class="section">
+    <h2>2 · Crew page alternative: split into two tabs</h2>
+    <p>If a crew grows to 6+ pacts and 8+ people, one scroll gets long. A segmented control keeps each list short, but members are one tap further away.</p>
+    <div class="row">
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="ib"><svg class="i"><use href="#back"/></svg></div>
+              <div class="title">Early Birds</div>
+              <div class="ib"><svg class="i"><use href="#more"/></svg></div>
+            </div>
+            <div class="card" style="background:var(--stone)">
+              <div class="eyebrow">YOUR WEEK HERE</div>
+              <div style="font-size:24px;font-weight:700;margin:6px 0 10px">5 of 8 check-ins</div>
+              <div class="bar"><i style="width:62%"></i></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:8px">3 left · 4 days remaining</div>
+            </div>
+            <div class="seg"><span class="on">Pacts · 3</span><span>Members · 5</span></div>
+            <div class="stack">
+              <div class="card pact" style="background:var(--clay)"><div class="badge"><svg class="i"><use href="#run"/></svg></div><div class="t"><b>Morning run</b><span>3 days a week</span></div><div class="n">2 / 3</div></div>
+              <div class="card pact" style="background:var(--sage)"><div class="badge"><svg class="i"><use href="#book"/></svg></div><div class="t"><b>Read 20 pages</b><span>4 days a week</span></div><div class="n">3 / 4</div></div>
+              <div class="card pact" style="background:var(--blush)"><div class="badge"><svg class="i"><use href="#moon"/></svg></div><div class="t"><b>Phone off by 11</b><span>Every day</span></div><div class="n">0 / 7</div></div>
+            </div>
+            <div class="btn"><svg class="i s"><use href="#plus"/></svg>ADD PACT</div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag alt">CREW PAGE · B</span><br><b>Pacts segment.</b> Keeps the "Your week so far" card from today's Pacts page, scoped to this crew.</div>
+      </div>
+
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="ib"><svg class="i"><use href="#back"/></svg></div>
+              <div class="title">Early Birds</div>
+              <div class="ib"><svg class="i"><use href="#more"/></svg></div>
+            </div>
+            <div class="card" style="background:var(--stone)">
+              <div class="eyebrow">YOUR WEEK HERE</div>
+              <div style="font-size:24px;font-weight:700;margin:6px 0 10px">5 of 8 check-ins</div>
+              <div class="bar"><i style="width:62%"></i></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:8px">3 left · 4 days remaining</div>
+            </div>
+            <div class="seg"><span>Pacts · 3</span><span class="on">Members · 5</span></div>
+            <div class="stack">
+              <div class="card member" style="background:var(--cool)"><div class="av" style="background:var(--clay)">JM</div><div class="nm">Jasmin (you)</div><div class="role">OWNER</div></div>
+              <div class="card member" style="background:var(--cream)"><div class="av" style="background:var(--sage)">AK</div><div class="nm">Amra</div><div class="role">MEMBER</div></div>
+              <div class="card member" style="background:var(--cream)"><div class="av" style="background:var(--blush)">LS</div><div class="nm">Lejla</div><div class="role">MEMBER</div></div>
+              <div class="card member" style="background:var(--cream)"><div class="av" style="background:var(--olive)">EH</div><div class="nm">Emir</div><div class="role">MEMBER</div></div>
+            </div>
+            <div class="invite"><svg class="i s"><use href="#useradd"/></svg>INVITE SOMEONE</div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag alt">CREW PAGE · B</span><br><b>Members segment.</b> Same roster bands and invite band as today's Crews page.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EDGE STATES ============ -->
+  <div class="section">
+    <h2>3 · Edge states</h2>
+    <p>No crews yet, and a crew with no pacts. The second case is where the old Pacts tab's "A shared start" empty state ends up.</p>
+    <div class="row">
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar"><div class="title left">Crews</div></div>
+            <div class="empty">
+              <div class="card" style="background:var(--stone);padding:20px 16px">
+                <h3>Start your crew</h3>
+                <p>A crew is the people you keep pacts with. Make one and invite them, or join one with a code.</p>
+                <div class="btn dark"><svg class="i s"><use href="#users"/></svg>CREATE CREW</div>
+              </div>
+              <div class="btn ghost"><svg class="i s"><use href="#key"/></svg>JOIN WITH A CODE</div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag">NO CREWS</span><br><b>The list's empty state</b> combines today's "Start your crew" card with join by code.</div>
+      </div>
+
+      <div class="shot">
+        <div class="phone"><div class="screen">
+          <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+          <div class="body">
+            <div class="topbar">
+              <div class="ib"><svg class="i"><use href="#back"/></svg></div>
+              <div class="title">Office Hydration</div>
+              <div class="ib"><svg class="i"><use href="#more"/></svg></div>
+            </div>
+            <div class="card summary" style="background:var(--mint);padding:12px 8px">
+              <div><b>3</b><span>PEOPLE</span></div>
+              <div><b>0</b><span>PACTS</span></div>
+              <div><b>–</b><span>STREAK</span></div>
+            </div>
+            <div class="sechead"><span class="eyebrow">PACTS</span></div>
+            <div class="card" style="background:var(--cream);padding:18px 16px">
+              <div style="font-size:18px;font-weight:600;margin-bottom:6px">A shared start</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Pick something the whole crew will check in on this week.</div>
+              <div class="chips" style="margin-bottom:14px">
+                <span class="chip"><svg class="i xs"><use href="#drop"/></svg>Drink water</span>
+                <span class="chip"><svg class="i xs"><use href="#run"/></svg>Walk 30 min</span>
+                <span class="chip"><svg class="i xs"><use href="#leaf"/></svg>Stretch</span>
+              </div>
+              <div class="btn dark"><svg class="i s"><use href="#plus"/></svg>ADD PACT</div>
+            </div>
+            <div class="sechead"><span class="eyebrow">IN THE CREW</span><span class="add"><svg class="i s"><use href="#useradd"/></svg>INVITE</span></div>
+            <div class="stack">
+              <div class="card member" style="background:var(--cool)"><div class="av" style="background:var(--clay)">JM</div><div class="nm">Jasmin (you)</div><div class="role">OWNER</div></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="it"><div class="tile"><svg class="i"><use href="#home"/></svg></div>Home</div>
+            <div class="it on"><div class="tile"><svg class="i"><use href="#users"/></svg></div>Crews</div>
+            <div class="it"><div class="tile"><svg class="i"><use href="#account"/></svg></div>Account</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="tag">CREW · NO PACTS</span><br><b>Empty pacts section</b> inside the crew page, with the starter chips from today's pact sheet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Open questions</h2>
+    <div class="notes">
+      <div class="note"><b>One crew only:</b> skip the list and open the crew page directly? I'd keep the list. It costs one tap, it's predictable, and it's where "Start another crew" lives.</div>
+      <div class="note"><b>Home → "Open pacts" link:</b> it currently jumps to the Pacts tab. It would push the crew page for the crew Home is showing.</div>
+      <div class="note"><b>Who can edit pacts:</b> if only owners can add or edit, members see the pact list read-only and the ADD control is hidden, like INVITE today.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
