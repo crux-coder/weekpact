@@ -81,12 +81,13 @@ Future<void> showCrew(
   MembershipBackend backend, {
   VoidCallback? onLeft,
   HomeBackend? profileBackend,
+  ThemeData? theme,
 }) async {
   // Pushed over a page of its own, the way the Crews list opens it, so that
   // leaving or ending the crew has somewhere to go back to.
   await tester.pumpWidget(
     MaterialApp(
-      theme: WeekPactTheme.light,
+      theme: theme ?? WeekPactTheme.light,
       home: Builder(
         builder: (context) => Scaffold(
           body: Center(
@@ -315,5 +316,23 @@ void main() {
     expect(profiles.fetches, greaterThan(asked));
     expect(find.text('Couldn’t load'), findsNothing);
     expect(find.text('—'), findsNothing);
+  });
+
+  testWidgets('the crew menu reads on its cream card over the dark canvas', (
+    tester,
+  ) async {
+    final backend = MembershipBackend()..crew = details(owner: true);
+    await showCrew(tester, backend, theme: WeekPactTheme.dark);
+    await openMenu(tester);
+    // The page's own inks are drawn for the canvas, light on dark; the menu
+    // is cream, so its entries have to be the card's dark inks instead.
+    for (final label in ['Leave crew', 'Delete crew']) {
+      final color = tester.widget<Text>(find.text(label)).style!.color!;
+      expect(
+        color.computeLuminance(),
+        lessThan(.2),
+        reason: '$label is light text on the cream menu',
+      );
+    }
   });
 }

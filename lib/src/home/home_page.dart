@@ -157,6 +157,7 @@ class _HomePageState extends State<HomePage> {
           pactsBackend: widget.pactsBackend,
           currentUserEmail: widget.user.email,
           onCrewLeft: () => _selectDestination(0),
+          initialTab: CrewPageTab.pacts,
         ),
       ),
     );

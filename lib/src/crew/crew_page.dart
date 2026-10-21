@@ -19,6 +19,9 @@ import 'crew_backend.dart';
 import '../home/home_backend.dart';
 import 'crew_roster.dart';
 
+/// The two halves of a crew's page, in the order its tabs stand.
+enum CrewPageTab { members, pacts }
+
 /// One crew's own page, opened from the Crews list: its pacts, the people in
 /// it, and the ways out of it.
 class CrewPage extends StatefulWidget {
@@ -30,7 +33,12 @@ class CrewPage extends StatefulWidget {
     this.profileBackend,
     this.pactsBackend,
     this.onCrewLeft,
+    this.initialTab = CrewPageTab.members,
   });
+
+  /// The tab the page opens on. Members, unless the page was opened to read
+  /// the pacts.
+  final CrewPageTab initialTab;
 
   /// The crew this page is about. Null opens the first crew the account is
   /// in, which is what a screen showing only one crew wants.
@@ -66,6 +74,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
   /// The crew's pacts, from the same week. Null until it has arrived.
   List<CrewPact>? _pacts;
   String? _deletingPact;
+
+  /// Which half of the page is open.
+  late CrewPageTab _tab = widget.initialTab;
 
   /// Whether that fetch was made and failed. Without it the two figures stay
   /// null, which the card reads as "still coming" and draws as a bar nobody is
@@ -456,8 +467,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CrewSectionLabel('PACTS'),
-        const SizedBox(height: 10),
         if (pacts == null)
           // The week failed; the summary card above already says so and
           // carries the retry, so this only keeps the section's place.
@@ -569,13 +578,17 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           actions: [if (crew != null) _crewMenu(context, crew)],
         ),
         loading: !_hasLoaded && _loading,
-        skeleton: const CrewPageSkeleton(),
+        skeleton: CrewPageSkeleton(
+          body: CrewRosterSkeleton(tabs: widget.pactsBackend != null),
+        ),
         onRefresh: _refresh,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (_loading && crew != null && !_hasLoaded)
-              const CrewPageSkeleton()
+              CrewPageSkeleton(
+                body: CrewRosterSkeleton(tabs: widget.pactsBackend != null),
+              )
             else if (crew != null)
               _buildCrewState(context, crew)
             else if (_hasLoaded)
@@ -634,7 +647,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
               context,
               icon: HugeIconsStrokeRounded.logout01,
               label: 'Leave crew',
-              color: context.ink,
             ),
           ),
           if (crew.isOwner && _deletionBackend != null)
@@ -644,31 +656,39 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                 context,
                 icon: HugeIconsStrokeRounded.delete02,
                 label: 'Delete crew',
-                color: context.errorInk,
+                destructive: true,
               ),
             ),
         ],
         icon: const AppIcon(icon: HugeIconsStrokeRounded.moreVertical),
       );
 
+  /// One entry in the crew menu. The menu is a cream card opened from the
+  /// dark canvas, so its entries take the card's inks rather than the page's,
+  /// which are drawn for the canvas and vanish on cream.
   Widget _menuEntry(
     BuildContext context, {
     required List<List<dynamic>> icon,
     required String label,
-    required Color color,
-  }) => Row(
-    children: [
-      AppIcon(icon: icon, color: color, size: 20),
-      const SizedBox(width: 12),
-      Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ],
+    bool destructive = false,
+  }) => AppSurfaceTheme(
+    builder: (context) {
+      final color = destructive ? context.errorInk : context.ink;
+      return Row(
+        children: [
+          AppIcon(icon: icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    },
   );
 
   CrewMember _withProfile(CrewMember member) {
@@ -700,13 +720,38 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           weekFailed: _weekFailed,
           onRetry: _loading ? null : _loadCrew,
         ),
-        if (widget.pactsBackend != null) ...[
-          const SizedBox(height: 18),
-          _buildPacts(context, crew),
-        ],
         const SizedBox(height: 18),
-        const CrewSectionLabel('IN THE CREW'),
-        const SizedBox(height: 10),
+        if (widget.pactsBackend == null) ...[
+          const CrewSectionLabel('IN THE CREW'),
+          const SizedBox(height: 10),
+          _buildMembers(context, crew, members),
+        ] else ...[
+          CrewPageTabs(
+            labels: [
+              'Members · ${members.length}',
+              _pacts == null ? 'Pacts' : 'Pacts · ${_pacts!.length}',
+            ],
+            selected: _tab.index,
+            onSelected: (tab) => setState(() => _tab = CrewPageTab.values[tab]),
+          ),
+          const SizedBox(height: 14),
+          if (_tab == CrewPageTab.members)
+            _buildMembers(context, crew, members)
+          else
+            _buildPacts(context, crew),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMembers(
+    BuildContext context,
+    CrewDetails crew,
+    List<CrewMember> members,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         CrewRoster(
           children: [
             for (var i = 0; i < members.length; i++)
@@ -737,7 +782,6 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     );
   }
 
-  /// every primary control here stands at.
   bool _isCurrentUser(CrewMember member) =>
       member.email.toLowerCase() == widget.currentUserEmail.toLowerCase();
 }

@@ -193,7 +193,11 @@ class CrewSectionLabel extends StatelessWidget {
 /// promised a page that no longer exists and dropped the roster by some 80
 /// points the moment the answer landed.
 class CrewRosterSkeleton extends StatelessWidget {
-  const CrewRosterSkeleton({super.key});
+  const CrewRosterSkeleton({super.key, this.tabs = false});
+
+  /// Whether the page splits into Members and Pacts tabs, which then stand
+  /// where the roster's heading otherwise would.
+  final bool tabs;
 
   /// One band's ghost: the face, the name, the standing and the square at the
   /// end, in the padding and the gaps [CrewPersonBand] lays them out with, so
@@ -237,9 +241,94 @@ class CrewRosterSkeleton extends StatelessWidget {
     children: [
       const CrewSummaryCard.loading(),
       const SizedBox(height: 18),
-      const CrewSectionLabel('IN THE CREW'),
-      const SizedBox(height: 10),
+      if (tabs)
+        const SkeletonBar(
+          height: CrewPageTabs.height,
+          radius: WeekPactMetrics.controlRadius + 3,
+        )
+      else
+        const CrewSectionLabel('IN THE CREW'),
+      SizedBox(height: tabs ? 14 : 10),
       CrewRoster(children: [for (var i = 0; i < 4; i++) _band(i == 0)]),
     ],
+  );
+}
+
+/// The two halves of a crew's page, Members and Pacts, as a pair of tabs under
+/// the summary card. One list at a time keeps each short on a crew with a
+/// long roster and a long week, and the tab names its group, so neither needs
+/// a heading of its own.
+class CrewPageTabs extends StatelessWidget {
+  const CrewPageTabs({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  static const height = 44.0;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    padding: const EdgeInsets.all(3),
+    decoration: ShapeDecoration(
+      color: context.ink.withValues(alpha: .07),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius + 3),
+        side: BorderSide(color: context.ink.withValues(alpha: .14)),
+      ),
+    ),
+    child: Row(
+      children: [
+        for (final (index, label) in labels.indexed)
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: index == selected,
+              child: InkWell(
+                key: ValueKey('crew-tab-$index'),
+                borderRadius: BorderRadius.circular(
+                  WeekPactMetrics.controlRadius,
+                ),
+                onTap: index == selected ? null : () => onSelected(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.center,
+                  decoration: ShapeDecoration(
+                    color: index == selected
+                        ? WeekPactColors.cream
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        WeekPactMetrics.controlRadius,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: index == selected
+                          ? WeekPactColors.black
+                          : context.muted,
+                      fontSize: 15,
+                      fontWeight: index == selected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
   );
 }

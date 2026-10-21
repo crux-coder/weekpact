@@ -109,7 +109,14 @@ void main() {
           for (final preview
               in tab == 'home'
                   ? ['home', 'home-middle', 'home-last', 'home-empty']
+                  : tab == 'crew'
+                  ? ['crew', 'crew-pacts']
                   : [tab]) {
+            if (preview == 'crew-pacts') {
+              await tester.tap(find.byKey(const ValueKey('crew-tab-1')));
+              await tester.pumpUi();
+              expect(tester.takeException(), isNull);
+            }
             if (preview == 'home-empty') {
               backend.selected.clear();
               await tester.tap(find.byKey(const ValueKey('nav-crews')));
@@ -117,7 +124,7 @@ void main() {
               await tester.tap(find.byKey(const ValueKey('nav-home')));
               await tester.pumpUi();
               expect(tester.takeException(), isNull);
-            } else if (preview != tab) {
+            } else if (preview != tab && tab == 'home') {
               await tester.drag(
                 find.byKey(const ValueKey('pact-stack')),
                 const Offset(-320, 0),

@@ -180,7 +180,17 @@ Future<PactsCrews> pumpPacts(
       ),
     ),
   );
+  // Members is the tab a crew's page opens on; the pacts are the other one.
+  if (loading == null) {
+    await tester.pumpAndSettle();
+    await openPactsTab(tester);
+  }
   return crews;
+}
+
+Future<void> openPactsTab(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('crew-tab-1')));
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -273,6 +283,7 @@ void main() {
     expect(find.text('ADD PACT'), findsNothing);
     loading.complete();
     await tester.pumpAndSettle();
+    await openPactsTab(tester);
     expect(find.text('Small steps start here.'), findsOneWidget);
     expect(find.text('ADD PACT'), findsOneWidget);
   });
@@ -494,5 +505,30 @@ void main() {
     await pumpPacts(tester, backend);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('pact-menu-g')), findsNothing);
+  });
+
+  testWidgets('a crew page opens on its members, with pacts one tab away', (
+    tester,
+  ) async {
+    final backend = FakePacts();
+    backend.pacts.add(
+      const CrewPact(
+        id: 'g',
+        crewId: 'a',
+        title: 'Read',
+        frequency: PactFrequency.daily,
+        daysPerWeek: 7,
+      ),
+    );
+    await pumpPacts(tester, backend, loading: Completer<void>()..complete());
+    await tester.pumpAndSettle();
+    expect(find.text('Members · 1'), findsOneWidget);
+    expect(find.text('Pacts · 1'), findsOneWidget);
+    expect(find.text('INVITE SOMEONE'), findsOneWidget);
+    expect(find.text('Read'), findsNothing);
+
+    await openPactsTab(tester);
+    expect(find.text('Read'), findsOneWidget);
+    expect(find.text('INVITE SOMEONE'), findsNothing);
   });
 }
