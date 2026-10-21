@@ -11,4 +11,9 @@ class NotificationScope extends InheritedNotifier<NotificationService> {
 
   static NotificationService? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<NotificationScope>()?.notifier;
+
+  /// The service without rebuilding when it changes: for listening to its
+  /// streams rather than showing its state.
+  static NotificationService? read(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<NotificationScope>()?.notifier;
 }

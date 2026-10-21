@@ -27,6 +27,17 @@ const templates: Record<string, Renderer> = {
       body: `${text(payload.actor_name, "A crew member", 60)}${applause} clapped your ${text(payload.pact_title, "pact", 120)} check-in.`,
     };
   },
+  // The crew as the title, then who said what; just who and where when the
+  // event carries no text.
+  chat_message: (payload) => {
+    const actor = text(payload.actor_name, "A crew member", 60);
+    return {
+      title: text(payload.crew_name, "Crew chat", 60),
+      body: typeof payload.text === "string" && payload.text.trim()
+        ? `${actor}: ${text(payload.text, "", 180)}`
+        : `${actor} sent a message in ${text(payload.crew_name, "your crew", 60)}.`,
+    };
+  },
   pact_completed: (payload) => ({
     title: "A pact checked off!",
     body: `${text(payload.actor_name, "A crew member", 60)} completed ${text(payload.pact_title, "a pact", 120)}.`,

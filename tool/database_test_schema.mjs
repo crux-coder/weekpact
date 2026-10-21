@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { storageTestSchema } from './storage_test_schema.mjs';
 import { notificationTestSchema } from './notification_test_schema.mjs';
+import { realtimeTestSchema } from './realtime_test_schema.mjs';
 
 // Run the complete migration history against minimal Supabase-owned schemas.
 export async function createTestDatabase({ beforeMigration } = {}) {
@@ -21,6 +22,7 @@ export async function createTestDatabase({ beforeMigration } = {}) {
   `);
   await db.exec(storageTestSchema);
   await db.exec(notificationTestSchema);
+  await db.exec(realtimeTestSchema);
   const directory = new URL('../supabase/migrations/', import.meta.url);
   for (const file of (await readdir(directory)).filter(f => f.endsWith('.sql')).sort()) {
     if (file === beforeMigration) break;

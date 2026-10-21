@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
+import '../chat/chat_backend.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_selection_store.dart';
 import '../crew/crew_sharing.dart';
@@ -34,6 +35,7 @@ class AuthGate extends StatefulWidget {
     required this.crewBackend,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
+    this.chatBackend = const MissingChatBackend(),
     this.captureCheckInPhoto,
     this.crewSelectionStore,
     this.storySeenStore,
@@ -46,6 +48,7 @@ class AuthGate extends StatefulWidget {
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
+  final ChatBackend chatBackend;
   final CheckInPhotoCapture? captureCheckInPhoto;
   final CrewSelectionStore? crewSelectionStore;
   final StorySeenStore? storySeenStore;
@@ -405,6 +408,7 @@ class _AuthGateState extends State<AuthGate> {
           crewBackend: widget.crewBackend,
           pactsBackend: widget.pactsBackend,
           homeBackend: widget.homeBackend,
+          chatBackend: widget.chatBackend,
           captureCheckInPhoto: widget.captureCheckInPhoto,
         );
         final updates = widget.updates;

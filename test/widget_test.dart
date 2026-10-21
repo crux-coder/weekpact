@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -215,55 +217,57 @@ void main() {
     expect(find.text('Log out'), findsOneWidget);
   });
 
-  testWidgets(
-    'shows every navigation label beneath an equally sized destination',
-    (tester) async {
-      final auth = FakeAuthBackend();
-      addTearDown(auth.dispose);
+  testWidgets('labels only the selected destination, beside its icon', (
+    tester,
+  ) async {
+    final auth = FakeAuthBackend();
+    addTearDown(auth.dispose);
 
-      await tester.pumpWidget(
-        WeekPactApp(
-          homeBackend: DashboardBackend(viewerId: 'user-id'),
-          pactsBackend: DashboardPacts(),
-          authBackend: auth,
-        ),
-      );
-      await openLogin(tester);
-      await tester.enterText(
-        find.byType(TextFormField).at(0),
-        'person@example.com',
-      );
-      await tester.enterText(find.byType(TextFormField).at(1), 'password123');
-      await tester.tap(find.text('LOG IN'));
-      await tester.pumpUi();
+    await tester.pumpWidget(
+      WeekPactApp(
+        homeBackend: DashboardBackend(viewerId: 'user-id'),
+        pactsBackend: DashboardPacts(),
+        authBackend: auth,
+      ),
+    );
+    await openLogin(tester);
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'person@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+    await tester.tap(find.text('LOG IN'));
+    await tester.pumpUi();
 
-      final homeButton = find.byKey(const ValueKey('nav-home'));
-      final homeIcon = find.descendant(
-        of: homeButton,
-        matching: find.byType(HugeIcon),
-      );
-      final homeLabel = find.descendant(
-        of: homeButton,
-        matching: find.text('Home'),
-      );
+    final homeButton = find.byKey(const ValueKey('nav-home'));
+    final homeIcon = find.descendant(
+      of: homeButton,
+      matching: find.byType(HugeIcon),
+    );
+    final homeLabel = find.descendant(
+      of: homeButton,
+      matching: find.text('Home'),
+    );
 
+    // The selected destination's label sits beside its icon.
+    expect(
+      tester.getCenter(homeIcon).dx,
+      lessThan(tester.getCenter(homeLabel).dx),
+    );
+    expect(
+      tester.getCenter(homeIcon).dy,
+      closeTo(tester.getCenter(homeLabel).dy, 1),
+    );
+    for (final label in ['Chat', 'Crews', 'Account']) {
+      final destination = find.byKey(ValueKey('nav-${label.toLowerCase()}'));
+      // The others collapse to their icon, narrower than the selected one.
       expect(
-        tester.getCenter(homeIcon).dy,
-        lessThan(tester.getCenter(homeLabel).dy),
+        tester.getSize(destination).width,
+        lessThan(tester.getSize(homeButton).width),
       );
-      for (final label in ['Crews', 'Account']) {
-        final destination = find.byKey(ValueKey('nav-${label.toLowerCase()}'));
-        expect(
-          tester.getSize(destination).width,
-          tester.getSize(homeButton).width,
-        );
-        expect(
-          find.descendant(of: destination, matching: find.text(label)),
-          findsOneWidget,
-        );
-      }
-    },
-  );
+      expect(find.bySemanticsLabel(label), findsOneWidget);
+    }
+  });
 
   testWidgets('shows daily pacts and checks in directly', (tester) async {
     final auth = FakeAuthBackend();
@@ -326,7 +330,7 @@ void main() {
         .getTopLeft(find.byKey(const ValueKey('home-crew-panel')))
         .dx;
     // The adjacent destination keeps Home mounted through the slide.
-    await tester.tap(find.byKey(const ValueKey('nav-crews')));
+    await tester.tap(find.byKey(const ValueKey('nav-chat')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -336,7 +340,7 @@ void main() {
     );
 
     await tester.pumpUi();
-    expect(find.text('Crews'), findsWidgets);
+    expect(find.text('Chat'), findsWidgets);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (
@@ -384,7 +388,15 @@ void main() {
     expect(tester.getCenter(highlight).dx, greaterThan(startX));
     expect(tester.getCenter(highlight).dx, lessThan(endX));
     await tester.pumpUi();
-    expect(tester.getCenter(highlight).dx, closeTo(endX, 1));
+    // Crews widens to show its label, and the highlight lands on it.
+    expect(
+      tester.getCenter(highlight).dx,
+      closeTo(tester.getCenter(crewsButton).dx, 1),
+    );
+    expect(
+      tester.getSize(highlight).width,
+      closeTo(tester.getSize(crewsButton).width, 1),
+    );
 
     expect(tester.getCenter(crewsIcon).dy, equals(initialCrewsY));
     expect(
@@ -394,7 +406,9 @@ void main() {
     expect(find.text('Crews'), findsWidgets);
   });
 
-  testWidgets('uses a rounded rectangle navigation container', (tester) async {
+  testWidgets('floats a wide, rounded navigation bar over the page', (
+    tester,
+  ) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -420,11 +434,34 @@ void main() {
           find.descendant(of: navigation, matching: find.byType(Container)),
         )
         .first;
+    // A squircle, like the cards, not a plain rounded rect.
     expect(
-      (container.decoration! as BoxDecoration).borderRadius,
-      BorderRadius.circular(16),
+      (container.decoration! as ShapeDecoration).shape,
+      isA<ContinuousRectangleBorder>().having(
+        (shape) => shape.borderRadius,
+        'borderRadius',
+        BorderRadius.circular(32),
+      ),
     );
-    expect(tester.getSize(navigation).height, lessThan(110));
+    expect(tester.getSize(navigation).height, lessThan(90));
+    // As wide as the page, inset from its edges, floating over the content.
+    final pill = find
+        .descendant(of: navigation, matching: find.byType(Container))
+        .first;
+    expect(
+      tester.getSize(pill).width,
+      closeTo(math.min(tester.getSize(navigation).width - 24, 640), 1),
+    );
+    expect(
+      tester
+          .widget<Scaffold>(
+            find
+                .ancestor(of: navigation, matching: find.byType(Scaffold))
+                .first,
+          )
+          .extendBody,
+      isTrue,
+    );
   });
 
   testWidgets('applies the flat background at the app root', (tester) async {

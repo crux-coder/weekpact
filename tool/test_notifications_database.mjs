@@ -3,6 +3,7 @@ import { readFile,readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {storageTestSchema} from './storage_test_schema.mjs';
 import {notificationTestSchema} from './notification_test_schema.mjs';
+import {realtimeTestSchema} from './realtime_test_schema.mjs';
 const {PGlite}=await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role;
@@ -11,7 +12,7 @@ create table auth.users(id uuid primary key,email text,email_confirmed_at timest
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth to authenticated;
 create function extensions.digest(value text, algorithm text) returns bytea language sql as $$select sha256(convert_to(value,'UTF8'))$$;`);
-await db.exec(storageTestSchema);await db.exec(notificationTestSchema);
+await db.exec(storageTestSchema);await db.exec(notificationTestSchema);await db.exec(realtimeTestSchema);
 for(const f of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())
  await db.exec((await readFile('supabase/migrations/'+f,'utf8')).replace('create extension if not exists pgcrypto with schema extensions;',''));
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;

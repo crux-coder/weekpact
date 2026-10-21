@@ -8,10 +8,13 @@ import '../widgets/app_sheet.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 
 import 'dart:async';
 
+import '../notifications/notification_scope.dart';
+import '../notifications/notification_service.dart';
 import '../notifications/notifications_page.dart';
 import 'home_backend.dart';
 import 'nudge_sheet.dart';
@@ -28,6 +31,8 @@ import '../pacts/pacts_backend.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../auth/auth_backend.dart';
+import '../chat/chat_backend.dart';
+import '../chat/chat_page.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_page.dart';
 import '../crew/crews_page.dart';
@@ -48,6 +53,7 @@ class HomePage extends StatefulWidget {
     this.captureCheckInPhoto,
     this.pactsBackend = const MissingPactsBackend(),
     this.homeBackend = const MissingHomeBackend(),
+    this.chatBackend = const MissingChatBackend(),
     this.onInviteCode,
   });
 
@@ -68,29 +74,54 @@ class HomePage extends StatefulWidget {
   final CheckInPhotoCapture? captureCheckInPhoto;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
+  final ChatBackend chatBackend;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  static const _navigationItems = [
-    AppNavigationItem(
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  List<AppNavigationItem> get _navigationItems => [
+    const AppNavigationItem(
       label: 'Home',
       icon: HugeIconsStrokeRounded.home01,
       color: WeekPactColors.stone,
     ),
     AppNavigationItem(
+      label: 'Chat',
+      icon: HugeIconsStrokeRounded.bubbleChat,
+      color: WeekPactColors.stone,
+      // Not while reading it: the page marks what arrives as read.
+      badge: _selectedIndex != _chatTab && _unread.values.any((n) => n > 0),
+    ),
+    const AppNavigationItem(
       label: 'Crews',
       icon: HugeIconsStrokeRounded.userGroup,
       color: WeekPactColors.stone,
     ),
-    AppNavigationItem(
+    const AppNavigationItem(
       label: 'Account',
       icon: HugeIconsStrokeRounded.userAccount,
       color: WeekPactColors.sand,
     ),
   ];
+
+  /// Unread messages from others, by crew, for the dot on Chat.
+  Map<String, int> _unread = const {};
+  StreamSubscription<void>? _chatActivity;
+  int _unreadRequest = 0;
+
+  Future<void> _refreshUnread() async {
+    final request = ++_unreadRequest;
+    try {
+      final counts = await widget.chatBackend.fetchUnreadCounts();
+      if (mounted && request == _unreadRequest) {
+        setState(() => _unread = counts);
+      }
+    } catch (_) {
+      // The dot is a hint; a failed count leaves the last one standing.
+    }
+  }
 
   late final PageController _pageController;
 
@@ -134,16 +165,58 @@ class _HomePageState extends State<HomePage> {
       unawaited(_rememberCrew(widget.initialCrewId!));
     }
     _pageController = PageController();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshUnread());
+    _chatActivity = widget.chatBackend
+        .watchActivity(widget.user.id)
+        .listen((_) => _refreshUnread());
+  }
+
+  NotificationService? _notifications;
+  StreamSubscription<RemoteMessage>? _openedPushes;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifications = NotificationScope.read(context);
+    if (notifications == _notifications) return;
+    unawaited(_openedPushes?.cancel());
+    _notifications = notifications;
+    _openedPushes = notifications?.openedMessages.listen(
+      (_) => _routeOpenedPush(),
+    );
+    // A tap that launched the app arrived before this page existed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _routeOpenedPush());
+  }
+
+  /// A tapped chat push opens Chat on the crew it is about.
+  void _routeOpenedPush() {
+    if (!mounted) return;
+    final message = _notifications?.takeOpenedMessage();
+    final crewId = message == null ? null : chatPushCrewId(message);
+    if (crewId == null) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    _selectCrew(crewId);
+    _selectDestination(_chatTab);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refreshUnread());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_chatActivity?.cancel());
+    unawaited(_openedPushes?.cancel());
     _pageController.dispose();
     super.dispose();
   }
 
-  /// Where Crews stands in [_navigationItems].
-  static const _crewsTab = 1;
+  /// Where Chat and Crews stand in [_navigationItems].
+  static const _chatTab = 1;
+  static const _crewsTab = 2;
 
   /// The crew Home is showing, opened on its own page: where a member is sent
   /// to read the pacts the owner has set.
@@ -266,6 +339,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final scaffold = Scaffold(
       backgroundColor: _selectedIndex == 0 ? Colors.transparent : null,
+      // The navigation floats over each tab, which keeps its own content
+      // clear of it with the bottom padding this reports.
+      extendBody: true,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
@@ -284,6 +360,16 @@ class _HomePageState extends State<HomePage> {
             onChooseStart: _startCrew,
             onOpenCrews: _joinWithCode,
             onOpenPacts: _openSelectedCrew,
+          ),
+          ChatPage(
+            backend: widget.chatBackend,
+            pactsBackend: widget.pactsBackend,
+            homeBackend: widget.homeBackend,
+            userId: widget.user.id,
+            active: _selectedIndex == _chatTab,
+            selectedCrewId: _selectedCrewId,
+            onCrewSelected: _selectCrew,
+            onRead: _refreshUnread,
           ),
           CrewsPage(
             active: _selectedIndex == _crewsTab,
@@ -715,7 +801,14 @@ class _HomeDestinationState extends State<_HomeDestination>
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    // Home does not scroll, so it stops short of the
+                    // navigation floating over its foot.
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      8,
+                      12,
+                      4 + MediaQuery.paddingOf(context).bottom,
+                    ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         // Preserve a complete, non-scrolling composition even when

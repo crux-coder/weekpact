@@ -34,7 +34,14 @@ class PageFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = ViewportScrollView(
-      padding: EdgeInsets.fromLTRB(12, topPadding, 12, 32),
+      // Clear of anything floating over the page's foot, such as the
+      // navigation, once scrolled to the end.
+      padding: EdgeInsets.fromLTRB(
+        12,
+        topPadding,
+        12,
+        32 + MediaQuery.paddingOf(context).bottom,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

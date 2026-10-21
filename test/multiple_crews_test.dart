@@ -244,7 +244,7 @@ void main() {
     await launch();
     await tester.pumpUi();
     // Opening a crew from the list makes it the crew Home shows.
-    await tester.tap(find.text('Crews').last);
+    await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
     await tester.tap(find.text('Night Owls'));
     await tester.pumpUi();
@@ -252,7 +252,7 @@ void main() {
     expect(crews.fetched.last, 'second');
     await tester.tap(find.byTooltip('Back to crews'));
     await tester.pumpUi();
-    await tester.tap(find.text('Home').last);
+    await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpUi();
     expect(home.requested.last, 'second');
     expect(store.read('owner@example.com'), 'second');

@@ -1,4 +1,5 @@
 import { notificationTestSchema } from './notification_test_schema.mjs';
+import { realtimeTestSchema } from './realtime_test_schema.mjs';
 import { storageTestSchema } from './storage_test_schema.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -17,6 +18,7 @@ create function extensions.digest(value text, algorithm text) returns bytea lang
 `);
 await db.exec(storageTestSchema);
 await db.exec(notificationTestSchema);
+await db.exec(realtimeTestSchema);
 const directory = new URL('../supabase/migrations/', import.meta.url);
 for (const file of (await readdir(directory)).filter(f => f.endsWith('.sql')).sort()) {
   await db.exec((await readFile(new URL(file, directory), 'utf8')).replace('create extension if not exists pgcrypto with schema extensions;', ''));

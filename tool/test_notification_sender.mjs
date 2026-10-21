@@ -24,6 +24,12 @@ assert.equal(clapped({}).body,'Jasmin clapped your Climb twice check-in.','a mis
 assert.equal(clapped({clap_count:0}).body,'Jasmin clapped your Climb twice check-in.');
 assert.equal(clapped({actor_name:null,pact_title:null,clap_count:1}).body,'A crew member clapped your pact check-in.');
 assert.equal(clapped({clap_count:1}).data.pact_id,'pact-123');
+// Chat: the crew as the title, then who said what.
+const chat = renderNotification({...event,event_type:'chat_message',payload:{actor_name:'Jasmin',crew_name:'Climbers',message_id:'message-123',sent_at:'2026-10-21T12:00:00Z',text:'Running late,\nstart without me'}});
+assert.equal(chat.title,'Climbers');
+assert.equal(chat.body,'Jasmin: Running late, start without me');
+assert.deepEqual(chat.data,{version:'1',type:'chat_message',notification_id:'event-123',crew_id:'crew-123'});
+assert.equal(renderNotification({...event,event_type:'chat_message',payload:{}}).body,'A crew member sent a message in your crew.');
 let oauthCalls=0;let status=200;let code;
 const send=createFcmSender(account,async(url,options)=>{
  if(url.includes('oauth2')) {
@@ -43,4 +49,4 @@ assert.equal((await send('device-token',content)).outcome,'sent');assert.equal(o
 for(const [s,c,expected] of [[404,'UNREGISTERED','unregistered'],[400,'INVALID_ARGUMENT','failed'],[403,'THIRD_PARTY_AUTH_ERROR','retry'],[429,'QUOTA_EXCEEDED','retry'],[503,'UNAVAILABLE','retry']]) {
  status=s;code=c;assert.equal((await send('device-token',content)).outcome,expected);
 }
-console.log('Notification sender checks passed: templates, signed OAuth assertions, token caching, payloads, invalid tokens, and retry classification.');
+console.log('Notification sender checks passed: templates (including chat), signed OAuth assertions, token caching, payloads, invalid tokens, and retry classification.');

@@ -12,6 +12,7 @@ import 'src/home/story_seen_store.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
+import 'src/chat/chat_backend.dart';
 import 'src/notifications/messaging_client.dart';
 import 'src/notifications/notification_service.dart';
 import 'src/notifications/push_registration.dart';
@@ -56,6 +57,7 @@ Future<void> main() async {
   final CrewBackend crewBackend;
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
+  final ChatBackend chatBackend;
   final UpdateBackend updateBackend;
   if (_supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty) {
     await Supabase.initialize(
@@ -68,12 +70,14 @@ Future<void> main() async {
     crewBackend = SupabaseCrewBackend(Supabase.instance.client);
     pactsBackend = SupabasePactsBackend(Supabase.instance.client);
     homeBackend = SupabaseHomeBackend(Supabase.instance.client);
+    chatBackend = SupabaseChatBackend(Supabase.instance.client);
     updateBackend = SupabaseUpdateBackend(Supabase.instance.client);
   } else {
     authBackend = const MissingConfigurationAuthBackend();
     crewBackend = const MissingCrewBackend();
     pactsBackend = const MissingPactsBackend();
     homeBackend = const MissingHomeBackend();
+    chatBackend = const MissingChatBackend();
     updateBackend = const MissingUpdateBackend();
   }
 
@@ -117,6 +121,7 @@ Future<void> main() async {
       crewBackend: crewBackend,
       pactsBackend: pactsBackend,
       homeBackend: homeBackend,
+      chatBackend: chatBackend,
       inviteLinkSource: AppLinksInviteLinkSource(),
       subscriptions: SubscriptionController(subscriptions),
       updates: UpdateCheck(

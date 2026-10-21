@@ -39,6 +39,19 @@ class NotificationService extends ChangeNotifier {
   }
 
   RemoteMessage? lastOpenedMessage;
+
+  /// The tapped notification nobody has acted on yet. Kept apart from
+  /// [lastOpenedMessage] so a cold-start tap is routed once, by whichever
+  /// screen is ready to take it, and not again when that screen is rebuilt.
+  RemoteMessage? _pendingOpen;
+
+  /// Hands over the tapped notification, if one is waiting, and forgets it.
+  RemoteMessage? takeOpenedMessage() {
+    final message = _pendingOpen;
+    _pendingOpen = null;
+    return message;
+  }
+
   int receivedCount = 0;
   Stream<RemoteMessage> get foregroundMessages => _foreground.stream;
   Stream<RemoteMessage> get openedMessages => _opened.stream;
@@ -141,9 +154,10 @@ class NotificationService extends ChangeNotifier {
 
   void _handleOpen(RemoteMessage message) {
     if (_disposed) return;
-    // For now tapping a notification opens the app normally. Retain the cold
-    // start message so a future authenticated router can consume it once ready.
+    // Retain the cold start message until the signed-in screen is ready to
+    // route it; see [takeOpenedMessage].
     lastOpenedMessage = message;
+    _pendingOpen = message;
     _opened.add(message);
     _notify();
   }
@@ -196,4 +210,14 @@ class NotificationService extends ChangeNotifier {
     unawaited(_tokens.close());
     super.dispose();
   }
+}
+
+/// The crew whose chat a tapped push is about, or null for any other push.
+String? chatPushCrewId(RemoteMessage message) {
+  final crewId = message.data['crew_id'];
+  return message.data['type'] == 'chat_message' &&
+          crewId is String &&
+          crewId.isNotEmpty
+      ? crewId
+      : null;
 }

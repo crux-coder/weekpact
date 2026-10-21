@@ -12,6 +12,8 @@ project and test delivery. Run `npm run firebase:configure` after installing the
 ## What is implemented
 
 - Each user can create and join multiple crews. Crews lists them all; tap one to open its page, or use the + button to create another. Home has its own crew switcher.
+- Each crew has a group chat on the Chat tab, with live
+  messages, typing and read receipts. See [the chat guide](docs/chat.md).
 - A crew owner can create a crew, invite an email address, list members, and
   revoke pending invitations.
 - Invitations expire after seven days, are stored as SHA-256 hashes, can only
