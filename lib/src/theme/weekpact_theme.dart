@@ -178,6 +178,11 @@ abstract final class WeekPactColors {
   /// finished at a glance rather than by reading the number.
   static const crewProgress = Color(0xFFF2F3AE);
 
+  /// A week fully kept, on the crew's podium. `crewProgress` taken deeper and
+  /// warmer, so it reads as gold rather than as citron, without leaning into
+  /// `lantern`'s orange.
+  static const gold = Color(0xFFF0D54E);
+
   /// A day kept, on the crew week's calendar. Sea glass sat on the old marine
   /// card set; on a warm card it read as the one cool thing on the page, so
   /// the kept day is a warm green off the same quay. It clears 10:1 with card

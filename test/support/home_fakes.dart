@@ -108,6 +108,7 @@ class DashboardBackend implements HomeBackend {
     required String day,
     required bool clapped,
   }) async => clapped ? 1 : 0;
+
   /// Finished weeks the fake hands back, newest first, and the week the page
   /// last asked for, so a test can tell which week was opened.
   List<CrewWeekSummary> history = const [];

@@ -385,11 +385,10 @@ class CrewTodayBar extends StatelessWidget {
   /// nothing when it is pressed should not be wearing a handle.
   final VoidCallback? onOpenWeek;
 
-  /// The row's height, which is the crew card's beneath it. The two are the
-  /// same object read two ways — the week by day, then the week by member —
-  /// and a row shorter than the card under it read as its caption rather than
-  /// as its equal. Every point of it comes off the pact card.
-  static const height = HomeCrewPanel.cardHeight;
+  /// The row's height. It used to match the crew card beneath it; the card
+  /// grew to carry a podium, and seven columns stretched to that height read
+  /// as a chart rather than as the week's door, so the row kept its own.
+  static const height = 80.0;
 
   /// The inset the row keeps off the surface's edge. Tighter at the right,
   /// where the chevron already carries its own optical margin.
@@ -727,212 +726,69 @@ Widget _scaledToBox(WidgetBuilder child) => LayoutBuilder(
   },
 );
 
-/// The crew's week on Home: one card, and the way into the week behind it.
+/// The crew's week on Home: the crew's podium, on the same surface as the
+/// crew week bar above it.
 ///
-/// It was a framed block — this card over the day's pull-down, with the crew's
-/// roster behind the grip. The day is the stories rail's now, and a frame
-/// around a single card is a box drawn round one object, so both went and the
-/// card stands on the canvas.
-class HomeCrewPanel extends StatefulWidget {
+/// It carried a headline — what was left of the week, and your place — and a
+/// figure on every step. The podium says both on its own: the tallest bar is
+/// the leader, and your face is the one ringed in ink. The words came off so
+/// the bars could be the whole card.
+class HomeCrewPanel extends StatelessWidget {
   const HomeCrewPanel({super.key, required this.week, required this.userId});
 
-  /// The loading state: the same card, with its lines not yet filled in, so
+  /// The loading state: the same card, with its bars not yet filled in, so
   /// nothing on the page moves when the week arrives.
   const HomeCrewPanel.loading({super.key}) : week = null, userId = '';
 
   final CrewWeek? week;
 
-  /// Whose place the card reads. The track draws the whole crew; this is the
-  /// one face on it ringed in ink, and the one the rank is about.
+  /// Whose place the card reads. The podium draws the leading places; this is
+  /// the one face on it ringed in ink, and the one kept beside the podium when
+  /// it is not on it.
   final String userId;
 
-  /// The card shut: the week's line, and the crew's track under it.
+  /// The card's height.
   ///
-  /// It stood at 64 while it carried a label and a bar. The track is a row of
-  /// faces rather than a rule, and a face needs its own height, so the card
-  /// took the difference — which the crew switcher and the pact heading, both
-  /// gone from the page, more than paid for.
-  static const cardHeight = 80.0;
+  /// It stood at 80 while it carried one track of small faces, which piled up
+  /// exactly when a crew ran close. A podium needs room for a face over a bar,
+  /// so the card took the difference from the pact card under it, which fills
+  /// whatever the page has left.
+  static const cardHeight = 148.0;
 
-  /// The block's height, which is the shut card's own. The frame around it
-  /// held the card over the day's pull-down, and with the day gone a frame
-  /// around a single card was a box drawn round one object.
-  ///
-  /// The open card stands taller than this, and deliberately does not say so
-  /// to the page: Home sizes itself off the card at rest, so opening the
-  /// drawer takes its room from the pact card's own share rather than from
-  /// every measurement on the page at once.
+  /// The block's height, which is the card's own.
   static const height = cardHeight;
 
-  /// The card's own inset. Wider than the frame around it, so the label and
-  /// the bar sit off the card's edge rather than against it.
-  static const _cardInset = homeCardInset;
-
-  /// What the shut card holds, inside that inset.
-  static const _shutContent = cardHeight - WeekPactMetrics.pageInset * 2;
-
-  /// The headline's line, and the gap under it. The open card keeps both, so
-  /// it is the shut card with its track swapped out rather than a second
-  /// layout that happens to start the same way.
-  static const _headline = 21.0;
-  static const _trackGap = 8.0;
-
-  /// One member's own lane when the card is open, and the gap between two.
-  static const _laneFace = 16.0;
-  static const _laneBox = _laneFace + _faceRingWidth * 2;
-  static const _laneGap = 5.0;
-
-  /// What the open card holds with [lanes] members on it.
-  static double _openContent(int lanes) =>
-      _headline + _trackGap + lanes * _laneBox + (lanes - 1) * _laneGap;
-
-  /// How long the drawer takes.
-  static const _openDuration = Duration(milliseconds: 260);
+  static const _inset = EdgeInsets.all(WeekPactMetrics.pageInset);
 
   @override
-  State<HomeCrewPanel> createState() => _HomeCrewPanelState();
-
-  /// The week as a headline: what is left of it on one line, and under it
-  /// either the crew on one track or the crew in lanes of their own.
-  ///
-  /// It used to be a label and one percentage over a bar. A percentage of a
-  /// four-person week is the one number about a crew nobody can act on — it
-  /// averages the four of them into a figure no member can move on their own,
-  /// and it is the visual language of a project tracker, which is not what
-  /// four friends keeping pacts together are doing. A place can be moved, and
-  /// a track says who is where without averaging anyone away.
-  static Widget _week(
-    BuildContext context,
-    CrewWeek crew, {
-    required String userId,
-    required List<CrewStanding> standings,
-    required bool canOpen,
-    required bool open,
-  }) {
-    final solo = crew.members.length < 2;
-    final mine = standings.where((s) => s.isViewer).firstOrNull;
-    // Everyone on the same figure is not a first, a second and a third
-    // decided by the roster's order; it is a crew that is level, and the
-    // headline says nothing about a place rather than inventing one.
-    final level =
-        standings.isNotEmpty &&
-        standings.every((s) => s.percent == standings.first.percent);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${solo ? 'YOUR WEEK' : 'THIS WEEK'} · ${_left(crew.today)}',
-                  key: const ValueKey('crew-week-line'),
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 14,
-                    height: 1.1,
-                    letterSpacing: .6,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+  Widget build(BuildContext context) {
+    final crew = week;
+    return SizedBox(
+      height: cardHeight,
+      child: Semantics(
+        container: true,
+        label: 'Crew week',
+        value: crew == null ? 'Loading' : _spoken(crew),
+        child: ExcludeSemantics(
+          // The crew week bar's own surface and corner: the two stand one over
+          // the other at the same width, and read as one column of the crew.
+          child: CrewHeaderSurface(
+            curve: WeekPactMetrics.cardCurve,
+            child: Padding(
+              padding: _inset,
+              child: _scaledToBox(
+                (context) => crew == null
+                    ? const _Podium.loading(key: ValueKey('crew-podium'))
+                    : _Podium(
+                        key: const ValueKey('crew-podium'),
+                        standings: crew.standings(userId),
+                      ),
               ),
             ),
-            const SizedBox(width: 8),
-            if (crew.streakWeeks > 0) ...[
-              _StreakMark(weeks: crew.streakWeeks),
-              const SizedBox(width: 8),
-            ],
-            if (solo)
-              _figure('${crew.percent(userId)}', '%')
-            else if (!level)
-              _figure(
-                '${mine?.place ?? standings.length}',
-                _suffix(mine?.place ?? standings.length),
-                lead: "YOU'RE ",
-              ),
-            // The handle the card put down when it stopped being a way into
-            // the crew week, picked back up for a different job: it opens the
-            // card where it stands rather than leaving the page, and it takes
-            // its width from the headline, which has it, rather than from the
-            // track, which was why the old one had to go.
-            if (canOpen) ...[
-              const SizedBox(width: 6),
-              _OpenMark(key: const ValueKey('crew-panel-mark'), open: open),
-            ],
-          ],
-        ),
-        const SizedBox(height: _trackGap),
-        if (solo)
-          _SoloTrack(
-            key: const ValueKey('crew-solo-track'),
-            percent: crew.percent(userId),
-          )
-        else if (open)
-          _MemberLanes(
-            key: const ValueKey('crew-member-lanes'),
-            standings: standings,
-            tint: _tintOf(crew),
-            faceSize: _laneFace,
-            gap: _laneGap,
-          )
-        else
-          _RaceTrack(
-            key: const ValueKey('crew-race-track'),
-            standings: standings,
-            tint: _tintOf(crew),
           ),
-      ],
+        ),
+      ),
     );
-  }
-
-  /// The figure on the right of the line, where the percentage stood: a
-  /// number at the headline size with its unit or its ordinal beside it, and
-  /// an optional word in front saying whose it is.
-  static Widget _figure(String value, String? tail, {String? lead}) =>
-      Text.rich(
-        TextSpan(
-          children: [
-            if (lead != null)
-              TextSpan(
-                text: lead,
-                style: TextStyle(
-                  fontSize: 11,
-                  letterSpacing: .8,
-                  fontWeight: FontWeight.w500,
-                  color: homeMutedInk,
-                ),
-              ),
-            TextSpan(text: value),
-            if (tail != null)
-              TextSpan(
-                text: tail,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-          ],
-        ),
-        key: const ValueKey('crew-week-figure'),
-        style: const TextStyle(
-          color: _ink,
-          fontSize: 19,
-          height: 1.1,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-
-  /// How much of the week is still to run, today included. Today counts
-  /// because today is still a day you can go, which is the whole reason the
-  /// line is on the page.
-  static String _left(String today) {
-    final days = 8 - DateTime.parse(today).weekday;
-    return days <= 1 ? 'LAST DAY' : '$days DAYS LEFT';
   }
 
   static String _suffix(int place) => switch (place % 100) {
@@ -947,709 +803,358 @@ class HomeCrewPanel extends StatefulWidget {
 
   static String _ordinal(int place) => '$place${_suffix(place)}';
 
-  static Color _tintOf(CrewWeek crew) => crew.percentCrew >= 100
-      ? WeekPactColors.mintGreen
-      : WeekPactColors.crewProgress;
-
-  static Widget _loadingCard(BuildContext context) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const Align(
-        alignment: Alignment.centerLeft,
-        child: SkeletonBar(width: 122, height: 13, color: _skeletonInk),
-      ),
-      const SizedBox(height: _trackGap),
-      // The track's own box, with nobody on it yet: the lane and the flag at
-      // the end of it. Standing at the track's full height rather than the
-      // lane's keeps the line above it where it will be once the week lands,
-      // so nothing on the card moves.
-      SizedBox(
-        height: _Track.height,
-        child: LayoutBuilder(
-          builder: (context, box) => Stack(
-            children: [
-              _Track.lane(box.maxWidth, filled: 0, empty: _skeletonInk),
-              const _FinishLine(color: _skeletonInk),
-            ],
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-class _HomeCrewPanelState extends State<HomeCrewPanel> {
-  /// Whether the crew's own lanes are showing.
-  ///
-  /// One track carrying the whole crew is unreadable at the moment it matters
-  /// most: a crew running close lands inside a few points of each other, and
-  /// the track answers that by nudging the faces apart, which is a drawing of
-  /// a race rather than the race. Opening the card unstacks that one lane into
-  /// one per member, at the positions the nudging had to fudge.
-  ///
-  /// It is not remembered between visits. The card's job is to answer "where
-  /// is everyone" in a glance, and a card that opens already open has spent
-  /// the glance before the page is looked at.
-  bool _showLanes = false;
-
-  /// The crew on the track, which is also the crew in the lanes: opening the
-  /// card unstacks the faces it was already showing, so it would be a strange
-  /// drawer that held somebody the track in front of it never did.
-  List<CrewStanding> _standings(CrewWeek crew) =>
-      _RaceTrack.shownIn(crew.standings(widget.userId));
-
-  /// Whether there is anything to open. A crew of one has no race to unstack,
-  /// and a handle that opens a single lane is a handle that lies.
-  bool _canOpen(CrewWeek? crew) => crew != null && crew.members.length >= 2;
-
-  void _toggle() {
-    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
-    setState(() => _showLanes = !_showLanes);
-  }
-
-  @override
-  void didUpdateWidget(HomeCrewPanel old) {
-    super.didUpdateWidget(old);
-    // A crew that shrank to one, or a week that went back to loading, would
-    // otherwise leave the card standing open on nothing.
-    if (_showLanes && !_canOpen(widget.week)) _showLanes = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final crew = widget.week;
-    // The crew week's own progress card reads the same way: sea glass once the
-    // week is kept, citron while it is still being kept.
-    final tint = crew == null
-        ? WeekPactColors.crewProgress
-        : HomeCrewPanel._tintOf(crew);
-    final canOpen = _canOpen(crew);
-    final open = _showLanes && canOpen;
-    final standings = crew == null
-        ? const <CrewStanding>[]
-        : crew.members.length < 2
-        ? const <CrewStanding>[]
-        : _standings(crew);
-    return HomeSurface(
-      tint: tint,
-      shape: WeekPactMetrics.pactCardShape,
-      radius: WeekPactMetrics.cardCorner,
-      raised: true,
-      // The card still goes nowhere. It carried a chevron into the crew week
-      // while it was a headline and a bar, and that handle came off because
-      // the track wanted the width it was standing in. This one opens the card
-      // where it is, and stands in the headline, which has width to spare.
-      child: Semantics(
-        container: true,
-        button: canOpen,
-        label: 'Crew week',
-        value: crew == null ? 'Loading' : _spoken(crew, open: open),
-        onTap: canOpen ? _toggle : null,
-        child: ExcludeSemantics(
-          child: InkWell(
-            key: const ValueKey('crew-panel-toggle'),
-            onTap: canOpen ? _toggle : null,
-            child: Padding(
-              padding: HomeCrewPanel._cardInset,
-              child: AnimatedSize(
-                duration: HomeCrewPanel._openDuration,
-                curve: Curves.easeOutCubic,
-                // The card grows downward, so the headline stays where the eye
-                // left it and only the drawer moves.
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  height: open
-                      ? HomeCrewPanel._openContent(standings.length)
-                      : HomeCrewPanel._shutContent,
-                  child: _scaledToBox(
-                    (context) => crew == null
-                        ? HomeCrewPanel._loadingCard(context)
-                        : HomeCrewPanel._week(
-                            context,
-                            crew,
-                            userId: widget.userId,
-                            standings: standings,
-                            canOpen: canOpen,
-                            open: open,
-                          ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// What a screen reader is told, which is the standing rather than the
-  /// drawing of it — and, once the card is open, that the crew is now listed.
-  String _spoken(CrewWeek crew, {required bool open}) {
+  /// What a screen reader is told. The card has no words left on it, so this
+  /// is where the week's standing is said at all.
+  String _spoken(CrewWeek crew) {
     if (crew.members.length < 2) {
-      return "${crew.percent(widget.userId)} per cent of this week's check-ins";
+      return "${crew.percent(userId)} per cent of this week's check-ins";
     }
-    final standings = crew.standings(widget.userId);
+    final standings = crew.standings(userId);
     final mine = standings.where((s) => s.isViewer).firstOrNull;
     final level = standings.every((s) => s.percent == standings.first.percent);
-    final where = level
-        ? 'The crew is level, ${crew.percentCrew} per cent of the week kept'
-        : 'You are ${HomeCrewPanel._ordinal(mine?.place ?? standings.length)} '
-              'of ${crew.members.length} this week';
-    return open ? '$where, each member shown' : where;
+    if (level) {
+      return 'The crew is level, ${crew.percentCrew} per cent of the week kept';
+    }
+    final leaders = [
+      for (final s in standings)
+        if (s.place == 1)
+          s.isViewer
+              ? 'you'
+              : s.member.displayName.trim().isEmpty
+              ? 'a crewmate'
+              : s.member.displayName.trim(),
+    ];
+    return 'You are ${_ordinal(mine?.place ?? standings.length)} '
+        'of ${crew.members.length} this week, '
+        '${leaders.join(' and ')} leading';
   }
 }
 
-/// The handle on the crew card: a chevron that turns over when the card opens.
+/// The crew's week as a podium: the three leading places on their bars, and
+/// you beside them when you are not one of them.
 ///
-/// It is the card's only mark that anything happens on a tap, so it is drawn
-/// in the card's full ink rather than let down — a handle nobody sees is a
-/// card nobody opens.
-class _OpenMark extends StatelessWidget {
-  const _OpenMark({super.key, required this.open});
-
-  final bool open;
-
-  @override
-  Widget build(BuildContext context) => AnimatedRotation(
-    turns: open ? .5 : 0,
-    duration: HomeCrewPanel._openDuration,
-    curve: Curves.easeOutCubic,
-    child: HugeIcon(
-      icon: HugeIconsStrokeRounded.arrowDown01,
-      color: _ink,
-      size: 18,
-      strokeWidth: 2,
-    ),
-  );
-}
-
-/// The crew unstacked: one lane a member, in the order they stand.
+/// It replaced one track carrying the whole crew, which was unreadable at the
+/// moment it mattered most: a crew running close lands inside a few points of
+/// each other, and the track answered that by piling the faces on one mark.
 ///
-/// The track in front of this draws everyone on one line and has to nudge
-/// faces apart when two are close, which is the only place that card tells a
-/// small lie. A lane each tells the truth — every face sits at its own share
-/// with nothing to collide with — and has room at the end for the figure the
-/// track could never carry.
-///
-/// The lanes run themselves in as the card opens: each face leaves the start
-/// and travels to its own share, one lane after another down the order. The
-/// card is not showing a new fact when it opens, it is spreading a fact the
-/// track had piled up, and a field that arrives already standing still reads
-/// as a second chart rather than as the first one unstacked. It is also the
-/// one moment the week is legible as a *race*, which is what the card has
-/// always claimed to be.
-class _MemberLanes extends StatefulWidget {
-  const _MemberLanes({
-    super.key,
-    required this.standings,
-    required this.tint,
-    required this.faceSize,
-    required this.gap,
-  });
+/// Each bar is that member's week, standing as tall as the share of it they
+/// have kept, with that share written on it and drawn in the colour of how
+/// far along it is. Up to three places share the card's width, so a crew of
+/// one is a single bar. The leader stands in the middle,
+/// second on the left and third on the right, the way every podium is read,
+/// and the order alone already puts the tallest bar in the middle. A crew that
+/// is level stands at one height and wears no crown.
+class _Podium extends StatelessWidget {
+  const _Podium({super.key, required this.standings}) : loading = false;
 
-  final List<CrewStanding> standings;
-  final Color tint;
-  final double faceSize;
-  final double gap;
-
-  /// The room the figure at the end of a lane keeps for itself, and the gap
-  /// before it. Fixed, so every lane's rail ends on the same line and the
-  /// crew reads as a field rather than as rows of different lengths.
-  static const _figureWidth = 34.0;
-  static const _figureGap = 8.0;
-
-  /// How long the whole field takes to set off and settle, and how far apart
-  /// two lanes start. The stagger is small on purpose: the crew should read as
-  /// leaving together and arriving apart, which is the race, rather than as a
-  /// list being dealt out one row at a time.
-  static const _runDuration = Duration(milliseconds: 460);
-  static const _stagger = .08;
-
-  /// The share of the run one lane takes, once the last one has started.
-  static const _laneRun = .62;
-
-  @override
-  State<_MemberLanes> createState() => _MemberLanesState();
-}
-
-class _MemberLanesState extends State<_MemberLanes>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _run = AnimationController(
-    vsync: this,
-    duration: _MemberLanes._runDuration,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    // The lanes are built only while the card is open, so mounting is the
-    // opening: there is nothing to drive this from outside.
-    _run.forward();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Someone who has asked for less motion gets the field standing where it
-    // finished, which is the fact; the run is the flourish.
-    if (MediaQuery.disableAnimationsOf(context)) _run.value = 1;
-  }
-
-  @override
-  void dispose() {
-    _run.dispose();
-    super.dispose();
-  }
-
-  /// How far along lane [i] is, at the moment it is asked.
-  double _at(int i) => Interval(
-    math.min(i * _MemberLanes._stagger, 1 - _MemberLanes._laneRun),
-    math.min(i * _MemberLanes._stagger + _MemberLanes._laneRun, 1),
-    curve: Curves.easeOutCubic,
-  ).transform(_run.value);
-
-  @override
-  Widget build(BuildContext context) {
-    final box = widget.faceSize + _faceRingWidth * 2;
-    return AnimatedBuilder(
-      animation: _run,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < widget.standings.length; i++) ...[
-            if (i > 0) SizedBox(height: widget.gap),
-            SizedBox(
-              height: box,
-              child: Opacity(
-                // The lane's own ground arrives before its rider does, so the
-                // face runs along a rail rather than painting one behind it.
-                opacity: (_at(i) * 3).clamp(0.0, 1.0),
-                child: _MemberLane(
-                  key: ValueKey('crew-lane-${widget.standings[i].member.id}'),
-                  standing: widget.standings[i],
-                  tint: widget.tint,
-                  faceSize: widget.faceSize,
-                  figureWidth: _MemberLanes._figureWidth,
-                  figureGap: _MemberLanes._figureGap,
-                  run: _at(i),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// One member's week: their own rail, their face standing at their share of
-/// it, and that share spelled out where the rail ends.
-class _MemberLane extends StatelessWidget {
-  const _MemberLane({
-    super.key,
-    required this.standing,
-    required this.tint,
-    required this.faceSize,
-    required this.figureWidth,
-    required this.figureGap,
-    this.run = 1,
-  });
-
-  final CrewStanding standing;
-  final Color tint;
-  final double faceSize;
-  final double figureWidth;
-  final double figureGap;
-
-  /// How much of this member's run has been drawn, from the start line at 0
-  /// to their own share of the week at 1. The lanes drive it as the card
-  /// opens; at rest it is simply 1.
-  final double run;
-
-  /// The rail a face runs along. Thinner than the track's lane: there are
-  /// several of these stacked and a lane's weight repeated four times reads as
-  /// a chart of rules rather than as a field of runners.
-  static const _railHeight = 4.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final box = faceSize + _faceRingWidth * 2;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final railWidth = math.max(
-          0.0,
-          constraints.maxWidth - figureWidth - figureGap,
-        );
-        // The face's left edge, so a week fully kept puts its right edge on
-        // the rail's end rather than hanging off it — the same reading the
-        // track takes for the finish.
-        final travel = math.max(0.0, railWidth - box);
-        final x =
-            standing.percent.clamp(0, 100) / 100 * travel * run.clamp(0.0, 1.0);
-        return Row(
-          children: [
-            SizedBox(
-              width: railWidth,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: (box - _railHeight) / 2,
-                    height: _railHeight,
-                    child: DecoratedBox(
-                      decoration: ShapeDecoration(
-                        color: _ink.withValues(alpha: .18),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: WeekPactMetrics.pill,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // The ground this member has covered, ending under their own
-                  // face — the fill and the face are one fact, so they finish
-                  // in the same place here as they do on the track.
-                  Positioned(
-                    left: 0,
-                    top: (box - _railHeight) / 2,
-                    height: _railHeight,
-                    width: (x + box / 2).clamp(_railHeight, railWidth),
-                    child: DecoratedBox(
-                      decoration: ShapeDecoration(
-                        color: _ink.withValues(alpha: .55),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: WeekPactMetrics.pill,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: x,
-                    top: 0,
-                    child: _CrewFace(
-                      member: standing.member,
-                      kept: true,
-                      size: faceSize,
-                      tint: tint,
-                      ring: standing.isViewer ? _ink : tint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: figureGap),
-            SizedBox(
-              width: figureWidth,
-              child: Text(
-                // The figure counts up with the face rather than standing at
-                // the answer while its rider is still on the way: two readings
-                // of one run, arriving together.
-                '${(standing.percent * run.clamp(0.0, 1.0)).round()}%',
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                style: TextStyle(
-                  fontFamily: WeekPactType.secondary,
-                  fontFamilyFallback: WeekPactType.secondaryFallback,
-                  color: standing.isViewer ? _ink : homeMutedInk,
-                  fontSize: 12,
-                  height: 1,
-                  fontWeight: standing.isViewer
-                      ? FontWeight.w600
-                      : FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// What the week is run over: a lane, and the flag at the end of it.
-///
-/// Both the crew's track and a single member's bar are laid out on this, so
-/// the two read as the same object with a different field on it — and so the
-/// card does not change height when a crew of one becomes a crew of two.
-class _Track {
-  /// The face on the track, inside its ring, and the box that holds it.
-  static const faceSize = 22.0;
-  static const faceBox = faceSize + _faceRingWidth * 2;
-  static const height = faceBox;
-
-  /// The lane itself, and the flag standing past the end of it.
-  static const laneHeight = 7.0;
-  static const flagSize = 18.0;
-  static const flagGap = 6.0;
-
-  /// How far the lane runs before the flag takes over. The week ends at the
-  /// flag, so a member on a kept week stands against it rather than under it.
-  static double laneWidth(double width) =>
-      math.max(0.0, width - flagSize - flagGap);
-
-  /// The run a face is placed along: the lane, less the face's own box, so a
-  /// week fully kept puts the face's right edge on the finish rather than its
-  /// left edge.
-  static double travel(double width) =>
-      math.max(0.0, laneWidth(width) - faceBox);
-
-  /// The lane, with the covered part of it filled in.
-  ///
-  /// The fill is what the bar used to be and is still the same ink: it is the
-  /// ground already run, which is why it ends under the leading face rather
-  /// than at some figure of its own.
-  static Widget lane(double width, {required double filled, Color? empty}) =>
-      Positioned(
-        left: 0,
-        top: (height - laneHeight) / 2,
-        child: SizedBox(
-          width: laneWidth(width),
-          height: laneHeight,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: empty ?? _ink.withValues(alpha: .18),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: WeekPactMetrics.pill,
-                    ),
-                  ),
-                ),
-              ),
-              if (filled > 0)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: filled.clamp(laneHeight, laneWidth(width)),
-                  child: const DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: _ink,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: WeekPactMetrics.pill,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-}
-
-/// The chequered flag at the end of the lane: where the week is won.
-///
-/// The card lost its chevron when it stopped being a way into anything, and
-/// the line it draws needed an end — a rule that simply stops is a bar, and a
-/// bar is what this card was before.
-class _FinishLine extends StatelessWidget {
-  const _FinishLine({this.color});
-
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Positioned(
-    right: 0,
-    top: (_Track.height - _Track.flagSize) / 2,
-    child: HugeIcon(
-      key: const ValueKey('crew-week-finish'),
-      icon: HugeIconsStrokeRounded.racingFlag,
-      color: color ?? _ink,
-      size: _Track.flagSize,
-      strokeWidth: 2,
-    ),
-  );
-}
-
-/// One member's week, where there is no crew to race: the lane filled to
-/// their own share of it, running at the same flag.
-class _SoloTrack extends StatelessWidget {
-  const _SoloTrack({super.key, required this.percent});
-
-  final int percent;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: _Track.height,
-    child: LayoutBuilder(
-      builder: (context, box) => Stack(
-        children: [
-          _Track.lane(
-            box.maxWidth,
-            filled:
-                percent.clamp(0, 100) / 100 * _Track.laneWidth(box.maxWidth),
-          ),
-          const _FinishLine(),
-        ],
-      ),
-    ),
-  );
-}
-
-/// The crew's week as a race: everyone on one track, at their own standing.
-///
-/// A member sits at the share of their own week they have kept, so the track
-/// is read as a field rather than as an average — who is out in front, who is
-/// still on the line, and how far apart they are. The viewer is ringed in ink
-/// rather than in the card's fill, which is how you find yourself without
-/// reading a name.
-///
-/// Nobody is marked out as last. The palette has a colour for waiting and the
-/// track pointedly does not use it: a crew's one shared card is not the place
-/// to put a ring round whoever is behind, and the position already says it.
-class _RaceTrack extends StatelessWidget {
-  const _RaceTrack({super.key, required this.standings, required this.tint});
+  /// Three empty bars, standing where the week's will.
+  const _Podium.loading({super.key}) : standings = const [], loading = true;
 
   final List<CrewStanding> standings;
 
-  /// The card's fill, which rings every face but the viewer's.
-  final Color tint;
+  final bool loading;
 
-  /// The most faces the track draws. A track cannot end in a "+3" the way a
-  /// row of faces can — a count has no position — so a crew past this keeps
-  /// the leader and the viewer and fills the rest from the places around the
-  /// viewer, which is the neighbourhood the standing is actually about.
-  static const maxFaces = 6;
+  /// The scale a bar's colour is read off, from an empty week to one kept
+  /// all but the last check-in: red, through orange, amber, yellow and lime,
+  /// to green. A bar between two stops takes the blend of them, so every
+  /// point of progress shows. The tints stay pale enough for the card's dark
+  /// figure to read on all of them, in either theme.
+  static const _scale = [
+    (0, Color(0xFFFF7B6E)), // Red.
+    (20, Color(0xFFFF9966)), // Orange.
+    (40, Color(0xFFFBB863)), // Amber.
+    (60, Color(0xFFF2F0B0)), // Pale yellow, so gold stands apart.
+    (80, Color(0xFFBBDC99)), // Lime.
+    (99, Color(0xFF86CFA0)), // Green.
+  ];
 
-  /// Who a track of [limit] places draws, out of [standings].
-  ///
-  /// The card's lanes read the same list: opening the card unstacks the faces
-  /// that were on the one lane, so it would be a strange drawer that held
-  /// somebody the track in front of it had never shown.
-  static List<CrewStanding> shownIn(
-    List<CrewStanding> standings, {
-    int limit = maxFaces,
-  }) {
-    if (standings.length <= limit) return standings;
-    final viewer = standings.indexWhere((s) => s.isViewer);
-    // No viewer on this track — an unlikely week, but the leading places are
-    // the ones worth keeping if it happens.
-    if (viewer < 0) return standings.take(limit).toList();
-    final keep = <int>{0, viewer};
-    for (var reach = 1; keep.length < limit; reach++) {
-      for (final index in [viewer - reach, viewer + reach]) {
-        if (index >= 0 && index < standings.length && keep.length < limit) {
-          keep.add(index);
-        }
+  /// A week fully kept is gold, and nothing short of it is: the scale ends on
+  /// green, so gold only ever means 100%.
+  static const _kept = WeekPactColors.gold;
+
+  /// The colour of a week [percent] along.
+  static Color colourFor(int percent) {
+    if (percent >= 100) return _kept;
+    final p = percent.clamp(0, 99);
+    for (var i = 1; i < _scale.length; i++) {
+      final (to, toColour) = _scale[i];
+      if (p <= to) {
+        final (from, fromColour) = _scale[i - 1];
+        return Color.lerp(fromColour, toColour, (p - from) / (to - from))!;
       }
     }
-    return [for (final index in keep.toList()..sort()) standings[index]];
+    return _scale.last.$2;
   }
 
-  /// How close two faces may be drawn before the second is nudged along.
-  /// Well under a face's width: members who are level should read as a pile
-  /// on one mark, not as a field spread across the card.
-  static const _minStep = 9.0;
+  Color _fillOf(CrewStanding standing) => colourFor(standing.percent);
 
-  /// Each face's left edge, in the order they are handed in.
-  ///
-  /// A face starts at its own share of the track and is then pushed just far
-  /// enough right to clear the one before it, and the whole row is pulled back
-  /// from the right edge if that push ran it off the end. Ties therefore read
-  /// as a tight overlapping cluster on one mark rather than as a single face
-  /// standing for four people.
-  static List<double> placements(List<int> percents, double width) {
-    final travel = _Track.travel(width);
-    final x = [
-      for (final share in percents) share.clamp(0, 100) / 100 * travel,
-    ];
-    for (var i = 1; i < x.length; i++) {
-      x[i] = math.max(x[i], x[i - 1] + _minStep);
-    }
-    for (var i = x.length - 1; i > 0; i--) {
-      if (x[i] > travel) x[i] = travel;
-      x[i - 1] = math.min(x[i - 1], x[i] - _minStep);
-    }
-    return [for (final value in x) value.clamp(0.0, travel)];
-  }
+  /// A bar at an empty week and at a kept one. An empty week still stands
+  /// tall enough to carry its figure, so a member who has not started is a
+  /// short bar reading 0% rather than nobody.
+  /// A bar at a kept week, which reaches the top of the podium under the
+  /// crown's row, and the sliver an empty week still stands at so it can be
+  /// seen. Between the two a bar is exactly its share of the full height.
+  static const _barMax = 102.0;
+  static const _barSliver = 6.0;
+
+  /// The share at which a face moves into its bar. Under it a bar is too
+  /// short to hold a face and its figure, so they stand on top of it.
+  static const _inside = 50;
+
+  /// The dashed bar a viewer off the podium stands in.
+  static const _offHeight = 72.0;
+
+  /// The bars the loading card draws, in the order the podium stands.
+  static const _loadingBars = [_barMax * .7, _barMax, _barMax * .45];
+
+  static const _barGap = 8.0;
+  static final _barShape = ContinuousRectangleBorder(
+    borderRadius: BorderRadius.circular(WeekPactMetrics.curveFor(8)),
+  );
+
+  /// The face inside a bar, the gap between it and the figure under it, and
+  /// the crown standing over the leader's bar.
+  static const _face = 24.0;
+  static const _faceGap = 4.0;
+  static const _crownSize = 16.0;
+  static const _crownGap = 4.0;
+
+  /// The column a viewer off the podium stands in.
+  static const _offWidth = 56.0;
+
+  static double _barFor(int percent) =>
+      math.max(_barSliver, _barMax * percent.clamp(0, 100) / 100);
 
   @override
   Widget build(BuildContext context) {
-    final shown = shownIn(standings);
-    return SizedBox(
-      height: _Track.height,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          // Furthest along first is the order places are read in; the track is
-          // drawn left to right, so it walks the list backwards.
-          final drawn = shown.reversed.toList();
-          final x = placements([
-            for (final standing in drawn) standing.percent,
-          ], box.maxWidth);
-          // The ground the crew has covered, which ends under the leading
-          // face rather than at a figure of its own — the fill and the front
-          // runner are the same fact, so they have to end in the same place.
-          final covered = x.isEmpty ? 0.0 : x.last + _Track.faceBox / 2;
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              _Track.lane(box.maxWidth, filled: covered),
-              const _FinishLine(),
-              // The viewer goes on last, so their face is never the one
-              // buried under a neighbour's.
-              for (final i in [
-                for (var i = 0; i < drawn.length; i++)
-                  if (!drawn[i].isViewer) i,
-                for (var i = 0; i < drawn.length; i++)
-                  if (drawn[i].isViewer) i,
-              ])
-                Positioned(
-                  left: x[i],
-                  top: 0,
-                  child: _CrewFace(
-                    key: ValueKey('race-face-${drawn[i].member.id}'),
-                    member: drawn[i].member,
-                    kept: true,
-                    size: _Track.faceSize,
-                    tint: tint,
-                    ring: drawn[i].isViewer ? _ink : tint,
-                  ),
-                ),
+    if (loading) return _loadingBarsRow(context);
+    final level = standings.every((s) => s.percent == standings.first.percent);
+    final top = standings.take(3).toList();
+    final viewer = standings.indexWhere((s) => s.isViewer);
+    // A viewer tied with the last place on the podium takes that place: the
+    // roster's order is not a place, and a podium holding someone on your
+    // own figure while you stand beside it would say otherwise.
+    if (viewer >= 3 && standings[viewer].place <= top[2].place) {
+      top[2] = standings[viewer];
+    }
+    final order = [
+      if (top.length > 1) top[1],
+      top.first,
+      if (top.length > 2) top[2],
+    ];
+    final off = viewer >= 3 && !top.contains(standings[viewer])
+        ? standings[viewer]
+        : null;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (final (i, standing) in order.indexed) ...[
+          if (i > 0) const SizedBox(width: _barGap),
+          // The places share the card's width between them, so a crew of
+          // one is one bar across the card and a crew of three is three.
+          Expanded(
+            child: _place(
+              context,
+              standing,
+              crowned: !level && standing.place == 1,
+            ),
+          ),
+        ],
+        if (off != null) ...[
+          const SizedBox(width: _barGap),
+          // A rule sets you off from the podium, so your bar does not read as
+          // a fourth place standing on it.
+          Container(
+            width: 1,
+            height: _crownSize + _crownGap + _barMax,
+            color: context.ink.withValues(alpha: .14),
+          ),
+          const SizedBox(width: _barGap),
+          SizedBox(
+            key: const ValueKey('podium-viewer'),
+            width: _offWidth,
+            child: _offPodium(context, off),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// One member: their bar, at exactly their share of the full height, with
+  /// their face and figure on it under half a week and in it from half, and
+  /// the crown standing over it when it leads.
+  Widget _place(
+    BuildContext context,
+    CrewStanding standing, {
+    required bool crowned,
+  }) {
+    final fill = _fillOf(standing);
+    final edge = Color.lerp(fill, Colors.black, .32)!;
+    final inside = standing.percent >= _inside;
+    return Column(
+      key: ValueKey('podium-step-${standing.member.id}'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (crowned) ...[
+          Center(
+            child: HugeIcon(
+              key: ValueKey('podium-crown-${standing.member.id}'),
+              icon: HugeIconsStrokeRounded.crown,
+              color: context.ink,
+              size: _crownSize,
+              strokeWidth: 2,
+            ),
+          ),
+          const SizedBox(height: _crownGap),
+        ],
+        // Under half a week the face and its figure stand on the bar, where
+        // the surface is under them; from half they move into it.
+        if (!inside) ...[
+          _member(
+            standing,
+            CrewHeaderSurface.faceColor(context),
+            ink: context.ink,
+            // On the surface your ring is your bar's colour: the card's ink
+            // is pale in the dark theme, and vanished against the face.
+            ring: standing.isViewer ? fill : null,
+          ),
+          const SizedBox(height: _faceGap),
+        ],
+        // The bar as a raised block: its fill and the crisp offset edge every
+        // surface in the app stands on. It wore an outline of the edge's
+        // colour too, which on the warmer tints read as a dark rim drawn
+        // round the bar rather than as the bar's own side.
+        Padding(
+          padding: const EdgeInsets.only(bottom: WeekPactMetrics.controlDepth),
+          child: Container(
+            key: ValueKey('podium-bar-${standing.member.id}'),
+            height: _barFor(standing.percent),
+            decoration: ShapeDecoration(
+              color: fill,
+              shape: _barShape,
+              shadows: [
+                BoxShadow(color: edge, offset: WeekPactMetrics.raisedOffset),
+              ],
+            ),
+            child: inside ? _member(standing, fill) : null,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// A face over its figure, as a bar carries them.
+  ///
+  /// Everyone's face is ringed in their bar's own fill, so it sits in the bar
+  /// rather than on it; yours is ringed in the card's dark ink, which every
+  /// bar is pale enough to show.
+  Widget _member(
+    CrewStanding standing,
+    Color fill, {
+    String? place,
+    Color ink = WeekPactColors.black,
+    Color? ring,
+  }) => Padding(
+    // Larger system text is scaled back into the bar rather than spilling
+    // out of its shortest height.
+    padding: const EdgeInsets.all(3),
+    child: Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _CrewFace(
+              key: ValueKey('podium-face-${standing.member.id}'),
+              member: standing.member,
+              kept: true,
+              size: _face,
+              tint: fill,
+              ring: ring ?? (standing.isViewer ? WeekPactColors.black : fill),
+            ),
+            const SizedBox(height: _faceGap),
+            if (place != null) ...[
+              _figure(place, color: ink),
+              const SizedBox(height: 3),
             ],
-          );
-        },
+            _figure('${standing.percent}%', color: ink),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  /// A figure on a bar. The bars are all pale tints, so it is the card's dark
+  /// ink in either theme.
+  static Widget _figure(String text, {Color color = WeekPactColors.black}) =>
+      Text(
+        text,
+        maxLines: 1,
+        style: TextStyle(
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          color: color,
+          fontSize: 13,
+          height: 1,
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+
+  /// The viewer, when the podium has no room for them: a dashed bar carrying
+  /// their face, their place and their figure. Dashed, like a day still to
+  /// come above it, so it reads as where you stand rather than as a fourth
+  /// step on the podium.
+  Widget _offPodium(BuildContext context, CrewStanding standing) {
+    final fill = _fillOf(standing);
+    return Padding(
+      key: ValueKey('podium-step-${standing.member.id}'),
+      padding: const EdgeInsets.only(bottom: WeekPactMetrics.controlDepth),
+      child: SizedBox(
+        key: ValueKey('podium-bar-${standing.member.id}'),
+        height: _offHeight,
+        child: DashedBorder(
+          color: fill,
+          radius: WeekPactMetrics.curveFor(8),
+          // Off a bar there is no pale fill under the figures, so they take
+          // the surface's own ink, and the face its progress colour's ring.
+          child: _member(
+            standing,
+            fill,
+            place: HomeCrewPanel._ordinal(standing.place),
+            ink: context.ink,
+            ring: fill,
+          ),
+        ),
       ),
     );
   }
-}
 
-/// A running crew streak, beside the week's line. The palette's one loud
-/// colour, spent only while the streak is actually running.
-class _StreakMark extends StatelessWidget {
-  const _StreakMark({required this.weeks});
-  final int weeks;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    key: const ValueKey('crew-week-streak'),
-    mainAxisSize: MainAxisSize.min,
+  Widget _loadingBarsRow(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.end,
     children: [
-      HugeIcon(
-        icon: HugeIconsStrokeRounded.fire,
-        color: WeekPactColors.streak,
-        size: 15,
-        strokeWidth: 2.4,
-      ),
-      const SizedBox(width: 2),
-      Text(
-        '$weeks',
-        style: const TextStyle(
-          color: WeekPactColors.streak,
-          fontSize: 15,
-          height: 1.1,
-          fontWeight: FontWeight.w700,
+      for (final (i, bar) in _loadingBars.indexed) ...[
+        if (i > 0) const SizedBox(width: _barGap),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(
+              bottom: WeekPactMetrics.controlDepth,
+            ),
+            child: Container(
+              height: bar,
+              decoration: ShapeDecoration(
+                color: context.ink.withValues(alpha: .08),
+                shape: _barShape,
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     ],
   );
 }
-
-/// Skeleton lines on Home's pale panels, which keep dark content whatever the
-/// canvas is doing.
-const _skeletonInk = Color(0x24191B19);
 
 /// A crew that cannot be switched: its name, on the selector's own surface.
 class CrewNamePlate extends StatelessWidget {
@@ -1834,34 +1339,17 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     super.dispose();
   }
 
-  void _goTo(int index) {
-    _controller.move(
-      index,
-      animation: !MediaQuery.disableAnimationsOf(context),
-    );
-  }
-
-  /// The row of dots under the stack. What is left above them is the card's.
-  ///
-  /// There used to be a heading over it too — "YOUR PACTS" on the left and a
-  /// count of them on the right. The card under it is unmistakably a pact, and
-  /// the dots already say how many there are, so the line was a label naming
-  /// the one thing on the page that never needed naming.
-  static const _dotsHeight = 24.0;
-
   @override
   Widget build(BuildContext context) {
     final pacts = _pacts;
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final height = widget.height ?? (248 + math.max(0.0, scale - 1) * 200);
-    // The card takes everything the heading and the dots do not. It used to
-    // stop at a fixed ceiling, which left the page short under it once Home
-    // had room to spare.
-    final footer = pacts.length > 1 ? _dotsHeight : 0.0;
-    final cardHeight = math.max(80.0, height - footer);
-    final visibleDots = math.min(5, pacts.length);
-    final start = math.max(0, math.min(_index - 2, pacts.length - visibleDots));
+    // The card takes the whole of it. It used to share it with a row of dots
+    // under the stack, but the next card already peeks out beside the front
+    // one, which says there is more and where it is; the dots only said it
+    // again, smaller.
+    final cardHeight = math.max(80.0, height);
     return SizedBox(
       height: height,
       child: Column(
@@ -2018,40 +1506,6 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
               },
             ),
           ),
-          if (pacts.length > 1) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var dot = start; dot < start + visibleDots; dot++)
-                  Semantics(
-                    selected: dot == _index,
-                    child: IconButton(
-                      tooltip: 'Pact ${dot + 1} of ${pacts.length}',
-                      onPressed: () => _goTo(dot),
-                      style: IconButton.styleFrom(
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      constraints: const BoxConstraints(minHeight: 24),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 6,
-                      ),
-                      icon: Container(
-                        width: dot == _index ? 24 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: dot == _index
-                              ? context.ink
-                              : context.ink.withValues(alpha: .3),
-                          borderRadius: WeekPactMetrics.pill,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     );

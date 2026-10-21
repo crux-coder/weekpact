@@ -4,7 +4,8 @@ import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/today_widgets.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
-import 'package:weekpact/src/widgets/app_components.dart';
+import 'package:weekpact/src/widgets/dashed_border.dart';
+import 'package:weekpact/src/crew/crew_switcher.dart';
 
 import 'support/pump_ui.dart';
 
@@ -66,23 +67,24 @@ Future<void> _pump(WidgetTester tester, Widget panel) async {
   await tester.pumpUi();
 }
 
-/// The card's own fill, past the frame the panel holds it in.
-Color _cardFill(WidgetTester tester) => tester
-    .widgetList<AppSurface>(find.byType(AppSurface))
-    .firstWhere((surface) => surface.fillColor != null)
-    .fillColor!;
-
-/// Every face currently drawn on the track.
-final _raceFaces = find.byWidgetPredicate(
+/// Every step currently on the podium.
+final _podiumSteps = find.byWidgetPredicate(
   (widget) =>
       widget.key is ValueKey<String> &&
-      (widget.key! as ValueKey<String>).value.startsWith('race-face-'),
+      (widget.key! as ValueKey<String>).value.startsWith('podium-step-'),
 );
 
-/// Where a member's face sits on the track, in the track's own pixels.
-double _faceX(WidgetTester tester, String id) =>
-    tester.getTopLeft(find.byKey(ValueKey('race-face-$id'))).dx -
-    tester.getTopLeft(find.byKey(const ValueKey('crew-race-track'))).dx;
+/// A member's bar on the podium.
+Rect _bar(WidgetTester tester, String id) =>
+    tester.getRect(find.byKey(ValueKey('podium-bar-$id')));
+
+/// A member's bar colour.
+Color _barColour(WidgetTester tester, String id) =>
+    ((tester
+                .widget<Container>(find.byKey(ValueKey('podium-bar-$id')))
+                .decoration!
+            as ShapeDecoration)
+        .color!);
 
 void main() {
   test(
@@ -110,10 +112,8 @@ void main() {
     },
   );
 
-  testWidgets('the crew week is a race, not an average', (tester) async {
+  testWidgets('the crew week is a podium, not an average', (tester) async {
     // 'me' has kept three of the five days they owe; 'other' has kept none.
-    // The card used to fold both into "30%", which is a figure neither of
-    // them can move on their own.
     await _pump(
       tester,
       HomeCrewPanel(
@@ -124,28 +124,146 @@ void main() {
         }),
       ),
     );
-    expect(find.text('CREW PROGRESS · THIS WEEK'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    expect(find.byKey(const ValueKey('crew-race-track')), findsOneWidget);
-    expect(find.byKey(const ValueKey('crew-week-finish')), findsOneWidget);
-    // Wednesday, so Thursday to Sunday plus today are still to run.
-    expect(find.text('THIS WEEK · 5 DAYS LEFT'), findsOneWidget);
-    expect(find.textContaining("YOU'RE"), findsOneWidget);
-    expect(find.textContaining('1st'), findsOneWidget);
-    // Everyone on the track, each at their own standing.
-    expect(find.byKey(const ValueKey('race-face-me')), findsOneWidget);
-    expect(find.byKey(const ValueKey('race-face-other')), findsOneWidget);
-    expect(_faceX(tester, 'me'), greaterThan(_faceX(tester, 'other')));
-    expect(_cardFill(tester), WeekPactColors.crewProgress);
+    expect(find.byKey(const ValueKey('crew-podium')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-face-me')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-face-other')), findsOneWidget);
+    // The leader is crowned, stands taller, and stands to the right of second.
+    expect(find.byKey(const ValueKey('podium-crown-me')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-crown-other')), findsNothing);
+    expect(
+      _bar(tester, 'me').height,
+      greaterThan(_bar(tester, 'other').height),
+    );
+    expect(_bar(tester, 'me').left, greaterThan(_bar(tester, 'other').left));
+    // Further along is a different colour on the scale.
+    expect(_barColour(tester, 'me'), isNot(_barColour(tester, 'other')));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the card carries no headline, only the podium and its figures', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      HomeCrewPanel(
+        userId: 'me',
+        week: _weekWith({
+          'me': (move: 2, read: 1),
+          'other': (move: 0, read: 0),
+        }, streakWeeks: 4),
+      ),
+    );
+    // No headline and no place: the bars and their figures are the card.
+    expect(find.textContaining('DAYS LEFT'), findsNothing);
+    expect(find.textContaining('LAST DAY'), findsNothing);
+    expect(find.textContaining("YOU'RE"), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('podium-bar-me')),
+        matching: find.text('60%'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        // Under half a week the figure stands on the bar rather than in it.
+        of: find.byKey(const ValueKey('podium-step-other')),
+        matching: find.text('0%'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('crew-week-streak')), findsNothing);
+    // The standing is still said, to a screen reader.
+    final semantics = tester.widget<Semantics>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics && widget.properties.label == 'Crew week',
+      ),
+    );
+    expect(semantics.properties.value, contains('You are 1st of 2'));
+  });
+
+  testWidgets('the card stands on the crew week bar\'s surface', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      HomeCrewPanel(
+        userId: 'me',
+        week: _weekWith({
+          'me': (move: 1, read: 0),
+          'other': (move: 0, read: 0),
+        }),
+      ),
+    );
+    expect(
+      find.descendant(
+        of: find.byType(HomeCrewPanel),
+        matching: find.byType(CrewHeaderSurface),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a week fully kept is gold, and only that week', (tester) async {
+    await _pump(
+      tester,
+      HomeCrewPanel(
+        userId: 'me',
+        week: _weekWith({
+          'done': (move: 3, read: 2),
+          'also': (move: 3, read: 2),
+          'me': (move: 2, read: 1),
+        }),
+      ),
+    );
+    expect(_barColour(tester, 'done'), WeekPactColors.gold);
+    expect(_barColour(tester, 'also'), WeekPactColors.gold);
+    expect(_barColour(tester, 'me'), isNot(WeekPactColors.gold));
+  });
+
+  testWidgets('a bar is its share of the full height, and a face moves in at '
+      'half', (tester) async {
+    // Five check-ins owed: 'done' has all five, 'half' three, 'none' none.
+    await _pump(
+      tester,
+      HomeCrewPanel(
+        userId: 'done',
+        week: _weekWith({
+          'done': (move: 3, read: 2),
+          'half': (move: 2, read: 1),
+          'none': (move: 0, read: 0),
+        }),
+      ),
+    );
+    final full = _bar(tester, 'done').height;
+    expect(_bar(tester, 'half').height, closeTo(full * .6, 1));
+    // An empty week is still a sliver, so it can be seen.
+    expect(_bar(tester, 'none').height, greaterThan(0));
+    expect(_bar(tester, 'none').height, lessThan(full * .1));
+    bool inBar(String id) => find
+        .descendant(
+          of: find.byKey(ValueKey('podium-bar-$id')),
+          matching: find.byKey(ValueKey('podium-face-$id')),
+        )
+        .evaluate()
+        .isNotEmpty;
+    expect(inBar('done'), isTrue);
+    expect(inBar('half'), isTrue);
+    // 'none' is under half: its face stands on its bar, not in it.
+    expect(inBar('none'), isFalse);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('podium-face-none'))).bottom,
+      lessThanOrEqualTo(_bar(tester, 'none').top),
+    );
   });
 
   testWidgets('a crew that is level shows no place, not first and second', (
     tester,
   ) async {
     // Two members on the same figure are not a first and a second decided by
-    // whatever order the roster arrived in, and the headline does not say so
-    // either: there is simply no place to show.
+    // whatever order the roster arrived in: no crown, and one height of bar.
     await _pump(
       tester,
       HomeCrewPanel(
@@ -156,115 +274,33 @@ void main() {
         }),
       ),
     );
-    expect(find.text('LEVEL'), findsNothing);
-    expect(find.textContaining("YOU'RE"), findsNothing);
-    // And level members stand together on the track rather than one of them
-    // standing in for both.
-    expect(find.byKey(const ValueKey('race-face-me')), findsOneWidget);
-    expect(find.byKey(const ValueKey('race-face-other')), findsOneWidget);
-    // 26 is the drawn face inside its ring: level members overlap rather
-    // than spreading out across the card.
-    expect(
-      (_faceX(tester, 'me') - _faceX(tester, 'other')).abs(),
-      lessThan(26),
-    );
+    expect(find.byKey(const ValueKey('podium-crown-me')), findsNothing);
+    expect(find.byKey(const ValueKey('podium-crown-other')), findsNothing);
+    expect(_bar(tester, 'me').height, _bar(tester, 'other').height);
+    // The colour is the progress's, not the person's: level is one colour.
+    expect(_barColour(tester, 'me'), _barColour(tester, 'other'));
   });
 
-  testWidgets('a kept week turns the card mint', (tester) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 3, read: 2),
-          'other': (move: 3, read: 2),
-        }),
-      ),
-    );
-    expect(_cardFill(tester), WeekPactColors.mintGreen);
-    expect(find.text('LEVEL'), findsNothing);
-    expect(find.textContaining("YOU'RE"), findsNothing);
-  });
-
-  testWidgets('a crew of one keeps the bar, and has no place to be in', (
-    tester,
-  ) async {
+  testWidgets('a crew of one stands on its own bar', (tester) async {
     await _pump(
       tester,
       HomeCrewPanel(userId: 'me', week: _weekWith({'me': (move: 2, read: 1)})),
     );
-    // There is nobody to race, so the card says what it always said: how much
-    // of your own week is kept — on the same lane, at the same flag, so the
-    // card does not change shape when a second member joins.
-    expect(find.byKey(const ValueKey('crew-race-track')), findsNothing);
-    expect(find.byKey(const ValueKey('crew-solo-track')), findsOneWidget);
-    expect(find.byKey(const ValueKey('crew-week-finish')), findsOneWidget);
-    expect(find.textContaining("YOU'RE"), findsNothing);
-    expect(find.text('YOUR WEEK · 5 DAYS LEFT'), findsOneWidget);
-    expect(find.textContaining('60'), findsOneWidget);
-  });
-
-  testWidgets('the last day of the week says so', (tester) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        // 2026-09-13 is a Sunday.
-        week: _weekWith({'me': (move: 1, read: 0)}, today: '2026-09-13'),
-      ),
-    );
-    expect(find.text('YOUR WEEK · LAST DAY'), findsOneWidget);
-  });
-
-  testWidgets('a running streak is the one loud thing on the card', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 1, read: 0),
-          'other': (move: 0, read: 0),
-        }),
-      ),
-    );
-    expect(find.byKey(const ValueKey('crew-week-streak')), findsNothing);
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 1, read: 0),
-          'other': (move: 0, read: 0),
-        }, streakWeeks: 4),
-      ),
-    );
-    final streak = find.byKey(const ValueKey('crew-week-streak'));
-    expect(streak, findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-bar-me')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-crown-me')), findsNothing);
+    // One member is one bar, across the card's width less its inset.
+    final card = tester.getRect(find.byType(HomeCrewPanel));
     expect(
-      find.descendant(of: streak, matching: find.text('4')),
-      findsOneWidget,
+      _bar(tester, 'me').width,
+      closeTo(card.width - WeekPactMetrics.pageInset * 2, 1),
     );
-    expect(
-      tester
-          .widget<Text>(
-            find.descendant(of: streak, matching: find.byType(Text)),
-          )
-          .style
-          ?.color,
-      WeekPactColors.streak,
-    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the loading panel stands in the card\'s place', (tester) async {
     await _pump(tester, const HomeCrewPanel.loading());
     final loading = tester.getRect(find.byType(HomeCrewPanel));
-    expect(find.byKey(const ValueKey('crew-race-track')), findsNothing);
-    expect(find.textContaining('DAYS LEFT'), findsNothing);
-    // The empty lane and its flag are already standing, so the line above
-    // them does not move once the week lands.
-    expect(find.byKey(const ValueKey('crew-week-finish')), findsOneWidget);
+    expect(_podiumSteps, findsNothing);
     await _pump(
       tester,
       HomeCrewPanel(
@@ -321,83 +357,73 @@ void main() {
     }
   });
 
-  testWidgets('a crew too big for the track keeps you and the leader', (
-    tester,
-  ) async {
-    // Nine members cannot all stand on one track: a place has a position, so
-    // the row cannot end in a "+4" the way a row of faces can.
+  testWidgets('a viewer off the podium stands beside it', (tester) async {
+    // Nine members, and the viewer trailing: the podium holds three places,
+    // and you, so the card is still about where you are.
     await _pump(
       tester,
       HomeCrewPanel(
         userId: 'member8',
         week: _weekWith({
           for (var i = 0; i < 9; i++)
-            'member$i': (move: i > 5 ? 0 : 3, read: 0),
+            'member$i': (move: i > 5 ? 0 : 3 - i ~/ 2, read: 0),
         }),
       ),
     );
-    expect(find.byKey(const ValueKey('crew-race-track')), findsOneWidget);
-    // The viewer is trailing and still on the track, and so is the leader.
-    expect(find.byKey(const ValueKey('race-face-member8')), findsOneWidget);
-    expect(find.byKey(const ValueKey('race-face-member0')), findsOneWidget);
-    // But not all nine of them: the track holds six and says so by holding
-    // six, rather than by stacking nine faces on one mark.
-    expect(tester.widgetList(_raceFaces).length, 6);
+    expect(find.byKey(const ValueKey('crew-podium')), findsOneWidget);
+    // Three places on the podium, and the viewer's own bar beside it.
+    expect(tester.widgetList(_podiumSteps).length, 4);
+    expect(find.byKey(const ValueKey('podium-viewer')), findsOneWidget);
+    // Beside it, a dashed box with your place and your figure.
+    final viewer = find.byKey(const ValueKey('podium-viewer'));
+    expect(
+      find.descendant(of: viewer, matching: find.byType(DashedBorder)),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: viewer, matching: find.text('7th')), findsOne);
+    expect(find.descendant(of: viewer, matching: find.text('0%')), findsOne);
+    expect(find.byKey(const ValueKey('podium-face-member8')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-face-member0')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the card goes nowhere, and the track spends the whole width', (
-    tester,
-  ) async {
+  testWidgets('a viewer tied with third stands on the podium', (tester) async {
     await _pump(
       tester,
       HomeCrewPanel(
         userId: 'me',
         week: _weekWith({
-          'me': (move: 3, read: 2),
-          'other': (move: 0, read: 0),
-        }),
-      ),
-    );
-    // The card still goes nowhere: the handle it wears opens it where it
-    // stands rather than pushing the crew week, which has its own door on the
-    // line above.
-    expect(find.byKey(const ValueKey('open-crew-week')), findsNothing);
-    expect(find.byTooltip('View week'), findsNothing);
-    // And the track really does run the card's own width, less its inset.
-    final card = tester.getRect(find.byType(HomeCrewPanel));
-    final track = tester.getRect(find.byKey(const ValueKey('crew-race-track')));
-    expect(track.left - card.left, closeTo(WeekPactMetrics.pageInset, 1));
-    expect(card.right - track.right, closeTo(WeekPactMetrics.pageInset, 1));
-  });
-
-  testWidgets('the lane is filled to the front runner, and ends at a flag', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
+          'leader': (move: 1, read: 0),
+          'b': (move: 0, read: 0),
+          'c': (move: 0, read: 0),
           'me': (move: 0, read: 0),
-          'leader': (move: 3, read: 2),
         }),
       ),
     );
-    final flag = find.byKey(const ValueKey('crew-week-finish'));
-    expect(flag, findsOneWidget);
-    final track = tester.getRect(find.byKey(const ValueKey('crew-race-track')));
-    // The flag stands at the end of the lane, past every face.
-    expect(tester.getRect(flag).right, closeTo(track.right, 1));
-    expect(
-      tester.getRect(find.byKey(const ValueKey('race-face-leader'))).right,
-      lessThanOrEqualTo(tester.getRect(flag).left + 1),
+    expect(find.byKey(const ValueKey('podium-viewer')), findsNothing);
+    expect(find.byKey(const ValueKey('podium-bar-me')), findsOneWidget);
+    expect(tester.widgetList(_podiumSteps).length, 3);
+  });
+
+  testWidgets('a viewer on the podium is not drawn twice', (tester) async {
+    await _pump(
+      tester,
+      HomeCrewPanel(
+        userId: 'me',
+        week: _weekWith({
+          'leader': (move: 3, read: 2),
+          'me': (move: 2, read: 0),
+          'third': (move: 1, read: 0),
+          'last': (move: 0, read: 0),
+        }),
+      ),
     );
-    // A kept week puts the leader against the flag rather than back with the
-    // member who has kept nothing.
-    expect(
-      _faceX(tester, 'leader'),
-      greaterThan(_faceX(tester, 'me') + track.width / 2),
-    );
+    expect(find.byKey(const ValueKey('podium-viewer')), findsNothing);
+    expect(find.byKey(const ValueKey('podium-face-me')), findsOneWidget);
+    expect(find.byKey(const ValueKey('podium-face-last')), findsNothing);
+    // The card no longer opens: everything it had to say is on its face.
+    expect(find.byKey(const ValueKey('crew-panel-toggle')), findsNothing);
+    expect(find.byKey(const ValueKey('open-crew-week')), findsNothing);
   });
 
   testWidgets(
@@ -435,211 +461,4 @@ void main() {
       );
     },
   );
-
-  /// Every member lane currently drawn in the open card.
-  testWidgets('the card opens into a lane a member, and shuts again', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 3, read: 1),
-          'ahead': (move: 3, read: 2),
-          'behind': (move: 1, read: 0),
-        }),
-      ),
-    );
-    // Shut: one track carrying everybody, and no lanes.
-    expect(find.byKey(const ValueKey('crew-race-track')), findsOneWidget);
-    expect(_lanes, findsNothing);
-    final shut = tester.getRect(find.byType(HomeCrewPanel)).height;
-    expect(shut, HomeCrewPanel.height);
-
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pumpUi();
-    // Open: the track's riders unstacked, one lane each, and the card taller.
-    expect(find.byKey(const ValueKey('crew-race-track')), findsNothing);
-    expect(_lanes, findsNWidgets(3));
-    expect(
-      tester.getRect(find.byType(HomeCrewPanel)).height,
-      greaterThan(shut),
-    );
-    // Each lane carries the figure the track had no room for.
-    expect(find.text('100%'), findsOneWidget);
-    expect(find.text('80%'), findsOneWidget);
-    expect(find.text('20%'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pumpUi();
-    expect(find.byKey(const ValueKey('crew-race-track')), findsOneWidget);
-    expect(_lanes, findsNothing);
-    expect(tester.getRect(find.byType(HomeCrewPanel)).height, shut);
-  });
-
-  testWidgets('the lanes hold the same crew the track was showing', (
-    tester,
-  ) async {
-    // Eight members is past the track's cap, so it keeps the leader, the
-    // viewer and the viewer's neighbours. Opening the card must not introduce
-    // anyone the track in front of it never drew.
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          for (var i = 0; i < 7; i++) 'm$i': (move: 3 - (i % 3), read: 0),
-          'me': (move: 1, read: 1),
-        }),
-      ),
-    );
-    final faces = tester
-        .widgetList(_raceFaces)
-        .map((w) => (w.key! as ValueKey<String>).value.substring(10))
-        .toSet();
-    expect(faces.length, _raceFaceCap);
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pumpUi();
-    final laned = tester
-        .widgetList(_lanes)
-        .map((w) => (w.key! as ValueKey<String>).value.substring(10))
-        .toSet();
-    expect(laned, faces);
-  });
-
-  testWidgets('the lanes run in from the start, and settle where they stand', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 3, read: 1),
-          'ahead': (move: 3, read: 2),
-          'behind': (move: 1, read: 0),
-        }),
-      ),
-    );
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 80));
-    // Part way through, nobody is standing at their answer yet: the leader's
-    // face is still on the way and their figure is still counting.
-    expect(find.text('100%'), findsNothing);
-    final leader = _laneOf(tester, 'ahead');
-    expect(leader.run, greaterThan(0));
-    expect(leader.run, lessThan(1));
-    // The lanes leave together and arrive apart, so a rider further down the
-    // order is behind the one above it while the field is running.
-    expect(_laneOf(tester, 'behind').run, lessThan(leader.run));
-
-    await tester.pumpUi();
-    expect(find.text('100%'), findsOneWidget);
-    expect(_laneOf(tester, 'ahead').run, 1);
-    expect(_laneOf(tester, 'behind').run, 1);
-  });
-
-  testWidgets('less motion gets the field where it finished, not the run', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.dark,
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 366,
-                child: HomeCrewPanel(
-                  userId: 'me',
-                  week: _weekWith({
-                    'me': (move: 3, read: 1),
-                    'ahead': (move: 3, read: 2),
-                  }),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pump();
-    expect(_laneOf(tester, 'ahead').run, 1);
-    expect(find.text('100%'), findsOneWidget);
-  });
-
-  testWidgets('a crew of one has no handle and does not open', (tester) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(userId: 'me', week: _weekWith({'me': (move: 3, read: 1)})),
-    );
-    expect(find.byKey(const ValueKey('crew-solo-track')), findsOneWidget);
-    expect(find.byKey(const ValueKey('crew-panel-mark')), findsNothing);
-    final inkwell = tester.widget<InkWell>(
-      find.byKey(const ValueKey('crew-panel-toggle')),
-    );
-    expect(inkwell.onTap, isNull);
-    await tester.tap(
-      find.byKey(const ValueKey('crew-panel-toggle')),
-      warnIfMissed: false,
-    );
-    await tester.pumpUi();
-    expect(_lanes, findsNothing);
-    expect(
-      tester.getRect(find.byType(HomeCrewPanel)).height,
-      HomeCrewPanel.height,
-    );
-  });
-
-  testWidgets('a crew that shrinks to one shuts the card behind it', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      HomeCrewPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 3, read: 1),
-          'other': (move: 1, read: 0),
-        }),
-      ),
-    );
-    await tester.tap(find.byKey(const ValueKey('crew-panel-toggle')));
-    await tester.pumpUi();
-    expect(_lanes, findsNWidgets(2));
-    await _pump(
-      tester,
-      HomeCrewPanel(userId: 'me', week: _weekWith({'me': (move: 3, read: 1)})),
-    );
-    expect(_lanes, findsNothing);
-    expect(
-      tester.getRect(find.byType(HomeCrewPanel)).height,
-      HomeCrewPanel.height,
-    );
-  });
 }
-
-/// The most faces the track draws before it starts keeping only the leader
-/// and the viewer's neighbourhood.
-const _raceFaceCap = 6;
-
-/// One member's drawn lane, by their id.
-_MemberLaneProbe _laneOf(WidgetTester tester, String id) =>
-    _MemberLaneProbe(tester.widget(find.byKey(ValueKey('crew-lane-$id'))));
-
-/// Reads the private lane widget's run without naming its type.
-extension type _MemberLaneProbe(Widget lane) {
-  double get run => (lane as dynamic).run as double;
-}
-
-/// Every member lane currently drawn.
-final _lanes = find.byWidgetPredicate(
-  (widget) =>
-      widget.key is ValueKey<String> &&
-      (widget.key! as ValueKey<String>).value.startsWith('crew-lane-'),
-);

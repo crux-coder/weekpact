@@ -229,9 +229,9 @@ void main() {
     void expectSelected(int index) {
       final pact = week.pacts[index];
       expect(find.text(pact.title).hitTestable(), findsOneWidget);
-      // The stack used to carry a "3 pacts" count in a heading above it. The
-      // dots under it say how many there are, and the card is unmistakably a
-      // pact, so both lines went.
+      // The stack used to carry a "3 pacts" count in a heading above it, and
+      // dots under it after that. The card behind peeking out says there is
+      // more, and the card is unmistakably a pact, so all of it went.
       expect(find.text('3 pacts'), findsNothing);
       expect(find.text('YOUR PACTS'), findsNothing);
       final card = tester.getRect(find.byKey(ValueKey(pact.id)).hitTestable());
@@ -672,7 +672,13 @@ void main() {
       );
       expect(find.text('Read 20 pages').hitTestable(), findsNothing);
       expect(behind.width, lessThan(front.width));
-      await tester.tap(find.byTooltip('Pact 2 of 2'));
+      // There are no dots under the stack: the next card peeking out is the
+      // way on, and a swipe brings it forward.
+      expect(find.byTooltip('Pact 2 of 2'), findsNothing);
+      await tester.drag(
+        find.byKey(const ValueKey('pact-stack')),
+        const Offset(-650, 0),
+      );
       await tester.pumpUi();
       expect(
         tester
@@ -694,9 +700,6 @@ void main() {
         closeTo(1, .001),
       );
       expect(haptics, ['HapticFeedbackType.mediumImpact']);
-      await tester.tap(find.byTooltip('Pact 2 of 2'));
-      await tester.pumpUi();
-      expect(haptics, hasLength(1));
       expect(tester.takeException(), isNull);
     },
   );
@@ -754,8 +757,8 @@ void main() {
       );
       await tester.pumpUi();
       expect(find.text('1 of 14'), findsNothing);
-      expect(find.byTooltip('Pact 5 of 14'), findsOneWidget);
-      expect(find.byTooltip('Pact 6 of 14'), findsNothing);
+      // No dots under the stack, however many pacts there are.
+      expect(find.byTooltip('Pact 1 of 14'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

@@ -716,7 +716,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                           // Heading and its switcher, today's count, the crew
                           // panel and a usable pact card; shorter viewports
                           // scale down.
-                          312 +
+                          248 +
                               _headerHeight +
                               CrewTodayBar.height +
                               12 +

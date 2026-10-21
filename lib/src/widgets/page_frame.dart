@@ -20,6 +20,7 @@ class PageFrame extends StatelessWidget {
   }) : assert(!loading || skeleton != null);
 
   final double topPadding;
+
   /// What stands above the page's content. Null on a page with nothing to put
   /// there: the pages used to open with their own name, and a page that has
   /// lost it should not keep the name's gap.
