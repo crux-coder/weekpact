@@ -30,4 +30,7 @@ exception when others then
 end;
 $$;
 revoke all on function private.wake_notification_dispatcher() from public,anon,authenticated;
-select cron.schedule('weekpact-notification-dispatch','* * * * *','select private.wake_notification_dispatcher()');
+-- Every ten seconds: chat pushes wait a short grace period, and a minute tick
+-- would stretch that to over a minute. Ticks with nothing due return before
+-- calling the worker.
+select cron.schedule('weekpact-notification-dispatch','10 seconds','select private.wake_notification_dispatcher()');

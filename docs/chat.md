@@ -31,13 +31,12 @@ around, and pushes can show the message itself.
 
 ## Rollout
 
-1. Apply `supabase/migrations/20261021130000_add_crew_chat.sql`. It adds the
-   tables to the `supabase_realtime` publication and creates the
-   `realtime.messages` policies for the private channel.
-2. Ship the app build. Older builds simply do not show the tab.
-
-3. Apply `supabase/migrations/20261021140000_add_chat_push_notifications.sql`
-   and deploy `dispatch-notifications` with the `chat_message` template.
+1. Apply the migrations: `20261021130000_add_crew_chat.sql` and
+   `20261021140000_add_chat_push_notifications.sql` (the first, end-to-end
+   encrypted version), then `20261021150000_make_crew_chat_plain_text.sql`,
+   which moves it to plain text and drops anything sent under the old scheme.
+2. Deploy `dispatch-notifications` with the `chat_message` template.
+3. Ship the app build. Older builds simply do not show the tab.
 
 ## Push notifications
 
@@ -58,8 +57,12 @@ queued push event, and cancels the push if it has not gone out.
   moment, so if the recipient's `chat_reads.last_read_at` has reached the
   message by then, the push is cancelled. A cancelled push does not use up the
   window. A push is also cancelled if the message is unsent first.
-- The dispatcher runs every minute, so the grace period adds no delay anyone
-  would notice.
+- The dispatcher runs every ten seconds (`weekpact-notification-dispatch` in
+  `supabase/notifications/scheduler.sql`), so a push goes out 15–25 seconds
+  after the message.
+- With the app open, iOS shows its own banner. Android does not show a push
+  over the open app, so the app draws one at the top (`PushBannerHost`);
+  tapping it opens Chat on that crew, like tapping the system notification.
 
 Checks: `node tool/test_chat_push_database.mjs` (with `PGLITE_MODULE` set if
 needed), `node tool/test_notification_sender.mjs` and

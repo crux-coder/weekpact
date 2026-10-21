@@ -152,6 +152,10 @@ class NotificationService extends ChangeNotifier {
     if (token == null) error = 'Couldn’t register notifications. Please retry.';
   }
 
+  /// Treats [message] as tapped: for a push shown in the app's own banner,
+  /// which the system never saw.
+  void openInApp(RemoteMessage message) => _handleOpen(message);
+
   void _handleOpen(RemoteMessage message) {
     if (_disposed) return;
     // Retain the cold start message until the signed-in screen is ready to

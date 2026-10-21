@@ -60,6 +60,35 @@ void main() {
     expect(chat, lessThan(crews));
   });
 
+  testWidgets('tapping outside the composer closes the keyboard', (
+    tester,
+  ) async {
+    await pumpHome(tester, server);
+    await tester.tap(find.byKey(const ValueKey('nav-chat')));
+    await tester.pumpUi();
+
+    final input = find.byKey(const ValueKey('chat-input'));
+    bool focused() => tester
+        .widget<EditableText>(
+          find.descendant(of: input, matching: find.byType(EditableText)),
+        )
+        .focusNode
+        .hasFocus;
+
+    await tester.enterText(input, 'Hi');
+    await tester.pump();
+    expect(focused(), isTrue);
+
+    // Sending keeps the keyboard up for the next message.
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
+    await tester.pumpUi();
+    expect(focused(), isTrue);
+
+    await tester.tapAt(tester.getCenter(find.text('Hi')));
+    await tester.pumpUi();
+    expect(focused(), isFalse);
+  });
+
   testWidgets('sends and receives messages, with typing', (tester) async {
     final other = await crewmate(server);
     addTearDown(other.dispose);
@@ -100,7 +129,7 @@ void main() {
     expect(other.reads[viewer], isNotNull);
     await other.markRead();
     await tester.pumpUi();
-    expect(find.text(' · Seen by Crew member'), findsOneWidget);
+    expect(find.text('Seen by Crew member'), findsOneWidget);
   });
 
   testWidgets('a failed message says so and sends on retry', (tester) async {

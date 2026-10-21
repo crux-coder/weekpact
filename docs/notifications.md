@@ -89,7 +89,7 @@ notification text. Payloads include version, type, notification ID, crew ID and
 an optional pact ID. Tapping currently opens the app normally.
 
 The outbox commits atomically with the check-in. A transactional `pg_net` wake-up
-requests immediate delivery; `pg_cron` retries due work every minute. Workers claim
+requests immediate delivery; `pg_cron` retries due work every ten seconds. Workers claim
 up to 20 deliveries with locks and two-minute leases. Transient errors retry with
 exponential backoff, up to eight attempts. Jobs older than 24 hours are cancelled.
 Leaving a crew, deleting/undoing the check-in, or losing the login session makes
@@ -114,7 +114,7 @@ python3 tool/deploy_notifications.py /absolute/path/to/firebase-service-account.
 The deployment script stores `FIREBASE_SERVICE_ACCOUNT` and a random
 `NOTIFICATION_DISPATCH_SECRET` as Supabase Edge Function secrets, deploys the worker,
 and stores its dispatch credential in Vault. It configures the restricted wake-up
-function and minute schedule. Set `SUPABASE_ACCESS_TOKEN` in your shell to authorize the CLI and scheduler Management API setup; the script does not read your keychain.
+function and ten-second schedule. Set `SUPABASE_ACCESS_TOKEN` in your shell to authorize the CLI and scheduler Management API setup; the script does not read your keychain.
 Private keys are never written to the repo or printed. This deployment is already
 complete for the linked WeekPact Supabase project.
 

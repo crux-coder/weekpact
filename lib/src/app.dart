@@ -6,7 +6,10 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:hugeicons/styles/stroke_rounded.dart';
+
 import 'notifications/notification_service.dart';
+import 'notifications/push_banner.dart';
 import 'notifications/notification_scope.dart';
 
 import 'package:flutter/material.dart';
@@ -69,6 +72,7 @@ class WeekPactApp extends StatefulWidget {
 
 class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
   final _messenger = GlobalKey<ScaffoldMessengerState>();
+  final _banner = GlobalKey<PushBannerHostState>();
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
 
   @override
@@ -80,18 +84,23 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       _foregroundSubscription = notifications.foregroundMessages.listen((
         message,
       ) {
-        // iOS displays its native foreground banner. Android uses an in-app
-        // banner while open, and the OS notification tray while backgrounded.
+        // iOS displays its native foreground banner. Android shows nothing
+        // over the open app, so it gets an in-app banner that does what the
+        // system one would, and the OS tray while backgrounded.
         if (defaultTargetPlatform != TargetPlatform.android) return;
         final notification = message.notification;
-        if (notification == null) return;
-        final text = [
-          notification.title,
-          notification.body,
-        ].whereType<String>().where((part) => part.isNotEmpty).join('\n');
-        if (text.isNotEmpty) {
-          _messenger.currentState?.showSnackBar(SnackBar(content: Text(text)));
-        }
+        final title = notification?.title ?? '';
+        final body = notification?.body;
+        if (title.isEmpty && (body == null || body.isEmpty)) return;
+        final chat = chatPushCrewId(message) != null;
+        _banner.currentState?.show(
+          title: title.isEmpty ? body! : title,
+          body: title.isEmpty ? null : body,
+          icon: chat
+              ? HugeIconsStrokeRounded.bubbleChat
+              : HugeIconsStrokeRounded.notification02,
+          onTap: () => notifications.openInApp(message),
+        );
       });
       unawaited(notifications.initialize());
     }
@@ -129,8 +138,9 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       theme: WeekPactTheme.dark,
       themeMode: ThemeMode.dark,
       builder: (context, child) {
-        final content = WeekPactBackground(
-          child: child ?? const SizedBox.shrink(),
+        final content = PushBannerHost(
+          key: _banner,
+          child: WeekPactBackground(child: child ?? const SizedBox.shrink()),
         );
         final notifications = widget.notifications;
         final scoped = notifications == null

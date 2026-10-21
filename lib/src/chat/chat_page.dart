@@ -193,6 +193,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     if (count != _seenCount) {
       _seenCount = count;
       _markRead();
+      // A page that lands without filling the list, or while the reader is
+      // still at its far end, reads on rather than waiting for a scroll.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadMoreIfNearStart();
+      });
     }
   }
 
@@ -211,6 +216,12 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     final position = _scroll.position;
     final jump = position.pixels > 320;
     if (jump != _showJump) setState(() => _showJump = jump);
+    _loadMoreIfNearStart();
+  }
+
+  void _loadMoreIfNearStart() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
     // The list runs bottom-up, so its far end is the oldest message.
     if (position.pixels > position.maxScrollExtent - 400) {
       unawaited(_session?.loadMore());
@@ -421,6 +432,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           key: const ValueKey('chat-messages'),
           controller: _scroll,
           reverse: true,
+          // Springs back past either end, even with only a few messages.
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           itemCount: items.length + (typing.isEmpty ? 0 : 1) + 1,
@@ -521,13 +536,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Whether [b] follows [a] in one run of bubbles: same person, same day,
-  /// within a few minutes.
+  /// however long between them. A day line always starts a new run, so the
+  /// name and face are never left on the other side of it.
   static bool _sameRun(ChatMessage? a, ChatMessage? b) =>
       a != null &&
       b != null &&
       a.senderId == b.senderId &&
-      _sameDay(a.createdAt, b.createdAt) &&
-      b.createdAt.difference(a.createdAt).abs() < const Duration(minutes: 5);
+      _sameDay(a.createdAt, b.createdAt);
 }
 
 extension on ChatSession {
@@ -735,6 +750,37 @@ class _MessageRow extends StatelessWidget {
     _ => 'Seen by ${seenBy.length}',
   };
 
+  static final _metaStyle = TextStyle(
+    color: WeekPactColors.black.withValues(alpha: .55),
+    fontSize: 11,
+    height: 1.3,
+  );
+  static const _tick = 12.0;
+
+  /// The time, and for your own messages whether it got there.
+  Widget _meta(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(_time(context), style: _metaStyle),
+      if (mine) ...[
+        const SizedBox(width: 4),
+        _Dot(color: _metaStyle.color!, size: 2.5),
+        const SizedBox(width: 4),
+        AppIcon(
+          icon: message.delivery == ChatDelivery.sending
+              ? HugeIconsStrokeRounded.clock01
+              : message.delivery == ChatDelivery.failed
+              ? HugeIconsStrokeRounded.alertCircle
+              : seenBy.isEmpty
+              ? HugeIconsStrokeRounded.tick02
+              : HugeIconsStrokeRounded.tickDouble02,
+          size: _tick,
+          color: _metaStyle.color,
+        ),
+      ],
+    ],
+  );
+
   Widget _bubble(BuildContext context) {
     final fill = mine ? WeekPactColors.coolGrey : WeekPactColors.cream;
     final edge = Color.lerp(fill, WeekPactColors.black, .22)!;
@@ -746,12 +792,23 @@ class _MessageRow extends StatelessWidget {
         text: 'Message deleted',
       );
     } else {
-      content = Text(
-        message.text!,
-        style: const TextStyle(
-          color: WeekPactColors.black,
-          fontSize: 16,
-          height: 1.3,
+      // The time, and for your own whether it got there, on a line of
+      // their own under the text, at the bubble's right edge.
+      content = IntrinsicWidth(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              message.text!,
+              style: const TextStyle(
+                color: WeekPactColors.black,
+                fontSize: 16,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Align(alignment: Alignment.centerRight, child: _meta(context)),
+          ],
         ),
       );
     }
@@ -796,32 +853,41 @@ class _MessageRow extends StatelessWidget {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            if (!mine && opensRun)
-              Padding(
-                padding: const EdgeInsets.only(left: _avatar + 18, bottom: 3),
-                child: Text(
-                  senderName,
-                  style: TextStyle(
-                    color: context.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
             if (mine)
               bubble
             else
+              // The face sits with the name at the top of a run; the rest of
+              // the run lines up under the first bubble.
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: _avatar,
-                    child: closesRun
+                    child: opensRun
                         ? _ChatAvatar(member: member, size: _avatar)
                         : null,
                   ),
                   const SizedBox(width: 8),
-                  Flexible(child: bubble),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (opensRun)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 2, bottom: 3),
+                            child: Text(
+                              senderName,
+                              style: TextStyle(
+                                color: context.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        bubble,
+                      ],
+                    ),
+                  ),
                 ],
               ),
             if (footer != null)
@@ -839,8 +905,7 @@ class _MessageRow extends StatelessWidget {
     );
   }
 
-  /// Under the last bubble of a run: when, and for your own, whether it got
-  /// there.
+  /// Under a bubble: that it did not send, or who has seen it.
   Widget? _footer(BuildContext context) {
     if (message.delivery == ChatDelivery.failed) {
       return GestureDetector(
@@ -862,36 +927,13 @@ class _MessageRow extends StatelessWidget {
         ),
       );
     }
-    if (!closesRun && seenBy.isEmpty) return null;
-    final style = TextStyle(color: context.muted, fontSize: 11);
-    final seen = _seen();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(_time(context), style: style),
-        if (mine) ...[
-          const SizedBox(width: 2),
-          AppIcon(
-            icon: message.delivery == ChatDelivery.sending
-                ? HugeIconsStrokeRounded.clock01
-                : seenBy.isEmpty
-                ? HugeIconsStrokeRounded.tick02
-                : HugeIconsStrokeRounded.tickDouble02,
-            size: 12,
-            color: context.muted,
-          ),
-        ],
-        if (seen.isNotEmpty)
-          Flexible(
-            child: Text(
-              ' · $seen',
-              key: const ValueKey('chat-seen'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          ),
-      ],
+    if (seenBy.isEmpty) return null;
+    return Text(
+      _seen(),
+      key: const ValueKey('chat-seen'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(color: context.muted, fontSize: 11),
     );
   }
 }
@@ -921,6 +963,8 @@ class _Quiet extends StatelessWidget {
   );
 }
 
+/// Who is typing, kept small: their faces, and a mini pill of dots beside
+/// them. Several typers share the one row as overlapping faces.
 class _TypingRow extends StatelessWidget {
   const _TypingRow({super.key, required this.members, required this.names});
   final List<WeekMember?> members;
@@ -938,33 +982,82 @@ class _TypingRow extends StatelessWidget {
     label: _label,
     child: ExcludeSemantics(
       child: Padding(
-        padding: const EdgeInsets.only(top: 10),
+        // The first face sits under the avatars of the messages above.
+        padding: const EdgeInsets.only(top: 10, left: 5),
         child: Row(
           children: [
-            _ChatAvatar(member: members.first, size: _MessageRow._avatar),
-            const SizedBox(width: 8),
+            _TypingFaces(members: members),
+            const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              decoration: const BoxDecoration(
-                color: WeekPactColors.cream,
-                borderRadius: BorderRadius.all(_MessageRow._round),
+              key: const ValueKey('chat-typing-bubble'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.ink.withValues(alpha: .14),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const _TypingDots(),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                _label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.muted, fontSize: 12),
-              ),
             ),
           ],
         ),
       ),
     ),
   );
+}
+
+/// The typers' faces, overlapping: up to three, or two and a count of the
+/// rest.
+class _TypingFaces extends StatelessWidget {
+  const _TypingFaces({required this.members});
+  final List<WeekMember?> members;
+
+  static const _size = 18.0;
+  static const _ring = 1.5;
+  static const _overlap = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final ring = Theme.of(context).scaffoldBackgroundColor;
+    final shown = members.length > 3 ? members.take(2).toList() : members;
+    final faces = <Widget>[
+      for (final member in shown) _ChatAvatar(member: member, size: _size),
+      if (members.length > 3)
+        FlatAvatar(
+          radius: _size / 2,
+          backgroundColor: context.ink.withValues(alpha: .14),
+          child: Text(
+            '+${members.length - 2}',
+            style: TextStyle(
+              color: context.ink,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+    ];
+    const face = _size + _ring * 2;
+    return SizedBox(
+      width: face + (faces.length - 1) * (face - _overlap),
+      height: face,
+      child: Stack(
+        children: [
+          for (var i = 0; i < faces.length; i++)
+            Positioned(
+              left: i * (face - _overlap),
+              // A ring of page colour keeps overlapping faces apart.
+              child: AvatarClip(
+                child: ColoredBox(
+                  color: ring,
+                  child: Padding(
+                    padding: const EdgeInsets.all(_ring),
+                    child: faces[i],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TypingDots extends StatefulWidget {
@@ -1005,17 +1098,17 @@ class _TypingDotsState extends State<_TypingDots>
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < 3; i++) ...[
-          if (i > 0) const SizedBox(width: 4),
+          if (i > 0) const SizedBox(width: 3),
           Transform.translate(
             offset: Offset(
               0,
-              -3 *
+              -2.5 *
                   math.max(
                     0.0,
                     math.sin((_wave.value - i * .18) * 2 * math.pi),
                   ),
             ),
-            child: const _Dot(color: WeekPactColors.mutedLight, size: 7),
+            child: _Dot(color: context.muted, size: 5),
           ),
         ],
       ],
@@ -1091,6 +1184,9 @@ class _Composer extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
                 keyboardType: TextInputType.multiline,
                 onChanged: onChanged,
+                // Touch taps elsewhere close the keyboard; the send button
+                // is in the field's tap region so sending keeps it open.
+                onTapOutside: (_) => focusNode.unfocus(),
                 style: TextStyle(color: context.ink, fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'Message your crew',
@@ -1111,11 +1207,13 @@ class _Composer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _RoundButton(
-            key: const ValueKey('chat-send'),
-            tooltip: 'Send',
-            icon: HugeIconsStrokeRounded.sent,
-            onPressed: canSend ? onSend : null,
+          TextFieldTapRegion(
+            child: _RoundButton(
+              key: const ValueKey('chat-send'),
+              tooltip: 'Send',
+              icon: HugeIconsStrokeRounded.sent,
+              onPressed: canSend ? onSend : null,
+            ),
           ),
         ],
       ),

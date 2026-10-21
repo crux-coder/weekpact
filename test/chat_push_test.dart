@@ -9,6 +9,7 @@ import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/notifications/messaging_client.dart';
 import 'package:weekpact/src/notifications/notification_scope.dart';
 import 'package:weekpact/src/notifications/notification_service.dart';
+import 'package:weekpact/src/notifications/push_banner.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
@@ -51,6 +52,7 @@ void main() {
   late FakeChatServer server;
   late _Messaging messaging;
   late NotificationService notifications;
+  late GlobalKey<PushBannerHostState> banner;
 
   setUp(() {
     server = FakeChatServer(
@@ -60,6 +62,7 @@ void main() {
       },
     );
     messaging = _Messaging();
+    banner = GlobalKey<PushBannerHostState>();
     notifications = NotificationService(
       createClient: () async => messaging,
       saveEnabled: (_) async {},
@@ -86,8 +89,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: WeekPactTheme.dark,
-        builder: (context, child) =>
-            NotificationScope(service: notifications, child: child!),
+        builder: (context, child) => NotificationScope(
+          service: notifications,
+          child: PushBannerHost(key: banner, child: child!),
+        ),
         home: HomePage(
           user: const AuthUser(email: 'person@example.com', id: viewer),
           authBackend: const MissingConfigurationAuthBackend(),
@@ -163,6 +168,52 @@ void main() {
       const RemoteMessage(data: {'type': 'crew_nudge', 'crew_id': 'owls'}),
     );
     await tester.pumpUi();
+    expect(find.text('Say hi to Night Owls.'), findsNothing);
+  });
+
+  testWidgets('the in-app banner opens the chat it is about when tapped', (
+    tester,
+  ) async {
+    await notifications.initialize();
+    await pumpHome(tester);
+
+    banner.currentState!.show(
+      title: 'Night Owls',
+      body: 'Ana: running late',
+      onTap: () => notifications.openInApp(chatPush('owls')),
+    );
+    await tester.pumpUi();
+    expect(find.text('Ana: running late'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('push-banner')));
+    await tester.pumpUi();
+    expect(find.text('Say hi to Night Owls.'), findsOneWidget);
+    expect(find.text('Ana: running late'), findsNothing);
+  });
+
+  testWidgets('the in-app banner goes by itself, or when swiped up', (
+    tester,
+  ) async {
+    await notifications.initialize();
+    await pumpHome(tester);
+
+    banner.currentState!.show(title: 'Night Owls', body: 'Ana: hello');
+    await tester.pumpUi();
+    expect(find.text('Ana: hello'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpUi();
+    expect(find.text('Ana: hello'), findsNothing);
+
+    banner.currentState!.show(title: 'Night Owls', body: 'Ana: again');
+    await tester.pumpUi();
+    await tester.fling(
+      find.byKey(const ValueKey('push-banner')),
+      const Offset(0, -80),
+      800,
+    );
+    await tester.pumpUi();
+    expect(find.text('Ana: again'), findsNothing);
+    // Nothing was tapped, so nothing was opened.
     expect(find.text('Say hi to Night Owls.'), findsNothing);
   });
 }
