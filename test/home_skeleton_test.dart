@@ -54,7 +54,7 @@ void main() {
           find.byKey(const ValueKey('skeleton-pact-card')),
         );
         final board = tester.getRect(
-          find.byKey(const ValueKey('skeleton-crew-panel')),
+          find.byKey(const ValueKey('skeleton-streak-card')),
         );
         // The skeleton's card sits where the real one does: centred on the
         // block above it, at the same inset either side.

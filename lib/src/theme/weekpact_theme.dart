@@ -45,9 +45,6 @@ abstract final class WeekPactMetrics {
   static const sectionGap = 20.0;
   static const fineBorder = 1.0;
   static const selectedBorder = 2.0;
-  static const shadow = Offset.zero;
-  static const smallShadow = Offset.zero;
-  static const pressDepth = 0.0;
   static const buttonHeight = 48.0;
   static const buttonPadding = EdgeInsets.symmetric(
     horizontal: 12,
@@ -73,13 +70,7 @@ abstract final class WeekPactColors {
   static const darkSurface = Color(0xFF202829);
   static const darkInk = Color(0xFFEDF3F2);
   static const darkBorder = Color(0xFF67797C);
-  static const darkShadow = darkBorder;
   static const darkMuted = Color(0xFFAAB8B9);
-  static const darkYellow = Color(0xFF49412B);
-  static const darkMint = Color(0xFF304531);
-  static const darkCoral = Color(0xFF523732);
-  static const darkPink = Color(0xFF483743);
-  static const darkAccent = coolGrey;
   static const darkError = Color(0xFFFFA8AE);
   static const mintGreen = Color(0xFFA8D2CC);
   static const bubblegumPink = Color(0xFFEAC7D4);
@@ -114,45 +105,43 @@ abstract final class WeekPactColors {
   static const coolGrey = Color(0xFF9FCBD9);
   static const neutralInset = Color(0xFFD7E0DF);
   static const activitySurface = Color(0xFF1F2627);
-  // Card tints: warm, and held to the depth where a card still reads as
-  // tinted paper but the tint reads as a colour rather than as a smudge — the
-  // pale versions washed out against cream and the fill lost its edge. The
-  // quay rather than the water — clay, straw and sage, with the two greens
-  // kept warm so they sit in the same light as the rest. They are ordered so
-  // neighbours in the list sit far apart in hue: most crews run two or three
-  // pacts, so the first few entries are the ones that have to look least
-  // alike. Every one clears 7:1 against card ink.
+  // Card tints: sorbet — light, clear fruit colours, strong enough that a card
+  // reads as its colour rather than as tinted paper. They are ordered so
+  // neighbours in the list sit far apart in hue, warm against cool: most
+  // crews run two or three pacts, so the first few entries are the ones that
+  // have to look least alike. Every one clears 10:1 against card ink, and the
+  // muted caption (ink at .74) clears 5.5:1.
   static const pactPalette = <Color>[
-    Color(0xFFD0B2A4), // Clay.
-    Color(0xFFB4C8A2), // Sage.
-    Color(0xFFD6B2B6), // Blush.
-    Color(0xFFBEC596), // Olive.
-    Color(0xFFD6CCAE), // Straw.
-    Color(0xFFC6A39F), // Rosewood.
-    Color(0xFFB5CCAE), // Moss.
-    Color(0xFFD4C0AA), // Apricot.
-    Color(0xFFBFACA1), // Mushroom.
-    Color(0xFFD8D4BA), // Wheat.
+    Color(0xFFFFB8BC), // Strawberry.
+    Color(0xFF83E5BC), // Mint.
+    Color(0xFFFCC17C), // Mango.
+    Color(0xFFB7CEFF), // Blueberry.
+    Color(0xFFBDDB8A), // Pistachio.
+    Color(0xFFFFB3DD), // Raspberry.
+    Color(0xFF7CE0EB), // Aqua.
+    Color(0xFFFFBC9F), // Peach.
+    Color(0xFFD6C1FF), // Grape.
+    Color(0xFFEFE088), // Lemon.
   ];
 
-  /// The same ten, with the chroma the card gives up.
+  /// The same ten, taken deeper and stronger.
   ///
-  /// A card this quiet cannot also be the thing that tells two pacts apart at
-  /// a glance, so the pact's icon badge carries that: the card's own hue held
-  /// deep enough to read as an object sitting on the card rather than as a
-  /// patch of it. Paired by index with [pactPalette] — a new tint needs a new
-  /// badge on the same line, in the same hue.
+  /// The pact's icon badge is the card's own hue held deep enough to read as
+  /// an object sitting on the card rather than as a patch of it. Every one
+  /// clears 8:1 against card ink, the glyph drawn on it. Paired by index with
+  /// [pactPalette] — a new tint needs a new badge on the same line, in the
+  /// same hue.
   static const pactBadgePalette = <Color>[
-    Color(0xFFCBA08B), // Clay.
-    Color(0xFFA4C289), // Sage.
-    Color(0xFFD1999F), // Blush.
-    Color(0xFFB8C17B), // Olive.
-    Color(0xFFD0C295), // Straw.
-    Color(0xFFC18C86), // Rosewood.
-    Color(0xFFA2C497), // Moss.
-    Color(0xFFCEB092), // Apricot.
-    Color(0xFFB79B8A), // Mushroom.
-    Color(0xFFD2CBA3), // Wheat.
+    Color(0xFFFF99A1), // Strawberry.
+    Color(0xFF54D6A5), // Mint.
+    Color(0xFFF1AA4F), // Mango.
+    Color(0xFF9ABAFF), // Blueberry.
+    Color(0xFFA7CA64), // Pistachio.
+    Color(0xFFF896CE), // Raspberry.
+    Color(0xFF23D2E2), // Aqua.
+    Color(0xFFFF9F73), // Peach.
+    Color(0xFFC7A7FF), // Grape.
+    Color(0xFFDFCC5B), // Lemon.
   ];
 
   /// A pact's card colour, by its position in the crew's pact list. Home, the
@@ -187,7 +176,8 @@ abstract final class WeekPactColors {
   /// A day kept, on the crew week's calendar. Sea glass sat on the old marine
   /// card set; on a warm card it read as the one cool thing on the page, so
   /// the kept day is a warm green off the same quay. It clears 10:1 with card
-  /// ink and stands clear of all ten tints, olive — the nearest — included.
+  /// ink and stands clear of all ten tints, pistachio — the nearest —
+  /// included.
   static const keptDay = Color(0xFFB8CC8E);
 
   /// The one green for a completed check-in, on cards and on the nudge button.
@@ -211,9 +201,6 @@ abstract final class WeekPactColors {
   /// The selected navigation tile on a dark canvas: muted off-white, cooled
   /// toward the canvas rather than bright white.
   static const navSelected = Color(0xFFCCD8D6);
-
-  /// A cast shadow on the canvas, where no card colour is available to mix from.
-  static const castShadow = Color(0x40000000);
 
   /// The wash over the page behind a sheet or a dialog. Deep enough that the
   /// surface in front reads as lifted off the page rather than laid on it, and
@@ -429,14 +416,8 @@ extension WeekPactThemeX on BuildContext {
       isDark ? WeekPactColors.darkCanvas : WeekPactColors.lightCanvas;
   Color get surface => WeekPactColors.cream;
   Color get border => WeekPactColors.black.withValues(alpha: .10);
-  Color get shadow => border;
   Color get yellow => WeekPactColors.stone;
-  Color get mint => WeekPactColors.mintGreen;
-  Color get coral => WeekPactColors.coolGrey;
-  Color get pink => WeekPactColors.cream;
   Color get primary => yellow;
-  Color get accent =>
-      isDark ? WeekPactColors.darkAccent : WeekPactColors.pinkInk;
   Color get fieldInk => ink;
   Color get muted =>
       isDark ? WeekPactColors.darkMuted : WeekPactColors.mutedLight;

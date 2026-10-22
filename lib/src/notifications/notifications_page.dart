@@ -265,14 +265,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final showEmpty = _loaded && _entries.isEmpty && !_failed;
+    // The list scrolls up under the status bar, where StatusBarBlur frosts it.
+    final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: context.canvas,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: RefreshIndicator(
+              edgeOffset: top,
               onRefresh: _refresh,
               color: WeekPactColors.black,
               backgroundColor: WeekPactColors.cream,
@@ -280,7 +284,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 key: const ValueKey('notifications-list'),
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 32),
+                padding: EdgeInsets.fromLTRB(12, top + 16, 12, 32),
                 // Heading, entries, then the trailing status row.
                 itemCount: _entries.length + 2,
                 itemBuilder: (context, index) {

@@ -166,7 +166,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
@@ -198,7 +198,7 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
 
     // Pacts are kept on each crew's own page, so there is no tab for them.
     expect(find.byKey(const ValueKey('nav-pacts')), findsNothing);
@@ -327,7 +327,7 @@ void main() {
     await tester.pumpUi();
 
     final initialHomeX = tester
-        .getTopLeft(find.byKey(const ValueKey('home-crew-panel')))
+        .getTopLeft(find.byKey(const ValueKey('home-streak-card')))
         .dx;
     // The adjacent destination keeps Home mounted through the slide.
     await tester.tap(find.byKey(const ValueKey('nav-chat')));
@@ -335,7 +335,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(
-      tester.getTopLeft(find.byKey(const ValueKey('home-crew-panel'))).dx,
+      tester.getTopLeft(find.byKey(const ValueKey('home-streak-card'))).dx,
       lessThan(initialHomeX),
     );
 

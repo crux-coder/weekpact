@@ -159,7 +159,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
       // Reachable only for someone who already has a crew on another device.
       setState(
         () => _error = isCrewLimitError(error)
-            ? 'You’re already in a crew. WeekPact Pro is needed for more than one.'
+            ? 'You’re already in a crew. For now, the free plan includes one.'
             : 'Could not create your crew. Please retry.',
       );
     } finally {

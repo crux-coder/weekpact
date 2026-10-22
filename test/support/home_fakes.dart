@@ -43,9 +43,6 @@ class DashboardBackend implements HomeBackend {
   /// page keeps offering "Check in".
   final String viewerId;
 
-  @override
-  Future<Uint8List> fetchCheckInPhoto(String path) =>
-      Future.error(StateError('Photo unavailable'));
   DashboardBackend({DashboardPacts? pacts, this.viewerId = ''})
     : pacts = pacts ?? DashboardPacts();
   final DashboardPacts pacts;

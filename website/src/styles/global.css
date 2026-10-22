@@ -31,17 +31,17 @@
   --dark-ink:#f0f5f4;
   --dark-muted:#aab8b9;
 
-  /* `pactPalette`: warm and held low, so a card reads as tinted paper. */
-  --clay:#d0b2a4;
-  --sage:#b4c8a2;
-  --blush:#d6b2b6;
-  --olive:#bec596;
-  --straw:#d6ccae;
-  --rosewood:#c6a39f;
-  --moss:#b5ccae;
-  --apricot:#d4c0aa;
-  --mushroom:#bfaca1;
-  --wheat:#d8d4ba;
+  /* `pactPalette`: sorbet — light, clear fruit colours, so a card reads as its colour. */
+  --strawberry:#ffb8bc;
+  --mint:#83e5bc;
+  --mango:#fcc17c;
+  --blueberry:#b7ceff;
+  --pistachio:#bddb8a;
+  --raspberry:#ffb3dd;
+  --aqua:#7ce0eb;
+  --peach:#ffbc9f;
+  --grape:#d6c1ff;
+  --lemon:#efe088;
 
   /* The cooler panel colours, which sit on the canvas rather than a pact. */
   --sea:#a8d2cc;      /* mintGreen — the primary action */

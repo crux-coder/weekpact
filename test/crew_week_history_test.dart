@@ -289,7 +289,7 @@ void main() {
   ) async {
     final backend = _backend()..failHistory = true;
     await _pump(tester, backend);
-    expect(find.text('Streak'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
     await scrollDown(tester);
     expect(find.text('Could not load past weeks.'), findsOneWidget);
 

@@ -9,7 +9,7 @@ import 'subscription_backend.dart';
 /// app is open. Mirrors how NotificationService is exposed through
 /// NotificationScope.
 class SubscriptionController extends ChangeNotifier {
-  SubscriptionController(this.backend) {
+  SubscriptionController(this.backend, {this.sellsPro = false}) {
     _access = backend.access;
     _changes = backend.accessChanges.listen((next) {
       if (next == _access) return;
@@ -19,6 +19,11 @@ class SubscriptionController extends ChangeNotifier {
   }
 
   final SubscriptionBackend backend;
+
+  /// Whether Pro can be bought yet. Until it can, nothing offers the upgrade:
+  /// the free plan's limits still hold and are still explained, but no row,
+  /// button or paywall promises a purchase the store cannot make.
+  final bool sellsPro;
   StreamSubscription<ProAccess>? _changes;
   late ProAccess _access;
 
@@ -64,7 +69,4 @@ extension SubscriptionContext on BuildContext {
   /// be enforced server-side as well, since a client check is trivially
   /// defeated on a jailbroken device.
   bool get isPro => SubscriptionScope.maybeOf(this)?.isPro ?? false;
-
-  ProAccess get proAccess =>
-      SubscriptionScope.maybeOf(this)?.access ?? ProAccess.locked;
 }

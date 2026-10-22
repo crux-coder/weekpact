@@ -121,11 +121,14 @@ class _PaywallPageState extends State<PaywallPage> {
   @override
   Widget build(BuildContext context) {
     final offer = _offer;
+    // Scrolls up under the status bar, where StatusBarBlur frosts it.
+    final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: WeekPactColors.darkCanvas,
       body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          padding: EdgeInsets.fromLTRB(20, top + 14, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

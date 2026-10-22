@@ -25,6 +25,7 @@ import 'home/story_seen_store.dart';
 import 'invites/invite_links.dart';
 import 'onboarding/onboarding_draft.dart';
 import 'subscriptions/subscription_scope.dart';
+import 'theme/status_bar_blur.dart';
 import 'theme/weekpact_theme.dart';
 import 'updates/update_check.dart';
 import 'updates/update_prompt.dart';
@@ -140,7 +141,9 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       builder: (context, child) {
         final content = PushBannerHost(
           key: _banner,
-          child: WeekPactBackground(child: child ?? const SizedBox.shrink()),
+          child: StatusBarBlur(
+            child: WeekPactBackground(child: child ?? const SizedBox.shrink()),
+          ),
         );
         final notifications = widget.notifications;
         final scoped = notifications == null

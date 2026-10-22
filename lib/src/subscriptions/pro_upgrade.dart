@@ -29,27 +29,30 @@ Future<bool> showCrewLimitUpgrade(
   BuildContext context, {
   required CrewLimitReason reason,
 }) async {
-  final controller = SubscriptionScope.maybeOf(context);
+  final scope = SubscriptionScope.maybeOf(context);
+  // Without a configured store, or before Pro is on sale, there is nothing to
+  // show, so the limit is explained and the upgrade is not offered.
+  final controller = scope != null && scope.sellsPro ? scope : null;
   final wanted = await showAppDialog<bool>(
     context: context,
     builder: (context) => AppDialog(
       icon: HugeIconsStrokeRounded.crown,
       title: 'One crew on the free plan',
-      message: reason == CrewLimitReason.creating
+      message: controller == null
+          ? 'You’re already in a crew. For now, the free plan includes one.'
+          : reason == CrewLimitReason.creating
           ? 'You’re already in a crew. WeekPact Pro lets you run as many as '
                 'you like — one for the gym, one for work, one with friends.'
           : 'You’re already in a crew. WeekPact Pro lets you join as many as '
                 'you like, and keep a separate week going in each.',
       actions: [
-        // Without a configured store there is nothing to show, so the upgrade
-        // is not offered rather than opening a paywall that cannot load.
         if (controller != null)
           AppButton(
             label: 'SEE WEEKPACT PRO',
             onPressed: () => Navigator.pop(context, true),
           ),
         AppDialogDismiss(
-          label: 'NOT NOW',
+          label: controller == null ? 'OK' : 'NOT NOW',
           onPressed: () => Navigator.pop(context, false),
         ),
       ],

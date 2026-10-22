@@ -243,8 +243,6 @@ void main() {
     expect(week.completed('me'), 4);
     expect(week.percent('me'), 40);
     expect(week.percentCrew, 20);
-    expect(week.pactDoneToday('move'), 1);
-    expect(week.onTrack('me'), isFalse);
   });
 
   testWidgets(
@@ -263,15 +261,15 @@ void main() {
       expect(find.text('CHECK IN'), findsNothing);
       expect(find.byKey(const ValueKey('skeleton-pact-card')), findsOneWidget);
       final loadingCrew = tester.getRect(
-        find.byKey(const ValueKey('skeleton-crew-panel')),
+        find.byKey(const ValueKey('skeleton-streak-card')),
       );
       backend.loading!.complete(week);
       backend.loading = null;
       await tester.pumpUi();
-      expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
       expect(find.byKey(const ValueKey('skeleton-pact-card')), findsNothing);
       expect(
-        tester.getRect(find.byKey(const ValueKey('home-crew-panel'))),
+        tester.getRect(find.byKey(const ValueKey('home-streak-card'))),
         loadingCrew,
       );
       expect(find.text('Check in').hitTestable(), findsOneWidget);
@@ -345,7 +343,7 @@ void main() {
     // The week card carried the chevron and took the tap into the crew week
     // while it was a headline and a bar. The race wants that width, so the
     // door moved to the line above it and the card is read rather than opened.
-    await tester.tap(find.byKey(const ValueKey('home-crew-panel')));
+    await tester.tap(find.byKey(const ValueKey('home-streak-card')));
     await tester.pumpUi();
     expect(find.byType(CrewWeekPage), findsNothing);
     await tester.tap(find.byKey(const ValueKey('open-crew-week')));
@@ -375,7 +373,7 @@ void main() {
     );
     await tester.pumpUi();
     expect(find.text('This week · Sep 7 – Sep 13'), findsOneWidget);
-    expect(find.text('Streak'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
     expect(find.text('1 of 2 checked in today'), findsNothing);
     await tester.drag(
       find.byKey(const ValueKey('crew-pact-carousel')),
@@ -409,7 +407,7 @@ void main() {
     backend.failLoad = false;
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
-    expect(find.text('Streak'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
     expect(find.byKey(const ValueKey('crew-pact-carousel')), findsOneWidget);
     expect(find.text('TRY AGAIN'), findsNothing);
     await tester.pumpWidget(const SizedBox());

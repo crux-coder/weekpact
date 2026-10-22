@@ -76,7 +76,7 @@ void main() {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  HomeCrewPanel(week: week, userId: ''),
+                  CrewPodiumPanel(week: week, userId: ''),
                   const SizedBox(height: 16),
                   // Home hands the stack whatever the page has left, so the
                   // card is usually taller than its own 248 floor. Render the
@@ -178,7 +178,7 @@ void main() {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  HomeCrewPanel(
+                  CrewPodiumPanel(
                     userId: '',
                     week: CrewWeek(
                       today: today,
@@ -230,7 +230,7 @@ void main() {
                     onSelected: (_) {},
                   ),
                   const SizedBox(height: 10),
-                  HomeCrewPanel(week: week, userId: ''),
+                  CrewPodiumPanel(week: week, userId: ''),
                 ],
               ),
             ),

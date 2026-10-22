@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:weekpact/src/crew/crew_week_page.dart';
+import 'package:weekpact/src/crew/crew_month_photos_sheet.dart';
+import 'package:weekpact/src/crew/crew_streak_card.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/story_viewer.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -66,15 +67,24 @@ Future<void> _pump(WidgetTester tester, DashboardBackend backend) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.dark,
-      home: CrewWeekPage(
-        crew: const PactCrew(
-          id: 'crew',
-          name: 'Hangboardasi',
-          timezone: 'Europe/Sarajevo',
-          isOwner: true,
+      // The streak card as Home carries it: its View month opens the drawer.
+      home: Scaffold(
+        body: FutureBuilder(
+          future: backend.fetchWeek('crew'),
+          builder: (context, week) => week.data == null
+              ? const SizedBox.shrink()
+              : CrewStreakCard(
+                  week: week.data!,
+                  history: const [],
+                  onViewMonth: () => showCrewMonthPhotosSheet(
+                    context: context,
+                    crewId: 'crew',
+                    backend: backend,
+                    userId: '0',
+                    week: week.data!,
+                  ),
+                ),
         ),
-        backend: backend,
-        userId: '0',
       ),
     ),
   );

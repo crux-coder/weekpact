@@ -155,7 +155,7 @@ void main() {
 
         expect(crews.acceptedTokens, ['7K2QXM']);
         expect(client.requests, notify ? 1 : 0);
-        expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+        expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
       },
     );
   }
@@ -190,7 +190,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('sign-in-apple')));
     await tester.pumpUi();
     expect(find.byType(NotificationPrimerPage), findsNothing);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
   });
 
   testWidgets('the setup asks after a link has gone out, and not before', (

@@ -51,6 +51,8 @@ class _SubscriptionControlState extends State<SubscriptionControl> {
 
     final access = controller.access;
     final isPro = access.active;
+    // A subscriber keeps their way to manage it; nobody else is sold to yet.
+    if (!isPro && !controller.sellsPro) return const SizedBox.shrink();
     final enabled = widget.enabled && !_busy;
 
     return AppSurface(

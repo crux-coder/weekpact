@@ -192,7 +192,7 @@ void main() {
     expect(
       rail.top,
       lessThan(
-        tester.getRect(find.byKey(const ValueKey('home-crew-panel'))).top,
+        tester.getRect(find.byKey(const ValueKey('home-streak-card'))).top,
       ),
     );
   });

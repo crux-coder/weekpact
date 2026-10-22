@@ -20,17 +20,13 @@ const homeCardInset = EdgeInsets.all(WeekPactMetrics.pageInset);
 /// lavender — instead of going muddy the way one neutral does across ten
 /// tints.
 ///
-/// `.74` lands it at 4.5:1 on the palette's deepest tint and 5.9:1 on its
+/// `.74` lands it at 5.5:1 on the palette's deepest tint and 6.3:1 on its
 /// lightest, so it clears AA on all ten. The old `.6` was set against the pale
 /// tints the palette used to carry; once those deepened, the same alpha sat
 /// only 3.3:1 above the fill and the caption read as a smudge on the card
 /// rather than as the quieter of two inks. It is still plainly secondary —
 /// the card ink above it is full strength and twice the size.
 final homeMutedInk = homeInk.withValues(alpha: .74);
-
-extension HomePanelTheme on BuildContext {
-  Color get homePanel => isDark ? WeekPactDarkCard.fill : WeekPactColors.stone;
-}
 
 class HomeBackground extends StatelessWidget {
   const HomeBackground({super.key, required this.child});

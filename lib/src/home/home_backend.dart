@@ -199,13 +199,6 @@ class CrewWeekSummary {
         (share as num?)?.toDouble() ?? 0,
     ],
   );
-
-  /// The week's last day, as `yyyy-MM-dd`.
-  String get weekEnd =>
-      DateTime.parse(weekStart)
-          .add(const Duration(days: 6))
-          .toIso8601String()
-          .substring(0, 10);
 }
 
 class CrewWeek {
@@ -263,16 +256,6 @@ class CrewWeek {
       .toSet()
       .length;
 
-  /// Everyone who has kept [pactId] today, the crew included.
-  ///
-  /// The week already carries every check-in it has, each naming its pact, its
-  /// person and its day — [days] and [checkedToday] just fold that list two
-  /// other ways. Nothing is fetched for this.
-  Set<String> keptToday(String pactId) => checkIns
-      .where((i) => i.pactId == pactId && i.day == today)
-      .map((i) => i.userId)
-      .toSet();
-
   Set<String> checkedToday(String userId) => checkIns
       .where((i) => i.userId == userId && i.day == today)
       .map((i) => i.pactId)
@@ -306,10 +289,6 @@ class CrewWeek {
         start.add(Duration(days: i)).toIso8601String().substring(0, 10),
     ];
   }
-
-  /// Whether the week has run its course: its Sunday is behind [today]. A
-  /// week reached from the past-weeks list is; the live week never is.
-  bool get isOver => weekDays.last.compareTo(today) < 0;
 
   int get target => pacts.fold(0, (sum, g) => sum + g.daysPerWeek);
   int completed(String userId) => pacts.fold(
@@ -359,22 +338,6 @@ class CrewWeek {
                 members.fold(0, (sum, m) => sum + completed(m.id)) /
                 (target * members.length))
             .round();
-  int pactCompleted(CrewPact pact) => members.fold(
-    0,
-    (sum, m) => sum + math.min(pact.daysPerWeek, days(pact.id, m.id)),
-  );
-  int pactDoneToday(String pactId) =>
-      members.where((m) => checkedToday(m.id).contains(pactId)).length;
-  bool onTrack(String userId) {
-    final daysLeft = 7 - DateTime.parse(today).weekday;
-    return pacts.every(
-      (g) =>
-          days(g.id, userId) +
-              daysLeft +
-              (checkedToday(userId).contains(g.id) ? 0 : 1) >=
-          g.daysPerWeek,
-    );
-  }
 }
 
 /// One notification as the reader sees it: what happened, who did it, and
@@ -481,7 +444,6 @@ class NotificationEntry {
 }
 
 abstract interface class HomeBackend {
-  Future<Uint8List> fetchCheckInPhoto(String path);
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId);
   Future<CrewNudgeState> sendNudge({
     required String crewId,
@@ -543,10 +505,6 @@ class SupabaseHomeBackend implements HomeBackend {
   final _avatarUrls = AvatarUrlCache();
   final _notificationAvatars = AvatarUrlCache();
   final SupabaseClient client;
-  @override
-  Future<Uint8List> fetchCheckInPhoto(String path) =>
-      client.storage.from('check-in-photos').download(path);
-
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async {
     final rows = await client.rpc(
@@ -865,9 +823,6 @@ class SupabaseHomeBackend implements HomeBackend {
 
 class MissingHomeBackend implements HomeBackend {
   const MissingHomeBackend();
-  @override
-  Future<Uint8List> fetchCheckInPhoto(String path) =>
-      Future.error(StateError('Supabase is not configured.'));
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) =>
       Future.error(StateError('Supabase is not configured.'));

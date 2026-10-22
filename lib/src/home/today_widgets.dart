@@ -1,4 +1,5 @@
 import '../widgets/avatar_shape.dart';
+import '../crew/crew_streak_card.dart';
 import '../crew/crew_switcher.dart';
 
 import 'dart:async';
@@ -726,19 +727,18 @@ Widget _scaledToBox(WidgetBuilder child) => LayoutBuilder(
   },
 );
 
-/// The crew's week on Home: the crew's podium, on the same surface as the
-/// crew week bar above it.
+/// The crew's week as a podium, at the top of the crew week page.
 ///
 /// It carried a headline — what was left of the week, and your place — and a
 /// figure on every step. The podium says both on its own: the tallest bar is
 /// the leader, and your face is the one ringed in ink. The words came off so
 /// the bars could be the whole card.
-class HomeCrewPanel extends StatelessWidget {
-  const HomeCrewPanel({super.key, required this.week, required this.userId});
+class CrewPodiumPanel extends StatelessWidget {
+  const CrewPodiumPanel({super.key, required this.week, required this.userId});
 
   /// The loading state: the same card, with its bars not yet filled in, so
   /// nothing on the page moves when the week arrives.
-  const HomeCrewPanel.loading({super.key}) : week = null, userId = '';
+  const CrewPodiumPanel.loading({super.key}) : week = null, userId = '';
 
   final CrewWeek? week;
 
@@ -1123,7 +1123,7 @@ class _Podium extends StatelessWidget {
           child: _member(
             standing,
             fill,
-            place: HomeCrewPanel._ordinal(standing.place),
+            place: CrewPodiumPanel._ordinal(standing.place),
             ink: context.ink,
             ring: fill,
           ),
@@ -1153,127 +1153,6 @@ class _Podium extends StatelessWidget {
         ),
       ],
     ],
-  );
-}
-
-/// A crew that cannot be switched: its name, on the selector's own surface.
-class CrewNamePlate extends StatelessWidget {
-  const CrewNamePlate({super.key, required this.name});
-  final String name;
-
-  @override
-  Widget build(BuildContext context) => CrewHeaderSurface(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const CrewControlLabel('YOUR CREW'),
-          const SizedBox(height: 4),
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                name,
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-/// The crew's week as one surface: the check-in tiles sit in its top, held by
-/// a thin frame, and the labelled row underneath is the way in. Keeping them in
-/// the same container says the tiles and the week are the same thing.
-class CrewWeekButton extends StatelessWidget {
-  const CrewWeekButton({super.key, required this.onOpen, this.checkIns});
-  final VoidCallback? onOpen;
-
-  /// The crew's check-in tiles. The unfolding panels paint their own copy over
-  /// this space, so what sits here holds the place and sets the width.
-  final Widget? checkIns;
-
-  /// The frame the surface keeps around the tiles: enough to read as a
-  /// container, not enough to become a margin.
-  static const pad = 6.0;
-  static const height = 38.0;
-
-  /// The gap under the tiles. Shorter than the frame's own padding, so the row
-  /// reads as part of the same surface as the cards rather than a strip parked
-  /// beneath them.
-  static const rowGap = 1.0;
-
-  /// The frame's own corner. The tiles inside keep the card curve, so this one
-  /// steps up by the padding between them and stays concentric with theirs
-  /// instead of cutting across them.
-  static const frameCurve = WeekPactMetrics.cardCurve + pad;
-
-  @override
-  Widget build(BuildContext context) => CrewHeaderSurface(
-    curve: frameCurve,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (checkIns != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(pad, pad, pad, rowGap),
-            child: checkIns,
-          ),
-        // The tooltip keeps the old control's wording: the one place that opens
-        // the week is still named the same thing.
-        Tooltip(
-          message: 'View week',
-          child: SizedBox(
-            height: height,
-            child: InkWell(
-              key: const ValueKey('open-crew-week'),
-              onTap: onOpen,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    HugeIcon(
-                      icon: HugeIconsStrokeRounded.calendar03,
-                      color: context.ink,
-                      size: 20,
-                      strokeWidth: 2,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'CREW WEEK',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: context.ink,
-                          fontSize: 14,
-                          letterSpacing: .6,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    HugeIcon(
-                      icon: HugeIconsStrokeRounded.arrowRight01,
-                      color: context.muted,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 
@@ -2095,13 +1974,20 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                 ),
               ),
               const SizedBox(height: 12),
+              // The streak card's silhouette, at its own height, so nothing on
+              // the page moves when the week arrives.
+              const SizedBox(
+                key: ValueKey('skeleton-streak-card'),
+                height: CrewStreakCard.height,
+                child: SkeletonBar(
+                  height: double.infinity,
+                  shape: WeekPactMetrics.pactCardShape,
+                ),
+              ),
+              const SizedBox(height: 12),
               const CrewTodayBar.loading(
                 key: ValueKey('skeleton-crew-today-bar'),
               ),
-              const SizedBox(height: 12),
-              // The crew panel is empty either way, so the skeleton holds the
-              // same surface rather than promising something to load into it.
-              const HomeCrewPanel.loading(key: ValueKey('skeleton-crew-panel')),
               const SizedBox(height: 12),
               Expanded(
                 child: Column(

@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pact palettes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Straight from weekpact_theme.dart */
+    --ink:#191B19; --paper:#E4EBEA; --cream:#F0F5F4; --ink-edge:#484848; --done-mark:#3F7A6B;
+    --dark-canvas:#222A2B; --light-canvas:#E4EBEA; --dark-ink:#EDF3F2; --dark-muted:#AAB8B9;
+    --page:#161C1D; --panel:#1B2223; --line:#2C3637; --faint:#7E8C8D;
+    --canvas:var(--dark-canvas);
+    color-scheme: dark;
+  }
+  body.lightCanvas { --canvas:var(--light-canvas); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 120px; background:var(--page); color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1840px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 10px; }
+  h2 { font-size:20px; font-weight:600; margin:0; letter-spacing:-.2px; }
+  .lede { margin:0 0 6px; color:var(--dark-muted); max-width:78ch; line-height:1.6; font-size:15px; }
+  .note { margin:0 0 28px; color:var(--faint); max-width:78ch; line-height:1.6; font-size:13.5px; }
+  .note b { color:var(--dark-muted); font-weight:600; }
+  .eyebrow { font-size:11px; font-weight:500; letter-spacing:1.6px; text-transform:uppercase; color:var(--faint); margin:40px 0 12px; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; margin:0 0 18px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font:inherit; font-size:13px; font-weight:500; color:var(--dark-ink); background:var(--panel);
+    border:1px solid var(--line); border-radius:99px; padding:6px 12px; cursor:pointer; }
+  .chip[aria-pressed="true"] { background:var(--dark-ink); color:var(--page); border-color:var(--dark-ink); }
+  .label { font-size:12px; color:var(--faint); }
+
+  /* Side-by-side: one pact across all five palettes */
+  .compare { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:16px; }
+  .col { background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:16px; }
+  .colHead { display:flex; align-items:baseline; gap:8px; margin:0 0 4px; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:var(--page); background:var(--dark-muted);
+    padding:3px 7px; border-radius:5px; }
+  .colHead h3 { font-size:16px; font-weight:600; margin:0; }
+  .meta { font-size:12px; color:var(--faint); margin:0 0 12px; line-height:1.5; }
+  .stage { background:var(--canvas); border-radius:14px; padding:14px 12px 16px; width:360px; max-width:100%; margin:0 auto; }
+  .stage + .stage { margin-top:10px; }
+
+  /* Per palette: all ten swatches, then the first three cards a crew sees */
+  .palette { background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:18px; margin:0 0 16px; }
+  .palette > p { color:var(--dark-muted); font-size:13.5px; line-height:1.55; margin:6px 0 14px; max-width:80ch; }
+  .swatches { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin:0 0 16px; }
+  .sw { border-radius:12px; padding:10px; color:var(--ink); border:1px solid var(--edge);
+    box-shadow:0 3px 0 var(--shadow); display:flex; gap:9px; align-items:flex-start; min-height:84px; }
+  .sw .dot { width:30px; height:30px; flex:none; border-radius:9px; display:flex; align-items:center; justify-content:center; }
+  .sw .dot svg { width:16px; height:16px; color:var(--ink); }
+  .sw b { display:block; font-size:13px; font-weight:600; }
+  .sw small { display:block; font-size:11px; font-weight:500; color:rgba(25,27,25,.74); line-height:1.45; font-variant-numeric:tabular-nums; }
+  .row { display:flex; gap:14px; overflow-x:auto; padding-bottom:6px; }
+  .row .stage { flex:none; margin:0; }
+
+  /* ---- The Home pact card, at its true 336 × 298 ---- */
+  .card {
+    --line: color-mix(in srgb, var(--t), #000 28%);
+    --shadow: color-mix(in srgb, var(--t), #000 24%);
+    --done-edge: color-mix(in srgb, var(--t), #000 35%);
+    position:relative; width:336px; height:298px; max-width:100%; padding:12px;
+    background:var(--t); color:var(--ink); border:1px solid var(--line); border-radius:19px;
+    box-shadow:0 3px 0 var(--shadow); display:flex; flex-direction:column;
+  }
+  .card .title { height:80px; padding-right:68px; font-size:25px; line-height:1.15; font-weight:700; overflow:hidden; }
+  .card .badge { position:absolute; top:12px; right:12px; width:56px; height:56px; border-radius:15px;
+    background:var(--b); border:1px solid color-mix(in srgb, var(--b), #000 30%);
+    box-shadow:0 2px 0 color-mix(in srgb, var(--b), #000 24%); display:flex; align-items:center; justify-content:center; }
+  .card .badge svg { width:28px; height:28px; color:var(--ink); }
+  .card .body { flex:1; display:flex; flex-direction:column; justify-content:flex-end; margin-top:10px; }
+  .count { display:flex; align-items:baseline; white-space:nowrap; }
+  .count .n { font-size:76px; line-height:1; font-weight:700; }
+  .count .of { font-size:38px; line-height:1; font-weight:700; color:rgba(25,27,25,.74); margin-left:6px; }
+  .count .cap { font-size:18px; line-height:1.2; font-weight:500; color:rgba(25,27,25,.74); margin-left:8px; }
+  .segs { display:flex; gap:5px; margin-top:10px; }
+  .segs i { flex:1; height:16px; border-radius:7px; background:rgba(25,27,25,.32); }
+  .segs i.on { background:var(--ink); border:1px solid var(--ink-edge); box-shadow:0 2px 0 var(--ink-edge); }
+  .btn { margin-top:26px; height:48px; display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--ink); color:var(--paper); border:1px solid var(--ink-edge); border-radius:15px;
+    box-shadow:0 2px 0 var(--ink-edge); font-size:17px; font-weight:600; }
+  .btn svg { width:22px; height:22px; }
+  .done { margin-top:26px; height:56px; display:flex; align-items:center; background:var(--cream);
+    border:1px solid var(--done-edge); border-radius:15px; box-shadow:0 2px 0 var(--done-edge);
+    padding-left:12px; font-size:15px; font-weight:500; color:var(--ink); }
+  .done svg { width:24px; height:24px; color:var(--done-mark); margin-right:8px; flex:none; }
+  .done .sep { width:1px; height:20px; background:rgba(25,27,25,.10); margin-left:auto; }
+  .done .undo { width:80px; text-align:center; font-size:13px; text-decoration:underline; }
+
+  table { border-collapse:collapse; width:100%; font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .tableWrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:6px 12px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--faint); font-weight:500; }
+  tr:last-child td { border-bottom:0; }
+  td.low { color:#FFA8AE; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Pact palettes</h1>
+  <p class="lede">Today's ten pact tints, and four stronger versions of them, each drawn on the real Home pact card. Same hues and order as today, only the chroma goes up. Each tint's lightness was raised just enough to keep the card's text at least as readable as it is now.</p>
+  <p class="note">Every option clears the floors the theme already promises: <b>card ink ≥ 7:1</b>, the <b>muted caption ≥ 4.5:1</b> (ink at .74 over the tint) and the <b>badge glyph ≥ 6:1</b>. Outlines, raised edges and the checked-in edge are still mixed from each tint, as in <code>HomeSurface</code>. The app is locked to dark mode (<code>ThemeMode.dark</code>), and the tints are the same in both modes, so the cards sit on the dark canvas by default. Switch the canvas to see them on the light one.</p>
+
+  <div class="controls">
+    <span class="label">Pact</span><div class="chips" id="pactChips"></div>
+  </div>
+  <div class="controls">
+    <span class="label">Canvas</span>
+    <div class="chips">
+      <button class="chip" data-canvas="dark" aria-pressed="true">Dark (ships)</button>
+      <button class="chip" data-canvas="light" aria-pressed="false">Light</button>
+    </div>
+  </div>
+
+  <div class="compare" id="compare"></div>
+
+  <p class="eyebrow">Each palette in full</p>
+  <div id="palettes"></div>
+
+  <p class="eyebrow">Contrast, every tint</p>
+  <div class="tableWrap"><table id="contrast"></table></div>
+</div>
+
+<script>
+const PAL = {
+ "current": [
+  {
+   "name": "Clay",
+   "tint": "#D0B2A4",
+   "badge": "#CBA08B",
+   "C": 0.04,
+   "bC": 0.059,
+   "ink": 8.73,
+   "muted": 4.97,
+   "badgeInk": 7.38
+  },
+  {
+   "name": "Sage",
+   "tint": "#B4C8A2",
+   "badge": "#A4C289",
+   "C": 0.056,
+   "bC": 0.084,
+   "ink": 9.67,
+   "muted": 5.28,
+   "badgeInk": 8.79
+  },
+  {
+   "name": "Blush",
+   "tint": "#D6B2B6",
+   "badge": "#D1999F",
+   "C": 0.042,
+   "bC": 0.068,
+   "ink": 8.99,
+   "muted": 5.07,
+   "badgeInk": 7.23
+  },
+  {
+   "name": "Olive",
+   "tint": "#BEC596",
+   "badge": "#B8C17B",
+   "C": 0.064,
+   "bC": 0.093,
+   "ink": 9.58,
+   "muted": 5.26,
+   "badgeInk": 9.04
+  },
+  {
+   "name": "Straw",
+   "tint": "#D6CCAE",
+   "badge": "#D0C295",
+   "C": 0.042,
+   "bC": 0.062,
+   "ink": 10.81,
+   "muted": 5.65,
+   "badgeInk": 9.76
+  },
+  {
+   "name": "Rosewood",
+   "tint": "#C6A39F",
+   "badge": "#C18C86",
+   "C": 0.042,
+   "bC": 0.066,
+   "ink": 7.54,
+   "muted": 4.54,
+   "badgeInk": 6.07
+  },
+  {
+   "name": "Moss",
+   "tint": "#B5CCAE",
+   "badge": "#A2C497",
+   "C": 0.048,
+   "bC": 0.072,
+   "ink": 10.08,
+   "muted": 5.41,
+   "badgeInk": 8.98
+  },
+  {
+   "name": "Apricot",
+   "tint": "#D4C0AA",
+   "badge": "#CEB092",
+   "C": 0.038,
+   "bC": 0.054,
+   "ink": 9.83,
+   "muted": 5.32,
+   "badgeInk": 8.46
+  },
+  {
+   "name": "Mushroom",
+   "tint": "#BFACA1",
+   "badge": "#B79B8A",
+   "C": 0.027,
+   "bC": 0.041,
+   "ink": 7.95,
+   "muted": 4.66,
+   "badgeInk": 6.66
+  },
+  {
+   "name": "Wheat",
+   "tint": "#D8D4BA",
+   "badge": "#D2CBA3",
+   "C": 0.035,
+   "bC": 0.054,
+   "ink": 11.59,
+   "muted": 5.89,
+   "badgeInk": 10.57
+  }
+ ],
+ "a": [
+  {
+   "name": "Clay",
+   "tint": "#D8AF9C",
+   "badge": "#D19D84",
+   "C": 0.055,
+   "bC": 0.072,
+   "ink": 8.69,
+   "muted": 4.97,
+   "badgeInk": 7.32
+  },
+  {
+   "name": "Sage",
+   "tint": "#B0CB97",
+   "badge": "#A0C47E",
+   "C": 0.076,
+   "bC": 0.102,
+   "ink": 9.76,
+   "muted": 5.3,
+   "badgeInk": 8.82
+  },
+  {
+   "name": "Blush",
+   "tint": "#DEAEB4",
+   "badge": "#D8959D",
+   "C": 0.057,
+   "bC": 0.081,
+   "ink": 8.93,
+   "muted": 5.06,
+   "badgeInk": 7.18
+  },
+  {
+   "name": "Olive",
+   "tint": "#BEC786",
+   "badge": "#B8C26B",
+   "C": 0.086,
+   "bC": 0.112,
+   "ink": 9.65,
+   "muted": 5.26,
+   "badgeInk": 9.05
+  },
+  {
+   "name": "Straw",
+   "tint": "#D9CCA3",
+   "badge": "#D3C28B",
+   "C": 0.056,
+   "bC": 0.075,
+   "ink": 10.82,
+   "muted": 5.65,
+   "badgeInk": 9.78
+  },
+  {
+   "name": "Rosewood",
+   "tint": "#CE9F9A",
+   "badge": "#C88881",
+   "C": 0.057,
+   "bC": 0.08,
+   "ink": 7.47,
+   "muted": 4.51,
+   "badgeInk": 6.02
+  },
+  {
+   "name": "Moss",
+   "tint": "#B0CFA6",
+   "badge": "#9DC68F",
+   "C": 0.065,
+   "bC": 0.088,
+   "ink": 10.17,
+   "muted": 5.44,
+   "badgeInk": 9.0
+  },
+  {
+   "name": "Apricot",
+   "tint": "#DABFA1",
+   "badge": "#D3AF8A",
+   "C": 0.051,
+   "bC": 0.065,
+   "ink": 9.86,
+   "muted": 5.33,
+   "badgeInk": 8.47
+  },
+  {
+   "name": "Mushroom",
+   "tint": "#C4AA9C",
+   "badge": "#BB9A85",
+   "C": 0.036,
+   "bC": 0.049,
+   "ink": 7.9,
+   "muted": 4.67,
+   "badgeInk": 6.66
+  },
+  {
+   "name": "Wheat",
+   "tint": "#DAD4B1",
+   "badge": "#D4CB9A",
+   "C": 0.047,
+   "bC": 0.065,
+   "ink": 11.58,
+   "muted": 5.89,
+   "badgeInk": 10.57
+  }
+ ],
+ "b": [
+  {
+   "name": "Clay",
+   "tint": "#DFAC95",
+   "badge": "#D79B7D",
+   "C": 0.068,
+   "bC": 0.083,
+   "ink": 8.64,
+   "muted": 4.93,
+   "badgeInk": 7.32
+  },
+  {
+   "name": "Sage",
+   "tint": "#ABCD8B",
+   "badge": "#9CC673",
+   "C": 0.096,
+   "bC": 0.119,
+   "ink": 9.77,
+   "muted": 5.33,
+   "badgeInk": 8.86
+  },
+  {
+   "name": "Blush",
+   "tint": "#E6AAB2",
+   "badge": "#DF919A",
+   "C": 0.071,
+   "bC": 0.095,
+   "ink": 8.87,
+   "muted": 5.04,
+   "badgeInk": 7.14
+  },
+  {
+   "name": "Olive",
+   "tint": "#BEC874",
+   "badge": "#B8C359",
+   "C": 0.108,
+   "bC": 0.131,
+   "ink": 9.66,
+   "muted": 5.28,
+   "badgeInk": 9.07
+  },
+  {
+   "name": "Straw",
+   "tint": "#DDCB97",
+   "badge": "#D6C180",
+   "C": 0.071,
+   "bC": 0.087,
+   "ink": 10.78,
+   "muted": 5.63,
+   "badgeInk": 9.73
+  },
+  {
+   "name": "Rosewood",
+   "tint": "#D89D97",
+   "badge": "#D0857D",
+   "C": 0.072,
+   "bC": 0.094,
+   "ink": 7.58,
+   "muted": 4.53,
+   "badgeInk": 6.05
+  },
+  {
+   "name": "Moss",
+   "tint": "#AAD19E",
+   "badge": "#98C888",
+   "C": 0.081,
+   "bC": 0.102,
+   "ink": 10.17,
+   "muted": 5.46,
+   "badgeInk": 9.04
+  },
+  {
+   "name": "Apricot",
+   "tint": "#DFBD97",
+   "badge": "#D8AD82",
+   "C": 0.064,
+   "bC": 0.076,
+   "ink": 9.79,
+   "muted": 5.34,
+   "badgeInk": 8.43
+  },
+  {
+   "name": "Mushroom",
+   "tint": "#C9A996",
+   "badge": "#C09880",
+   "C": 0.046,
+   "bC": 0.059,
+   "ink": 7.92,
+   "muted": 4.65,
+   "badgeInk": 6.64
+  },
+  {
+   "name": "Wheat",
+   "tint": "#DCD5A8",
+   "badge": "#D6CB91",
+   "C": 0.06,
+   "bC": 0.077,
+   "ink": 11.65,
+   "muted": 5.93,
+   "badgeInk": 10.57
+  }
+ ],
+ "c": [
+  {
+   "name": "Clay",
+   "tint": "#E7A98B",
+   "badge": "#DE9874",
+   "C": 0.084,
+   "bC": 0.098,
+   "ink": 8.62,
+   "muted": 4.92,
+   "badgeInk": 7.3
+  },
+  {
+   "name": "Sage",
+   "tint": "#A6D07D",
+   "badge": "#97C865",
+   "C": 0.119,
+   "bC": 0.139,
+   "ink": 9.85,
+   "muted": 5.35,
+   "badgeInk": 8.88
+  },
+  {
+   "name": "Blush",
+   "tint": "#EFA5AF",
+   "badge": "#E78C98",
+   "C": 0.088,
+   "bC": 0.111,
+   "ink": 8.8,
+   "muted": 5.0,
+   "badgeInk": 7.1
+  },
+  {
+   "name": "Olive",
+   "tint": "#BDC96A",
+   "badge": "#B8C450",
+   "C": 0.121,
+   "bC": 0.14,
+   "ink": 9.67,
+   "muted": 5.3,
+   "badgeInk": 9.12
+  },
+  {
+   "name": "Straw",
+   "tint": "#E1CB89",
+   "badge": "#D9C172",
+   "C": 0.088,
+   "bC": 0.103,
+   "ink": 10.81,
+   "muted": 5.64,
+   "badgeInk": 9.75
+  },
+  {
+   "name": "Rosewood",
+   "tint": "#DF9790",
+   "badge": "#D88178",
+   "C": 0.088,
+   "bC": 0.109,
+   "ink": 7.4,
+   "muted": 4.51,
+   "badgeInk": 6.05
+  },
+  {
+   "name": "Moss",
+   "tint": "#A3D494",
+   "badge": "#92CB7E",
+   "C": 0.101,
+   "bC": 0.121,
+   "ink": 10.23,
+   "muted": 5.48,
+   "badgeInk": 9.13
+  },
+  {
+   "name": "Apricot",
+   "tint": "#E5BB8C",
+   "badge": "#DDAB78",
+   "C": 0.078,
+   "bC": 0.089,
+   "ink": 9.75,
+   "muted": 5.3,
+   "badgeInk": 8.39
+  },
+  {
+   "name": "Mushroom",
+   "tint": "#CEA790",
+   "badge": "#C4967A",
+   "C": 0.056,
+   "bC": 0.068,
+   "ink": 7.88,
+   "muted": 4.68,
+   "badgeInk": 6.59
+  },
+  {
+   "name": "Wheat",
+   "tint": "#DED59D",
+   "badge": "#D8CB86",
+   "C": 0.074,
+   "bC": 0.09,
+   "ink": 11.64,
+   "muted": 5.94,
+   "badgeInk": 10.57
+  }
+ ],
+ "d": [
+  {
+   "name": "Clay",
+   "tint": "#F1A47F",
+   "badge": "#E79369",
+   "C": 0.105,
+   "bC": 0.117,
+   "ink": 8.54,
+   "muted": 4.91,
+   "badgeInk": 7.24
+  },
+  {
+   "name": "Sage",
+   "tint": "#A6D07C",
+   "badge": "#97C865",
+   "C": 0.12,
+   "bC": 0.139,
+   "ink": 9.85,
+   "muted": 5.35,
+   "badgeInk": 8.88
+  },
+  {
+   "name": "Blush",
+   "tint": "#FA9FAC",
+   "badge": "#F18594",
+   "C": 0.109,
+   "bC": 0.132,
+   "ink": 8.76,
+   "muted": 5.02,
+   "badgeInk": 7.03
+  },
+  {
+   "name": "Olive",
+   "tint": "#BDC96A",
+   "badge": "#B8C450",
+   "C": 0.121,
+   "bC": 0.14,
+   "ink": 9.67,
+   "muted": 5.3,
+   "badgeInk": 9.12
+  },
+  {
+   "name": "Straw",
+   "tint": "#E6CA76",
+   "badge": "#DDC05F",
+   "C": 0.109,
+   "bC": 0.121,
+   "ink": 10.79,
+   "muted": 5.7,
+   "badgeInk": 9.72
+  },
+  {
+   "name": "Rosewood",
+   "tint": "#EA9289",
+   "badge": "#E17B72",
+   "C": 0.108,
+   "bC": 0.128,
+   "ink": 7.4,
+   "muted": 4.51,
+   "badgeInk": 6.0
+  },
+  {
+   "name": "Moss",
+   "tint": "#9CD78A",
+   "badge": "#8ACD73",
+   "C": 0.121,
+   "bC": 0.139,
+   "ink": 10.31,
+   "muted": 5.5,
+   "badgeInk": 9.12
+  },
+  {
+   "name": "Apricot",
+   "tint": "#EDB97C",
+   "badge": "#E3A96A",
+   "C": 0.098,
+   "bC": 0.105,
+   "ink": 9.76,
+   "muted": 5.34,
+   "badgeInk": 8.37
+  },
+  {
+   "name": "Mushroom",
+   "tint": "#D5A487",
+   "badge": "#CA9472",
+   "C": 0.071,
+   "bC": 0.081,
+   "ink": 7.83,
+   "muted": 4.62,
+   "badgeInk": 6.59
+  },
+  {
+   "name": "Wheat",
+   "tint": "#E1D58E",
+   "badge": "#DBCB78",
+   "C": 0.092,
+   "bC": 0.105,
+   "ink": 11.64,
+   "muted": 5.94,
+   "badgeInk": 10.58
+  }
+ ]
+};
+const ICONS = {"bookOpen01": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M5.33333 3.00001C7.79379 2.99657 10.1685 3.88709 12 5.5V21C10.1685 19.3871 7.79379 18.4966 5.33333 18.5C3.77132 18.5 2.99032 18.5 2.64526 18.2792C2.4381 18.1466 2.35346 18.0619 2.22086 17.8547C2 17.5097 2 16.8941 2 15.6629V6.40322C2 4.97543 2 4.26154 2.54874 3.68286C3.09748 3.10418 3.65923 3.07432 4.78272 3.0146C4.965 3.00491 5.14858 3.00001 5.33333 3.00001Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M18.6667 3.00001C16.2062 2.99657 13.8315 3.88709 12 5.5V21C13.8315 19.3871 16.2062 18.4966 18.6667 18.5C20.2287 18.5 21.0097 18.5 21.3547 18.2792C21.5619 18.1466 21.6465 18.0619 21.7791 17.8547C22 17.5097 22 16.8941 22 15.6629V6.40322C22 4.97543 22 4.26154 21.4513 3.68286C20.9025 3.10418 20.3408 3.07432 19.2173 3.0146C19.035 3.00491 18.8514 3.00001 18.6667 3.00001Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "dumbbell01": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M7.73438 13.7323C7.73438 13.7323 8.63984 12.5102 9.23438 12.2319C11.0292 11.3915 11.3943 11.0263 12.2344 9.23091C12.5127 8.63618 13.7344 7.73044 13.7344 7.73044M10.2344 16.2331C10.2344 16.2331 11.4561 15.3273 11.7344 14.7326C12.5745 12.9373 12.9396 12.5721 14.7344 11.7317C15.3289 11.4533 16.2344 10.2312 16.2344 10.2312\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M14.4311 2.89207C14.938 2.38343 15.7611 2.38212 16.2696 2.88916L21.0814 7.68726C21.5899 8.1943 21.5912 9.01767 21.0843 9.52632L19.5557 11.0603C19.0488 11.5689 18.2257 11.5702 17.7172 11.0632L12.9054 6.26507C12.397 5.75803 12.3957 4.93466 12.9025 4.42601L14.4311 2.89207Z\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M4.41377 12.9022C4.92065 12.3936 5.74376 12.3923 6.25225 12.8993L11.0641 17.6974C11.5725 18.2045 11.5738 19.0278 11.067 19.5365L9.53836 21.0704C9.03148 21.5791 8.20837 21.5804 7.69988 21.0733L2.88808 16.2752C2.37959 15.7682 2.37829 14.9448 2.88517 14.4362L4.41377 12.9022Z\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M17.9377 3.45254C19.8201 0.985467 23.14 3.8401 20.5431 6.02872M3.37811 17.9773C0.998473 19.9687 3.99782 23.1586 6.06742 20.4657\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "runningShoes": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M19.1012 18H7.96299C5.02913 18 3.56221 18 2.66807 16.8828C0.97093 14.7623 2.9047 9.1238 4.07611 7C4.47324 9.4 8.56152 9.33333 10.0507 9C9.05852 7.00119 10.3831 6.33413 11.0453 6.00059L11.0465 6C14 9.5 20.3149 11.404 21.8624 15.2188C22.5309 16.8667 20.6262 18 19.1012 18Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M2 14C6.16467 15.4294 8.73097 15.8442 12.0217 14.8039C13.0188 14.4887 13.5174 14.3311 13.8281 14.3525C14.1389 14.3739 14.7729 14.6695 16.0408 15.2608C17.6243 15.9992 19.7971 16.4243 22 15.3583\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><path d=\"M13.5 9.5L15 8\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M15.5 11L17 9.5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "yoga01": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M9.0923 16C8.78292 16.6819 8.0701 16.986 7.43887 17.3162L3.79262 19.2233C2.32845 19.9891 3.05949 22 4.62985 22C8.12204 22 10.8836 20.3064 14.0404 19C14.835 18.6711 15.2201 18.7415 16 19.0912\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M9 19.0912C9.77995 18.7415 10.165 18.6711 10.9596 19C14.1164 20.3064 16.878 22 20.3702 22C21.9405 22 22.6715 19.9891 21.2074 19.2233L17.5611 17.3162C16.9299 16.986 16.2171 16.6819 15.9077 16\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 4C10 5.10457 10.8954 6 12 6C13.1046 6 14 5.10457 14 4C14 2.89543 13.1046 2 12 2C10.8954 2 10 2.89543 10 4Z\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M12 8C8.68629 8 6 10.6863 6 14C9.31371 14 12 11.3137 12 8Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/><path d=\"M12 8C15.3137 8 18 10.6863 18 14C14.6863 14 12 11.3137 12 8Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/></svg>", "salad": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M20.3872 6.57272C21.1892 5.75419 21.1846 4.44036 20.3728 3.62792C19.5609 2.81548 18.2477 2.81047 17.4298 3.61305C16.613 2.79565 15.2887 2.79565 14.4719 3.61305C14.2166 3.86861 14.0411 4.17381 13.9454 4.49761C13.1593 4.09519 12.172 4.22318 11.5141 4.88166C10.9363 5.45991 10.7676 6.29216 11.0073 7.01913C10.5005 7.03944 9.99957 7.24304 9.61259 7.63031C8.7958 8.44771 8.7958 9.77299 9.61259 10.5904C10.2671 11.2454 10.5137 12.1539 10.3524 13H18.3C18.5997 12.9008 18.8815 12.732 19.12 12.4933C19.7781 11.8347 19.9057 10.8465 19.5033 10.0597C19.827 9.964 20.1322 9.78884 20.3876 9.53322C21.2044 8.71581 21.204 7.39013 20.3872 6.57272Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M17 7L11 13\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M13.8889 21H10.1111C6.18375 21 3 17.8162 3 13.8889C3 13.398 3.39797 13 3.88889 13H20.1111C20.602 13 21 13.398 21 13.8889C21 17.8162 17.8162 21 13.8889 21Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M5.67133 13C4.65183 12.175 4 10.9136 4 9.5C4 7.01472 6.01472 5 8.5 5C9.42507 5 10.285 5.27914 11 5.75777\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "musicNote01": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M7 9.5C7 10.8807 5.88071 12 4.5 12C3.11929 12 2 10.8807 2 9.5C2 8.11929 3.11929 7 4.5 7C5.88071 7 7 8.11929 7 9.5ZM7 9.5V2C7.33333 2.5 7.6 4.6 10 5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"10.5\" cy=\"19.5\" r=\"2.5\" stroke=\"currentColor\" stroke-width=\"1.5\"/><circle cx=\"20\" cy=\"18\" r=\"2\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M13 19.5L13 11C13 10.09 13 9.63502 13.2466 9.35248C13.4932 9.06993 13.9938 9.00163 14.9949 8.86504C18.0085 8.45385 20.2013 7.19797 21.3696 6.42937C21.6498 6.24509 21.7898 6.15295 21.8949 6.20961C22 6.26627 22 6.43179 22 6.76283V17.9259\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M13 13C17.8 13 21 10.6667 22 10\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "paintBrush01": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M3.89089 20.8727L3 21L3.12727 20.1091C3.32086 18.754 3.41765 18.0764 3.71832 17.4751C4.01899 16.8738 4.50296 16.3898 5.47091 15.4218L16.9827 3.91009C17.4062 3.48654 17.618 3.27476 17.8464 3.16155C18.2811 2.94615 18.7914 2.94615 19.2261 3.16155C19.4546 3.27476 19.6663 3.48654 20.0899 3.91009C20.5135 4.33365 20.7252 4.54543 20.8385 4.77389C21.0539 5.20856 21.0539 5.71889 20.8385 6.15356C20.7252 6.38201 20.5135 6.59379 20.0899 7.01735L8.57816 18.5291C7.61022 19.497 7.12625 19.981 6.52491 20.2817C5.92357 20.5823 5.246 20.6791 3.89089 20.8727Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M6 15L9 18M8.5 12.5L11.5 15.5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "sleeping": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M13 2.04938C12.6711 2.01672 12.3375 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 11.3151 21.9311 10.6462 21.8 10\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 11H8.70711C8.25435 11 7.82014 10.8201 7.5 10.5M14 11H15.2929C15.7456 11 16.1799 10.8201 16.5 10.5\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"12\" cy=\"16\" r=\"2\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M17 2H19.9474C20.5675 2 20.8775 2 20.9601 2.20009C21.0427 2.40019 20.8317 2.64023 20.4098 3.1203L17.9846 5.8797C17.5627 6.35977 17.3517 6.59981 17.4343 6.79991C17.5169 7 17.8269 7 18.447 7H21\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "bicycle": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M6 19.9986C8.20914 19.9986 10 18.2112 10 16.0063C10 13.8014 8.20914 12.0139 6 12.0139C3.79086 12.0139 2 13.8014 2 16.0063C2 18.2112 3.79086 19.9986 6 19.9986Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M18 19.9986C20.2091 19.9986 22 18.2112 22 16.0063C22 13.8014 20.2091 12.0139 18 12.0139C15.7909 12.0139 14 13.8014 14 16.0063C14 18.2112 15.7909 19.9986 18 19.9986Z\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M6 16.0062H10.3706C10.7302 16.0062 11.0622 15.8135 11.2399 15.5014L15.5 8.02148\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M12 13.012L7 7.02344M7 7.02344H5M7 7.02344H9\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M18.0531 15.9709L14.8057 4.03097C16.2565 3.96037 19.3585 3.83085 19.9908 6.21002\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "sourceCode": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M17 8L18.8398 9.85008C19.6133 10.6279 20 11.0168 20 11.5C20 11.9832 19.6133 12.3721 18.8398 13.1499L17 15\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M7 8L5.16019 9.85008C4.38673 10.6279 4 11.0168 4 11.5C4 11.9832 4.38673 12.3721 5.16019 13.1499L7 15\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M14.5 4L9.5 20\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>", "circle": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><circle cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/></svg>", "tickDouble03": "<svg viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M7.32612 18.092C6.99877 18.3667 6.71531 18.5029 6.42014 18.5C5.73998 18.4931 5.17341 17.7974 4.04028 16.4061L2.52531 14.5458C1.90142 13.7798 1.82509 12.6392 2.34013 11.7785C2.92845 10.7954 4.05674 10.52 4.93607 11.0133M10.9222 8.5C11.7133 7.66585 12.5575 6.8322 13.4783 5.98679C13.9225 5.57893 14.4762 5.43447 15 5.52681\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M14.1057 16.311C16.3656 13.6916 18.5472 11.9146 21.2876 9.39818C22.1078 8.64496 22.2345 7.3247 21.591 6.3893C20.9072 5.39517 19.6077 5.19647 18.7282 5.98679C16.218 8.24236 14.2651 10.4141 12.4126 12.7354C12.3154 12.8572 12.2668 12.9181 12.2163 12.9524C12.0884 13.0393 11.9285 13.0403 11.7998 12.9548C11.749 12.9211 11.7003 12.8613 11.6029 12.7419L10.6158 11.5311C9.71508 10.4263 8.09956 10.5486 7.34754 11.7785C6.82128 12.6392 6.89927 13.7798 7.53675 14.5458L9.0847 16.4061C10.2425 17.7974 10.8214 18.4931 11.5164 18.5C12.2114 18.5068 12.8428 17.7748 14.1057 16.311Z\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg>"}
+;
+const META = {
+  current: { key:'NOW', name:'Current', blurb:"What ships. Tinted paper: quiet enough that the badge is what tells pacts apart." },
+  a: { key:'A', name:'A touch stronger', blurb:'Chroma ×1.35. Still reads as tinted paper, but clay, blush and sage start to look like colours instead of shades of beige.' },
+  b: { key:'B', name:'Stronger', blurb:'Chroma ×1.7. Each card has a clear colour of its own and the warm, earthy feel stays. The smallest change that reads as obviously "more colour".' },
+  c: { key:'C', name:'Clear', blurb:'Chroma ×2.1. Fruit-coloured rather than earthy: peach, pistachio, rose. The first three pacts are told apart without the badge.' },
+  d: { key:'D', name:'Bold', blurb:'Chroma ×2.6, capped so the greens do not go acid (sage and olive stop at C\'s values). Close to the loud tab dots. The badge starts to blend into the card.' },
+};
+const PACTS = [
+  ['Read 20 pages','bookOpen01'], ['Lift weights','dumbbell01'], ['Morning yoga','yoga01'],
+  ['Eat a proper lunch','salad'], ['Practice guitar','musicNote01'], ['Run before work','runningShoes'],
+  ['Sketch something','paintBrush01'], ['In bed by 11','sleeping'], ['Bike to work','bicycle'], ['Ship one thing','sourceCode'],
+];
+const ORDER = ['current','a','b','c','d'];
+
+function card(i, row, state) {
+  const [title, icon] = PACTS[i];
+  const target = 5, kept = state === 'done' ? 4 : state === 'mid' ? 2 : 0;
+  const segs = Array.from({length:target}, (_, k) => `<i class="${k < kept ? 'on' : ''}"></i>`).join('');
+  const action = state === 'done'
+    ? `<div class="done">${ICONS.tickDouble03}<span>Checked in today</span><span class="sep"></span><span class="undo">Undo</span></div>`
+    : `<div class="btn">${ICONS.circle}<span>Check in</span></div>`;
+  return `<div class="card" style="--t:${row.tint};--b:${row.badge}">
+    <div class="title">${title}</div>
+    <div class="badge">${ICONS[icon]}</div>
+    <div class="body">
+      <div class="count"><span class="n">${kept}</span><span class="of">/ ${target}</span><span class="cap">days this week</span></div>
+      <div class="segs">${segs}</div>
+    </div>
+    ${action}
+  </div>`;
+}
+const head = k => `<div class="colHead"><span class="key">${META[k].key}</span><h3>${META[k].name}</h3></div>`;
+const floor = k => {
+  const r = PAL[k];
+  const min = f => Math.min(...r.map(x => x[f])).toFixed(1);
+  const c = (r.reduce((s, x) => s + x.C, 0) / r.length).toFixed(3);
+  return `Avg chroma ${c} · lowest ink ${min('ink')}:1 · caption ${min('muted')}:1 · glyph ${min('badgeInk')}:1`;
+};
+
+let pact = 0;
+function renderCompare() {
+  document.getElementById('compare').innerHTML = ORDER.map(k => `<div class="col">${head(k)}
+    <p class="meta">${floor(k)}</p>
+    <div class="stage">${card(pact, PAL[k][pact], 'mid')}</div>
+    <div class="stage">${card(pact, PAL[k][pact], 'done')}</div></div>`).join('');
+  document.querySelectorAll('#pactChips .chip').forEach((b, i) => b.setAttribute('aria-pressed', i === pact));
+}
+document.getElementById('pactChips').innerHTML =
+  PAL.current.map((r, i) => `<button class="chip" data-i="${i}">${r.name}</button>`).join('');
+document.getElementById('pactChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-i]'); if (!b) return; pact = +b.dataset.i; renderCompare();
+});
+document.querySelectorAll('[data-canvas]').forEach(b => b.addEventListener('click', () => {
+  document.body.classList.toggle('lightCanvas', b.dataset.canvas === 'light');
+  document.querySelectorAll('[data-canvas]').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+
+document.getElementById('palettes').innerHTML = ORDER.map(k => `<section class="palette">
+  ${head(k)}<p>${META[k].blurb} <span class="meta">${floor(k)}</span></p>
+  <div class="swatches">${PAL[k].map((r, i) => `<div class="sw" style="background:${r.tint};--edge:color-mix(in srgb,${r.tint},#000 28%);--shadow:color-mix(in srgb,${r.tint},#000 24%)">
+      <span class="dot" style="background:${r.badge};border:1px solid color-mix(in srgb,${r.badge},#000 30%)">${ICONS[PACTS[i][1]]}</span>
+      <span><b>${r.name}</b><small>${r.tint}<br>badge ${r.badge}<br>${r.ink}:1 · ${r.muted}:1</small></span></div>`).join('')}</div>
+  <div class="row">${[0,1,2].map(i => `<div class="stage">${card(i, PAL[k][i], i === 1 ? 'done' : i === 0 ? 'mid' : 'none')}</div>`).join('')}</div>
+</section>`).join('');
+
+document.getElementById('contrast').innerHTML =
+  `<tr><th>Tint</th>${ORDER.map(k => `<th>${META[k].key} ink</th><th>${META[k].key} caption</th><th>${META[k].key} glyph</th>`).join('')}</tr>` +
+  PAL.current.map((r, i) => `<tr><td>${r.name}</td>${ORDER.map(k => {
+    const x = PAL[k][i];
+    return `<td class="${x.ink < 7 ? 'low' : ''}">${x.ink}</td><td class="${x.muted < 4.5 ? 'low' : ''}">${x.muted}</td><td class="${x.badgeInk < 6 ? 'low' : ''}">${x.badgeInk}</td>`;
+  }).join('')}</tr>`).join('');
+
+renderCompare();
+</script>
+</body>
+</html>

@@ -163,9 +163,20 @@ void main() {
     },
   );
 
+  testWidgets('before Pro is on sale, a locked account is offered nothing', (
+    tester,
+  ) async {
+    final controller = SubscriptionController(FakeSubscriptionBackend());
+    addTearDown(controller.dispose);
+    await pumpControl(tester, controller);
+
+    expect(find.text('Upgrade to Pro'), findsNothing);
+    expect(find.byType(ListTile), findsNothing);
+  });
+
   testWidgets('a locked account is offered the paywall', (tester) async {
     final backend = FakeSubscriptionBackend();
-    final controller = SubscriptionController(backend);
+    final controller = SubscriptionController(backend, sellsPro: true);
     addTearDown(controller.dispose);
     await pumpControl(tester, controller);
 

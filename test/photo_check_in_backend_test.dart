@@ -18,7 +18,6 @@ void main() {
         List<int>? uploadBytes;
         String? uploadType;
         String? upsert;
-        String? downloadAuthorization;
         server.listen((request) async {
           requests.add('${request.method} ${request.uri.path}');
           final bytes = await request.fold<List<int>>(
@@ -62,11 +61,6 @@ void main() {
                 jsonEncode({'Key': request.uri.path.split('/object/').last}),
               );
             }
-          } else if (request.uri.path.contains('/storage/') &&
-              request.method == 'GET') {
-            downloadAuthorization = request.headers.value('authorization');
-            request.response.headers.contentType = ContentType('image', 'png');
-            request.response.add(testCheckInPhoto);
           } else {
             bodies[request.uri.path.split('/').last] = jsonDecode(
               utf8.decode(bytes),
@@ -133,9 +127,6 @@ void main() {
             requests[2],
             'POST /rest/v1/rpc/save_pact_check_ins_with_photos',
           );
-          expect(await backend.fetchCheckInPhoto(path), testCheckInPhoto);
-          expect(downloadAuthorization, 'Bearer test-access-token');
-          expect(requests.last, 'GET /storage/v1/object/check-in-photos/$path');
         }
       },
     );

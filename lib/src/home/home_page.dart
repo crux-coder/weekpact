@@ -36,6 +36,8 @@ import '../chat/chat_page.dart';
 import '../crew/crew_backend.dart';
 import '../crew/crew_page.dart';
 import '../crew/crews_page.dart';
+import '../crew/crew_month_photos_sheet.dart';
+import '../crew/crew_streak_card.dart';
 import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -445,6 +447,10 @@ class _HomeDestinationState extends State<_HomeDestination>
   List<PactCrew>? _crews;
   PactCrew? _crew;
   CrewWeek? _week;
+
+  /// The crew's last few finished weeks, for the streak card's days of this
+  /// month before this week. Null while not in hand or when they failed.
+  List<CrewWeekSummary>? _history;
   String? _error;
   int _request = 0;
   Timer? _timer;
@@ -512,19 +518,33 @@ class _HomeDestinationState extends State<_HomeDestination>
       final crew = matches.isNotEmpty ? matches.first : crews.firstOrNull;
       setState(() {
         _crews = crews;
-        if (crew?.id != _crew?.id) _week = null;
+        if (crew?.id != _crew?.id) {
+          _week = null;
+          _history = null;
+        }
         _crew = crew;
         _error = null;
       });
       if (crew != null && crew.id != widget.selectedCrewId) {
         widget.onCrewSelected?.call(crew.id);
       }
+      // Enough finished weeks to reach back over the start of this month. A
+      // failure there is its own: the week still shows, its earlier days
+      // only read as not out.
+      final history = crew == null
+          ? Future<List<CrewWeekSummary>?>.value()
+          : widget.backend
+                .fetchWeekHistory(crew.id, limit: 6)
+                .then<List<CrewWeekSummary>?>((weeks) => weeks)
+                .catchError((Object _) => null);
       final week = crew == null
           ? null
           : await widget.backend.fetchWeek(crew.id);
+      final weeks = await history;
       if (mounted && request == _request) {
         setState(() {
           _week = week;
+          _history = weeks;
           _seen
             ..clear()
             ..addAll(
@@ -778,9 +798,13 @@ class _HomeDestinationState extends State<_HomeDestination>
     final week = _week;
     final loading =
         _error == null && (_crews == null || (_crew != null && week == null));
+    // Home runs up under the status bar, where StatusBarBlur frosts it.
+    final top = MediaQuery.paddingOf(context).top;
     return SafeArea(
+      top: false,
       bottom: false,
       child: RefreshIndicator(
+        edgeOffset: top,
         onRefresh: () {
           unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
           return _refresh();
@@ -807,7 +831,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                     // navigation floating over its foot.
                     padding: EdgeInsets.fromLTRB(
                       12,
-                      8,
+                      top + 8,
                       12,
                       4 + MediaQuery.paddingOf(context).bottom,
                     ),
@@ -823,7 +847,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                               _headerHeight +
                               CrewTodayBar.height +
                               12 +
-                              HomeCrewPanel.height +
+                              CrewStreakCard.height +
                               (_saveError == null ? 0 : 40),
                           double.infinity,
                         );
@@ -920,15 +944,25 @@ class _HomeDestinationState extends State<_HomeDestination>
                                       selector: selector,
                                     ),
                                     const SizedBox(height: 12),
+                                    // The month first, then the week it is
+                                    // running through, then today's pacts.
+                                    CrewStreakCard(
+                                      key: const ValueKey('home-streak-card'),
+                                      week: week,
+                                      history: _history,
+                                      onViewMonth: () =>
+                                          showCrewMonthPhotosSheet(
+                                            context: context,
+                                            crewId: _crew!.id,
+                                            backend: widget.backend,
+                                            userId: widget.userId,
+                                            week: week,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 12),
                                     CrewTodayBar(
                                       week: week,
                                       onOpenWeek: _openCrewWeek,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    HomeCrewPanel(
-                                      key: const ValueKey('home-crew-panel'),
-                                      week: week,
-                                      userId: widget.userId,
                                     ),
                                     const SizedBox(height: 12),
                                     if (_saveError != null)

@@ -179,7 +179,7 @@ void main() {
           expect(verticalScrolls, hasLength(1));
           expect(verticalScrolls.single.position.maxScrollExtent, 0);
           expect(verticalScrolls.single.position.minScrollExtent, 0);
-          final board = find.byKey(const ValueKey('home-crew-panel'));
+          final board = find.byKey(const ValueKey('home-streak-card'));
           final position = tester.getTopLeft(board);
           final activePact = tester.getRect(
             find.byKey(const ValueKey('move')).hitTestable(),

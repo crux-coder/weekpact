@@ -130,8 +130,8 @@ class PactBar extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              // `.74` clears 4.5:1 on the deepest of the
-                              // ten tints and 7:1 on the lightest, so the
+                              // `.74` clears 5.5:1 on the deepest of the
+                              // ten tints and 6.3:1 on the lightest, so the
                               // caption reads as secondary on every card
                               // rather than vanishing on some of them.
                               color: context.ink.withValues(alpha: .74),

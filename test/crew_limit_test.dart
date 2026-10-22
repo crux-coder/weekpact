@@ -58,10 +58,11 @@ Future<SubscriptionController> pumpCrewPage(
   CrewBackend backend, {
   required bool isPro,
   FakeSubscriptionBackend? store,
+  bool sellsPro = true,
 }) async {
   final subscriptions = store ?? FakeSubscriptionBackend();
   if (isPro) subscriptions.emit(const ProAccess(active: true, willRenew: true));
-  final controller = SubscriptionController(subscriptions);
+  final controller = SubscriptionController(subscriptions, sellsPro: sellsPro);
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.dark,
@@ -111,6 +112,26 @@ void main() {
     expect(find.text('One crew on the free plan'), findsOneWidget);
     expect(find.text('CREATE CREW'), findsNothing);
     expect(backend.entries.length, 2, reason: 'nothing was created');
+  });
+
+  testWidgets('before Pro is on sale, the limit is explained with no upgrade', (
+    tester,
+  ) async {
+    final backend = MultipleCrews();
+    await pumpCrewPage(tester, backend, isPro: false, sellsPro: false);
+    await tester.tap(find.byTooltip('Create another crew'));
+    await tester.pumpUi();
+
+    expect(find.text('One crew on the free plan'), findsOneWidget);
+    expect(find.textContaining('WeekPact Pro'), findsNothing);
+    expect(find.text('SEE WEEKPACT PRO'), findsNothing);
+
+    await tester.tap(find.text('OK'));
+    await tester.pumpUi();
+
+    expect(find.text('One crew on the free plan'), findsNothing);
+    expect(find.text('CREATE CREW'), findsNothing);
+    expect(find.byType(PaywallPage), findsNothing);
   });
 
   testWidgets('declining the offer leaves the form closed', (tester) async {
@@ -179,7 +200,10 @@ void main() {
             child: child!,
           ),
           home: SubscriptionScope(
-            controller: SubscriptionController(FakeSubscriptionBackend()),
+            controller: SubscriptionController(
+              FakeSubscriptionBackend(),
+              sellsPro: true,
+            ),
             child: Scaffold(
               body: CrewsPage(
                 backend: MultipleCrews(),
@@ -241,7 +265,7 @@ void main() {
       MaterialApp(
         theme: WeekPactTheme.dark,
         home: SubscriptionScope(
-          controller: SubscriptionController(store),
+          controller: SubscriptionController(store, sellsPro: true),
           child: InviteAcceptancePage(
             invite: const InviteRef('7K2QXM'),
             crewBackend: backend,

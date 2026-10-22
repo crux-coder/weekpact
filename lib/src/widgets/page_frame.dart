@@ -33,12 +33,15 @@ class PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The page scrolls up under the status bar, where StatusBarBlur frosts it,
+    // rather than being cut off at the safe area's edge.
+    final top = MediaQuery.paddingOf(context).top;
     Widget content = ViewportScrollView(
       // Clear of anything floating over the page's foot, such as the
       // navigation, once scrolled to the end.
       padding: EdgeInsets.fromLTRB(
         12,
-        topPadding,
+        top + topPadding,
         12,
         32 + MediaQuery.paddingOf(context).bottom,
       ),
@@ -55,6 +58,7 @@ class PageFrame extends StatelessWidget {
     );
     if (onRefresh != null) {
       content = RefreshIndicator(
+        edgeOffset: top,
         onRefresh: () {
           unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
           return onRefresh!();
@@ -67,6 +71,7 @@ class PageFrame extends StatelessWidget {
       );
     }
     return SafeArea(
+      top: false,
       bottom: false,
       child: Center(
         child: ConstrainedBox(

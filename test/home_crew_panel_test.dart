@@ -116,7 +116,7 @@ void main() {
     // 'me' has kept three of the five days they owe; 'other' has kept none.
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'me': (move: 2, read: 1),
@@ -146,7 +146,7 @@ void main() {
   ) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'me': (move: 2, read: 1),
@@ -189,7 +189,7 @@ void main() {
   ) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'me': (move: 1, read: 0),
@@ -199,7 +199,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byType(HomeCrewPanel),
+        of: find.byType(CrewPodiumPanel),
         matching: find.byType(CrewHeaderSurface),
       ),
       findsOneWidget,
@@ -209,7 +209,7 @@ void main() {
   testWidgets('a week fully kept is gold, and only that week', (tester) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'done': (move: 3, read: 2),
@@ -228,7 +228,7 @@ void main() {
     // Five check-ins owed: 'done' has all five, 'half' three, 'none' none.
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'done',
         week: _weekWith({
           'done': (move: 3, read: 2),
@@ -266,7 +266,7 @@ void main() {
     // whatever order the roster arrived in: no crown, and one height of bar.
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'me': (move: 1, read: 0),
@@ -284,12 +284,15 @@ void main() {
   testWidgets('a crew of one stands on its own bar', (tester) async {
     await _pump(
       tester,
-      HomeCrewPanel(userId: 'me', week: _weekWith({'me': (move: 2, read: 1)})),
+      CrewPodiumPanel(
+        userId: 'me',
+        week: _weekWith({'me': (move: 2, read: 1)}),
+      ),
     );
     expect(find.byKey(const ValueKey('podium-bar-me')), findsOneWidget);
     expect(find.byKey(const ValueKey('podium-crown-me')), findsNothing);
     // One member is one bar, across the card's width less its inset.
-    final card = tester.getRect(find.byType(HomeCrewPanel));
+    final card = tester.getRect(find.byType(CrewPodiumPanel));
     expect(
       _bar(tester, 'me').width,
       closeTo(card.width - WeekPactMetrics.pageInset * 2, 1),
@@ -298,12 +301,12 @@ void main() {
   });
 
   testWidgets('the loading panel stands in the card\'s place', (tester) async {
-    await _pump(tester, const HomeCrewPanel.loading());
-    final loading = tester.getRect(find.byType(HomeCrewPanel));
+    await _pump(tester, const CrewPodiumPanel.loading());
+    final loading = tester.getRect(find.byType(CrewPodiumPanel));
     expect(_podiumSteps, findsNothing);
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'me': (move: 1, read: 0),
@@ -311,14 +314,14 @@ void main() {
         }),
       ),
     );
-    expect(tester.getRect(find.byType(HomeCrewPanel)), loading);
-    expect(loading.height, HomeCrewPanel.height);
+    expect(tester.getRect(find.byType(CrewPodiumPanel)), loading);
+    expect(loading.height, CrewPodiumPanel.height);
   });
 
   testWidgets('the block is the card, with no day under it', (tester) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith(
           {'me': (move: 1, read: 0), 'other': (move: 0, read: 0)},
@@ -332,17 +335,17 @@ void main() {
     expect(find.text('in today'), findsNothing);
     // What is left is the card, at the card's own height.
     expect(
-      tester.getRect(find.byType(HomeCrewPanel)).height,
-      HomeCrewPanel.height,
+      tester.getRect(find.byType(CrewPodiumPanel)).height,
+      CrewPodiumPanel.height,
     );
-    expect(HomeCrewPanel.height, HomeCrewPanel.cardHeight);
+    expect(CrewPodiumPanel.height, CrewPodiumPanel.cardHeight);
   });
 
   testWidgets('the block is one height, whatever the crew', (tester) async {
     for (final size in [1, 2, 9, 20]) {
       await _pump(
         tester,
-        HomeCrewPanel(
+        CrewPodiumPanel(
           userId: 'member0',
           week: _weekWith({
             for (var i = 0; i < size; i++) 'member$i': (move: 1, read: 0),
@@ -350,8 +353,8 @@ void main() {
         ),
       );
       expect(
-        tester.getRect(find.byType(HomeCrewPanel)).height,
-        HomeCrewPanel.height,
+        tester.getRect(find.byType(CrewPodiumPanel)).height,
+        CrewPodiumPanel.height,
       );
       expect(tester.takeException(), isNull);
     }
@@ -362,7 +365,7 @@ void main() {
     // and you, so the card is still about where you are.
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'member8',
         week: _weekWith({
           for (var i = 0; i < 9; i++)
@@ -390,7 +393,7 @@ void main() {
   testWidgets('a viewer tied with third stands on the podium', (tester) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'leader': (move: 1, read: 0),
@@ -408,7 +411,7 @@ void main() {
   testWidgets('a viewer on the podium is not drawn twice', (tester) async {
     await _pump(
       tester,
-      HomeCrewPanel(
+      CrewPodiumPanel(
         userId: 'me',
         week: _weekWith({
           'leader': (move: 3, read: 2),
@@ -441,7 +444,7 @@ void main() {
             body: Center(
               child: SizedBox(
                 width: 366,
-                child: HomeCrewPanel(
+                child: CrewPodiumPanel(
                   userId: 'me',
                   week: _weekWith({
                     'me': (move: 3, read: 1),
@@ -456,8 +459,8 @@ void main() {
       await tester.pumpUi();
       expect(tester.takeException(), isNull);
       expect(
-        tester.getRect(find.byType(HomeCrewPanel)).height,
-        HomeCrewPanel.height,
+        tester.getRect(find.byType(CrewPodiumPanel)).height,
+        CrewPodiumPanel.height,
       );
     },
   );

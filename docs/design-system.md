@@ -73,17 +73,18 @@ preference; `widget_test.dart` asserts both. Changing the app's one theme means
 editing the two root lines in `app.dart`, and the Android splash, iOS launch
 screen and web chrome have to be changed to match by hand.
 
-`pactPalette` is the quay, not the water — clay, sage, blush, olive, straw,
-rosewood, moss, apricot, mushroom, wheat. It is warm, and held low on purpose:
-a card should read as tinted paper, not as a colour, and near-black card ink
-clears 9:1 against every entry. Keep new tints in that band and in that family.
-The list is ordered so neighbours sit far apart in hue — most crews run two or
-three pacts, so the first few entries are the ones that have to look least
-alike.
+`pactPalette` is sorbet — strawberry, mint, mango, blueberry, pistachio,
+raspberry, aqua, peach, grape, lemon. Light, clear fruit colours: a card reads
+as its colour rather than as tinted paper, and it stays light enough that
+near-black card ink clears 10:1 against every entry and the `.74` muted
+caption 5.5:1. Keep new tints in that band and in that family. The list is
+ordered so neighbours sit far apart in hue, warm against cool — most crews run
+two or three pacts, so the first few entries are the ones that have to look
+least alike. `design/pact-palettes/` has the options this was picked from.
 
-A card that quiet cannot also be what tells two pacts apart at a glance, so
-`pactBadgePalette` does that: the same ten hues with the chroma the card gives
-up, drawn as the pact's icon badge (`PactIconBadge`). The two lists are paired
+`pactBadgePalette` is the same ten hues taken deeper and stronger, drawn as the
+pact's icon badge (`PactIconBadge`) so it reads as an object sitting on the
+card; card ink clears 8:1 on every badge. The two lists are paired
 by index — `pactTint(i)` and `pactBadge(i)` are one pact's card and its badge,
 and a new tint needs a new badge on the same line, in the same hue.
 
@@ -202,7 +203,7 @@ brand mark as text.
 `website/` is the third surface, and it carries the same system rather than a
 look of its own. `src/styles/global.css` holds it: the app's colours as custom
 properties (`--canvas` is `darkCanvas`, `--cream`, the ten `pactPalette` tints
-by name — `--clay` through `--wheat` — `--sea` for `mintGreen`, and the
+by name — `--strawberry` through `--lemon` — `--sea` for `mintGreen`, and the
 charcoal card as `--dark-*`), Rubik in the four weights the app ships (the
 `WeekPact` family; nothing on the site asks for more than 700), and four
 corners matching `WeekPactMetrics`.

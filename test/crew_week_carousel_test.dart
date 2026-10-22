@@ -123,7 +123,7 @@ void main() {
     (tester) async {
       final backend = _backend();
       await _pump(tester, backend);
-      expect(find.text('Streak'), findsOneWidget);
+      expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
       expect(find.byTooltip('Refresh crew activity'), findsNothing);
       expect(find.text('12 / 36'), findsWidgets);
       expect(backend.fetches, 1);

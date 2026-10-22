@@ -1,4 +1,3 @@
-import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../widgets/app_icon.dart';
@@ -10,12 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../home/home_backend.dart';
+import '../home/today_widgets.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/app_components.dart';
 import '../widgets/page_frame.dart';
 import 'crew_month_calendar.dart';
-import 'crew_month_photos_sheet.dart';
 import 'crew_page_layout.dart';
 import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
@@ -105,21 +103,6 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
         setState(() => _refreshing = false);
       }
     }
-  }
-
-  /// How much of the crew was out on [day]: from this week's own check-ins
-  /// while it runs, from the loaded history before that, and null for a day
-  /// neither covers.
-  double? _shareOn(DateTime day) {
-    final week = _week;
-    if (week == null) return null;
-    final iso = day.toIso8601String().substring(0, 10);
-    if (iso.compareTo(week.weekStart) >= 0) {
-      return iso.compareTo(week.today) <= 0 ? week.shareOut(iso) : null;
-    }
-    final monday = mondayOf(day).toIso8601String().substring(0, 10);
-    final past = _history?.where((w) => w.weekStart == monday).firstOrNull;
-    return past?.shareOut.elementAtOrNull(day.weekday - DateTime.monday);
   }
 
   /// Switches the page to another crew: everything that belonged to the old
@@ -242,11 +225,14 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
         if (b.id == widget.userId) return 1;
         return a.displayName.compareTo(b.displayName);
       });
+    final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       body: WeekPactBackground(
         child: SafeArea(
+          top: false,
           child: LayoutBuilder(
             builder: (context, viewport) => RefreshIndicator(
+              edgeOffset: top,
               onRefresh: () {
                 unawaited(
                   HapticFeedback.mediumImpact().catchError((Object _) {}),
@@ -261,6 +247,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                   parent: ClampingScrollPhysics(),
                 ),
                 slivers: [
+                  // The page scrolls up under the status bar, where
+                  // StatusBarBlur frosts it, rather than stopping at its edge.
+                  SliverToBoxAdapter(child: SizedBox(height: top)),
                   // The overview is one viewport, as it always was. With
                   // past weeks beneath it gives up the height of their
                   // heading, so the heading shows under the fold and says
@@ -268,7 +257,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height:
-                          viewport.maxHeight - (_hasHistory ? _historyPeek : 0),
+                          viewport.maxHeight -
+                          top -
+                          (_hasHistory ? _historyPeek : 0),
                       child: _overview(context, week, members),
                     ),
                   ),
@@ -380,16 +371,10 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                             : const Center(child: Text('Your crew’s week')),
                       )
                     else ...[
-                      _StreakCard(
+                      CrewPodiumPanel(
+                        key: const ValueKey('crew-week-podium'),
                         week: week,
-                        shareOn: _shareOn,
-                        onViewMonth: () => showCrewMonthPhotosSheet(
-                          context: context,
-                          crewId: _crew.id,
-                          backend: widget.backend,
-                          userId: widget.userId,
-                          week: week,
-                        ),
+                        userId: widget.userId,
                       ),
                       const SizedBox(height: 18),
                       Row(
@@ -487,227 +472,6 @@ class _History extends StatelessWidget {
   );
 }
 
-/// Hugeicons' rounded flame, filled rather than outlined, so the streak's
-/// number can stand inside it.
-final _solidFlame = [
-  for (final element in HugeIconsStrokeRounded.fire02)
-    [
-      element[0],
-      {...(element[1] as Map<String, dynamic>), 'fill': 'currentColor'},
-    ],
-];
-
-/// The crew's streak above its pacts: the flame with the weeks kept in a row,
-/// and beside it this month as squircles — one per day, filled where the crew
-/// was out, outlined on today, faintly outlined for the days still to come.
-/// "View month" in the header opens the month in photos.
-class _StreakCard extends StatelessWidget {
-  const _StreakCard({
-    required this.week,
-    required this.shareOn,
-    required this.onViewMonth,
-  });
-  final CrewWeek week;
-  final VoidCallback onViewMonth;
-
-  /// How much of the crew was out on a day, or null where nothing is known.
-  final double? Function(DateTime day) shareOn;
-
-  static const _dot = 15.0;
-  static const _dotGap = 9.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final weeks = week.streakWeeks;
-    final today = DateTime.parse(week.today);
-    final month = DateTime(today.year, today.month);
-    final flame = weeks > 0
-        ? WeekPactColors.streak
-        : WeekPactColors.pendingEdge;
-    return AppSurface(
-      fillColor: WeekPactColors.cream,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 6, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: ExcludeSemantics(
-                    child: Text(
-                      'Streak',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  key: const ValueKey('streak-view-month'),
-                  onPressed: () {
-                    unawaited(
-                      HapticFeedback.lightImpact().catchError((Object _) {}),
-                    );
-                    onViewMonth();
-                  },
-                  style: TextButton.styleFrom(
-                    // The card's own ink, like the title beside it: this is a
-                    // way into the month, not a mark of anything done.
-                    foregroundColor: context.ink,
-                    padding: const EdgeInsets.fromLTRB(10, 0, 4, 0),
-                    minimumSize: const Size(0, 40),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: WeekPactMetrics.buttonShape,
-                    textStyle: const TextStyle(
-                      fontFamily: WeekPactType.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('View month'),
-                      const SizedBox(width: 2),
-                      HugeIcon(
-                        icon: HugeIconsStrokeRounded.arrowRight01,
-                        size: 16,
-                        color: context.ink,
-                        strokeWidth: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Semantics(
-                label:
-                    'Crew streak: $weeks ${weeks == 1 ? 'week' : 'weeks'}. ${_daysOut(month, today)} days out this month',
-                child: ExcludeSemantics(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox.square(
-                              dimension: 80,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  HugeIcon(
-                                    icon: _solidFlame,
-                                    size: 80,
-                                    color: flame,
-                                  ),
-                                  // The flame's body is low and round; the
-                                  // number sits in it, not in the tip.
-                                  Align(
-                                    alignment: const Alignment(0, .42),
-                                    child: Text(
-                                      '$weeks',
-                                      style: const TextStyle(
-                                        color: WeekPactColors.cream,
-                                        fontSize: 26,
-                                        height: 1,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              weeks == 1 ? 'Week' : 'Weeks',
-                              style: TextStyle(
-                                color: flame,
-                                fontSize: 22,
-                                height: 1.1,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // The dots take the other half and sit in its middle, so
-                      // flame and month are balanced about the card's centre
-                      // rather than the flame centring in whatever the dots
-                      // leave over.
-                      Expanded(child: Center(child: _monthDots(month, today))),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  int _daysOut(DateTime month, DateTime today) => [
-    for (var d = 1; d <= today.day; d++)
-      shareOn(DateTime(month.year, month.month, d)),
-  ].where((share) => (share ?? 0) > 0).length;
-
-  Widget _monthDots(DateTime month, DateTime today) {
-    final ink = WeekPactColors.outlineInk;
-    Widget dot(DateTime day) {
-      if (day.month != month.month) {
-        return const SizedBox.square(dimension: _dot);
-      }
-      final isToday = day == today;
-      final future = day.isAfter(today);
-      final out = !future && (shareOn(day) ?? 0) > 0;
-      // A squircle, like the app's cards and tiles, at the corner a card
-      // this small reads as.
-      return Container(
-        width: _dot,
-        height: _dot,
-        decoration: ShapeDecoration(
-          color: out
-              ? ink
-              : future || isToday
-              ? null
-              : ink.withValues(alpha: .07),
-          shape: ContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(_dot * .6),
-            side: isToday && !out
-                ? BorderSide(color: ink, width: 2)
-                : future
-                ? BorderSide(color: ink.withValues(alpha: .12), width: 1.5)
-                : BorderSide.none,
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final monday in monthWeeks(month)) ...[
-          if (monday != monthWeeks(month).first)
-            const SizedBox(height: _dotGap),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var i = 0; i < 7; i++) ...[
-                if (i > 0) const SizedBox(width: _dotGap),
-                dot(DateTime(monday.year, monday.month, monday.day + i)),
-              ],
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
 /// The crew week while it loads: the same blocks in the same places as the
 /// page it becomes, so nothing jumps when the week arrives.
 class _CrewWeekSkeleton extends StatefulWidget {
@@ -764,8 +528,8 @@ class _CrewWeekSkeletonState extends State<_CrewWeekSkeleton>
             key: const ValueKey('crew-week-skeleton'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // The streak card.
-              SizedBox(height: 172, child: _card),
+              // The crew's podium.
+              const CrewPodiumPanel.loading(),
               const SizedBox(height: 18),
               Row(
                 children: [

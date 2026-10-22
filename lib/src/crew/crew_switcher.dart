@@ -304,31 +304,6 @@ class _CrewOption extends StatelessWidget {
   );
 }
 
-class CrewControlLabel extends StatelessWidget {
-  const CrewControlLabel(this.text, {super.key});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 12,
-    child: FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text,
-        style: TextStyle(
-          color: context.muted,
-          fontFamily: WeekPactType.secondary,
-          fontFamilyFallback: WeekPactType.secondaryFallback,
-          fontSize: 10,
-          letterSpacing: 2,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ),
-  );
-}
-
 /// Compact Home header surface, with labels and controls inside its raised face.
 class CrewHeaderSurface extends StatelessWidget {
   const CrewHeaderSurface({

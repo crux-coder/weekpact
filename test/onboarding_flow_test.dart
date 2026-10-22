@@ -150,7 +150,7 @@ void main() {
     expect(find.text('You’re in, Mia.'), findsOneWidget);
     await _tap(tester, find.byKey(const ValueKey('first-check-in')));
     expect(home.selected, contains('new'));
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
   });
 
   testWidgets('a half-finished setup reopens where it was left', (
@@ -244,7 +244,7 @@ void main() {
     await tester.enterText(find.byType(TextFormField), 'Jasmin');
     await _tap(tester, find.byKey(const ValueKey('name-continue')));
     expect(auth.currentUser?.firstName, 'Jasmin');
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
   });
 
   testWidgets('an invite link: the inviter first, then one tap to join', (
@@ -277,7 +277,7 @@ void main() {
 
     // They tapped Join already; signing in is the join.
     expect(crews.acceptedTokens, ['7K2QXM']);
-    expect(find.byKey(const ValueKey('home-crew-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-streak-card')), findsOneWidget);
   });
 
   testWidgets('a code that no longer works says so', (tester) async {
