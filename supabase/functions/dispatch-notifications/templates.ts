@@ -27,6 +27,14 @@ const templates: Record<string, Renderer> = {
       body: `${text(payload.actor_name, "A crew member", 60)}${applause} clapped your ${text(payload.pact_title, "pact", 120)} check-in.`,
     };
   },
+  // One push per clapper, so there is no count to fold in; the achievement's
+  // own words say which one, since an author may post a few in a day.
+  achievement_clapped: (payload) => ({
+    title: "Your crew is clapping",
+    body: typeof payload.achievement_text === "string" && payload.achievement_text.trim()
+      ? `${text(payload.actor_name, "A crew member", 60)} clapped your achievement: “${text(payload.achievement_text, "", 120)}”`
+      : `${text(payload.actor_name, "A crew member", 60)} clapped your achievement.`,
+  }),
   // The crew as the title, then who said what; just who and where when the
   // event carries no text.
   chat_message: (payload) => {

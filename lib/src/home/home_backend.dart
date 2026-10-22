@@ -103,6 +103,45 @@ class PactCheckIn {
   String get id => '$pactId/$userId/$day';
 }
 
+/// A win a member posted to the crew outside any pact — a first 6c, a five
+/// mile run. It sits in the stories rail beside the day's check-ins and takes
+/// claps the same way, but it keeps no pact: nothing about the week, the
+/// streak or a nudge counts it.
+class Achievement {
+  const Achievement({
+    required this.id,
+    required this.userId,
+    required this.day,
+    required this.text,
+    this.postedAt,
+    this.clapCount = 0,
+    this.viewerClapped = false,
+  });
+
+  final String id;
+  final String userId;
+
+  /// The crew's day it was posted on, `yyyy-MM-dd`.
+  final String day;
+  final String text;
+  final DateTime? postedAt;
+  final int clapCount;
+  final bool viewerClapped;
+
+  /// The longest an achievement may be, as the server holds it.
+  static const maxLength = 160;
+
+  factory Achievement.fromJson(Map<String, dynamic> row) => Achievement(
+    id: row['id'] as String,
+    userId: row['user_id'] as String,
+    day: row['posted_on'] as String,
+    text: row['body'] as String,
+    postedAt: DateTime.tryParse(row['created_at'] as String? ?? ''),
+    clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
+    viewerClapped: row['viewer_clapped'] as bool? ?? false,
+  );
+}
+
 class CrewActivity {
   const CrewActivity({
     required this.pactId,
@@ -211,8 +250,13 @@ class CrewWeek {
     required this.checkIns,
     this.streakWeeks = 0,
     this.latestActivity,
+    this.achievements = const [],
   });
   final CrewActivity? latestActivity;
+
+  /// Today's achievements, oldest first. Only the current week carries them:
+  /// the rail is the one place they show, and it shows today.
+  final List<Achievement> achievements;
   final int streakWeeks;
   final String today;
   final String weekStart;
@@ -404,6 +448,7 @@ class NotificationEntry {
   /// What they did, with [subject] already said.
   String get action => switch (type) {
     'check_in_clapped' => 'clapped your ${pactTitle ?? 'pact'} check-in',
+    'achievement_clapped' => 'clapped your achievement',
     'pact_completed' => 'completed ${pactTitle ?? 'a pact'}',
     'crew_nudge' => 'is cheering you on',
     _ => 'sent you a notification',
@@ -497,6 +542,23 @@ abstract interface class HomeBackend {
     required String today,
     required Set<String> pactIds,
     Map<String, Uint8List> photos = const {},
+  });
+
+  /// Posts [text] to the crew as one of today's achievements and returns it
+  /// as the server dated it.
+  Future<Achievement> postAchievement({
+    required String crewId,
+    required String text,
+  });
+
+  /// Takes down one of the viewer's own achievements, claps and all.
+  Future<void> deleteAchievement(String achievementId);
+
+  /// The achievement counterpart of [setClap]: idempotent both ways, and
+  /// answers with the achievement's clap count afterwards.
+  Future<int> setAchievementClap({
+    required String achievementId,
+    required bool clapped,
   });
 }
 
@@ -649,6 +711,39 @@ class SupabaseHomeBackend implements HomeBackend {
     return (row['clap_count'] as num).toInt();
   }
 
+  @override
+  Future<int> setAchievementClap({
+    required String achievementId,
+    required bool clapped,
+  }) async {
+    final row = Map<String, dynamic>.from(
+      await client.rpc(
+        'set_achievement_clap',
+        params: {'target_achievement_id': achievementId, 'clapped': clapped},
+      ),
+    );
+    return (row['clap_count'] as num).toInt();
+  }
+
+  @override
+  Future<Achievement> postAchievement({
+    required String crewId,
+    required String text,
+  }) async => Achievement.fromJson(
+    Map<String, dynamic>.from(
+      await client.rpc(
+        'post_crew_achievement',
+        params: {'target_crew_id': crewId, 'achievement_body': text.trim()},
+      ),
+    ),
+  );
+
+  @override
+  Future<void> deleteAchievement(String achievementId) => client.rpc(
+    'delete_crew_achievement',
+    params: {'target_achievement_id': achievementId},
+  );
+
   Future<Map<String, String>> _signed(
     String bucket,
     List<String> paths, [
@@ -711,6 +806,23 @@ class SupabaseHomeBackend implements HomeBackend {
               .order('user_id')
               .limit(1)
               .maybeSingle();
+    // Today's achievements, for the rail beside today's check-ins. A past
+    // week has no rail, so it goes without. A failure here is its own: the
+    // week is the page, and an achievement is one thing on it.
+    final achievements = weekStart != null
+        ? const <Achievement>[]
+        : await client
+              .rpc(
+                'crew_achievements',
+                params: {'target_crew_id': crewId, 'on_day': week.today},
+              )
+              .then(
+                (rows) => [
+                  for (final row in rows as List)
+                    Achievement.fromJson(Map<String, dynamic>.from(row as Map)),
+                ],
+              )
+              .catchError((Object _) => const <Achievement>[]);
     // Today's photos, signed for the stories rail. Only today's: the rail
     // shows the day, and the week's older check-ins are counted rather than
     // opened.
@@ -758,6 +870,7 @@ class SupabaseHomeBackend implements HomeBackend {
           .toList(),
       streakWeeks: week.streakWeeks,
       latestActivity: activity == null ? null : CrewActivity.fromJson(activity),
+      achievements: achievements,
     );
   }
 
@@ -875,5 +988,18 @@ class MissingHomeBackend implements HomeBackend {
     required String today,
     required Set<String> pactIds,
     Map<String, Uint8List> photos = const {},
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<Achievement> postAchievement({
+    required String crewId,
+    required String text,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> deleteAchievement(String achievementId) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<int> setAchievementClap({
+    required String achievementId,
+    required bool clapped,
   }) => Future.error(StateError('Supabase is not configured.'));
 }

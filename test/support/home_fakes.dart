@@ -123,6 +123,45 @@ class DashboardBackend implements HomeBackend {
     required bool clapped,
   }) async => clapped ? 1 : 0;
 
+  /// Today's achievements, as the week hands them back, and the ones the
+  /// page posted, clapped or took down.
+  List<Achievement> achievements = [];
+  bool failAchievement = false;
+  final achievementClaps = <({String id, bool clapped})>[];
+  final deletedAchievements = <String>[];
+
+  @override
+  Future<Achievement> postAchievement({
+    required String crewId,
+    required String text,
+  }) async {
+    if (failAchievement) throw StateError('offline');
+    final posted = Achievement(
+      id: 'achievement-${achievements.length + 1}',
+      userId: viewerId,
+      day: '2026-09-09',
+      text: text.trim(),
+      postedAt: DateTime.utc(2026, 9, 9, 12),
+    );
+    achievements = [...achievements, posted];
+    return posted;
+  }
+
+  @override
+  Future<void> deleteAchievement(String achievementId) async {
+    deletedAchievements.add(achievementId);
+    achievements = achievements.where((a) => a.id != achievementId).toList();
+  }
+
+  @override
+  Future<int> setAchievementClap({
+    required String achievementId,
+    required bool clapped,
+  }) async {
+    achievementClaps.add((id: achievementId, clapped: clapped));
+    return clapped ? 1 : 0;
+  }
+
   /// Finished weeks the fake hands back, newest first, and the week the page
   /// last asked for, so a test can tell which week was opened.
   List<CrewWeekSummary> history = const [];
@@ -166,6 +205,7 @@ class DashboardBackend implements HomeBackend {
       checkIns: selected
           .map((id) => PactCheckIn(id, viewerId, '2026-09-09'))
           .toList(),
+      achievements: achievements,
     );
   }
 

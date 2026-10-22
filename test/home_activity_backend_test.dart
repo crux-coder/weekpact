@@ -72,7 +72,9 @@ void main() {
         server.listen((request) async {
           requests.add(request.uri);
           request.response.headers.contentType = ContentType.json;
-          if (request.uri.path.endsWith('/rpc/crew_week_snapshot')) {
+          if (request.uri.path.endsWith('/rpc/crew_achievements')) {
+            request.response.write('[]');
+          } else if (request.uri.path.endsWith('/rpc/crew_week_snapshot')) {
             request.response.write(
               jsonEncode({
                 'today': '2026-09-14',

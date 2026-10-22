@@ -82,6 +82,7 @@ class StoriesBackend extends DashboardBackend {
         ),
         PactCheckIn('read', 'cai', _today, keptAt: DateTime.utc(2026, 9, 9, 8)),
       ],
+      achievements: achievements,
     );
   }
 }
@@ -401,24 +402,170 @@ void main() {
     expect(find.textContaining('Read 20 pages'), findsWidgets);
   });
 
-  testWidgets('with nothing kept, your tile opens nothing and offers no '
+  testWidgets('with nothing kept, your tile offers an achievement, not a '
       'camera', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await pumpStoriesHome(tester, backend: StoriesBackend(yourCheckIns: []));
-    // The pact card below is where a check-in is made, so the rail has no
-    // "+" and your own empty tile does not take a tap.
-    await tester.tap(
-      find.byKey(const ValueKey('story-tile-')),
-      warnIfMissed: false,
-    );
+    // The pact card below is where a check-in is made, so an empty tile of
+    // your own opens nothing to view — only the achievement composer.
+    await tester.tap(find.byKey(const ValueKey('story-tile-')));
     await tester.pumpUi();
     expect(find.byType(StoryViewer), findsNothing);
-    // And it is not a nudge either: you cannot nudge yourself out of bed, so
-    // your own dashed tile takes no gesture at all.
+    expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
+    // And it is not a nudge either: you cannot nudge yourself out of bed.
     expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  test('achievements walk with the day\'s check-ins, in the order they '
+      'happened', () {
+    final week = CrewWeek(
+      today: _today,
+      weekStart: '2026-09-07',
+      timezone: 'UTC',
+      pacts: weekWith([]).pacts,
+      members: weekWith([]).members,
+      checkIns: [
+        PactCheckIn('move', 'bea', _today, keptAt: DateTime.utc(2026, 9, 9, 7)),
+        PactCheckIn('move', 'bea', _today, keptAt: DateTime.utc(2026, 9, 9, 9)),
+      ],
+      achievements: [
+        Achievement(
+          id: 'six-c',
+          userId: 'bea',
+          day: _today,
+          text: 'Climbed my first 6c',
+          postedAt: DateTime.utc(2026, 9, 9, 8),
+        ),
+        // Yesterday's is not today's story.
+        Achievement(
+          id: 'old',
+          userId: 'cai',
+          day: '2026-09-08',
+          text: 'Ran 5 miles',
+          postedAt: DateTime.utc(2026, 9, 8, 8),
+        ),
+      ],
+    );
+    final days = MemberDay.read(week, viewerId: '');
+    final bea = days.firstWhere((d) => d.member.id == 'bea');
+    expect(bea.stories.map((s) => s.runtimeType), [
+      PactStory,
+      AchievementStory,
+      PactStory,
+    ]);
+    expect(bea.hasAchievement, isTrue);
+    expect(bea.stories[1].badge, WeekPactColors.achievementBadge);
+    final cai = days.firstWhere((d) => d.member.id == 'cai');
+    expect(cai.isIn, isFalse);
+    expect(cai.hasAchievement, isFalse);
+  });
+
+  testWidgets('an achievement wears a trophy in the rail and reads as one in '
+      'the viewer, and takes a clap of its own', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend()
+      ..achievements = [
+        Achievement(
+          id: 'six-c',
+          userId: 'eli',
+          day: _today,
+          text: 'Climbed my first 6c',
+          postedAt: DateTime.utc(2026, 9, 9, 10),
+          clapCount: 2,
+        ),
+      ];
+    await pumpStoriesHome(tester, backend: backend);
+    // Eli kept no pact, but posted a win: in, with a trophy on the tile.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('story-tile-eli')),
+        matching: find.byKey(const ValueKey('story-tile-achievement')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('story-tile-bea')),
+        matching: find.byKey(const ValueKey('story-tile-achievement')),
+      ),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('story-tile-eli')));
+    await tester.pumpUi();
+    expect(find.byType(StoryViewer), findsOneWidget);
+    expect(find.text('Climbed my first 6c'), findsOneWidget);
+    // The corner says achievement, never a pact.
+    expect(find.byKey(const ValueKey('story-achievement')), findsOneWidget);
+    expect(find.byKey(const ValueKey('story-pact')), findsNothing);
+    // Nobody deletes a crewmate's.
+    expect(find.byKey(const ValueKey('delete-achievement')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('story-clap')),
+        matching: find.text('2'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('story-clap')));
+    await tester.pumpUi();
+    expect(backend.achievementClaps, [(id: 'six-c', clapped: true)]);
+    expect(backend.claps, isEmpty);
+  });
+
+  testWidgets('the + on your tile posts an achievement to today\'s rail', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend();
+    await pumpStoriesHome(tester, backend: backend);
+    // Only your own tile carries the +.
+    expect(find.byKey(const ValueKey('story-tile-compose')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('achievement-text')),
+        matching: find.byType(EditableText),
+      ),
+      '  Ran 5 miles  ',
+    );
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('post-achievement')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
+    expect(backend.achievements.single.text, 'Ran 5 miles');
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('story-tile-')),
+        matching: find.byKey(const ValueKey('story-tile-achievement')),
+      ),
+      findsOneWidget,
+    );
+
+    // Your own achievement opens with a way to take it down.
+    await tester.tap(find.byKey(const ValueKey('story-tile-')));
+    await tester.pumpUi();
+    // Your check-in came first; the achievement is the next story.
+    await tester.tapAt(const Offset(340, 400));
+    await tester.pumpUi();
+    expect(find.text('Ran 5 miles'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('delete-achievement')));
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('confirm-delete-achievement')));
+    await tester.pumpUi();
+    expect(backend.deletedAchievements, ['achievement-1']);
+    expect(find.byType(StoryViewer), findsNothing);
+    expect(find.byKey(const ValueKey('story-tile-achievement')), findsNothing);
   });
 }

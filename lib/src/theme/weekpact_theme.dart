@@ -173,6 +173,14 @@ abstract final class WeekPactColors {
   /// `lantern`'s orange.
   static const gold = Color(0xFFF0D54E);
 
+  /// An achievement: a win posted outside any pact. The podium's gold, so a
+  /// story that kept no pact is told from every pact's sorbet at a glance —
+  /// `achievement` the wash and chip, `achievementBadge` the ring and the
+  /// trophy, taken deeper toward `lantern` so it reads apart from the lemon
+  /// pact's badge.
+  static const achievement = gold;
+  static const achievementBadge = Color(0xFFF2B935);
+
   /// A day kept, on the crew week's calendar. Sea glass sat on the old marine
   /// card set; on a warm card it read as the one cool thing on the page, so
   /// the kept day is a warm green off the same quay. It clears 10:1 with card

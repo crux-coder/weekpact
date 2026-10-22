@@ -8,6 +8,9 @@ import 'clap_control.dart';
 import '../pacts/pact_icons.dart';
 import '../theme/status_bar_blur.dart';
 import '../theme/weekpact_theme.dart';
+import '../widgets/app_components.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/pact_icon_badge.dart';
 import 'home_backend.dart';
@@ -43,25 +46,29 @@ class StoryViewer extends StatefulWidget {
   /// grey. Fires on the way in as well as on every move.
   final void Function(Story story)? onSeen;
 
-  static Future<void> open(
+  /// Completes with true when the viewer took down one of their own
+  /// achievements, so the page behind knows its day has changed.
+  static Future<bool> open(
     BuildContext context, {
     required List<MemberDay> days,
     required String viewerId,
     int initial = 0,
     HomeBackend? backend,
     void Function(Story story)? onSeen,
-  }) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => StoryViewer(
-        days: days,
-        viewerId: viewerId,
-        initial: initial,
-        backend: backend,
-        onSeen: onSeen,
-      ),
-    ),
-  );
+  }) async =>
+      await Navigator.of(context).push(
+        MaterialPageRoute<bool>(
+          fullscreenDialog: true,
+          builder: (_) => StoryViewer(
+            days: days,
+            viewerId: viewerId,
+            initial: initial,
+            backend: backend,
+            onSeen: onSeen,
+          ),
+        ),
+      ) ??
+      false;
 
   @override
   State<StoryViewer> createState() => _StoryViewerState();
@@ -133,12 +140,19 @@ class _StoryViewerState extends State<StoryViewer> {
       }
     });
     try {
-      final count = await backend.setClap(
-        pactId: story.checkIn.pactId,
-        userId: story.checkIn.userId,
-        day: story.checkIn.day,
-        clapped: clapped,
-      );
+      final count = switch (story) {
+        PactStory(:final checkIn) => await backend.setClap(
+          pactId: checkIn.pactId,
+          userId: checkIn.userId,
+          day: checkIn.day,
+          clapped: clapped,
+        ),
+        AchievementStory(:final achievement) =>
+          await backend.setAchievementClap(
+            achievementId: achievement.id,
+            clapped: clapped,
+          ),
+      };
       if (mounted) setState(() => _counts[story.id] = count);
     } catch (_) {
       if (!mounted) return;
@@ -157,6 +171,42 @@ class _StoryViewerState extends State<StoryViewer> {
       );
     } finally {
       if (mounted) setState(() => _clapping = false);
+    }
+  }
+
+  /// Takes down one of the viewer's own achievements, after asking. The page
+  /// closes on it rather than stepping over a gap: the day it was opened on
+  /// is no longer the crew's day, and Home rereads it on the way back.
+  Future<void> _delete(AchievementStory story) async {
+    final backend = widget.backend;
+    if (backend == null) return;
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        key: const ValueKey('delete-achievement-dialog'),
+        icon: HugeIconsStrokeRounded.delete02,
+        iconColor: WeekPactColors.salmon,
+        title: 'Delete this achievement?',
+        message: 'It comes off the crew’s day, claps and all.',
+        actions: [
+          AppButton(
+            key: const ValueKey('confirm-delete-achievement'),
+            label: 'DELETE',
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          const AppDialogDismiss(label: 'Keep it'),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await backend.deleteAchievement(story.achievement.id);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not delete. Try again.')),
+      );
     }
   }
 
@@ -206,6 +256,12 @@ class _StoryViewerState extends State<StoryViewer> {
                   story: story,
                   kept: kept,
                   onClose: () => Navigator.of(context).maybePop(),
+                  onDelete:
+                      mine &&
+                          story is AchievementStory &&
+                          widget.backend != null
+                      ? () => _delete(story)
+                      : null,
                 ),
                 const SizedBox(height: 10),
                 Expanded(
@@ -226,9 +282,14 @@ class _StoryViewerState extends State<StoryViewer> {
                             url: story.photoUrl!,
                           )
                         else
-                          _PactWash(
+                          _Wash(
                             key: const ValueKey('story-wash'),
                             story: story,
+                          ),
+                        if (story case AchievementStory(:final text))
+                          _AchievementText(
+                            key: const ValueKey('story-achievement-text'),
+                            text: text,
                           ),
                         // Bounded on both sides, so a long pact name
                         // ellipsizes inside the shot rather than running off
@@ -239,10 +300,15 @@ class _StoryViewerState extends State<StoryViewer> {
                           bottom: 12,
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: _PactChip(
-                              key: const ValueKey('story-pact'),
-                              story: story,
-                            ),
+                            child: switch (story) {
+                              PactStory() => _PactChip(
+                                key: const ValueKey('story-pact'),
+                                story: story,
+                              ),
+                              AchievementStory() => const _AchievementChip(
+                                key: ValueKey('story-achievement'),
+                              ),
+                            },
                           ),
                         ),
                       ],
@@ -257,6 +323,9 @@ class _StoryViewerState extends State<StoryViewer> {
                         key: const ValueKey('story-clap'),
                         count: _counts[story.id] ?? 0,
                         clapped: _clapped.contains(story.id),
+                        what: story is AchievementStory
+                            ? 'achievement'
+                            : 'check-in',
                         onPressed: _clapping ? null : _clap,
                       ),
                     const Spacer(),
@@ -300,11 +369,15 @@ class _ClapPill extends StatelessWidget {
     super.key,
     required this.count,
     required this.clapped,
+    this.what = 'check-in',
     this.onPressed,
   });
 
   final int count;
   final bool clapped;
+
+  /// What is being clapped, for the hint a screen reader reads.
+  final String what;
   final VoidCallback? onPressed;
 
   @override
@@ -319,7 +392,7 @@ class _ClapPill extends StatelessWidget {
         1 => '1 clap',
         _ => '$count claps',
       },
-      hint: clapped ? 'Take your clap back' : 'Clap for this check-in',
+      hint: clapped ? 'Take your clap back' : 'Clap for this $what',
       excludeSemantics: true,
       child: Material(
         color: clapped ? clapInk : Colors.transparent,
@@ -397,6 +470,7 @@ class _Head extends StatelessWidget {
     required this.story,
     required this.kept,
     required this.onClose,
+    this.onDelete,
   });
 
   final MemberDay day;
@@ -404,6 +478,11 @@ class _Head extends StatelessWidget {
   final Story story;
   final DateTime? kept;
   final VoidCallback onClose;
+
+  /// Takes down the story on show. Only the viewer's own achievements offer
+  /// it: a check-in is undone on its pact card, and nobody deletes a
+  /// crewmate's.
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -467,8 +546,9 @@ class _Head extends StatelessWidget {
                   color: WeekPactDarkCard.ink,
                 ),
               ),
-              // The pact is named on the shot itself, and the check-in is
-              // today's by definition. What is left to say is the hour.
+              // The pact or the achievement is named on the shot itself, and
+              // the story is today's by definition. What is left to say is
+              // the hour.
               if (time != null)
                 Text(
                   time,
@@ -484,6 +564,16 @@ class _Head extends StatelessWidget {
             ],
           ),
         ),
+        if (onDelete != null)
+          IconButton(
+            key: const ValueKey('delete-achievement'),
+            onPressed: onDelete,
+            tooltip: 'Delete achievement',
+            icon: const HugeIcon(
+              icon: HugeIconsStrokeRounded.delete02,
+              color: WeekPactDarkCard.ink,
+            ),
+          ),
         IconButton(
           key: const ValueKey('close-stories'),
           onPressed: onClose,
@@ -498,20 +588,22 @@ class _Head extends StatelessWidget {
   }
 }
 
-/// The frame a check-in kept without a photo fills — most of them, since most
-/// pacts do not ask for one.
+/// The frame a story without a photo fills — most check-ins, since most pacts
+/// do not ask for one, and every achievement, which is words rather than a
+/// shot.
 ///
 /// Not a card standing in for a photo: a wash that fills the frame the way a
 /// photo does, so the page is the same page whether or not the pact asked for
 /// a picture and the chip in the corner always sits on something. Two soft
-/// lights over a dark fall, mixed from the pact's own tint and badge, so a run
-/// and a reading night are different weather rather than different layouts.
+/// lights over a dark fall, mixed from the story's own tint and badge, so a run
+/// and a reading night are different weather rather than different layouts —
+/// and an achievement, in gold, is a different weather again.
 ///
 /// Where the lights sit is drawn from the check-in's own name — the same
 /// number every time, since a story that looked different each time it was
 /// opened would read as a picture that changed.
-class _PactWash extends StatelessWidget {
-  const _PactWash({super.key, required this.story});
+class _Wash extends StatelessWidget {
+  const _Wash({super.key, required this.story});
 
   final Story story;
 
@@ -528,8 +620,9 @@ class _PactWash extends StatelessWidget {
     // page is drawn on, so the wash ends where the screen does.
     final deep = Color.lerp(story.badge, WeekPactColors.black, .58)!;
     return Semantics(
-      label: 'No photo with this check-in',
-      image: true,
+      label: story is AchievementStory ? null : 'No photo with this check-in',
+      image: story is! AchievementStory,
+      excludeSemantics: story is AchievementStory,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -589,7 +682,7 @@ class _PactWash extends StatelessWidget {
 class _PactChip extends StatelessWidget {
   const _PactChip({super.key, required this.story});
 
-  final Story story;
+  final PactStory story;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -633,6 +726,99 @@ class _PactChip extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+/// An achievement's own words, set large in the middle of the shot.
+///
+/// The words are the whole of an achievement, so they take the place a photo
+/// takes, rather than a caption's. Scaled down, never cut, so a full 160
+/// characters still fits a short phone.
+class _AchievementText extends StatelessWidget {
+  const _AchievementText({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    // Clear of the chip along the foot.
+    padding: const EdgeInsets.fromLTRB(24, 24, 24, 64),
+    child: Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width - 72,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const HugeIcon(
+                icon: achievementIcon,
+                color: WeekPactColors.achievement,
+                size: 40,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: WeekPactDarkCard.ink,
+                  fontSize: 28,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// What the shot is, on the shot: an achievement rather than a pact.
+///
+/// The pact chip's twin — the same squircle and lifted edge, in the same
+/// corner — so the two read as one family, with gold and a trophy where a
+/// pact puts its sorbet and badge. That corner is the one place a story says
+/// which kind it is, and it says it the same way for both.
+class _AchievementChip extends StatelessWidget {
+  const _AchievementChip({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
+    decoration: ShapeDecoration(
+      color: WeekPactColors.achievement,
+      shape: WeekPactMetrics.buttonShape,
+      shadows: [
+        BoxShadow(
+          color: Color.lerp(WeekPactColors.achievement, Colors.black, .24)!,
+          offset: WeekPactMetrics.raisedOffset,
+        ),
+      ],
+    ),
+    child: const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PactIconBadge(
+          icon: achievementIcon,
+          tint: WeekPactColors.achievementBadge,
+          size: 24,
+        ),
+        SizedBox(width: 8),
+        Text(
+          'Achievement',
+          style: TextStyle(
+            color: WeekPactColors.black,
+            fontSize: 13.5,
+            height: 1.2,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     ),
   );
 }

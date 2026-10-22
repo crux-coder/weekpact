@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/avatar_shape.dart';
@@ -16,15 +18,17 @@ import 'stories.dart';
 /// says; this says who has been out today, which is the reason to open the app
 /// at all.
 ///
-/// The rail does not post. Checking in belongs to the pact card below, photo
-/// and all, so there is no "+" here — a tile only ever opens what is already
-/// there, and your own tile stays dark until you have kept something.
+/// Checking in belongs to the pact card below, photo and all, so the rail
+/// never posts a check-in. What it does post is an achievement — a win that
+/// keeps no pact and so has no card to be made on. Your own tile carries the
+/// "+" for it; a member who has posted one wears a trophy on theirs.
 class StoriesRail extends StatelessWidget {
   const StoriesRail({
     super.key,
     required this.days,
     this.onOpen,
     this.onNudge,
+    this.onCompose,
     this.bleed = 0,
   });
 
@@ -45,6 +49,10 @@ class StoriesRail extends StatelessWidget {
   /// is the one tile with nothing else behind a tap, and a gesture nobody
   /// discovers is a feature nobody has.
   final void Function(MemberDay day)? onNudge;
+
+  /// Starts an achievement. Reached from your own tile only: its "+", a long
+  /// press, and a plain tap while you have nothing to open yet.
+  final VoidCallback? onCompose;
 
   /// How far past the page's own padding the rail runs, so tiles leave the
   /// screen at its edge rather than at the page's margin.
@@ -79,6 +87,7 @@ class StoriesRail extends StatelessWidget {
         onNudge: !days[index].isIn && !days[index].isViewer && onNudge != null
             ? () => onNudge!(days[index])
             : null,
+        onCompose: days[index].isViewer ? onCompose : null,
       ),
     );
     return SizedBox(
@@ -98,11 +107,23 @@ class StoriesRail extends StatelessWidget {
 }
 
 class _StoryTile extends StatelessWidget {
-  const _StoryTile({super.key, required this.day, this.onOpen, this.onNudge});
+  const _StoryTile({
+    super.key,
+    required this.day,
+    this.onOpen,
+    this.onNudge,
+    this.onCompose,
+  });
 
   final MemberDay day;
   final VoidCallback? onOpen;
   final VoidCallback? onNudge;
+  final VoidCallback? onCompose;
+
+  /// The corner marks: a trophy for an achievement today, a "+" for posting
+  /// one. Small enough to sit inside the tile's corner without covering the
+  /// face.
+  static const _pip = 20.0;
 
   /// The name under the face. Your own tile says so rather than repeating a
   /// name you know, which is also the only label in the rail that never
@@ -127,8 +148,16 @@ class _StoryTile extends StatelessWidget {
   String get _semantics {
     final name = day.isViewer ? 'You' : _fullName;
     if (!day.isIn) return '$name, not in yet';
-    final pacts = day.stories.map((s) => s.pact.title).toSet().join(', ');
-    return day.seen ? '$name, $pacts, seen' : '$name, $pacts, new';
+    final kept = day.stories
+        .map(
+          (s) => switch (s) {
+            PactStory(:final pact) => pact.title,
+            AchievementStory() => 'an achievement',
+          },
+        )
+        .toSet()
+        .join(', ');
+    return day.seen ? '$name, $kept, seen' : '$name, $kept, new';
   }
 
   @override
@@ -160,16 +189,22 @@ class _StoryTile extends StatelessWidget {
               child: Opacity(opacity: .55, child: _Face(day: day)),
             ),
     );
-    final tap = onOpen ?? onNudge;
+    final tap = onOpen ?? onNudge ?? onCompose;
+    final press = onNudge ?? onCompose;
+    final pressHint = onNudge != null
+        ? 'Nudge them'
+        : onCompose != null
+        ? 'Share an achievement'
+        : null;
     return Semantics(
       button: tap != null,
       label: _semantics,
       onTap: tap,
-      // Neither gesture has a glyph, so this is the only place either is
-      // announced.
-      onTapHint: onOpen == null && onNudge != null ? 'Nudge them' : null,
-      onLongPressHint: onNudge == null ? null : 'Nudge them',
-      onLongPress: onNudge,
+      // Neither gesture has a glyph a screen reader can find, so this is the
+      // only place either is announced.
+      onTapHint: onOpen == null ? pressHint : null,
+      onLongPressHint: pressHint,
+      onLongPress: press,
       excludeSemantics: true,
       child: SizedBox(
         width: StoriesRail.tileSize,
@@ -186,7 +221,7 @@ class _StoryTile extends StatelessWidget {
                 // who is behind — but a press alone was the only way in, on a
                 // page that draws no crew roster at all.
                 onTap: tap,
-                onLongPress: onNudge == null
+                onLongPress: press == null
                     ? null
                     : () {
                         unawaited(
@@ -194,10 +229,41 @@ class _StoryTile extends StatelessWidget {
                             (Object _) {},
                           ),
                         );
-                        onNudge!();
+                        press();
                       },
                 customBorder: const AvatarShape(),
-                child: face,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    face,
+                    if (day.hasAchievement)
+                      const Positioned(
+                        top: 0,
+                        right: 0,
+                        child: _Pip(
+                          key: ValueKey('story-tile-achievement'),
+                          icon: achievementIcon,
+                          size: _pip,
+                          color: WeekPactColors.achievementBadge,
+                        ),
+                      ),
+                    if (onCompose != null)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: GestureDetector(
+                          key: const ValueKey('story-tile-compose'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: onCompose,
+                          child: const _Pip(
+                            icon: HugeIconsStrokeRounded.add01,
+                            size: _pip,
+                            color: WeekPactColors.cream,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: StoriesRail._gap),
@@ -226,6 +292,40 @@ class _StoryTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A small round mark in a tile's corner, ringed in the canvas so it reads as
+/// set on the tile rather than cut into it.
+class _Pip extends StatelessWidget {
+  const _Pip({
+    super.key,
+    required this.icon,
+    required this.size,
+    required this.color,
+  });
+
+  final List<List<dynamic>> icon;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: color,
+      shape: BoxShape.circle,
+      border: Border.all(color: context.canvas, width: 2),
+    ),
+    child: Center(
+      child: HugeIcon(
+        icon: icon,
+        color: WeekPactColors.black,
+        size: size - 8,
+        strokeWidth: 2.2,
+      ),
+    ),
+  );
 }
 
 class _Face extends StatelessWidget {

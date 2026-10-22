@@ -522,7 +522,8 @@ class _NotificationRow extends StatelessWidget {
   /// the gesture; a check-in wears the pact it was.
   static List<List<dynamic>> _glyph(NotificationEntry entry) =>
       switch (entry.type) {
-        'check_in_clapped' => HugeIconsStrokeRounded.favourite,
+        'check_in_clapped' ||
+        'achievement_clapped' => HugeIconsStrokeRounded.favourite,
         'crew_nudge' => HugeIconsStrokeRounded.sun01,
         _ => PactIcon.find(entry.iconKey ?? '').data,
       };

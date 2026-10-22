@@ -68,7 +68,7 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
   late DateTime _month = _thisMonth;
 
   /// Months already loaded, so stepping back and forth does not refetch.
-  final _loaded = <DateTime, List<Story>>{};
+  final _loaded = <DateTime, List<PactStory>>{};
   final _failed = <DateTime>{};
 
   @override
@@ -94,7 +94,7 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
   /// The check-ins as stories, in the colour of their pact. A check-in whose
   /// pact or member has since left the crew is left out, the way the rail
   /// leaves it out.
-  List<Story> _stories(List<PactCheckIn> checkIns) {
+  List<PactStory> _stories(List<PactCheckIn> checkIns) {
     final pacts = widget.week.pacts;
     final members = {for (final m in widget.week.members) m.id};
     return [
@@ -102,7 +102,7 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
         if (checkIn.photoUrl != null && members.contains(checkIn.userId))
           if (pacts.indexWhere((p) => p.id == checkIn.pactId) case final i
               when i >= 0)
-            Story(
+            PactStory(
               checkIn: checkIn,
               pact: pacts[i],
               tint: WeekPactColors.pactTint(i),
@@ -142,7 +142,7 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
 
   /// Opens [stories] — one day's — in the story viewer, a member at a time
   /// in the crew's order with the viewer first, starting on [first]'s.
-  void _open(List<Story> stories, {Story? first}) {
+  void _open(List<PactStory> stories, {PactStory? first}) {
     final days = <MemberDay>[];
     final members = [...widget.week.members]
       ..sort(
@@ -176,11 +176,11 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
     );
   }
 
-  static DateTime _keptAt(Story story) =>
+  static DateTime _keptAt(PactStory story) =>
       story.keptAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   /// The day's photo to show: the most clapped, the earliest among ties.
-  static Story _cover(List<Story> stories) => stories.reduce(
+  static PactStory _cover(List<PactStory> stories) => stories.reduce(
     (a, b) =>
         b.clapCount > a.clapCount ||
             (b.clapCount == a.clapCount && _keptAt(b).isBefore(_keptAt(a)))
@@ -192,8 +192,8 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
   Widget build(BuildContext context) {
     final stories = _loaded[_month];
     final failed = _failed.contains(_month);
-    final byDay = <String, List<Story>>{};
-    for (final story in stories ?? const <Story>[]) {
+    final byDay = <String, List<PactStory>>{};
+    for (final story in stories ?? const <PactStory>[]) {
       (byDay[story.checkIn.day] ??= []).add(story);
     }
     final best = stories == null || stories.isEmpty ? null : _cover(stories);
@@ -335,9 +335,9 @@ class _PhotoGrid extends StatelessWidget {
   });
   final DateTime month;
   final DateTime today;
-  final Map<String, List<Story>> byDay;
-  final Story Function(List<Story>) cover;
-  final void Function(List<Story>) onOpen;
+  final Map<String, List<PactStory>> byDay;
+  final PactStory Function(List<PactStory>) cover;
+  final void Function(List<PactStory>) onOpen;
 
   static const _gap = 5.0;
 
@@ -507,7 +507,7 @@ class _MostClapped extends StatelessWidget {
     required this.name,
     required this.onTap,
   });
-  final Story story;
+  final PactStory story;
   final String name;
   final VoidCallback onTap;
 

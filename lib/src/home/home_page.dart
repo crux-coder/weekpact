@@ -16,6 +16,7 @@ import 'dart:async';
 import '../notifications/notification_scope.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/notifications_page.dart';
+import 'achievement_composer.dart';
 import 'home_backend.dart';
 import 'nudge_sheet.dart';
 import 'stories.dart';
@@ -668,6 +669,7 @@ class _HomeDestinationState extends State<_HomeDestination>
           timezone: week.timezone,
           pacts: week.pacts,
           members: week.members,
+          achievements: week.achievements,
           latestActivity:
               week.latestActivity?.userId == widget.userId &&
                   week.latestActivity?.pactId == pactId &&
@@ -756,7 +758,7 @@ class _HomeDestinationState extends State<_HomeDestination>
     final today = _week?.today;
     if (index < 0 || today == null) return;
     final opened = <String>{};
-    await StoryViewer.open(
+    final changed = await StoryViewer.open(
       context,
       days: open,
       viewerId: widget.userId,
@@ -764,12 +766,51 @@ class _HomeDestinationState extends State<_HomeDestination>
       backend: widget.backend,
       onSeen: (story) => opened.add(story.id),
     );
+    // An achievement taken down in the viewer leaves the day in hand stale.
+    if (changed && mounted) unawaited(_refresh());
     if (opened.isEmpty) return;
     // Marked on the way out rather than as each story is shown: the rail is
     // behind the viewer, so a ring going grey there is a frame nobody sees —
     // and a rebuild of this page in the middle of another route's build.
     unawaited(widget.seenStore.mark(widget.userId, today, opened));
     if (mounted) setState(() => _seen.addAll(opened));
+  }
+
+  /// Posts an achievement to the crew in view, from the "+" on your own tile.
+  ///
+  /// What the server answers with goes straight into the day in hand, so
+  /// your tile wears the trophy the moment the sheet is down rather than on
+  /// the next minute's refresh. It arrives unseen, the way your own check-in
+  /// does, so the ring says there is something new to look at.
+  Future<void> _composeAchievement() async {
+    final crew = _crew;
+    if (crew == null || _week == null) return;
+    final posted = await showAchievementComposer(
+      context: context,
+      backend: widget.backend,
+      crewId: crew.id,
+      crewName: crew.name,
+    );
+    final week = _week;
+    if (!mounted || posted == null || week == null || _crew?.id != crew.id) {
+      return;
+    }
+    setState(() {
+      _week = CrewWeek(
+        today: week.today,
+        streakWeeks: week.streakWeeks,
+        weekStart: week.weekStart,
+        timezone: week.timezone,
+        pacts: week.pacts,
+        members: week.members,
+        latestActivity: week.latestActivity,
+        checkIns: week.checkIns,
+        achievements: [...week.achievements, posted],
+      );
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Posted to today’s stories.')));
   }
 
   /// Opens the crew's week, the page the count under the rail is a line of.
@@ -940,6 +981,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                                         bleed: 12,
                                         onOpen: (day) =>
                                             _openStories(days, day),
+                                        onCompose: _composeAchievement,
                                       ),
                                       selector: selector,
                                     ),

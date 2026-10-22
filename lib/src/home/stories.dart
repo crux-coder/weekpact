@@ -1,17 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import 'home_backend.dart';
 
+/// The one glyph an achievement is drawn with, wherever it appears.
+const achievementIcon = HugeIconsStrokeRounded.champion;
+
+/// One thing a member did today, as the rail and the viewer draw it: a pact
+/// check-in, or an achievement posted outside any pact.
+///
+/// The two are mixed in one member's day, in the order they happened, and
+/// told apart by colour and by the chip the viewer pins to each: a check-in
+/// wears its pact's sorbet and badge, an achievement wears gold and a trophy.
+sealed class Story {
+  const Story();
+
+  /// The one name a story goes by: a clap and a seen mark mean it by this.
+  String get id;
+  String get userId;
+  String? get photoUrl;
+  bool get hasPhoto => photoUrl != null;
+  DateTime? get keptAt;
+
+  /// The story's wash colour, and the deeper hue its ring and badge take.
+  Color get tint;
+  Color get badge;
+
+  /// The claps this story already has, and whether the viewer gave one.
+  /// The viewer opens on these rather than on zero — a clap is the one thing
+  /// a story asks for, and a page that forgets the ones already given asks
+  /// for it again every time.
+  int get clapCount;
+  bool get viewerClapped;
+}
+
 /// One check-in, read as a story: what was kept, when, and the colour the pact
 /// wears everywhere else.
 ///
-/// A story is a check-in and nothing more. A pact that asks for a photo leaves
-/// one on the row; a pact that does not leaves a check-in the viewer still
-/// opens, drawn in the pact's own tint. The rail never invents a post.
-class Story {
-  const Story({
+/// A pact that asks for a photo leaves one on the row; a pact that does not
+/// leaves a check-in the viewer still opens, drawn in the pact's own tint.
+class PactStory extends Story {
+  const PactStory({
     required this.checkIn,
     required this.pact,
     required this.tint,
@@ -24,20 +55,51 @@ class Story {
   /// The pact's card colour, and the deeper hue its badge and ring take. Both
   /// come from the pact's place in the crew's list, so a story is the same
   /// colour as the card the check-in was made on.
+  @override
   final Color tint;
+  @override
   final Color badge;
 
+  @override
   String get id => checkIn.id;
+  @override
+  String get userId => checkIn.userId;
+  @override
   String? get photoUrl => checkIn.photoUrl;
-  bool get hasPhoto => checkIn.photoUrl != null;
+  @override
   DateTime? get keptAt => checkIn.keptAt;
-
-  /// The claps this check-in already has, and whether the viewer gave one.
-  /// The viewer opens on these rather than on zero — a clap is the one thing
-  /// a story asks for, and a page that forgets the ones already given asks
-  /// for it again every time.
+  @override
   int get clapCount => checkIn.clapCount;
+  @override
   bool get viewerClapped => checkIn.viewerClapped;
+}
+
+/// An achievement, read as a story: the member's own words over a gold wash.
+///
+/// Gold is the podium's colour for a week fully kept, and none of the pact
+/// sorbets, so an achievement never reads as one more pact in the rail.
+class AchievementStory extends Story {
+  const AchievementStory(this.achievement);
+
+  final Achievement achievement;
+
+  @override
+  String get id => achievement.id;
+  @override
+  String get userId => achievement.userId;
+  @override
+  String? get photoUrl => null;
+  @override
+  DateTime? get keptAt => achievement.postedAt;
+  @override
+  Color get tint => WeekPactColors.achievement;
+  @override
+  Color get badge => WeekPactColors.achievementBadge;
+  @override
+  int get clapCount => achievement.clapCount;
+  @override
+  bool get viewerClapped => achievement.viewerClapped;
+  String get text => achievement.text;
 }
 
 /// One member's day, as the rail draws it: their stories, whether they have
@@ -52,7 +114,8 @@ class MemberDay {
 
   final WeekMember member;
 
-  /// Today's check-ins, oldest first — the order the viewer walks them in.
+  /// Today's check-ins and achievements, oldest first — the order the viewer
+  /// walks them in.
   final List<Story> stories;
 
   /// Every story here has been opened on this device. False when there is
@@ -61,6 +124,10 @@ class MemberDay {
   final bool isViewer;
 
   bool get isIn => stories.isNotEmpty;
+
+  /// Whether any of today's stories is an achievement, which the rail marks
+  /// with a trophy on the tile.
+  bool get hasAchievement => stories.any((s) => s is AchievementStory);
 
   /// The crew's day, in the order the rail shows it: you first, then whoever
   /// has something unseen, then the seen ones, then whoever is not in yet.
@@ -81,25 +148,20 @@ class MemberDay {
     };
     final days = <MemberDay>[];
     for (final member in week.members) {
-      final stories =
-          week.checkIns
-              .where(
-                (i) =>
-                    i.userId == member.id &&
-                    i.day == week.today &&
-                    byPact.containsKey(i.pactId),
-              )
-              .map((i) {
-                final (index, pact) = byPact[i.pactId]!;
-                return Story(
-                  checkIn: i,
-                  pact: pact,
-                  tint: WeekPactColors.pactTint(index),
-                  badge: WeekPactColors.pactBadge(index),
-                );
-              })
-              .toList()
-            ..sort((a, b) => _at(a).compareTo(_at(b)));
+      final stories = <Story>[
+        for (final i in week.checkIns)
+          if (i.userId == member.id &&
+              i.day == week.today &&
+              byPact.containsKey(i.pactId))
+            PactStory(
+              checkIn: i,
+              pact: byPact[i.pactId]!.$2,
+              tint: WeekPactColors.pactTint(byPact[i.pactId]!.$1),
+              badge: WeekPactColors.pactBadge(byPact[i.pactId]!.$1),
+            ),
+        for (final a in week.achievements)
+          if (a.userId == member.id && a.day == week.today) AchievementStory(a),
+      ]..sort((a, b) => _at(a).compareTo(_at(b)));
       days.add(
         MemberDay(
           member: member,
