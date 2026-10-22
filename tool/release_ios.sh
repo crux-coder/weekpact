@@ -7,6 +7,7 @@ cd "$ROOT"
 usage() {
   cat <<'HELP'
 Usage: ./tool/release_ios.sh [--build-number N] [--env FILE] [--no-open]
+                             [--skip-version-check]
 
 Build a signed release archive and open it in Xcode Organizer.
 Version comes from pubspec.yaml. The build number is minutes elapsed since
@@ -16,14 +17,20 @@ counter, previous archive, or pubspec build number when one of those is ahead.
 Defaults to .env.json when present, otherwise .env. Relative paths use repo root.
 Use --build-number N to choose one explicitly; it must still exceed the local
 maximum.
+The version must be newer than the iOS release marked live in
+public.app_releases, or installed apps are never told about it; raise it with
+pnpm bump-version. --skip-version-check builds without asking the backend.
 No upload or App Store submission is performed by this script.
+Once the release is live in the App Store, run pnpm mark-released ios.
 HELP
 }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
+source tool/release_version.sh
 ENV_FILE=".env"
 [[ ! -f .env.json ]] || ENV_FILE=".env.json"
 BUILD_NUMBER=""
 OPEN_ARCHIVE=true
+CHECK_VERSION=true
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h) usage; exit 0 ;;
@@ -32,6 +39,7 @@ while [[ $# -gt 0 ]]; do
       if [[ "$1" == --env ]]; then ENV_FILE="$2"; else BUILD_NUMBER="$2"; fi
       shift 2 ;;
     --no-open) OPEN_ARCHIVE=false; shift ;;
+    --skip-version-check) CHECK_VERSION=false; shift ;;
     *) fail "Unknown option: $1 (use --help)" ;;
   esac
 done
@@ -43,6 +51,7 @@ xcodebuild -version >/dev/null || fail 'Select a full Xcode installation with xc
 VERSION_LINE="$(sed -nE 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p' pubspec.yaml)"
 VERSION="${VERSION_LINE%%+*}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Use version: X.Y.Z+N in pubspec.yaml.'
+if "$CHECK_VERSION"; then require_new_version ios "$VERSION"; fi
 COUNTER=.dart_tool/ios-release-build-number
 ARCHIVE=build/ios/archive/Runner.xcarchive
 highest=0
@@ -80,5 +89,5 @@ DEST="$ROOT/build/ios/releases/WeekPact-$VERSION-$BUILD_NUMBER.xcarchive"
 [[ ! -e "$DEST" ]] || fail "Archive already exists: $DEST"
 ditto "$ARCHIVE" "$DEST"
 printf '\nArchive ready: %s\n\n' "$DEST"
-printf '%s\n' 'In Xcode Organizer:' '1. Select this WeekPact archive.' '2. Distribute App → App Store Connect → Upload (labels may vary by Xcode version).' '3. Review signing and upload.' '4. Wait for processing in App Store Connect, then use TestFlight or select the build for an App Store release.'
+printf '%s\n' 'In Xcode Organizer:' '1. Select this WeekPact archive.' '2. Distribute App → App Store Connect → Upload (labels may vary by Xcode version).' '3. Review signing and upload.' '4. Wait for processing in App Store Connect, then use TestFlight or select the build for an App Store release.' "5. Once $VERSION is live in the App Store: pnpm mark-released ios"
 if "$OPEN_ARCHIVE"; then open -a Xcode "$DEST"; fi

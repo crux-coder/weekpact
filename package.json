@@ -8,6 +8,7 @@
     "release-android-test": "bash tool/release_android.sh --track internal",
     "release-android-build": "bash tool/release_android.sh",
     "release-test": "bash tool/release_android.sh --track internal --no-open && bash tool/release_ios.sh",
+    "bump-version": "bash tool/bump_version.sh",
     "mark-released": "bash tool/mark_released.sh",
     "firebase:configure": "dart pub global run flutterfire_cli:flutterfire configure --platforms=ios,android --ios-bundle-id=dev.codepeaktrail.weekpact --android-package-name=dev.codepeaktrail.weekpact --out=lib/firebase_options.dart"
   }
