@@ -375,9 +375,12 @@ void main() {
     );
     await tester.pumpUi();
     expect(find.text('This week · Sep 7 – Sep 13'), findsOneWidget);
-    expect(find.text('Crew progress'), findsOneWidget);
-    expect(find.text('1 of 2 checked in today'), findsOneWidget);
-    await tester.tap(find.byTooltip('Show Read 20 pages'));
+    expect(find.text('Streak'), findsOneWidget);
+    expect(find.text('1 of 2 checked in today'), findsNothing);
+    await tester.drag(
+      find.byKey(const ValueKey('crew-pact-carousel')),
+      const Offset(-330, 0),
+    );
     await tester.pumpUi();
     expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
     expect(find.byTooltip('Sep 9 · Completed'), findsOneWidget);
@@ -406,7 +409,7 @@ void main() {
     backend.failLoad = false;
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
-    expect(find.text('Crew progress'), findsOneWidget);
+    expect(find.text('Streak'), findsOneWidget);
     expect(find.byKey(const ValueKey('crew-pact-carousel')), findsOneWidget);
     expect(find.text('TRY AGAIN'), findsNothing);
     await tester.pumpWidget(const SizedBox());

@@ -70,6 +70,23 @@ class DashboardBackend implements HomeBackend {
     int limit = 20,
   }) async => [];
 
+  /// Photo check-ins the fake hands back for any month, and the months the
+  /// drawer asked for.
+  List<PactCheckIn> monthPhotos = const [];
+  bool failMonthPhotos = false;
+  final requestedMonths = <String>[];
+  @override
+  Future<List<PactCheckIn>> fetchMonthPhotos(
+    String crewId, {
+    required String monthStart,
+  }) async {
+    requestedMonths.add(monthStart);
+    if (failMonthPhotos) throw StateError('offline');
+    return monthPhotos
+        .where((i) => i.day.startsWith(monthStart.substring(0, 7)))
+        .toList();
+  }
+
   /// Notifications the fake hands back, newest first. Tests that care set it;
   /// everything else gets an empty list and a quiet badge.
   List<NotificationEntry> notifications = const [];

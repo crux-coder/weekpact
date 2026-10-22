@@ -77,6 +77,16 @@ class PactCheckIn {
   /// When it was kept. The stories rail orders by it and the viewer prints it.
   final DateTime? keptAt;
 
+  factory PactCheckIn.fromJson(Map<String, dynamic> row) => PactCheckIn(
+    row['pact_id'] as String,
+    row['user_id'] as String,
+    row['completed_on'] as String,
+    photoPath: row['photo_path'] as String?,
+    keptAt: DateTime.tryParse(row['created_at'] as String? ?? ''),
+    clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
+    viewerClapped: row['viewer_clapped'] as bool? ?? false,
+  );
+
   PactCheckIn withPhotoUrl(String? url) => PactCheckIn(
     pactId,
     userId,
@@ -237,17 +247,7 @@ class CrewWeek {
         )
         .toList(),
     checkIns: (row['check_ins'] as List)
-        .map(
-          (i) => PactCheckIn(
-            i['pact_id'] as String,
-            i['user_id'] as String,
-            i['completed_on'] as String,
-            photoPath: i['photo_path'] as String?,
-            keptAt: DateTime.tryParse(i['created_at'] as String? ?? ''),
-            clapCount: (i['clap_count'] as num?)?.toInt() ?? 0,
-            viewerClapped: i['viewer_clapped'] as bool? ?? false,
-          ),
-        )
+        .map((i) => PactCheckIn.fromJson(Map<String, dynamic>.from(i as Map)))
         .toList(),
   );
 
@@ -506,6 +506,14 @@ abstract interface class HomeBackend {
     int limit = 20,
   });
 
+  /// Every check-in that kept a photo in the calendar month beginning on
+  /// [monthStart] (`yyyy-MM-01`), oldest first, each with its photo signed
+  /// and the claps it has.
+  Future<List<PactCheckIn>> fetchMonthPhotos(
+    String crewId, {
+    required String monthStart,
+  });
+
   Future<List<NotificationEntry>> fetchNotifications({
     NotificationEntry? before,
     int limit = 20,
@@ -595,6 +603,30 @@ class SupabaseHomeBackend implements HomeBackend {
         .order('completed_on', ascending: false)
         .limit(limit);
     return rows.map(CrewActivity.fromJson).toList();
+  }
+
+  @override
+  Future<List<PactCheckIn>> fetchMonthPhotos(
+    String crewId, {
+    required String monthStart,
+  }) async {
+    final rows = await client.rpc(
+      'crew_month_photos',
+      params: {'target_crew_id': crewId, 'month_start': monthStart},
+    );
+    final checkIns = [
+      for (final row in rows as List)
+        PactCheckIn.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+    // One batch of signed URLs for the month, rather than one per tile.
+    final urls = await _signed(
+      'check-in-photos',
+      checkIns.map((i) => i.photoPath).nonNulls.toSet().toList(),
+    );
+    return [
+      for (final checkIn in checkIns)
+        if (urls[checkIn.photoPath] case final url?) checkIn.withPhotoUrl(url),
+    ];
   }
 
   @override
@@ -849,6 +881,11 @@ class MissingHomeBackend implements HomeBackend {
     String crewId, {
     CrewActivity? before,
     int limit = 20,
+  }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<PactCheckIn>> fetchMonthPhotos(
+    String crewId, {
+    required String monthStart,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<int> setClap({

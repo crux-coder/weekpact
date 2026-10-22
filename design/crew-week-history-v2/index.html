@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew history v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --canvas:#222A2B; --dark-ink:#EDF3F2; --dark-muted:#AAB8B9; --dark-border:#67797C;
+    --ink:#191B19; --muted:#46535A; --cream:#F0F5F4;
+    --progress:#F2F3AE; --mint:#A8D2CC; --stone:#CDE0DC; --inset:#D7E0DF;
+    --dark-fill:#1F2627; --graphite:#363F40; --graphite-edge:#66716F;
+    --clay:#D0B2A4; --clay-b:#CBA08B; --sage:#B4C8A2; --sage-b:#A4C289; --blush:#D6B2B6; --blush-b:#D1999F;
+    --kept:#B8CC8E; --pending:#C6CACB; --done:#3F7A6B; --streak:#E08A45; --gold:#F0D54E;
+    --sky:#87CFFA;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:44px 24px 120px; background:#121616; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1760px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { color:var(--dark-muted); max-width:80ch; line-height:1.65; font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--dark-ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(392px,1fr)); gap:24px; }
+  .cell { background:#181d1d; border:1px solid #262d2d; border-radius:22px; padding:20px 20px 24px; display:flex; flex-direction:column; }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#121616; background:var(--dark-muted); padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--mint); }
+  .cell > p { color:#9aa5a5; font-size:13px; line-height:1.6; margin:0 0 6px; }
+  .cost { color:#6f7a7a; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .cost b { color:#9aa5a5; font-weight:500; }
+
+  .phone { width:360px; max-width:100%; margin:auto auto 0; background:var(--canvas); border-radius:28px;
+    padding:14px 12px 18px; position:relative; overflow:hidden; min-height:740px; }
+  .back { width:24px; height:24px; margin:2px 0 6px; }
+  svg.i { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .crew { font-size:30px; line-height:1.15; font-weight:700; margin:0; }
+  .sub { color:var(--dark-muted); font-size:14px; margin:4px 0 0; }
+  .h2 { font-size:21px; font-weight:700; margin:18px 0 10px; display:flex; justify-content:space-between; align-items:baseline; }
+  .h2 span { color:var(--dark-muted); font-size:13px; font-weight:500; }
+  .muted { color:var(--dark-muted); }
+
+  .card { --line:color-mix(in srgb,var(--t) 72%,#000); --edge:color-mix(in srgb,var(--t) 76%,#000);
+    background:var(--t); color:var(--ink); border:1px solid var(--line); border-radius:18px; box-shadow:0 2px 0 var(--edge); }
+  .card.dark { --t:var(--dark-fill); border-color:var(--dark-border); box-shadow:0 2px 0 var(--dark-border); color:var(--cream); }
+
+  /* tabs (crew page segmented) */
+  .tabs { display:flex; gap:6px; margin:14px 0 4px; }
+  .tab { flex:1; text-align:center; font-size:13px; font-weight:600; padding:8px 0; border-radius:8px; color:var(--dark-muted); border:1px solid #33403f; }
+  .tab.on { background:var(--stone); color:var(--ink); border-color:#8aa19c; box-shadow:0 2px 0 #8aa19c; }
+
+  /* stat chips */
+  .chips { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .chip { padding:10px 10px 9px; }
+  .chip .n { font-size:20px; font-weight:700; line-height:1; }
+  .chip .l { font-size:11px; font-weight:500; margin-top:5px; opacity:.8; }
+
+  /* A heatmap */
+  .heat { padding:14px 12px 12px; }
+  .heat .hd, .heat .wk { display:grid; grid-template-columns:54px repeat(7,1fr) 42px; gap:4px; align-items:center; }
+  .heat .hd div { font-size:10px; font-weight:600; color:var(--dark-muted); text-align:center; }
+  .heat .wk { margin-top:4px; }
+  .heat .lab { font-size:11px; color:var(--dark-muted); font-weight:500; white-space:nowrap; }
+  .heat .lab.m { color:var(--dark-ink); font-weight:700; }
+  .sq { aspect-ratio:1; border-radius:5px; background:#2d3738; }
+  .heat .pc { font-size:12px; font-weight:700; text-align:right; }
+  .heat .wk.full .pc { color:var(--gold); }
+  .heat .wk.sel { outline:2px solid var(--stone); outline-offset:2px; border-radius:6px; }
+  .legend { display:flex; align-items:center; gap:4px; justify-content:flex-end; font-size:10px; color:var(--dark-muted); margin-top:10px; }
+  .legend .sq { width:11px; }
+
+  /* B bar chart */
+  .bars { padding:14px 14px 10px; }
+  .bars .plot { height:130px; display:flex; align-items:flex-end; gap:6px; position:relative; border-bottom:1px solid #3a4647; }
+  .bars .plot .goal { position:absolute; left:0; right:0; top:0; border-top:1px dashed #56676a; }
+  .bars .plot .goal span { position:absolute; right:0; top:-15px; font-size:10px; color:var(--dark-muted); }
+  .bar { flex:1; border-radius:6px 6px 2px 2px; background:#45585a; position:relative; }
+  .bar.full { background:var(--kept); }
+  .bar.sel { background:var(--stone); box-shadow:0 0 0 2px var(--canvas),0 0 0 4px var(--stone); }
+  .bar.now { background:repeating-linear-gradient(135deg,#3b4a4c 0 4px,#4a5c5e 4px 8px); }
+  .bars .x { display:flex; gap:6px; margin-top:6px; }
+  .bars .x div { flex:1; text-align:center; font-size:9.5px; color:var(--dark-muted); }
+  .bars .x div.sel { color:var(--dark-ink); font-weight:700; }
+  .recap { padding:14px; margin-top:12px; }
+  .recap .top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .recap .d { font-size:18px; font-weight:700; }
+  .recap .big { font-size:34px; font-weight:700; line-height:1; }
+  .pbar { display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center; margin-top:10px; font-size:13px; font-weight:600; }
+  .track { grid-column:1/-1; height:10px; border-radius:99px; background:rgba(0,0,0,.12); overflow:hidden; }
+  .track i { display:block; height:100%; border-radius:99px; background:var(--done); }
+  .people { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+  .pp { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 8px 4px 4px; border-radius:99px; background:rgba(0,0,0,.08); }
+  .av { width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--ink); border:1px solid rgba(0,0,0,.25); }
+  .pp.miss { opacity:.55; }
+
+  /* C timeline */
+  .tl { position:relative; padding-left:26px; margin-top:4px; }
+  .tl::before { content:""; position:absolute; left:9px; top:6px; bottom:6px; width:2px; background:#3a4647; }
+  .run { position:relative; margin-bottom:12px; }
+  .run .dot { position:absolute; left:-26px; top:12px; width:20px; height:20px; border-radius:50%; background:var(--canvas); border:2px solid var(--streak); display:flex; align-items:center; justify-content:center; }
+  .run .dot svg { width:11px; height:11px; color:var(--streak); }
+  .run.brk .dot { border-color:#6f7f80; }
+  .run.brk .dot svg { color:#9aa5a5; }
+  .runcard { padding:12px 12px 10px; }
+  .runcard .t { display:flex; justify-content:space-between; align-items:baseline; }
+  .runcard .t b { font-size:16px; }
+  .runcard .t span { font-size:12px; font-weight:500; }
+  .runcard .wks { display:flex; gap:6px; margin-top:10px; }
+  .wkpill { flex:1; border-radius:10px; padding:6px 6px 5px; background:rgba(0,0,0,.1); text-align:center; }
+  .wkpill .a { font-size:10px; font-weight:600; opacity:.75; }
+  .wkpill .b { font-size:14px; font-weight:700; }
+  .note { font-size:12px; margin-top:8px; display:flex; gap:6px; align-items:center; }
+  .note svg { width:14px; height:14px; flex:none; }
+
+  /* D recap deck */
+  .deck { position:relative; height:470px; margin-top:6px; }
+  .rc { position:absolute; top:0; bottom:0; width:288px; padding:16px; }
+  .rc.peekL { left:-278px; } .rc.main { left:24px; } .rc.peekR { left:322px; }
+  .tag { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:1.2px; padding:4px 8px; border-radius:99px; background:var(--ink); color:var(--cream); }
+  .rc .date { font-size:24px; font-weight:700; margin-top:10px; }
+  .rc .hero { display:flex; align-items:baseline; gap:8px; margin-top:12px; }
+  .rc .hero b { font-size:56px; line-height:1; }
+  .rc .hero span { font-size:13px; font-weight:600; }
+  .medal { display:flex; align-items:center; gap:8px; margin-top:12px; padding:9px 10px; border-radius:12px; background:rgba(0,0,0,.08); font-size:13px; font-weight:600; }
+  .medal .m { width:26px; height:26px; border-radius:50%; background:var(--gold); border:1px solid #b89e2c; display:flex; align-items:center; justify-content:center; flex:none; }
+  .medal .m svg { width:14px; height:14px; color:var(--ink); }
+  .mini { display:grid; grid-template-columns:22px repeat(7,1fr) 28px; gap:3px; align-items:center; margin-top:4px; font-size:11px; font-weight:600; }
+  .mini .c { height:14px; border-radius:4px; background:rgba(0,0,0,.12); }
+  .mini .c.k { background:var(--done); }
+  .dots { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+  .dots i { width:6px; height:6px; border-radius:99px; background:#56676a; }
+  .dots i.on { width:18px; background:var(--dark-ink); }
+
+  /* E per-pact */
+  .pact { padding:14px; margin-bottom:10px; }
+  .pact .head { display:flex; justify-content:space-between; align-items:center; }
+  .pact .title { font-size:18px; font-weight:700; }
+  .pact .per { font-size:12px; color:var(--muted); font-weight:500; margin-top:2px; }
+  .badge { width:36px; height:36px; border-radius:12px; background:var(--b); border:1px solid color-mix(in srgb,var(--b) 72%,#000); box-shadow:0 2px 0 color-mix(in srgb,var(--b) 76%,#000); display:flex; align-items:center; justify-content:center; }
+  .badge svg { width:18px; height:18px; color:var(--ink); }
+  .mx { display:grid; grid-template-columns:40px repeat(8,1fr); gap:4px; margin-top:10px; align-items:center; }
+  .mx .h { font-size:9.5px; color:var(--muted); text-align:center; font-weight:600; }
+  .mx .n { font-size:12px; font-weight:600; }
+  .mx .c { height:18px; border-radius:5px; background:rgba(0,0,0,.1); border:1px solid rgba(0,0,0,.08); }
+  .mx .c.k { background:var(--done); border-color:#2f5e52; }
+  .mx .c.p { background:linear-gradient(90deg,var(--done) 0 var(--p),rgba(0,0,0,.1) var(--p)); }
+  .mx .c.na { background:transparent; border:1px dashed rgba(0,0,0,.2); }
+  .rate { font-size:12px; margin-top:8px; font-weight:600; display:flex; justify-content:space-between; }
+
+  /* F month calendar */
+  .mhead { display:flex; justify-content:space-between; align-items:center; margin:14px 0 10px; }
+  .mhead b { font-size:20px; }
+  .navb { width:32px; height:32px; border-radius:8px; background:var(--graphite); border:1px solid var(--graphite-edge); box-shadow:0 2px 0 var(--graphite-edge); display:flex; align-items:center; justify-content:center; }
+  .navb svg { width:15px; height:15px; color:var(--dark-ink); }
+  .navb.off { opacity:.3; }
+  .month { padding:12px 10px; }
+  .month .dn, .month .row { display:grid; grid-template-columns:repeat(7,1fr) 38px; gap:5px; align-items:center; }
+  .month .dn div { font-size:10px; font-weight:600; color:var(--dark-muted); text-align:center; }
+  .month .row { margin-top:5px; padding:3px; border-radius:12px; }
+  .month .row.full { background:color-mix(in srgb,var(--gold) 16%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 55%,transparent); }
+  .day { aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:var(--ink); background:#2d3738; }
+  .day.out { background:transparent; color:#4f5d5e; }
+  .day.fut { background:transparent; border:1px dashed #3d4a4b; color:#5f6e6f; }
+  .day.today { box-shadow:0 0 0 2px var(--dark-ink); }
+  .month .row .p { font-size:11px; font-weight:700; text-align:right; color:var(--dark-muted); }
+  .month .row.full .p { color:var(--gold); }
+  .dayDetail { padding:12px 14px; margin-top:12px; }
+  .dayDetail .t { font-size:15px; font-weight:700; }
+  .dayDetail .r { display:flex; justify-content:space-between; font-size:13px; font-weight:500; margin-top:8px; }
+  .ck { color:var(--done); font-weight:700; }
+
+  .sheetHint { position:absolute; left:0; right:0; bottom:0; padding:16px 12px 18px; background:linear-gradient(transparent,var(--canvas) 30%); }
+  .callout { font-size:11px; color:var(--dark-muted); text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Crew history — six more directions</h1>
+  <p class="lede">What ships today is a stack of identical grey rows under the live week: date, seven segments, a percentage, repeated twelve times. Every week reads the same, so nothing in the list tells you <b>how the crew has been doing</b> — whether it is on a run, when it slipped, who carries it. These six give history a shape of its own. Each phone is drawn on the existing chassis (charcoal canvas, raised tinted cards, Rubik, the kept-day green, the streak orange, podium gold for a fully kept week). Tapping a week anywhere still opens the existing past-week sheet, so these replace the <i>list</i>, not the detail.</p>
+
+  <div class="grid" id="grid">
+
+  <!-- A -->
+  <section class="cell">
+    <div class="cellHead"><span class="key pick">A</span><h2>Season heatmap</h2></div>
+    <p>One compact grid replaces the rows: a line per week, a square per day, shaded by how much of the crew checked in. Twelve weeks fit in the space four rows take today, and patterns jump out — "we always die on weekends", "August was rough". Three stat chips on top say the headline before you read a single square. Fully kept weeks get the podium gold on their number.</p>
+    <p class="cost"><b>Cost:</b> none on the backend — it is the same <code>crew_week_history</code> data (<code>shareOut</code> + <code>percent</code>) drawn denser. Best streak and average are computed client-side. <b>Risk:</b> 30pt squares are a small tap target; tap the whole row, not the square.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="sub">History · last 12 weeks</div>
+      <div class="chips" style="margin-top:14px">
+        <div class="card chip" style="--t:var(--progress)"><div class="n">81%</div><div class="l">Average</div></div>
+        <div class="card chip" style="--t:var(--gold)"><div class="n">5</div><div class="l">Weeks kept</div></div>
+        <div class="card dark chip"><div class="n" style="color:var(--streak)">4 wk</div><div class="l">Best streak</div></div>
+      </div>
+      <div class="card dark heat" style="margin-top:12px" id="heatA"></div>
+      <div class="legend">less <span class="sq" style="background:#2d3738"></span><span class="sq" style="background:#5f6e4f"></span><span class="sq" style="background:#8ea36b"></span><span class="sq" style="background:var(--kept)"></span> whole crew</div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="cell">
+    <div class="cellHead"><span class="key pick">B</span><h2>Bar chart + inline recap</h2></div>
+    <p>A bar per week, scrubbable with a thumb; the selected week's recap sits right underneath instead of in a sheet. The recap is a <i>summary</i>, not the full calendar: each pact as a progress bar, and who hit their target as chips. The dashed line is 100%. The current week is the hatched bar on the right, so the chart connects back to "now".</p>
+    <p class="cost"><b>Cost:</b> per-pact percentages and per-member hit/miss for a past week — <code>fetchWeek(crewId, weekStart:)</code> already returns this, just summarised. <b>Risk:</b> horizontal scrub on a page that has horizontal swipes elsewhere; keep the chart outside the carousel.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="sub">Crew progress by week</div>
+      <div class="card dark bars" style="margin-top:14px" id="barsB"></div>
+      <div class="card recap" style="--t:var(--stone)">
+        <div class="top">
+          <div><div class="tag"><svg class="i" viewBox="0 0 24 24" width="10" height="10"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>WEEK CLOSED</div><div class="d" style="margin-top:8px">Sep 7 – 13</div></div>
+          <div style="text-align:right"><div class="big">83%</div><div style="font-size:11px;font-weight:600;color:var(--muted)">30 / 36 check-ins</div></div>
+        </div>
+        <div class="pbar"><span>Move for 30 min</span><span>11/12</span><div class="track"><i style="width:92%"></i></div></div>
+        <div class="pbar"><span>Read 20 pages</span><span>12/12</span><div class="track"><i style="width:100%"></i></div></div>
+        <div class="pbar"><span>No phone after 11</span><span>7/12</span><div class="track"><i style="width:58%;background:#7d8f6a"></i></div></div>
+        <div class="people">
+          <span class="pp"><span class="av" style="background:var(--sky)">Y</span>You ✓</span>
+          <span class="pp"><span class="av" style="background:var(--blush)">A</span>Ana ✓</span>
+          <span class="pp"><span class="av" style="background:var(--sage)">J</span>Jo ✓</span>
+          <span class="pp miss"><span class="av" style="background:var(--clay)">M</span>Mia 6/9</span>
+        </div>
+      </div>
+      <div class="callout">tap “Sep 7 – 13” for the full week</div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">C</span><h2>Streak timeline</h2></div>
+    <p>History told as a story: weeks are grouped into <b>runs</b> (consecutive kept weeks, orange flame) and <b>breaks</b> (the week it slipped, grey). Each group says one sentence about what happened — who carried it, what pact broke it. Long boring stretches collapse into one card, so a year of history is a short scroll.</p>
+    <p class="cost"><b>Cost:</b> grouping is client-side from the weekly percents. The one-line notes ("Mia missed 3 of no-phone") need per-week member/pact misses — a small extension to <code>crew_week_history</code>. <b>Gain:</b> the streak card on the live page finally has a past it points to.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="sub">History</div>
+      <div class="h2">Story so far <span>since Jul 6</span></div>
+      <div class="tl">
+        <div class="run"><div class="dot"><svg class="i" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 3 2 0-2 0-4 0-6z"/></svg></div>
+          <div class="card runcard" style="--t:var(--progress)">
+            <div class="t"><b>On a run · 3 weeks</b><span>now</span></div>
+            <div class="wks">
+              <div class="wkpill"><div class="a">AUG 24</div><div class="b">100</div></div>
+              <div class="wkpill"><div class="a">AUG 31</div><div class="b">100</div></div>
+              <div class="wkpill"><div class="a">SEP 14</div><div class="b">100</div></div>
+              <div class="wkpill" style="border:1.5px dashed rgba(0,0,0,.3);background:none"><div class="a">THIS</div><div class="b">42</div></div>
+            </div>
+            <div class="note"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>Ana hasn't missed a day in this run</div>
+          </div>
+        </div>
+        <div class="run brk"><div class="dot"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+          <div class="card dark runcard">
+            <div class="t"><b>Slipped · Sep 7</b><span class="muted">83%</span></div>
+            <div class="note muted"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>No phone after 11 · Mia 1 of 3</div>
+          </div>
+        </div>
+        <div class="run"><div class="dot"><svg class="i" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 3 2 0-2 0-4 0-6z"/></svg></div>
+          <div class="card runcard" style="--t:var(--stone)">
+            <div class="t"><b>Run · 4 weeks</b><span>Jul 27 – Aug 23</span></div>
+            <div class="note"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>Best run yet · 144 check-ins</div>
+          </div>
+        </div>
+        <div class="run brk"><div class="dot"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+          <div class="card dark runcard">
+            <div class="t"><b>Rough patch · 2 weeks</b><span class="muted">58%, 64%</span></div>
+            <div class="note muted"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Jo joined Jul 20 · Read 20 pages added</div>
+          </div>
+        </div>
+        <div class="run"><div class="dot" style="border-color:var(--mint)"><svg class="i" viewBox="0 0 24 24" style="color:var(--mint)"><path d="M5 12l4 4 10-10"/></svg></div>
+          <div class="card dark runcard"><div class="t"><b>Crew started</b><span class="muted">Jul 6</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">D</span><h2>Weekly recap deck</h2></div>
+    <p>Each finished week becomes a recap card in a horizontal deck — the same gesture as the pact carousel, so nothing new to learn. The card is designed to be <i>read</i>, not inspected: the big number, a medal if the week was kept, the MVP, and a mini calendar per member. Swipe left to go further back. Shareable as an image later, for free.</p>
+    <p class="cost"><b>Cost:</b> MVP and per-member day grid come from <code>fetchWeek(…, weekStart:)</code>; loads one card ahead lazily. <b>Risk:</b> only one week visible at a time, so trends are hard to see — pair with A's chips or B's chart above the deck.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="sub">Weekly recaps</div>
+      <div class="deck">
+        <div class="card rc peekL" style="--t:var(--stone)"></div>
+        <div class="card rc main" style="--t:var(--progress)">
+          <span class="tag">LAST WEEK</span>
+          <div class="date">Sep 14 – 20</div>
+          <div class="hero"><b>100%</b><span>36 / 36<br>check-ins</span></div>
+          <div class="medal"><span class="m"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>Kept · 3rd week in a row</div>
+          <div class="medal"><span class="av" style="background:var(--blush);width:26px;height:26px">A</span>Ana was first in every day</div>
+          <div style="margin-top:14px" id="miniD"></div>
+        </div>
+        <div class="card rc peekR" style="--t:var(--stone)"></div>
+      </div>
+      <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+    </div>
+  </section>
+
+  <!-- E -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">E</span><h2>History per pact</h2></div>
+    <p>A <b>History</b> tab next to Members and Pacts, organised by pact instead of by week. Each pact card shows the last eight weeks per member, so the question history really answers — <i>who keeps what</i> — is one glance. A full square is a target hit; a partial fill is how close they got; a dashed square is before they joined. The bottom line gives the pact's hit rate.</p>
+    <p class="cost"><b>Cost:</b> a new query: per pact × member × week counts (one RPC, eight weeks). Slots into the existing tabbed crew page. <b>Gain:</b> the only option that shows <i>individual</i> history, which is what people actually compare.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="tabs"><div class="tab">Members</div><div class="tab">Pacts · 3</div><div class="tab on">History</div></div>
+      <div id="pactsE" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- F -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">F</span><h2>Month calendar</h2></div>
+    <p>A plain month view, the shape everyone already knows from their phone's calendar. Days are shaded by how much of the crew checked in; a fully kept week is wrapped in a gold band, so a good month literally looks gold. Tap a day and a small panel says who was out that day. Chevrons step months.</p>
+    <p class="cost"><b>Cost:</b> per-day shares already exist in <code>shareOut</code>; the day panel needs who-checked-in-which-day (already in <code>fetchWeek</code>). <b>Risk:</b> weeks are the app's unit and a month splits them; the weekly % column on the right keeps them visible.</p>
+    <div class="phone">
+      <svg class="i back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+      <h3 class="crew">Early birds</h3>
+      <div class="mhead">
+        <div class="navb"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+        <b>September</b>
+        <div class="navb off"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+      <div class="card dark month" id="monthF"></div>
+      <div class="card dayDetail" style="--t:var(--stone)">
+        <div class="t">Wed, Sep 9 · 3 of 4 out</div>
+        <div class="r"><span>You</span><span class="ck">Move · Read</span></div>
+        <div class="r"><span>Ana</span><span class="ck">Move · Read · Phone</span></div>
+        <div class="r"><span>Jo</span><span class="ck">Read</span></div>
+        <div class="r" style="color:var(--muted)"><span>Mia</span><span>—</span></div>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
+  <p class="lede" style="margin-top:36px"><b>If I had to pick:</b> <b>A</b> as the default history view (it keeps everything the current list shows, takes a third of the space, and finally shows patterns), with <b>B</b>'s inline recap as what a tapped week opens instead of the full sheet. <b>E</b> is the most interesting new idea — it is a different question (people, not weeks) and could live as its own tab later. <b>C</b> is the most "app-personality" one if you want the streak to feel like a story.</p>
+</div>
+
+<script>
+  // Fake 12 weeks of shareOut (0..1 per day), newest first.
+  const weeks = [
+    ['Sep 14',[1,1,1,1,1,1,1],100],
+    ['Sep 7',[1,1,.75,1,.75,.5,.75],83],
+    ['Aug 31',[1,1,1,1,1,1,1],100],
+    ['Aug 24',[1,1,1,1,1,1,1],100],
+    ['Aug 17',[1,1,1,1,1,1,1],100],
+    ['Aug 10',[1,1,1,.75,1,1,1],100],
+    ['Aug 3',[1,.75,1,1,.75,.5,.5],86],
+    ['Jul 27',[1,1,1,1,1,1,1],100],
+    ['Jul 20',[.75,.5,.75,.5,.5,.25,.25],64],
+    ['Jul 13',[.5,.75,.5,.5,.25,.25,0],58],
+    ['Jul 6',[.67,.67,.33,.67,.33,0,.33],61],
+  ];
+  const shade = s => s>=1 ? 'var(--kept)' : s>=.7 ? '#8ea36b' : s>=.4 ? '#5f6e4f' : s>0 ? '#3f4b3e' : '#2d3738';
+
+  // A
+  let h = '<div class="hd"><div></div>'+['M','T','W','T','F','S','S'].map(d=>`<div>${d}</div>`).join('')+'<div></div></div>';
+  h += `<div class="wk" style="opacity:.9"><div class="lab m">This wk</div>${[1,.75,.5,.75,.5,0,0].map((s,i)=>`<div class="sq" style="background:${i>4?'transparent;border:1px dashed #3d4a4b':shade(s)}"></div>`).join('')}<div class="pc muted">42%</div></div>`;
+  weeks.forEach((w,i)=>{
+    const month = i===0||w[0].split(' ')[0]!==weeks[i-1][0].split(' ')[0];
+    h += `<div class="wk ${w[2]>=100?'full':''} ${i===1?'sel':''}"><div class="lab ${month?'m':''}">${w[0]}</div>${w[1].map(s=>`<div class="sq" style="background:${shade(s)}"></div>`).join('')}<div class="pc">${w[2]}%</div></div>`;
+  });
+  document.getElementById('heatA').innerHTML = h;
+
+  // B
+  const bw = weeks.slice(0,10).reverse();
+  let b = '<div class="plot"><div class="goal"><span>100%</span></div>';
+  bw.forEach(w=>{ b += `<div class="bar ${w[2]>=100?'full':''} ${w[0]==='Sep 7'?'sel':''}" style="height:${w[2]}%"></div>`; });
+  b += '<div class="bar now" style="height:42%"></div></div><div class="x">';
+  bw.forEach(w=>{ b += `<div class="${w[0]==='Sep 7'?'sel':''}">${w[0].replace(' ','<br>')}</div>`; });
+  b += '<div>now</div></div>';
+  document.getElementById('barsB').innerHTML = b;
+
+  // D mini calendars
+  let m = '<div class="mini"><span></span>'+['M','T','W','T','F','S','S'].map(d=>`<span style="text-align:center;opacity:.6">${d}</span>`).join('')+'<span></span></div>';
+  [['Y','var(--sky)',[1,0,1,1,0,1,1,1,1]],['A','var(--blush)',[1,1,1,1,1,1,1]],['J','var(--sage)',[1,1,0,1,1,0,1]],['M','var(--clay)',[0,1,1,1,0,1,1]]].forEach(([n,c,d])=>{
+    m += `<div class="mini"><span class="av" style="background:${c}">${n}</span>${d.slice(0,7).map(k=>`<span class="c ${k?'k':''}"></span>`).join('')}<span style="text-align:right">9/9</span></div>`;
+  });
+  document.getElementById('miniD').innerHTML = m;
+
+  // E
+  const pacts = [
+    ['Move for 30 min','3 days per person','var(--clay)','var(--clay-b)','<path d="M13 4a1.5 1.5 0 1 0 0 .01M9 20l3-6 3 3v4M8 11l3-3 3 2 3-1"/>','88%',
+      [['You',[1,1,1,.66,1,1,1,1]],['Ana',[1,1,1,1,1,1,1,1]],['Jo',[-1,-1,.66,1,1,1,.33,1]],['Mia',[1,.33,1,1,1,.66,1,1]]]],
+    ['Read 20 pages','5 days per person','var(--sage)','var(--sage-b)','<path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/>','94%',
+      [['You',[1,1,1,1,1,1,.8,1]],['Ana',[1,1,1,1,1,1,1,1]],['Jo',[-1,-1,.6,1,1,1,1,1]],['Mia',[1,1,1,1,.8,1,1,1]]]],
+    ['No phone after 11','4 days per person','var(--blush)','var(--blush-b)','<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M4 4l16 16"/>','63%',
+      [['You',[-1,-1,-1,1,.5,1,1,1]],['Ana',[-1,-1,-1,1,1,1,1,1]],['Jo',[-1,-1,-1,.5,.75,1,.5,1]],['Mia',[-1,-1,-1,.25,.5,.75,.25,.5]]]],
+  ];
+  const hdr = ['Jul 27','Aug 3','10','17','24','31','Sep 7','14'];
+  document.getElementById('pactsE').innerHTML = pacts.map(([t,per,tint,bd,icon,rate,rows])=>`
+    <div class="card pact" style="--t:${tint}">
+      <div class="head"><div><div class="title">${t}</div><div class="per">${per}</div></div><div class="badge" style="--b:${bd}"><svg class="i" viewBox="0 0 24 24">${icon}</svg></div></div>
+      <div class="mx"><span></span>${hdr.map(x=>`<span class="h">${x}</span>`).join('')}
+      ${rows.map(([n,v])=>`<span class="n">${n}</span>${v.map(x=>x<0?'<span class="c na"></span>':x>=1?'<span class="c k"></span>':`<span class="c p" style="--p:${x*100}%"></span>`).join('')}`).join('')}
+      </div>
+      <div class="rate"><span>Targets hit, 8 weeks</span><span>${rate}</span></div>
+    </div>`).join('');
+
+  // F
+  // September 2026: Mondays are the 7th, 14th, 21st, 28th.
+  const sep = [
+    [[31,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],100],
+    [[7,1],[8,1],[9,.75],[10,1],[11,.75],[12,.5],[13,.75],83],
+    [[14,1],[15,1],[16,1],[17,1],[18,1],[19,1],[20,1],100],
+    [[21,1],[22,.75],[23,.5],[24,.75],[25,.5,0,'today'],[26,-1],[27,-1],42],
+    [[28,-1],[29,-1],[30,-1],[1,-2],[2,-2],[3,-2],[4,-2],''],
+  ];
+  let f = '<div class="dn">'+['M','T','W','T','F','S','S'].map(d=>`<div>${d}</div>`).join('')+'<div></div></div>';
+  sep.forEach((r,ri)=>{
+    const pct = r[7];
+    f += `<div class="row ${pct>=100?'full':''}">`;
+    r.slice(0,7).forEach((d,di)=>{
+      const out = (ri===0&&di===0)||d[1]===-2;
+      const fut = d[1]===-1;
+      const today = d[3]==='today';
+      const bg = out||fut ? '' : `background:${shade(d[1])};`;
+      const sel = ri===1&&di===2 ? 'box-shadow:0 0 0 2px var(--stone);' : '';
+      f += `<div class="day ${out?'out':''} ${fut?'fut':''} ${today?'today':''}" style="${bg}${sel}${d[1]<.4&&!out&&!fut?'color:var(--dark-ink)':''}">${d[0]}</div>`;
+    });
+    f += `<div class="p">${pct===''?'':pct+'%'}</div></div>`;
+  });
+  document.getElementById('monthF').innerHTML = f;
+</script>
+</body>
+</html>

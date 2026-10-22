@@ -198,9 +198,8 @@ void main() {
       await tester.runAsync(() async {
         final image = await boundary.toImage(pixelRatio: 3);
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        await File(
-          'website/public/screenshots/$name.png',
-        ).writeAsBytes(bytes!.buffer.asUint8List());
+        await File('website/public/screenshots/$name.png')
+            .writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
       });
     }

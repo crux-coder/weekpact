@@ -2,9 +2,11 @@ import '../widgets/avatar_shape.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../home/home_backend.dart';
@@ -69,6 +71,11 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
   static const _membersPerPage = 4;
   int _memberPage = 0;
 
+  void _turnMemberPage(int page) {
+    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
+    setState(() => _memberPage = page);
+  }
+
   @override
   Widget build(BuildContext context) {
     final week = widget.week;
@@ -91,7 +98,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
             );
             final contentHeight = math.max(
               space.maxHeight,
-              285 +
+              225 +
                   visible.length * 56 +
                   (pageCount > 1 ? 48 : 0) +
                   extraText * (220 + visible.length * 50),
@@ -112,29 +119,15 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                pact.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${pact.daysPerWeek} ${pact.daysPerWeek == 1 ? 'day' : 'days'} per person ${week.isOver ? 'that' : 'this'} week',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: context.muted,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            pact.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              height: 1.1,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -144,40 +137,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '${week.pactCompleted(pact)}',
-                            style: const TextStyle(
-                              fontSize: 42,
-                              height: 1,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                ' / ${pact.daysPerWeek * widget.members.length}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              height: 1,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      'CHECK-INS',
-                      style: TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 1.5,
-                        color: context.muted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     if (visible.isEmpty)
                       const Expanded(
                         child: Center(child: Text('No members to show.')),
@@ -187,8 +147,15 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                         child: Column(
                           children: [
                             _CalendarHeader(week: week),
+                            // Room between the dates and the people: the
+                            // header labels the grid, it is not a row of it.
+                            const SizedBox(height: 20),
+                            // Each person gets one row's height and the
+                            // rows stack from the top: spread over the card,
+                            // two people read as two unrelated strips.
                             for (final member in visible)
-                              Expanded(
+                              SizedBox(
+                                height: _rowHeight,
                                 child: _MemberDays(
                                   week: week,
                                   pact: pact,
@@ -222,9 +189,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                 tooltip: 'Previous members',
                                 onPressed: page == 0
                                     ? null
-                                    : () => setState(
-                                        () => _memberPage = page - 1,
-                                      ),
+                                    : () => _turnMemberPage(page - 1),
                                 icon: const HugeIcon(
                                   icon: HugeIconsStrokeRounded.arrowLeft01,
                                 ),
@@ -233,9 +198,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                                 tooltip: 'Next members',
                                 onPressed: page == pageCount - 1
                                     ? null
-                                    : () => setState(
-                                        () => _memberPage = page + 1,
-                                      ),
+                                    : () => _turnMemberPage(page + 1),
                                 icon: const HugeIcon(
                                   icon: HugeIconsStrokeRounded.arrowRight01,
                                 ),
@@ -316,7 +279,9 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
 }
 
 const _nameWidth = 52.0;
-const _countWidth = 48.0;
+
+/// One person's row: a day cell at its full height, with its edge's room.
+const _rowHeight = 54.0;
 
 class _CalendarHeader extends StatelessWidget {
   const _CalendarHeader({required this.week});
@@ -328,7 +293,22 @@ class _CalendarHeader extends StatelessWidget {
     final start = DateTime.parse(week.weekStart);
     return Row(
       children: [
-        const SizedBox(width: _nameWidth),
+        // The column of faces is headed too, so the row of days does not
+        // start over a gap.
+        SizedBox(
+          width: _nameWidth,
+          child: Tooltip(
+            message: 'Crew',
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIconsStrokeRounded.userGroup,
+                size: 22,
+                strokeWidth: 1.8,
+                color: context.muted,
+              ),
+            ),
+          ),
+        ),
         for (var index = 0; index < 7; index++)
           Expanded(
             child: Builder(
@@ -390,7 +370,6 @@ class _CalendarHeader extends StatelessWidget {
               },
             ),
           ),
-        const SizedBox(width: _countWidth),
       ],
     );
   }
@@ -486,26 +465,6 @@ class _MemberDays extends StatelessWidget {
               },
             ),
           ),
-        SizedBox(
-          width: _countWidth,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: Semantics(
-              label:
-                  '$name: ${week.days(pact.id, member.id)} of ${pact.daysPerWeek} check-ins ${week.isOver ? 'that' : 'this'} week',
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '${week.days(pact.id, member.id)} / ${pact.daysPerWeek}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }

@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../home/home_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import 'crew_pact_week_card.dart';
 
-/// The crew's pacts as a swipeable deck of week cards, with a dot per pact
-/// beneath it. The crew week page and the past-week sheet both draw one.
+/// The crew's pacts as a swipeable deck of week cards. The crew week page and the past-week sheet both draw one.
 ///
 /// The deck runs full bleed: it is wider than the column it sits in by the
 /// page inset either side, so the neighbouring pacts reach the screen's edges
@@ -59,20 +61,9 @@ class _CrewPactCarouselState extends State<CrewPactCarousel> {
   }
 
   void _setIndex(int index) {
+    if (index == _index) return;
     setState(() => _index = index);
     widget.onIndexChanged?.call(index);
-  }
-
-  void _showPact(int index) {
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _pages.jumpToPage(index);
-      return;
-    }
-    _pages.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutBack,
-    );
   }
 
   @override
@@ -105,7 +96,14 @@ class _CrewPactCarouselState extends State<CrewPactCarousel> {
                           ? const ClampingScrollPhysics()
                           : const _CarouselSpringPhysics(),
                       itemCount: week.pacts.length,
-                      onPageChanged: _setIndex,
+                      onPageChanged: (index) {
+                        unawaited(
+                          HapticFeedback.selectionClick().catchError(
+                            (Object _) {},
+                          ),
+                        );
+                        _setIndex(index);
+                      },
                       itemBuilder: (context, index) => Padding(
                         // The card's raised edge is painted below its own
                         // box, and the carousel clips its pages, so the page
@@ -130,40 +128,7 @@ class _CrewPactCarouselState extends State<CrewPactCarousel> {
                   ),
                 ),
         ),
-        if (week.pacts.length > 1)
-          SizedBox(
-            height: 44,
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < week.pacts.length; i++)
-                      Semantics(
-                        selected: i == _index,
-                        child: IconButton(
-                          tooltip: 'Show ${week.pacts[i].title}',
-                          onPressed: () => _showPact(i),
-                          icon: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            width: i == _index ? 20 : 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: context.ink.withValues(
-                                alpha: i == _index ? 1 : .25,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else
-          const SizedBox(height: 12),
+        const SizedBox(height: 12),
       ],
     );
   }

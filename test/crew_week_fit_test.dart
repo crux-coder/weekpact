@@ -117,12 +117,8 @@ void main() {
         // A neighbouring card peeks in, so measure one card and its own rows.
         final selected = find.byType(CrewPactWeekCard).first;
         final card = tester.getRect(selected);
-        final summary = tester.getRect(
-          find.text('0 of $members checked in today'),
-        );
         // Nothing may sit past the safe area: the page is one viewport.
         expect(card.bottom, lessThanOrEqualTo(size.height - inset));
-        expect(summary.bottom, lessThanOrEqualTo(size.height - inset));
         // The carousel runs full bleed: it starts outside the page's own
         // margin, so the neighbouring pacts reach the screen's edges.
         expect(

@@ -765,6 +765,8 @@ class _HomeDestinationState extends State<_HomeDestination>
           crew: crew,
           backend: widget.backend,
           userId: widget.userId,
+          crews: _crews ?? const [],
+          onCrewSelected: widget.onCrewSelected,
         ),
       ),
     );

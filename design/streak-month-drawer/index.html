@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streak month drawer</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas:#222A2B; --dark-ink:#EDF3F2; --dark-muted:#AAB8B9; --dark-border:#67797C;
+    --ink:#191B19; --muted:#46535A; --cream:#F0F5F4; --stone:#CDE0DC; --mint:#A8D2CC;
+    --dark-fill:#1F2627; --graphite:#363F40; --graphite-edge:#66716F;
+    --clay:#D0B2A4; --sage:#B4C8A2; --blush:#D6B2B6; --sky:#87CFFA;
+    --kept:#B8CC8E; --done:#3F7A6B; --streak:#E08A45; --gold:#F0D54E; --pend:#C6CACB;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:44px 24px 100px; background:#121616; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1640px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { color:var(--dark-muted); max-width:84ch; line-height:1.65; font-size:15px; margin:0 0 32px; }
+  .lede b { color:var(--dark-ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(390px,1fr)); gap:24px; }
+  .cell { background:#181d1d; border:1px solid #262d2d; border-radius:22px; padding:20px 20px 24px; display:flex; flex-direction:column; }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#121616; background:var(--dark-muted); padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--mint); }
+  .cell > p { color:#9aa5a5; font-size:13px; line-height:1.6; margin:0 0 6px; }
+  .data { color:#6f7a7a; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .data b { color:#9aa5a5; font-weight:500; }
+
+  /* phone + sheet */
+  .phone { width:360px; max-width:100%; margin:auto auto 0; background:var(--canvas); border-radius:28px;
+    position:relative; overflow:hidden; height:760px; }
+  .behind { padding:16px 12px; opacity:.35; }
+  .scrim { position:absolute; inset:0; background:rgba(8,10,10,.45); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; top:96px; background:var(--canvas);
+    border-radius:26px 26px 0 0; border-top:1px solid #3a4647; padding:8px 14px 18px; overflow:hidden; }
+  .grab { width:38px; height:5px; border-radius:9px; background:#56676a; margin:0 auto 12px; }
+  .sh { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .sh b { font-size:22px; font-weight:700; }
+  .sh .s { font-size:13px; color:var(--dark-muted); margin-top:2px; }
+  .navs { display:flex; gap:6px; }
+  .navb { width:32px; height:32px; border-radius:9px; background:var(--graphite); border:1px solid var(--graphite-edge); box-shadow:0 2px 0 var(--graphite-edge); display:flex; align-items:center; justify-content:center; color:var(--dark-ink); }
+  .navb.off { opacity:.3; }
+  svg.i { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+  .card { --t:var(--cream); background:var(--t); color:var(--ink); border:1px solid color-mix(in srgb,var(--t) 72%,#000);
+    border-radius:18px; box-shadow:0 2px 0 color-mix(in srgb,var(--t) 76%,#000); }
+
+  /* mini streak card (the page behind) */
+  .mini { padding:12px 14px; display:flex; align-items:center; gap:14px; }
+  .mini .f { width:44px; height:44px; border-radius:50% 50% 46% 46%; background:#9aa0a0; }
+  .mini .lk { margin-left:auto; font-size:13px; font-weight:600; color:var(--muted); }
+
+  .chips { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+  .chip { padding:10px 10px 9px; }
+  .chip .n { font-size:20px; font-weight:700; line-height:1; }
+  .chip .n small { font-size:12px; font-weight:600; opacity:.6; }
+  .chip .l { font-size:11px; font-weight:500; margin-top:5px; color:var(--muted); }
+
+  /* A: day calendar */
+  .cal { padding:12px 10px; }
+  .cal .dn, .cal .row { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal .dn div { font-size:10px; font-weight:600; color:var(--muted); text-align:center; }
+  .cal .row { margin-top:6px; }
+  .d { aspect-ratio:1; border-radius:10px; position:relative; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:600; background:rgba(0,0,0,.06); color:var(--muted); }
+  .d.blank { background:none; }
+  .d.fut { background:none; border:1.5px solid rgba(0,0,0,.1); color:#9aa5a5; }
+  .d.today { box-shadow:inset 0 0 0 2px var(--ink); }
+  .d.sel { box-shadow:0 0 0 2px var(--cream),0 0 0 4px var(--ink); }
+  .d .ring { position:absolute; inset:3px; border-radius:8px; }
+  .d.lv1 { background:#cfe0d9; } .d.lv2 { background:#8fbcaf; color:var(--ink); }
+  .d.lv3 { background:#5c9786; color:#fff; } .d.lv4 { background:var(--done); color:#fff; }
+  .day { padding:12px 14px; margin-top:10px; }
+  .day .t { display:flex; justify-content:space-between; align-items:baseline; }
+  .day .t b { font-size:16px; } .day .t span { font-size:12px; color:var(--muted); font-weight:600; }
+  .who { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .av { width:30px; height:30px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; border:1.5px solid rgba(0,0,0,.25); color:var(--ink); }
+  .who .nm { font-size:13px; font-weight:600; }
+  .who .pp { font-size:11px; color:var(--muted); margin-top:1px; }
+  .who .ph { margin-left:auto; display:flex; gap:4px; }
+  .thumb { width:30px; height:30px; border-radius:8px; border:1px solid rgba(0,0,0,.15); }
+  .who.miss { opacity:.45; }
+  .nudge { margin-left:auto; font-size:11px; font-weight:700; padding:5px 9px; border-radius:99px; background:var(--ink); color:var(--cream); }
+
+  /* B: photo month */
+  .pgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .pgrid .dn { font-size:10px; font-weight:600; color:var(--dark-muted); text-align:center; padding-bottom:2px; }
+  .pc { aspect-ratio:1; border-radius:9px; position:relative; overflow:hidden; background:#2d3738; }
+  .pc.blank { background:none; }
+  .pc.fut { background:none; border:1px dashed #3d4a4b; }
+  .pc .n { position:absolute; left:4px; top:3px; font-size:9.5px; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  .pc.empty .n { color:#6f7f80; text-shadow:none; }
+  .pc .c { position:absolute; right:3px; bottom:3px; font-size:9px; font-weight:700; background:rgba(0,0,0,.55); color:#fff; padding:1px 4px; border-radius:6px; }
+  .pc.today { box-shadow:0 0 0 2px var(--dark-ink); }
+  .wkrow { display:contents; }
+  .best { padding:12px; margin-top:12px; display:flex; gap:12px; align-items:center; }
+  .best .big { width:84px; height:84px; border-radius:14px; flex:none; }
+  .best b { font-size:15px; } .best p { margin:4px 0 0; font-size:12px; color:var(--muted); line-height:1.45; }
+  .tag { display:inline-flex; font-size:9.5px; font-weight:700; letter-spacing:1.1px; padding:3px 7px; border-radius:99px; background:var(--ink); color:var(--cream); margin-bottom:6px; }
+
+  /* C: members x days */
+  .mx { padding:12px 10px; }
+  .mx .r { display:grid; grid-template-columns:34px 1fr 34px; gap:8px; align-items:center; margin-top:9px; }
+  .mx .r:first-child { margin-top:0; }
+  .ticks { display:grid; grid-template-columns:repeat(31,1fr); gap:2px; }
+  .ticks i { height:22px; border-radius:3px; background:rgba(0,0,0,.08); }
+  .ticks i.k { background:var(--done); }
+  .ticks i.f { background:none; border:1px solid rgba(0,0,0,.08); }
+  .ticks i.t { box-shadow:0 0 0 1.5px var(--ink); }
+  .ticks i.gap { margin-left:3px; }
+  .mx .tot { font-size:13px; font-weight:700; text-align:right; }
+  .mx .ax { display:grid; grid-template-columns:34px 1fr 34px; gap:8px; margin-top:6px; font-size:9.5px; color:var(--muted); font-weight:600; }
+  .mx .ax div:nth-child(2) { display:flex; justify-content:space-between; }
+  .rank { padding:12px 14px; margin-top:10px; }
+  .rank .rr { display:flex; align-items:center; gap:10px; margin-top:9px; font-size:13px; font-weight:600; }
+  .rank .rr:first-of-type { margin-top:6px; }
+  .bar { flex:1; height:8px; border-radius:9px; background:rgba(0,0,0,.1); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--done); border-radius:9px; }
+  .rank .h { font-size:14px; font-weight:700; }
+  .medal { width:20px; height:20px; border-radius:50%; background:var(--gold); border:1px solid #b89e2c; flex:none; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+
+  /* D: weeks -> streak */
+  .wk { padding:12px 14px; margin-bottom:8px; display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; }
+  .wk .fl { width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.08); color:#8a9696; }
+  .wk.kept .fl { background:var(--streak); color:#fff; }
+  .wk.live .fl { background:none; border:2px dashed var(--streak); color:var(--streak); }
+  .wk .fl svg { width:17px; height:17px; }
+  .wk .dt { font-size:14px; font-weight:700; }
+  .wk .sg { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:6px; }
+  .wk .sg i { height:7px; border-radius:4px; background:rgba(0,0,0,.1); }
+  .wk .sg i.k { background:var(--done); } .wk .sg i.h { background:#8fbcaf; } .wk .sg i.f { background:none; border:1px solid rgba(0,0,0,.12); }
+  .wk .pct { font-size:15px; font-weight:700; text-align:right; }
+  .wk .pct small { display:block; font-size:10.5px; color:var(--muted); font-weight:600; margin-top:2px; }
+  .wk.kept { --t:color-mix(in srgb,var(--gold) 22%,var(--cream)); }
+  .wk.miss .pct { color:#a2574b; }
+  .goal { padding:12px 14px; margin-top:4px; --t:var(--progress,#F2F3AE); }
+  .goal b { font-size:14px; } .goal p { margin:4px 0 8px; font-size:12px; color:var(--muted); line-height:1.45; }
+  .goal .bar { height:10px; }
+  .goal .bar i { background:var(--streak); }
+  .goal .ft { display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-top:6px; color:var(--muted); }
+
+  .verdict { margin-top:36px; max-width:84ch; color:var(--dark-muted); line-height:1.65; font-size:15px; }
+  .verdict b { color:var(--dark-ink); }
+  .trigger { margin-top:28px; }
+  .trigger h3 { font-size:15px; margin:0 0 10px; }
+  .trow { display:flex; gap:20px; flex-wrap:wrap; }
+  .sc { width:340px; padding:14px 16px 16px; }
+  .sc .hd { display:flex; justify-content:space-between; align-items:center; }
+  .sc .hd b { font-size:17px; }
+  .lnk { font-size:13px; font-weight:600; color:var(--done); display:flex; align-items:center; gap:2px; }
+  .pill { font-size:12px; font-weight:700; padding:6px 10px; border-radius:99px; background:var(--ink); color:var(--cream); display:flex; align-items:center; gap:4px; }
+  .sc .body { display:flex; align-items:center; margin-top:10px; }
+  .sc .fl2 { flex:1; display:flex; flex-direction:column; align-items:center; color:#9aa0a0; font-weight:700; font-size:20px; }
+  .sc .fl2 i { width:60px; height:66px; border-radius:50% 50% 46% 46%; background:#9aa0a0; display:block; margin-bottom:4px; }
+  .sc .dots { flex:1; display:grid; grid-template-columns:repeat(7,12px); gap:7px; justify-content:center; }
+  .sc .dots i { width:12px; height:12px; border-radius:4px; background:rgba(0,0,0,.08); }
+  .sc .dots i.k { background:var(--ink); } .sc .dots i.n { background:none; }
+  .sc .dots i.f { background:none; border:1.5px solid rgba(0,0,0,.12); } .sc .dots i.t { background:none; border:2px solid var(--ink); }
+  .sc .foot { margin-top:12px; padding-top:10px; border-top:1px solid rgba(0,0,0,.08); display:flex; justify-content:space-between; font-size:13px; font-weight:600; }
+  .cap { font-size:12px; color:#6f7a7a; margin-top:8px; max-width:340px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Streak card — “View month” drawer</h1>
+  <p class="lede">The card already mixes two clocks: the flame counts <b>weeks</b>, the squircles show <b>days</b> this month. A drawer is the place to connect them and answer what the card can’t: <b>which days, who was out, and what the weeks meant for the streak</b>. Four directions below, all built only from data the crew page already loads — <code>CrewWeekSummary.shareOut</code> / <code>percent</code> per finished week, <code>CrewWeek.checkIns</code> (with photos and claps), members and pacts. Sample: a 4-person crew, today is Thu 22 October, streak 0.</p>
+
+  <div class="grid">
+
+  <!-- A -->
+  <section class="cell">
+    <div class="cellHead"><span class="key pick">A</span><h2>Day calendar + who was out</h2></div>
+    <p>The card’s dots, grown up: each day shaded by how much of the crew checked in (same scale as the history calendar). Tap a day and the panel below lists every member, which pacts they kept, and their photos. Missed members get a dimmed row, today shows a Nudge.</p>
+    <p class="data"><b>Data:</b> shareOut per day (finished weeks) + the live week’s check-ins. Day detail needs check-ins for past weeks — today only the live week has them, so this needs a <code>checkIns(from, to)</code> query.</p>
+    <div class="phone">
+      <div class="behind"><div class="card mini"><div class="f"></div><b>Streak</b><span class="lk">View month</span></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sh"><div><b>October</b><div class="s">15 of 22 days out</div></div>
+          <div class="navs"><div class="navb"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div><div class="navb off"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div></div></div>
+        <div class="card cal" id="calA"></div>
+        <div class="card day">
+          <div class="t"><b>Tuesday, 20 October</b><span>3 of 4 out</span></div>
+          <div class="who"><div class="av" style="background:var(--clay)">AK</div><div><div class="nm">Ana</div><div class="pp">Gym · Read 20 min</div></div><div class="ph"><div class="thumb" style="background:linear-gradient(135deg,#d0b2a4,#7b5b4c)"></div><div class="thumb" style="background:linear-gradient(135deg,#b4c8a2,#4e6b3a)"></div></div></div>
+          <div class="who"><div class="av" style="background:var(--sage)">JM</div><div><div class="nm">Jasmin</div><div class="pp">Gym</div></div><div class="ph"><div class="thumb" style="background:linear-gradient(135deg,#87cffa,#2e5f80)"></div></div></div>
+          <div class="who"><div class="av" style="background:var(--blush)">LH</div><div><div class="nm">Lejla</div><div class="pp">Read 20 min</div></div></div>
+          <div class="who miss"><div class="av" style="background:var(--stone)">DB</div><div><div class="nm">Dino</div><div class="pp">Nothing kept</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">B</span><h2>The month in photos</h2></div>
+    <p>Every day that someone checked in shows the top photo (most claps) as its tile, with a count badge when there were more. Tapping opens the existing story viewer filtered to that day. Below, the month’s most-clapped check-in. The most emotional option — it makes the month feel like a scrapbook rather than a scorecard.</p>
+    <p class="data"><b>Data:</b> photoUrl + clapCount on check-ins. Same past-check-ins query as A, plus signed photo URLs for ~30 images (thumbnails, ideally).</p>
+    <div class="phone">
+      <div class="behind"><div class="card mini"><div class="f"></div><b>Streak</b><span class="lk">View month</span></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sh"><div><b>October</b><div class="s">41 photos · 15 days</div></div>
+          <div class="navs"><div class="navb"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div><div class="navb off"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div></div></div>
+        <div class="pgrid" id="photoB"></div>
+        <div class="card best">
+          <div class="big" style="background:linear-gradient(140deg,#f0d54e,#e08a45 55%,#7b3f1a)"></div>
+          <div><span class="tag">MOST CLAPPED</span><br><b>Ana · Gym</b><p>Sat 10 Oct · 9 claps<br>“first 5k without stopping”</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="cell">
+    <div class="cellHead"><span class="key">C</span><h2>Who carried the month</h2></div>
+    <p>A row per member, a tick per day (week gaps between Mon–Sun groups). Instantly answers “who keeps showing up and who drops off”. Under it, a small leaderboard by days out. Social and a little competitive — fits a crew app, but needs a soft touch so it doesn’t shame.</p>
+    <p class="data"><b>Data:</b> per-member-per-day “was out” booleans for the month. Derivable from check-ins; shareOut alone is not enough (it is crew-level).</p>
+    <div class="phone">
+      <div class="behind"><div class="card mini"><div class="f"></div><b>Streak</b><span class="lk">View month</span></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sh"><div><b>October</b><div class="s">Who was out, day by day</div></div>
+          <div class="navs"><div class="navb"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div><div class="navb off"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div></div></div>
+        <div class="card mx" id="mxC"></div>
+        <div class="card rank">
+          <div class="h">Days out this month</div>
+          <div class="rr"><span class="medal">1</span><span style="width:52px">Ana</span><div class="bar"><i style="width:77%"></i></div><span>17</span></div>
+          <div class="rr"><span class="medal" style="background:#d7dcdc;border-color:#9aa">2</span><span style="width:52px">Jasmin</span><div class="bar"><i style="width:64%"></i></div><span>14</span></div>
+          <div class="rr"><span class="medal" style="background:#e3b58f;border-color:#a77">3</span><span style="width:52px">Lejla</span><div class="bar"><i style="width:32%"></i></div><span>7</span></div>
+          <div class="rr"><span style="width:20px"></span><span style="width:52px">Dino</span><div class="bar"><i style="width:18%"></i></div><span>4</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="cell">
+    <div class="cellHead"><span class="key pick">D</span><h2>Why the streak is what it is</h2></div>
+    <p>Bridges days and weeks. Stat chips on top, then the month’s weeks as rows: a lit flame for a kept week (gold-tinted), a grey one for a broken week, a dashed flame for the live week. The bottom card turns the 0 into a goal — “keep this week to start a streak” with how close you are. Answers the question a 0 flame actually raises.</p>
+    <p class="data"><b>Data:</b> everything is already loaded: <code>CrewWeekSummary</code> for finished weeks, <code>percentCrew</code> + days left for the live one, <code>streakWeeks</code>. No new backend.</p>
+    <div class="phone">
+      <div class="behind"><div class="card mini"><div class="f"></div><b>Streak</b><span class="lk">View month</span></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sh"><div><b>October</b><div class="s">Streak 0 · best 3 weeks</div></div>
+          <div class="navs"><div class="navb"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div><div class="navb off"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div></div></div>
+        <div class="chips">
+          <div class="card chip"><div class="n">15<small>/22</small></div><div class="l">days out</div></div>
+          <div class="card chip"><div class="n">6</div><div class="l">longest run</div></div>
+          <div class="card chip"><div class="n">2<small>/3</small></div><div class="l">weeks kept</div></div>
+        </div>
+        <div id="weeksD"></div>
+        <div class="card goal" style="--t:#F2F3AE">
+          <b>Keep this week to start a streak</b>
+          <p>The crew is at 58% with Fri–Sun left. Dino and Lejla still need 2 check-ins each.</p>
+          <div class="bar"><i style="width:58%"></i></div>
+          <div class="ft"><span>58%</span><span>100% by Sunday</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
+  <div class="trigger">
+    <h3>Where the link goes on the card</h3>
+    <div class="trow">
+      <div>
+        <div class="card sc">
+          <div class="hd"><b>Streak</b><span class="lnk">View month <svg class="i" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="body"><div class="fl2"><i></i>Weeks</div><div class="dots" id="dots1"></div></div>
+        </div>
+        <div class="cap"><b style="color:#9aa5a5">1 · Header link.</b> Text + chevron opposite the title. Quietest; matches “Streak” left / action right. Recommended.</div>
+      </div>
+      <div>
+        <div class="card sc">
+          <div class="hd"><b>Streak</b><span class="pill">October <svg class="i" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="body"><div class="fl2"><i></i>Weeks</div><div class="dots" id="dots2"></div></div>
+        </div>
+        <div class="cap"><b style="color:#9aa5a5">2 · Month pill.</b> Names the month the dots show, which the card never says today — doubles as a label.</div>
+      </div>
+      <div>
+        <div class="card sc">
+          <div class="hd"><b>Streak</b></div>
+          <div class="body"><div class="fl2"><i></i>Weeks</div><div class="dots" id="dots3"></div></div>
+          <div class="foot"><span style="color:var(--muted)">15 days out in October</span><span class="lnk">View month <svg class="i" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+        <div class="cap"><b style="color:#9aa5a5">3 · Footer row.</b> Adds the day count as text (good for the 0-streak case), costs ~40px of height.</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="verdict"><b>If I had to pick:</b> <b>D</b> as the drawer — it needs no new backend, and it’s the only one that explains the big number on the card (a 0 flame next to a busy month is confusing without it). Then fold <b>A</b>’s tap-a-day panel into it later, once there’s a past-check-ins query; at that point B’s photos can show as thumbnails inside the day panel instead of being their own screen. <b>C</b> overlaps with the Members tab — better there than here.</p>
+</div>
+
+<script>
+// October 2026: the 1st is a Thursday; today is the 22nd.
+const DAYS = 31, FIRST = 3, TODAY = 22;
+const share = {1:.5,2:.75,3:.25,4:0,5:1,6:.75,7:1,8:1,9:.75,10:1,11:.5,12:.25,13:0,14:.5,15:0,16:.25,17:0,18:0,19:.5,20:.75,21:.5,22:.25};
+const lv = s => s >= 1 ? 4 : s >= .75 ? 3 : s >= .5 ? 2 : s > 0 ? 1 : 0;
+const dn = ['M','T','W','T','F','S','S'];
+
+// A
+let a = '<div class="dn">' + dn.map(d => `<div>${d}</div>`).join('') + '</div><div class="row">';
+for (let i = 0; i < FIRST; i++) a += '<div class="d blank"></div>';
+for (let d = 1; d <= DAYS; d++) {
+  if ((FIRST + d - 1) % 7 === 0 && d > 1) a += '</div><div class="row">';
+  const c = d > TODAY ? 'fut' : 'lv' + lv(share[d]);
+  a += `<div class="d ${c}${d === TODAY ? ' today' : ''}${d === 20 ? ' sel' : ''}">${d}</div>`;
+}
+document.getElementById('calA').innerHTML = a + '</div>';
+
+// B
+const tints = ['#d0b2a4,#7b5b4c','#b4c8a2,#4e6b3a','#87cffa,#2e5f80','#d6b2b6,#80505a','#f0d54e,#8a6a1a','#a8d2cc,#3c6e66'];
+let b = dn.map(d => `<div class="dn">${d}</div>`).join('');
+for (let i = 0; i < FIRST; i++) b += '<div class="pc blank"></div>';
+for (let d = 1; d <= DAYS; d++) {
+  if (d > TODAY) { b += `<div class="pc fut"><span class="n" style="color:#5f6e6f;text-shadow:none">${d}</span></div>`; continue; }
+  const s = share[d];
+  if (!s) { b += `<div class="pc empty${d === TODAY ? ' today' : ''}"><span class="n">${d}</span></div>`; continue; }
+  const n = Math.round(s * 4) + (d % 3);
+  b += `<div class="pc${d === TODAY ? ' today' : ''}" style="background:linear-gradient(${(d * 47) % 360}deg,${tints[d % 6]})"><span class="n">${d}</span>${n > 1 ? `<span class="c">${n}</span>` : ''}</div>`;
+}
+document.getElementById('photoB').innerHTML = b;
+
+// C
+const people = [['AK','var(--clay)',.82],['JM','var(--sage)',.64],['LH','var(--blush)',.5],['DB','var(--stone)',.23]];
+let c = '';
+people.forEach(([ini, col, rate], p) => {
+  let t = '', tot = 0;
+  for (let d = 1; d <= DAYS; d++) {
+    const k = d <= TODAY && ((d * 7 + p * 13) % 100) / 100 < rate * (share[d] ? 1.15 : .2);
+    if (k) tot++;
+    const wk = (FIRST + d - 1) % 7 === 0 && d > 1;
+    t += `<i class="${d > TODAY ? 'f' : k ? 'k' : ''}${d === TODAY ? ' t' : ''}${wk ? ' gap' : ''}"></i>`;
+  }
+  c += `<div class="r"><div class="av" style="background:${col}">${ini}</div><div class="ticks">${t}</div><div class="tot">${tot}</div></div>`;
+});
+c += '<div class="ax"><div></div><div><span>1</span><span>8</span><span>15</span><span>22</span><span>31</span></div><div></div></div>';
+document.getElementById('mxC').innerHTML = c;
+
+// D
+const flame = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5 5 5.5 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5 .2 1.6 1 2.6 2 3-.6-3.3.2-6.5.5-9z"/></svg>';
+const weeks = [
+  ['Sep 28 – Oct 4', [1,1,1,.5,0,1,.75], 100, 'kept', 'Streak 2'],
+  ['Oct 5 – 11', [1,.75,1,1,.75,1,.5], 100, 'kept', 'Streak 3 — best'],
+  ['Oct 12 – 18', [.25,0,.5,0,.25,0,0], 41, 'miss', 'Streak broken'],
+  ['Oct 19 – 25', [.5,.75,.5,.25,-1,-1,-1], 58, 'live', '3 days left'],
+];
+document.getElementById('weeksD').innerHTML = weeks.map(([dt, s, p, st, note]) =>
+  `<div class="card wk ${st}"><div class="fl">${flame}</div><div><div class="dt">${dt}</div><div class="sg">${s.map(v => `<i class="${v < 0 ? 'f' : v >= .75 ? 'k' : v > 0 ? 'h' : ''}"></i>`).join('')}</div></div><div class="pct">${p}%<small>${note}</small></div></div>`
+).join('');
+
+// card dots
+let dots = '';
+for (let i = 0; i < FIRST; i++) dots += '<i class="n"></i>';
+for (let d = 1; d <= DAYS; d++) dots += `<i class="${d === TODAY ? 't' : d > TODAY ? 'f' : share[d] ? 'k' : ''}"></i>`;
+['dots1','dots2','dots3'].forEach(id => document.getElementById(id).innerHTML = dots);
+</script>
+</body>
+</html>

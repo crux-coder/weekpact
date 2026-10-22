@@ -123,15 +123,16 @@ void main() {
     (tester) async {
       final backend = _backend();
       await _pump(tester, backend);
-      expect(find.text('33%'), findsOneWidget);
+      expect(find.text('Streak'), findsOneWidget);
       expect(find.byTooltip('Refresh crew activity'), findsNothing);
       expect(find.text('12 / 36'), findsWidgets);
       expect(backend.fetches, 1);
-      expect(find.text('6 / 15', findRichText: true), findsOneWidget);
+      // The card leads with the calendar: no per-pact check-in count.
+      expect(find.text('6 / 15', findRichText: true), findsNothing);
       expect(find.byTooltip('Sep 17 · Completed'), findsWidgets);
       expect(find.textContaining('@'), findsNothing);
-      // The dots are the only control; swiping is advertised by the next
-      // card peeking in rather than by arrows.
+      // Swiping is the only control, advertised by the next card peeking in
+      // rather than by arrows or dots.
       expect(find.byTooltip('Previous pact'), findsNothing);
       expect(find.byTooltip('Next pact'), findsNothing);
       final carousel = find.byKey(const ValueKey('crew-pact-carousel'));
@@ -140,21 +141,18 @@ void main() {
       await tester.drag(carousel, const Offset(-330, 0));
       await tester.pumpUi();
       expect(find.text('Gym').hitTestable(), findsOneWidget);
-      expect(
-        find.text('2 / 9', findRichText: true).hitTestable(),
-        findsOneWidget,
-      );
       await tester.drag(carousel, const Offset(0, 400));
       await tester.pumpUi();
       expect(backend.fetches, 2);
       expect(find.text('Gym').hitTestable(), findsOneWidget);
-      await tester.tap(find.byTooltip('Show Read'));
+      expect(find.byTooltip('Show Read'), findsNothing);
+      await tester.drag(carousel, const Offset(-330, 0));
       await tester.pumpUi();
       expect(find.text('Read').hitTestable(), findsOneWidget);
       await tester.drag(carousel, const Offset(-330, 0));
       await tester.pumpUi();
       expect(find.text('Read').hitTestable(), findsOneWidget);
-      await tester.tap(find.byTooltip('Show Hangboard'));
+      await tester.drag(carousel, const Offset(330, 0));
       await tester.pumpUi();
       await tester.drag(carousel, const Offset(330, 0));
       await tester.pumpUi();
@@ -199,8 +197,10 @@ void main() {
           expect(vertical.single.position.maxScrollExtent, 0);
           expect(vertical.single.position.minScrollExtent, 0);
           expect(find.byTooltip('Back to home').hitTestable(), findsOneWidget);
-          final banner = tester.getRect(find.text('1 of 20 checked in today'));
-          expect(banner.bottom, lessThanOrEqualTo(size.height - 20));
+          final deck = tester.getRect(
+            find.byKey(const ValueKey('crew-pact-carousel')),
+          );
+          expect(deck.bottom, lessThanOrEqualTo(size.height - 20));
           for (var page = 1; page < 5; page++) {
             await tester.tap(find.byTooltip('Next members').hitTestable());
             await tester.pumpUi();
