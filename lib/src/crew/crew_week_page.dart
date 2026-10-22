@@ -526,7 +526,7 @@ class _StreakCard extends StatelessWidget {
         : WeekPactColors.pendingEdge;
     return AppSurface(
       fillColor: WeekPactColors.cream,
-      builder: (_) => Padding(
+      builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 6, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -553,7 +553,9 @@ class _StreakCard extends StatelessWidget {
                     onViewMonth();
                   },
                   style: TextButton.styleFrom(
-                    foregroundColor: WeekPactColors.doneMark,
+                    // The card's own ink, like the title beside it: this is a
+                    // way into the month, not a mark of anything done.
+                    foregroundColor: context.ink,
                     padding: const EdgeInsets.fromLTRB(10, 0, 4, 0),
                     minimumSize: const Size(0, 40),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -564,15 +566,15 @@ class _StreakCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('View month'),
-                      SizedBox(width: 2),
+                      const Text('View month'),
+                      const SizedBox(width: 2),
                       HugeIcon(
                         icon: HugeIconsStrokeRounded.arrowRight01,
                         size: 16,
-                        color: WeekPactColors.doneMark,
+                        color: context.ink,
                         strokeWidth: 2,
                       ),
                     ],
