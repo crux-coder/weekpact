@@ -291,20 +291,23 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             'This permanently removes your profile, profile and check-in photos, check-ins, invitations and notification registrations. Pacts you created, including everyone’s check-ins on those pacts, are removed too.\n\nIf you own a crew, its longest-standing remaining member becomes owner. A crew with no remaining members is deleted. This cannot be undone.',
           ),
           const SizedBox(height: 16),
-          TextField(
-            key: const ValueKey('delete-confirmation'),
+          CaretAtEndOnFocus(
             controller: _password,
-            obscureText: widget.hasPassword,
-            autocorrect: false,
-            enableSuggestions: false,
-            textCapitalization: widget.hasPassword
-                ? TextCapitalization.none
-                : TextCapitalization.characters,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: widget.hasPassword
-                  ? 'Current password'
-                  : 'Type DELETE to confirm',
+            child: TextField(
+              key: const ValueKey('delete-confirmation'),
+              controller: _password,
+              obscureText: widget.hasPassword,
+              autocorrect: false,
+              enableSuggestions: false,
+              textCapitalization: widget.hasPassword
+                  ? TextCapitalization.none
+                  : TextCapitalization.characters,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: widget.hasPassword
+                    ? 'Current password'
+                    : 'Type DELETE to confirm',
+              ),
             ),
           ),
           CheckboxListTile(

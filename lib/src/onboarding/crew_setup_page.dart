@@ -319,16 +319,19 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
                                         : 'A few friends. One little commitment. Give your crew a name to get started.',
                                   ),
                                   const SizedBox(height: 20),
-                                  TextField(
+                                  CaretAtEndOnFocus(
                                     controller: _name,
-                                    maxLength: 60,
-                                    decoration: InputDecoration(
-                                      labelText: 'Crew name',
-                                      hintText: widget.solo
-                                          ? 'My week'
-                                          : 'Early Birds',
+                                    child: TextField(
+                                      controller: _name,
+                                      maxLength: 60,
+                                      decoration: InputDecoration(
+                                        labelText: 'Crew name',
+                                        hintText: widget.solo
+                                            ? 'My week'
+                                            : 'Early Birds',
+                                      ),
+                                      onSubmitted: (_) => _create(),
                                     ),
-                                    onSubmitted: (_) => _create(),
                                   ),
                                   const SizedBox(height: 16),
                                   FilledButton(

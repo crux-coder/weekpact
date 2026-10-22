@@ -1173,34 +1173,37 @@ class _Composer extends StatelessWidget {
             child: AppSurface(
               raised: false,
               borderRadius: 22,
-              builder: (context) => TextField(
-                key: const ValueKey('chat-input'),
+              builder: (context) => CaretAtEndOnFocus(
                 controller: controller,
-                focusNode: focusNode,
-                enabled: enabled,
-                minLines: 1,
-                maxLines: 5,
-                maxLength: 2000,
-                textCapitalization: TextCapitalization.sentences,
-                keyboardType: TextInputType.multiline,
-                onChanged: onChanged,
-                // Touch taps elsewhere close the keyboard; the send button
-                // is in the field's tap region so sending keeps it open.
-                onTapOutside: (_) => focusNode.unfocus(),
-                style: TextStyle(color: context.ink, fontSize: 16),
-                decoration: InputDecoration(
-                  hintText: 'Message your crew',
-                  hintStyle: TextStyle(color: context.muted),
-                  counterText: '',
-                  filled: false,
-                  isDense: true,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 13,
+                child: TextField(
+                  key: const ValueKey('chat-input'),
+                  controller: controller,
+                  focusNode: focusNode,
+                  enabled: enabled,
+                  minLines: 1,
+                  maxLines: 5,
+                  maxLength: 2000,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.multiline,
+                  onChanged: onChanged,
+                  // Touch taps elsewhere close the keyboard; the send button
+                  // is in the field's tap region so sending keeps it open.
+                  onTapOutside: (_) => focusNode.unfocus(),
+                  style: TextStyle(color: context.ink, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Message your crew',
+                    hintStyle: TextStyle(color: context.muted),
+                    counterText: '',
+                    filled: false,
+                    isDense: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 13,
+                    ),
                   ),
                 ),
               ),

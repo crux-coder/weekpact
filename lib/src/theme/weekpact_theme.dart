@@ -314,6 +314,17 @@ abstract final class WeekPactTheme {
     );
 
     return base.copyWith(
+      // Every text field in the app sits on cream, in both themes. The cursor
+      // and the selection are set once, at the app's root, from this theme —
+      // the light theme a field's surface switches to never reaches them — so
+      // they were drawn in the dark theme's near-white ink on a cream field,
+      // and could not be seen. They are the card ink instead, whatever the
+      // theme.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: WeekPactColors.black,
+        selectionColor: WeekPactColors.coolGrey.withValues(alpha: .55),
+        selectionHandleColor: WeekPactColors.black,
+      ),
       actionIconTheme: ActionIconThemeData(
         backButtonIconBuilder: (context) =>
             const HugeIcon(icon: HugeIconsStrokeRounded.arrowLeft02),

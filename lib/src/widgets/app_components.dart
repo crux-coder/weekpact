@@ -517,6 +517,42 @@ class AppBottomNavigationBar extends StatelessWidget {
   }
 }
 
+/// Puts the cursor at the end of [controller]'s text whenever [child] — a
+/// text field — takes focus.
+///
+/// On iOS the tap that focuses a field lands the cursor on the nearer edge of
+/// the word under it, so a tap in the field's left padding, or on the left of
+/// a short word, opened a filled field with the cursor blinking before its
+/// first letter: it read as that letter being cut off. Arriving in a field
+/// now starts at the end of what is there; once in, a tap still places the
+/// cursor where it lands.
+///
+/// The tap sets its selection before focus is applied, so this runs after it
+/// and has the last word.
+class CaretAtEndOnFocus extends StatelessWidget {
+  const CaretAtEndOnFocus({
+    super.key,
+    required this.controller,
+    required this.child,
+  });
+
+  final TextEditingController controller;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onFocusChange: (focused) {
+      if (!focused) return;
+      controller.selection = TextSelection.collapsed(
+        offset: controller.text.length,
+      );
+    },
+    child: child,
+  );
+}
+
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
@@ -566,56 +602,61 @@ class AppTextField extends StatelessWidget {
         AppSurface(
           raised: false,
           borderRadius: WeekPactMetrics.controlRadius,
-          builder: (context) => TextFormField(
+          builder: (context) => CaretAtEndOnFocus(
             controller: controller,
-            validator: validator,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            obscureText: obscureText,
-            autofillHints: autofillHints,
-            minLines: minLines,
-            maxLines: maxLines,
-            style: TextStyle(
-              color: context.fieldInk,
-              fontSize: 17,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                color: context.muted,
+            child: TextFormField(
+              controller: controller,
+              validator: validator,
+              keyboardType: keyboardType,
+              textInputAction: textInputAction,
+              obscureText: obscureText,
+              autofillHints: autofillHints,
+              minLines: minLines,
+              maxLines: maxLines,
+              style: TextStyle(
+                color: context.fieldInk,
+                fontSize: 17,
                 fontWeight: FontWeight.w500,
               ),
-              // The rounded AppSurface owns the fill and outline. A second
-              // borderless input fill paints square corners over its interior.
-              filled: false,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 17,
-              ),
-              suffixIcon: onToggleObscure == null
-                  ? null
-                  : IconButton(
-                      onPressed: onToggleObscure,
-                      tooltip: obscureText ? 'Show password' : 'Hide password',
-                      icon: AppIcon(
-                        icon: obscureText
-                            ? HugeIconsStrokeRounded.view
-                            : HugeIconsStrokeRounded.viewOff,
-                        color: context.fieldInk,
-                        size: 24,
-                        strokeWidth: 2,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: context.muted,
+                  fontWeight: FontWeight.w500,
+                ),
+                // The rounded AppSurface owns the fill and outline. A second
+                // borderless input fill paints square corners over its interior.
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 17,
+                ),
+                suffixIcon: onToggleObscure == null
+                    ? null
+                    : IconButton(
+                        onPressed: onToggleObscure,
+                        tooltip: obscureText
+                            ? 'Show password'
+                            : 'Hide password',
+                        icon: AppIcon(
+                          icon: obscureText
+                              ? HugeIconsStrokeRounded.view
+                              : HugeIconsStrokeRounded.viewOff,
+                          color: context.fieldInk,
+                          size: 24,
+                          strokeWidth: 2,
+                        ),
                       ),
-                    ),
-              errorStyle: TextStyle(
-                color: context.errorInk,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+                errorStyle: TextStyle(
+                  color: context.errorInk,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),

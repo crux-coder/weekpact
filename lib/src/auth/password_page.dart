@@ -154,44 +154,53 @@ class _PasswordPageState extends State<PasswordPage> {
                         ),
                         const SizedBox(height: 24),
                         if (!widget.recovery)
-                          TextFormField(
+                          CaretAtEndOnFocus(
                             controller: _email,
-                            enabled: !_busy,
-                            keyboardType: TextInputType.emailAddress,
-                            autofillHints: const [AutofillHints.email],
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
+                            child: TextFormField(
+                              controller: _email,
+                              enabled: !_busy,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email],
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                              ),
+                              validator: (value) =>
+                                  RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(value?.trim() ?? '')
+                                  ? null
+                                  : 'Enter a valid email',
                             ),
-                            validator: (value) =>
-                                RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                    .hasMatch(value?.trim() ?? '')
-                                ? null
-                                : 'Enter a valid email',
                           ),
                         if (widget.recovery) ...[
-                          TextFormField(
+                          CaretAtEndOnFocus(
                             controller: _password,
-                            obscureText: true,
-                            enabled: !_busy,
-                            autofillHints: const [AutofillHints.newPassword],
-                            decoration: const InputDecoration(
-                              labelText: 'New password',
+                            child: TextFormField(
+                              controller: _password,
+                              obscureText: true,
+                              enabled: !_busy,
+                              autofillHints: const [AutofillHints.newPassword],
+                              decoration: const InputDecoration(
+                                labelText: 'New password',
+                              ),
+                              validator: (value) => (value?.length ?? 0) < 8
+                                  ? 'Use at least 8 characters'
+                                  : null,
                             ),
-                            validator: (value) => (value?.length ?? 0) < 8
-                                ? 'Use at least 8 characters'
-                                : null,
                           ),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          CaretAtEndOnFocus(
                             controller: _confirmation,
-                            obscureText: true,
-                            enabled: !_busy,
-                            decoration: const InputDecoration(
-                              labelText: 'Confirm new password',
+                            child: TextFormField(
+                              controller: _confirmation,
+                              obscureText: true,
+                              enabled: !_busy,
+                              decoration: const InputDecoration(
+                                labelText: 'Confirm new password',
+                              ),
+                              validator: (value) => value == _password.text
+                                  ? null
+                                  : 'Passwords do not match',
                             ),
-                            validator: (value) => value == _password.text
-                                ? null
-                                : 'Passwords do not match',
                           ),
                         ],
                         const SizedBox(height: 24),
