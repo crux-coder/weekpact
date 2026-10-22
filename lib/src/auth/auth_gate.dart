@@ -19,8 +19,6 @@ import '../onboarding/onboarding_flow.dart';
 import '../onboarding/setup_pages.dart';
 import '../pacts/pacts_backend.dart';
 import '../subscriptions/pro_upgrade.dart';
-import '../updates/update_check.dart';
-import '../updates/update_prompt.dart';
 import 'auth_backend.dart';
 import 'password_page.dart';
 
@@ -41,7 +39,6 @@ class AuthGate extends StatefulWidget {
     this.storySeenStore,
     this.onboardingDraftStore,
     required this.inviteLinkSource,
-    this.updates,
   });
 
   final AuthBackend authBackend;
@@ -54,9 +51,6 @@ class AuthGate extends StatefulWidget {
   final StorySeenStore? storySeenStore;
   final OnboardingDraftStore? onboardingDraftStore;
   final InviteLinkSource inviteLinkSource;
-
-  /// Offers a newer release once Home is showing. Null never offers one.
-  final UpdateCheck? updates;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -398,7 +392,7 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         _advance(user);
-        final home = HomePage(
+        return HomePage(
           onInviteCode: _receiveInvite,
           crewSelectionStore: widget.crewSelectionStore,
           storySeenStore: widget.storySeenStore,
@@ -411,10 +405,6 @@ class _AuthGateState extends State<AuthGate> {
           chatBackend: widget.chatBackend,
           captureCheckInPhoto: widget.captureCheckInPhoto,
         );
-        final updates = widget.updates;
-        return updates == null
-            ? home
-            : UpdatePrompt.optional(updates: updates, child: home);
       },
     );
   }

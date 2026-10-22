@@ -3,7 +3,6 @@ import 'src/home/home_backend.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/crew/crew_selection_store.dart';
@@ -24,7 +23,6 @@ import 'src/onboarding/onboarding_draft.dart';
 import 'src/subscriptions/subscription_backend.dart';
 import 'src/subscriptions/subscription_identity.dart';
 import 'src/subscriptions/subscription_scope.dart';
-import 'src/updates/update_check.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabasePublishableKey = String.fromEnvironment(
@@ -36,9 +34,6 @@ const _supabasePublishableKey = String.fromEnvironment(
 // configured with one, so release builds always use the Apple key.
 const _revenueCatAppleKey = String.fromEnvironment('REVENUECAT_APPLE_KEY');
 const _revenueCatTestKey = String.fromEnvironment('REVENUECAT_TEST_KEY');
-
-// The numeric Apple ID from App Store Connect, for the update prompt's link.
-const _appStoreId = String.fromEnvironment('APP_STORE_ID');
 
 String get _revenueCatKey {
   if (kReleaseMode) return _revenueCatAppleKey;
@@ -58,7 +53,6 @@ Future<void> main() async {
   final PactsBackend pactsBackend;
   final HomeBackend homeBackend;
   final ChatBackend chatBackend;
-  final UpdateBackend updateBackend;
   if (_supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty) {
     await Supabase.initialize(
       url: _supabaseUrl,
@@ -71,14 +65,12 @@ Future<void> main() async {
     pactsBackend = SupabasePactsBackend(Supabase.instance.client);
     homeBackend = SupabaseHomeBackend(Supabase.instance.client);
     chatBackend = SupabaseChatBackend(Supabase.instance.client);
-    updateBackend = SupabaseUpdateBackend(Supabase.instance.client);
   } else {
     authBackend = const MissingConfigurationAuthBackend();
     crewBackend = const MissingCrewBackend();
     pactsBackend = const MissingPactsBackend();
     homeBackend = const MissingHomeBackend();
     chatBackend = const MissingChatBackend();
-    updateBackend = const MissingUpdateBackend();
   }
 
   final notifications = NotificationService(
@@ -124,12 +116,6 @@ Future<void> main() async {
       chatBackend: chatBackend,
       inviteLinkSource: AppLinksInviteLinkSource(),
       subscriptions: SubscriptionController(subscriptions),
-      updates: UpdateCheck(
-        backend: updateBackend,
-        currentVersion: () async => (await PackageInfo.fromPlatform()).version,
-        store: UpdatePromptStore(preferences),
-        launcher: const StoreUpdateLauncher(appStoreId: _appStoreId),
-      ),
     ),
   );
 }

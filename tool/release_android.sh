@@ -7,7 +7,7 @@ cd "$ROOT"
 usage() {
   cat <<'HELP'
 Usage: ./tool/release_android.sh [--track internal|production] [--build-number N]
-                                 [--env FILE] [--no-open] [--skip-version-check]
+                                 [--env FILE] [--no-open]
 
 Build a release .aab signed with the upload keystore from android/key.properties.
 Version comes from pubspec.yaml. The version code is minutes elapsed since
@@ -25,20 +25,13 @@ listing text and screenshots are left alone. production asks for confirmation
 first when run from a terminal.
   pnpm release-android-test   build and upload to internal testing
   pnpm release-android        build and upload to production
-Except on the internal track, the version must be newer than the Android
-release marked live in public.app_releases, or installed apps are never told
-about it; raise it with pnpm bump-version. --skip-version-check builds without
-asking the backend. Once the release is live on Google Play, run
-pnpm mark-released android.
 HELP
 }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
-source tool/release_version.sh
 ENV_FILE=".env"
 [[ ! -f .env.json ]] || ENV_FILE=".env.json"
 BUILD_NUMBER=""
 REVEAL_BUNDLE=true
-CHECK_VERSION=true
 TRACK=""
 PACKAGE_NAME=dev.codepeaktrail.weekpact
 while [[ $# -gt 0 ]]; do
@@ -53,7 +46,6 @@ while [[ $# -gt 0 ]]; do
       esac
       shift 2 ;;
     --no-open) REVEAL_BUNDLE=false; shift ;;
-    --skip-version-check) CHECK_VERSION=false; shift ;;
     *) fail "Unknown option: $1 (use --help)" ;;
   esac
 done
@@ -85,8 +77,6 @@ STORE_FILE="$(sed -nE 's/^storeFile=[[:space:]]*//p' android/key.properties | ta
 VERSION_LINE="$(sed -nE 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p' pubspec.yaml)"
 VERSION="${VERSION_LINE%%+*}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Use version: X.Y.Z+N in pubspec.yaml.'
-# Internal testers install from Play directly and are never prompted.
-if "$CHECK_VERSION" && [[ "$TRACK" != internal ]]; then require_new_version android "$VERSION"; fi
 COUNTER=.dart_tool/android-release-build-number
 RELEASES=build/android/releases
 highest=0
@@ -133,7 +123,7 @@ DEST="$ROOT/$RELEASES/WeekPact-$VERSION-$BUILD_NUMBER.aab"
 cp "$BUNDLE" "$DEST"
 printf '\nBundle ready: %s\nSigned by: %s\n\n' "$DEST" "$(printf '%s' "$signers" | tr '\n' ' ')"
 if [[ -z "$TRACK" ]]; then
-  printf '%s\n' 'In Play Console (https://play.google.com/console):' '1. Open WeekPact → Testing → Internal testing (or Production) → Create new release.' '2. Upload this .aab and add release notes.' '3. Review the release and roll it out.' '4. Internal testers get the build within minutes; Production and closed tracks go through review first.' "5. Once $VERSION is live in production: pnpm mark-released android"
+  printf '%s\n' 'In Play Console (https://play.google.com/console):' '1. Open WeekPact → Testing → Internal testing (or Production) → Create new release.' '2. Upload this .aab and add release notes.' '3. Review the release and roll it out.' '4. Internal testers get the build within minutes; Production and closed tracks go through review first.'
   if "$REVEAL_BUNDLE" && [[ "$(uname -s)" == Darwin ]]; then open -R "$DEST"; fi
   exit 0
 fi
@@ -153,5 +143,4 @@ if [[ "$TRACK" == internal ]]; then
   printf '\nUploaded. Internal testers get WeekPact %s (%s) within minutes.\n' "$VERSION" "$BUILD_NUMBER"
 else
   printf '\nUploaded. WeekPact %s (%s) is sent for review and goes live once approved.\n' "$VERSION" "$BUILD_NUMBER"
-  printf 'Once it is live, tell installed apps: pnpm mark-released android\n'
 fi

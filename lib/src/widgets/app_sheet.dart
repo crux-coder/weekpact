@@ -96,10 +96,8 @@ class AppSheet extends StatelessWidget {
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
-  bool barrierDismissible = true,
 }) => showDialog<T>(
   context: context,
-  barrierDismissible: barrierDismissible,
   barrierColor: WeekPactColors.barrier,
   builder: (context) => AppSurfaceTheme(builder: builder),
 );
