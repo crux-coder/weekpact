@@ -11,6 +11,7 @@ import 'package:weekpact/src/home/stories.dart';
 import 'package:weekpact/src/home/story_seen_store.dart';
 import 'package:weekpact/src/home/story_viewer.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
+import 'package:weekpact/src/theme/status_bar_blur.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -155,6 +156,27 @@ void main() {
     expect(seen.last.seen, isTrue);
   });
 
+  test('a check-in carries its member\'s week on its pact, Monday first', () {
+    final week = weekWith([
+      // Last week's Sunday is not this week's.
+      const PactCheckIn('move', 'bea', '2026-09-06'),
+      const PactCheckIn('move', 'bea', '2026-09-07'),
+      PactCheckIn('move', 'bea', _today, keptAt: DateTime.utc(2026, 9, 9, 9)),
+      // Someone else's day is not Bea's.
+      const PactCheckIn('move', 'cai', '2026-09-08'),
+    ]);
+    final bea = MemberDay.read(
+      week,
+      viewerId: '',
+    ).firstWhere((d) => d.member.id == 'bea');
+    final story = bea.stories.single as PactStory;
+    expect(story.week?.kept, [true, false, true, false, false, false, false]);
+    expect(story.week?.today, 2);
+    // A daily pact asks for all seven.
+    expect(story.week?.target, 7);
+    expect(story.week?.left, 5);
+  });
+
   test('a member with nothing kept today is in the rail, with no stories', () {
     final days = MemberDay.read(weekWith([]), viewerId: 'bea');
     expect(days, hasLength(3));
@@ -233,6 +255,22 @@ void main() {
     );
   });
 
+  testWidgets('Home\'s title row sits clear of the status bar\'s frost', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 62);
+    addTearDown(tester.view.reset);
+    await pumpStoriesHome(tester);
+    // The bell is the highest thing on Home, and its badge sits higher
+    // still: the blur has to be done before either begins.
+    final bell = tester.getRect(
+      find.byKey(const ValueKey('notifications-badge')),
+    );
+    expect(bell.top, greaterThanOrEqualTo(62 + StatusBarBlur.fade));
+  });
+
   testWidgets('a tile opens the day, and the ring goes grey behind it', (
     tester,
   ) async {
@@ -272,6 +310,20 @@ void main() {
     // corner always sits on something.
     expect(find.byKey(const ValueKey('story-wash')), findsOneWidget);
     expect(find.byKey(const ValueKey('story-photo')), findsNothing);
+    // With no photo to show, the shot shows where the check-in leaves Cai's
+    // week instead: one of the pact's three, two to go.
+    expect(
+      find.byKey(const ValueKey('story-week-read/cai/$_today')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('story-week-count')))
+          .textSpan
+          ?.toPlainText(),
+      '1 / 3',
+    );
+    expect(find.text('2 more this week'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('story-pact')),

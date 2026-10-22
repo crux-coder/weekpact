@@ -253,6 +253,7 @@ class CrewWeekSummary {
     required this.weekStart,
     required this.percent,
     required this.shareOut,
+    this.topPacts = const [],
   });
 
   /// The week's Monday, as `yyyy-MM-dd`.
@@ -265,12 +266,20 @@ class CrewWeekSummary {
   /// Monday to Sunday: the share of the crew that checked in that day.
   final List<double> shareOut;
 
+  /// Monday to Sunday: the pact the crew kept most that day, null where
+  /// nobody kept one. Empty from a server that does not send it yet.
+  final List<String?> topPacts;
+
   factory CrewWeekSummary.fromJson(Map<String, dynamic> row) => CrewWeekSummary(
     weekStart: row['week_start'] as String,
     percent: (row['percent'] as num?)?.toInt() ?? 0,
     shareOut: [
       for (final share in (row['days'] as List? ?? const []))
         (share as num?)?.toDouble() ?? 0,
+    ],
+    topPacts: [
+      for (final pact in (row['top_pacts'] as List? ?? const []))
+        pact as String?,
     ],
   );
 }
@@ -357,6 +366,25 @@ class CrewWeek {
     return out / members.length;
   }
 
+  /// The pact the crew kept most on [day], counted as [shareOut] counts —
+  /// current members only. A tie goes to the pact earlier in the list, as
+  /// the history the server sends breaks it. Null where nobody kept one.
+  String? topPact(String day) {
+    final ids = members.map((m) => m.id).toSet();
+    final counts = <String, int>{};
+    for (final i in checkIns) {
+      if (i.day == day && ids.contains(i.userId)) {
+        counts[i.pactId] = (counts[i.pactId] ?? 0) + 1;
+      }
+    }
+    String? top;
+    for (final pact in pacts) {
+      final count = counts[pact.id] ?? 0;
+      if (count > 0 && count > (counts[top] ?? 0)) top = pact.id;
+    }
+    return top;
+  }
+
   /// The week's seven days as `yyyy-MM-dd`, Monday first.
   ///
   /// Built off [weekStart] rather than off the check-ins, so a day nobody kept
@@ -437,6 +465,7 @@ class NotificationEntry {
     required this.displayName,
     this.pactTitle,
     this.iconKey,
+    this.pactIndex,
     this.clapCount = 0,
     this.avatarPath,
     this.avatarUrl,
@@ -452,6 +481,11 @@ class NotificationEntry {
   final String displayName;
   final String? pactTitle;
   final String? iconKey;
+
+  /// The pact's place in its crew's list, which its colour is read from (see
+  /// `WeekPactColors.pactTint`). Null for a notice about no pact, or from a
+  /// server too old to say.
+  final int? pactIndex;
 
   /// How many people the clap notification stands for, the first of them named
   /// by [displayName]. Zero for every other type.
@@ -502,6 +536,7 @@ class NotificationEntry {
         displayName: displayName,
         pactTitle: pactTitle,
         iconKey: iconKey,
+        pactIndex: pactIndex,
         clapCount: clapCount,
         avatarPath: avatarPath,
         avatarUrl: avatarUrl ?? this.avatarUrl,
@@ -519,6 +554,7 @@ class NotificationEntry {
         displayName: row['display_name'] as String? ?? 'Crew member',
         pactTitle: row['pact_title'] as String?,
         iconKey: row['icon_key'] as String?,
+        pactIndex: (row['pact_index'] as num?)?.toInt(),
         clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
         avatarPath: row['avatar_path'] as String?,
       );

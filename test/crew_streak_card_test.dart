@@ -162,4 +162,85 @@ void main() {
     expect(tester.getTopRight(_bar('2026-09-14')).dx, fullRight);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a day the crew was out wears its most-kept pact\'s colour', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const week = CrewWeek(
+      today: '2026-09-16',
+      weekStart: '2026-09-14',
+      timezone: 'UTC',
+      pacts: [
+        CrewPact(
+          id: 'hang',
+          crewId: 'crew',
+          title: 'Hangboard',
+          frequency: PactFrequency.weekly,
+          daysPerWeek: 2,
+        ),
+        CrewPact(
+          id: 'read',
+          crewId: 'crew',
+          title: 'Read',
+          frequency: PactFrequency.daily,
+          daysPerWeek: 7,
+        ),
+      ],
+      members: [
+        WeekMember('0', 'me@example.com'),
+        WeekMember('1', 'friend@example.com'),
+      ],
+      checkIns: [
+        // Monday: Read twice, Hangboard once — Read wins.
+        PactCheckIn('read', '0', '2026-09-14'),
+        PactCheckIn('read', '1', '2026-09-14'),
+        PactCheckIn('hang', '0', '2026-09-14'),
+        // Tuesday: one each — the tie goes to Hangboard, first in the list.
+        PactCheckIn('read', '0', '2026-09-15'),
+        PactCheckIn('hang', '1', '2026-09-15'),
+      ],
+    );
+    final history = [
+      CrewWeekSummary(
+        weekStart: '2026-09-07',
+        percent: 50,
+        shareOut: const [.5, .5, 0, 0, 0, 0, 0],
+        // Monday from the server; Tuesday from a server too old to say.
+        topPacts: const ['read'],
+      ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(12),
+            child: CrewStreakCard(
+              week: week,
+              history: history,
+              onViewMonth: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    Color? day(String iso) =>
+        ((tester
+                    .widget<Container>(find.byKey(ValueKey('streak-day-$iso')))
+                    .decoration!)
+                as ShapeDecoration)
+            .color;
+    expect(day('2026-09-14'), WeekPactColors.pactBadge(1));
+    expect(day('2026-09-15'), WeekPactColors.pactBadge(0));
+    expect(day('2026-09-07'), WeekPactColors.pactBadge(1));
+    // Out, but with no pact to go on: the plain ink it always had.
+    expect(day('2026-09-08'), WeekPactColors.darkInk);
+    // Not out at all: no pact colour.
+    expect(day('2026-09-09'), isNot(WeekPactColors.pactBadge(0)));
+    expect(day('2026-09-09'), isNot(WeekPactColors.pactBadge(1)));
+  });
 }

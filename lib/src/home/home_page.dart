@@ -1054,7 +1054,6 @@ class _HomeDestinationState extends State<_HomeDestination>
                                               builder: (context, space) =>
                                                   TodayPactsCard(
                                                     height: space.maxHeight,
-                                                    horizontalBleed: 12,
                                                     week: week,
                                                     userId: widget.userId,
                                                     savingPact: _savingPact,

@@ -73,10 +73,16 @@ class PactStory extends Story {
     required this.pact,
     required this.tint,
     required this.badge,
+    this.week,
   });
 
   final PactCheckIn checkIn;
   final CrewPact pact;
+
+  /// The member's week on this pact, which a check-in without a photo shows
+  /// in place of one. Null where the week is not to hand, as in a month of
+  /// photos, which never needs it.
+  final StoryWeek? week;
 
   /// The pact's card colour, and the deeper hue its badge and ring take. Both
   /// come from the pact's place in the crew's list, so a story is the same
@@ -98,6 +104,53 @@ class PactStory extends Story {
   int get clapCount => checkIn.clapCount;
   @override
   bool get viewerClapped => checkIn.viewerClapped;
+}
+
+/// One member's week on one pact, Monday first: the days they kept it, which
+/// of them is today, and how many the pact asks for.
+///
+/// A check-in without a photo has nothing to show but the fact of itself, so
+/// it shows where it leaves the week instead — the one thing about it that is
+/// news, and different every day.
+class StoryWeek {
+  const StoryWeek({
+    required this.kept,
+    required this.today,
+    required this.target,
+  });
+
+  /// Reads [userId]'s week on [pact] out of the crew's.
+  factory StoryWeek.read(CrewWeek week, CrewPact pact, String userId) {
+    final start = _date(week.weekStart);
+    int index(String day) => _date(day).difference(start).inDays;
+    final kept = List.filled(DateTime.daysPerWeek, false);
+    for (final i in week.checkIns) {
+      if (i.pactId != pact.id || i.userId != userId) continue;
+      final at = index(i.day);
+      if (at >= 0 && at < kept.length) kept[at] = true;
+    }
+    return StoryWeek(
+      kept: kept,
+      today: index(week.today).clamp(0, kept.length - 1),
+      target: pact.frequency == PactFrequency.daily
+          ? DateTime.daysPerWeek
+          : pact.daysPerWeek,
+    );
+  }
+
+  final List<bool> kept;
+  final int today;
+  final int target;
+
+  int get count => kept.where((day) => day).length;
+  int get left => target - count;
+
+  /// A `yyyy-MM-dd` day as a UTC midnight, so the days between two of them
+  /// are whole days whatever the clocks did in between.
+  static DateTime _date(String day) {
+    final parsed = DateTime.parse(day);
+    return DateTime.utc(parsed.year, parsed.month, parsed.day);
+  }
 }
 
 /// A post outside any pact, read as a story: the member's own words over
@@ -188,6 +241,7 @@ class MemberDay {
               pact: byPact[i.pactId]!.$2,
               tint: WeekPactColors.pactTint(byPact[i.pactId]!.$1),
               badge: WeekPactColors.pactBadge(byPact[i.pactId]!.$1),
+              week: StoryWeek.read(week, byPact[i.pactId]!.$2, member.id),
             ),
         for (final a in week.achievements)
           if (a.userId == member.id && a.day == week.today) AchievementStory(a),

@@ -21,7 +21,12 @@ class StatusBarBlur extends StatefulWidget {
 
   /// How far below the status bar the blur trails off. Anything that must stay
   /// sharp at the top of a screen starts at least this far below the bar.
-  static const fade = 28.0;
+  ///
+  /// Short, because the pages' own headers sit only a little way under the
+  /// bar: a longer trail frosted the top of Home's title row, and the bell's
+  /// badge, which pokes highest, read as smudged. The ease itself starts
+  /// well up behind the bar, so the trail need not be long to be soft.
+  static const fade = 10.0;
 
   @override
   State<StatusBarBlur> createState() => _StatusBarBlurState();

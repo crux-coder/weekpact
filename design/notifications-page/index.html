@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications ideas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --black:#191B19; --canvas:#222A2B; --surface:#1F2627; --raised:#2a3435; --ink:#EDF3F2; --muted:#AAB8B9;
+    --border:#67797C; --hair:#323e3f; --cream:#F0F5F4; --salmon:#FF836F; --clap:#E6D7A6; --gold:#F0D54E;
+    --sun:#F0B858; --kept:#3F7A6B;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 100px; background:#121616; color:var(--ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1500px; margin:0 auto; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-.4px; margin:0 0 10px; }
+  .lede { color:var(--muted); max-width:78ch; line-height:1.6; font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:44px 28px; }
+  figure { margin:0; display:flex; flex-direction:column; align-items:center; }
+  figcaption { width:300px; margin-top:14px; }
+  figcaption .tag { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  figcaption h2 { font-size:17px; margin:4px 0 6px; font-weight:600; }
+  figcaption p { margin:0; font-size:13.5px; line-height:1.55; color:var(--muted); }
+  figcaption .cost { margin-top:8px; font-size:12px; color:var(--ink); opacity:.8; }
+
+  .phone { width:300px; height:620px; border-radius:44px; background:var(--canvas); position:relative; overflow:hidden;
+    box-shadow:0 0 0 8px #0b0d0d, 0 24px 60px rgba(0,0,0,.5); }
+  .scroll { position:absolute; inset:0; overflow-y:auto; padding:46px 12px 24px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+  .phone::before { content:''; position:absolute; z-index:5; top:12px; left:50%; translate:-50% 0; width:90px; height:24px; border-radius:20px; background:#000; }
+  .bar { display:flex; align-items:center; justify-content:center; position:relative; height:36px; margin-bottom:14px; }
+  .bar h3 { margin:0; font-size:19px; font-weight:600; }
+  .bar .x { position:absolute; right:2px; width:20px; height:20px; color:var(--ink); }
+  .bar .act { position:absolute; left:2px; font-size:12px; color:var(--muted); }
+
+  /* shared atoms */
+  .av { flex:none; width:36px; height:36px; border-radius:12px; display:grid; place-items:center; font-size:12.5px; font-weight:600; color:var(--black); position:relative; }
+  .av.sm { width:26px; height:26px; border-radius:9px; font-size:10px; }
+  .badge { position:absolute; right:-5px; bottom:-5px; width:19px; height:19px; border-radius:7px; display:grid; place-items:center; border:2px solid var(--canvas); }
+  .badge svg { width:11px; height:11px; }
+  .line { font-size:14px; line-height:1.32; }
+  .line b { font-weight:600; }
+  .meta { font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .dot { flex:none; width:8px; height:8px; border-radius:50%; background:var(--salmon); margin-top:6px; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 7px 2px 3px; border-radius:7px; font-size:11.5px; font-weight:600; color:var(--black); vertical-align:1px; }
+  .chip i { width:15px; height:15px; border-radius:5px; display:grid; place-items:center; }
+  .chip i svg { width:10px; height:10px; }
+  .sec { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:18px 2px 8px; }
+  .sec:first-of-type { margin-top:4px; }
+  svg { display:block; }
+
+  /* 0 · now */
+  .card { display:flex; gap:12px; padding:12px; border-radius:16px; background:var(--surface); border:1px solid #3a4748; margin-bottom:10px; box-shadow:0 2px 0 #11171a; }
+
+  /* 1 · grouped list */
+  .row { display:flex; gap:12px; padding:11px 4px; border-bottom:1px solid var(--hair); align-items:flex-start; }
+  .row:last-child { border-bottom:0; }
+  .row.new { background:linear-gradient(90deg, rgba(255,131,111,.08), transparent 70%); border-radius:12px; padding-left:8px; margin:0 -4px; }
+  .group { background:var(--surface); border-radius:18px; padding:2px 10px; border:1px solid #2f3b3c; }
+
+  /* 3 · digest */
+  .dg { border-radius:18px; padding:12px; margin-bottom:10px; color:var(--black); position:relative; }
+  .dg .t { font-size:15px; font-weight:700; line-height:1.25; margin:8px 0 4px; }
+  .dg .s { font-size:12px; opacity:.7; }
+  .stack { display:flex; }
+  .stack .av { border:2px solid currentColor; margin-left:-8px; }
+  .stack .av:first-child { margin-left:0; }
+  .dg.dark { background:var(--surface); color:var(--ink); border:1px solid #2f3b3c; }
+  .dg .new { position:absolute; top:12px; right:12px; font-size:10px; font-weight:700; letter-spacing:.06em; background:var(--black); color:var(--cream); padding:3px 7px; border-radius:8px; }
+
+  /* 4 · actionable */
+  .btn { flex:none; align-self:center; height:30px; padding:0 11px; border-radius:10px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; border:1.5px solid var(--clap); color:var(--clap); }
+  .btn.solid { background:var(--cream); color:var(--black); border-color:var(--cream); }
+  .btn.done { border-color:transparent; background:rgba(230,215,166,.15); }
+  .btn svg { width:14px; height:14px; }
+
+  /* 5 · crew tabs */
+  .tabs { display:flex; gap:6px; margin:-4px 0 14px; overflow:hidden; }
+  .tab { flex:none; height:30px; padding:0 12px; border-radius:10px; font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px; background:var(--surface); color:var(--muted); border:1px solid #2f3b3c; }
+  .tab.on { background:var(--cream); color:var(--black); border-color:var(--cream); }
+  .tab em { font-style:normal; font-size:10px; background:var(--salmon); color:var(--black); border-radius:6px; padding:0 5px; line-height:15px; }
+  .crow { display:flex; gap:10px; padding:9px 2px; align-items:center; }
+  .crow .ic { width:30px; height:30px; border-radius:10px; display:grid; place-items:center; flex:none; }
+  .crow .ic svg { width:16px; height:16px; }
+  .crow .line { flex:1; font-size:13.5px; }
+  .crow .time { font-size:11px; color:var(--muted); flex:none; }
+
+  /* 6 · timeline */
+  .tl { position:relative; padding-left:26px; }
+  .tl::before { content:''; position:absolute; left:9px; top:6px; bottom:6px; width:2px; background:var(--hair); border-radius:1px; }
+  .node { position:relative; margin-bottom:16px; }
+  .node .pin { position:absolute; left:-26px; top:2px; width:20px; height:20px; border-radius:7px; display:grid; place-items:center; border:2px solid var(--canvas); }
+  .node .pin svg { width:11px; height:11px; }
+  .node .when { font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .node .line { font-size:13.5px; }
+  .node .ph { margin-top:7px; width:100%; height:86px; border-radius:14px; background:linear-gradient(135deg,#6b5a4a,#a88b6b 60%,#ccb090); }
+  .daycap { font-size:12px; font-weight:700; margin:0 0 10px -26px; color:var(--ink); }
+
+  .verdict { margin-top:56px; max-width:78ch; font-size:15px; line-height:1.65; color:var(--muted); border-top:1px solid #2b3536; padding-top:24px; }
+  .verdict b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Notifications, a few directions</h1>
+  <p class="lede">Today's page gives every notice the same card, so a clap, a crewmate finishing a pact and a nudge all look alike, and a busy day becomes a long stack of identical boxes. Each idea below changes one thing: <b>structure</b> (grouping by day), <b>signal</b> (colour and icon per type), <b>volume</b> (rolling up claps), <b>action</b> (reply from the row), <b>scope</b> (per crew) or <b>story</b> (a timeline). They mix well, so feel free to pick parts from several. Scroll inside each phone.</p>
+  <div class="grid" id="grid"></div>
+  <p class="verdict"><b>Where I'd start:</b> 1 + 2 together, the day grouping with the type badges. They fix the "wall of identical cards" problem without changing what a notification is, and need no server work. <b>3 · Digest</b> is the biggest win if claps are noisy, but rolling up across people and days needs a server change. <b>4 · Reply in place</b> is the most fun, and "clap back" is a nice loop, but it adds buttons to every row.</p>
+</div>
+
+<script>
+const ic = {
+  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13"/></svg>',
+  shoe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5V9l4 1.5L10 7l3 4 5 1.5c1.7.5 3 1.7 3 3.5v.5H3z"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 01-8 0zM8 6H5a3 3 0 003 4M16 6h3a3 3 0 01-3 4M12 13v4M8.5 20h7"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  x:'<svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  clap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l4.5-4.5a1.6 1.6 0 012.3 2.3L11 11.6"/><path d="M13 9.2l1.8-1.8a1.6 1.6 0 012.3 2.3l-5.5 5.5c-2 2-5 2-7 0s-2-5 0-7L7 6.2"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+};
+const people = { MR:'#FFB8BC', AH:'#83E5BC', DK:'#FCC17C', LS:'#B7CEFF', JM:'#D6C1FF' };
+const pacts = {
+  Hangboard:{ t:'#FFB8BC', b:'#FF99A1', i:'target' },
+  'Read 20 pages':{ t:'#83E5BC', b:'#54D6A5', i:'book' },
+  'Run 5k':{ t:'#FCC17C', b:'#F1AA4F', i:'shoe' },
+};
+// type → badge colour and glyph
+const kind = {
+  clap:{ c:'var(--clap)', g:'heart' }, achv:{ c:'var(--gold)', g:'trophy' }, story:{ c:'#BEA8F5', g:'camera' },
+  done:{ c:null, g:null }, nudge:{ c:'var(--sun)', g:'sun' },
+};
+const feed = [
+  { who:'Mirnes Ramic', ini:'MR', more:2, type:'clap', pact:'Hangboard', crew:'Climbers', ago:'5m', day:'Today', unread:true },
+  { who:'Amra Hodzic', ini:'AH', type:'done', pact:'Read 20 pages', crew:'Climbers', ago:'1h', day:'Today', unread:true },
+  { who:'Dino Kovac', ini:'DK', type:'nudge', crew:'Early Birds', ago:'3h', day:'Today', unread:true },
+  { who:'Lejla Suljic', ini:'LS', type:'achv', crew:'Climbers', ago:'Yesterday', day:'Yesterday' },
+  { who:'Mirnes Ramic', ini:'MR', type:'done', pact:'Hangboard', crew:'Climbers', ago:'Yesterday', day:'Yesterday' },
+  { who:'Amra Hodzic', ini:'AH', type:'story', crew:'Early Birds', ago:'2d', day:'Earlier this week' },
+  { who:'Dino Kovac', ini:'DK', type:'done', pact:'Run 5k', crew:'Early Birds', ago:'3d', day:'Earlier this week' },
+  { who:'Lejla Suljic', ini:'LS', type:'clap', pact:'Read 20 pages', crew:'Climbers', ago:'4d', day:'Earlier this week' },
+];
+const first = n => n.split(' ')[0];
+const subject = (e, full=true) => (full ? e.who : first(e.who)) + (e.more ? ` and ${e.more} other${e.more>1?'s':''}` : '');
+const action = (e, chip=false) => {
+  const p = e.pact && chip ? pactChip(e.pact) : e.pact;
+  return { clap:`clapped your ${p} check-in`, achv:'clapped your achievement', story:'clapped your story',
+           done:`completed ${p}`, nudge:'is cheering you on' }[e.type];
+};
+const pactChip = name => { const p = pacts[name]; return `<span class="chip" style="background:${p.t}"><i style="background:${p.b}">${ic[p.i]}</i>${name}</span>`; };
+const av = (e, badge=false, cls='') => {
+  let b = '';
+  if (badge) {
+    const k = kind[e.type];
+    const col = e.type === 'done' ? pacts[e.pact].b : k.c;
+    const g = e.type === 'done' ? pacts[e.pact].i : k.g;
+    b = `<span class="badge" style="background:${col};color:var(--black)">${ic[g]}</span>`;
+  }
+  return `<div class="av ${cls}" style="background:${people[e.ini]}">${e.ini}${b}</div>`;
+};
+const bar = (title, extra='') => `<div class="bar">${extra}<h3>${title}</h3>${ic.x}</div>`;
+const byDay = list => { const out = {}; list.forEach(e => (out[e.day] ??= []).push(e)); return out; };
+
+const designs = [
+  { tag:'Today', title:'Card per notice', body:'What ships now: every notice is the same raised card with a heart, sun or pact glyph in the small meta line. Clear, but a busy day turns into a wall of identical boxes.', cost:'—',
+    html: () => bar('Notifications') + feed.map(e => `
+      <div class="card">${av(e)}<div style="flex:1"><div class="line"><b>${subject(e)}</b> ${action(e)}.</div>
+      <div class="meta">${e.crew} · ${e.ago}</div></div>${e.unread?'<div class="dot"></div>':''}</div>`).join('') },
+
+  { tag:'Idea 1 · structure', title:'Grouped by day', body:'Today / Yesterday / Earlier this week, each a single surface with hairline rows instead of a card each. Unread rows carry a warm wash. Calmer, easier to scan, and it says how recent things are without a timestamp on every line.', cost:'Small · client only',
+    html: () => bar('Notifications') + Object.entries(byDay(feed)).map(([d, es]) => `
+      <div class="sec">${d}</div><div class="group">${es.map(e => `
+        <div class="row ${e.unread?'new':''}">${av(e)}<div style="flex:1"><div class="line"><b>${subject(e)}</b> ${action(e)}</div>
+        <div class="meta">${e.crew}${e.day==='Today'?' · '+e.ago:''}</div></div>${e.unread?'<div class="dot"></div>':''}</div>`).join('')}</div>`).join('') },
+
+  { tag:'Idea 2 · signal', title:'Type badges + pact chips', body:'Each avatar wears a corner badge saying what happened: a brass heart for claps, gold trophy for achievements, sun for nudges, and the pact\'s own badge for a completion. Pact names become chips in the pact\'s colour, so you can tell what it\'s about at a glance.', cost:'Small · client only',
+    html: () => bar('Notifications') + feed.map(e => `
+      <div class="card">${av(e, true)}<div style="flex:1"><div class="line"><b>${subject(e)}</b> ${action(e, true)}</div>
+      <div class="meta">${e.crew} · ${e.ago}</div></div>${e.unread?'<div class="dot"></div>':''}</div>`).join('') },
+
+  { tag:'Idea 3 · volume', title:'Daily digest', body:'Rolls things up: one card per check-in with everyone who clapped it stacked, one card for "the crew finished pacts today". Big pact-coloured cards for good news, quiet dark rows for the rest. Far fewer items on a busy day.', cost:'Medium · needs grouping across people and days on the server',
+    html: () => bar('Notifications') + `
+      <div class="sec">Today</div>
+      <div class="dg" style="background:${pacts.Hangboard.t}"><span class="new">NEW</span>
+        <div class="stack" style="color:${pacts.Hangboard.t}">${['MR','AH','DK'].map(i=>`<div class="av sm" style="background:${people[i]}">${i}</div>`).join('')}</div>
+        <div class="t">3 claps on your Hangboard check-in</div><div class="s">Mirnes, Amra and Dino · Climbers</div></div>
+      <div class="dg" style="background:${pacts['Read 20 pages'].t}"><span class="new">NEW</span>
+        <div class="stack" style="color:${pacts['Read 20 pages'].t}"><div class="av sm" style="background:${people.AH}">AH</div></div>
+        <div class="t">Amra finished Read 20 pages for the week</div><div class="s">Climbers · 1h ago</div></div>
+      <div class="dg dark"><div class="crow" style="padding:0">${av(feed[2], true)}<div class="line"><b>Dino</b> is cheering you on<div class="meta">Early Birds · 3h</div></div></div></div>
+      <div class="sec">Yesterday</div>
+      <div class="dg dark"><div class="t" style="margin-top:0">2 things in Climbers</div><div class="s" style="color:var(--muted);opacity:1">Lejla clapped your achievement · Mirnes finished Hangboard</div></div>
+      <div class="sec">Earlier this week</div>
+      <div class="dg dark"><div class="t" style="margin-top:0">3 things across 2 crews</div><div class="s" style="color:var(--muted);opacity:1">Amra, Dino and Lejla</div></div>` },
+
+  { tag:'Idea 4 · action', title:'Reply in place', body:'Each row ends in what you\'d do next: clap back on a completion, check in when someone nudges you, open your story to see who clapped. It turns the page from a log into a little to-do list, and "clap back" closes the loop nicely.', cost:'Medium · reuses the clap and check-in calls',
+    html: () => bar('Notifications') + feed.slice(0,6).map((e, n) => {
+      const b = { clap:`<div class="btn">${ic.clap} Thank</div>`, done: n===4 ? `<div class="btn done">${ic.check} Clapped</div>` : `<div class="btn">${ic.clap} Clap</div>`,
+        nudge:`<div class="btn solid">Check in</div>`, achv:`<div class="btn" style="border-color:#3a4748;color:var(--muted)">View</div>`, story:`<div class="btn" style="border-color:#3a4748;color:var(--muted)">View</div>` }[e.type];
+      return `<div class="card" style="align-items:flex-start">${av(e, true)}<div style="flex:1;min-width:0"><div class="line"><b>${subject(e,false)}</b> ${action(e)}</div>
+      <div class="meta">${e.crew} · ${e.ago}</div></div>${b}</div>`; }).join('') },
+
+  { tag:'Idea 5 · scope', title:'Crew tabs, compact rows', body:'For people in several crews: a tab per crew with its own unread count, and dense one-line rows led by the type icon instead of a face. Fits twice as much on screen; best if lists get long.', cost:'Small · client only',
+    html: () => bar('Notifications') + `<div class="tabs"><div class="tab on">All <em>3</em></div><div class="tab">Climbers <em>2</em></div><div class="tab">Early Birds <em>1</em></div></div>` +
+      Object.entries(byDay(feed)).map(([d, es]) => `<div class="sec">${d}</div>` + es.map(e => {
+        const col = e.type==='done' ? pacts[e.pact].b : kind[e.type].c; const g = e.type==='done' ? pacts[e.pact].i : kind[e.type].g;
+        return `<div class="crow"><div class="ic" style="background:${col};color:var(--black)">${ic[g]}</div><div class="line"><b>${first(e.who)}${e.more?` +${e.more}`:''}</b> ${action(e)}</div><div class="time">${e.unread?'<span class="dot" style="display:inline-block;margin:0 6px 0 0;vertical-align:1px"></span>':''}${e.day==='Today'?e.ago:''}</div></div>`; }).join('')).join('') },
+
+  { tag:'Idea 6 · story', title:'Crew timeline', body:'A vertical timeline of the crew\'s week, with pact-coloured pins and the check-in photo inline when there is one. It reads more like a feed of what the crew did than a list of alerts, which suits a small group of friends.', cost:'Medium · needs photos on the notice',
+    html: () => bar('Activity') + `<div class="tl">` + Object.entries(byDay(feed)).map(([d, es]) => `<div class="daycap">${d}</div>` + es.map((e, n) => {
+        const col = e.type==='done' ? pacts[e.pact].b : kind[e.type].c; const g = e.type==='done' ? pacts[e.pact].i : kind[e.type].g;
+        return `<div class="node"><div class="pin" style="background:${col};color:var(--black)">${ic[g]}</div><div class="when">${e.crew}${e.day==='Today'?' · '+e.ago:''}</div>
+          <div class="line"><b>${subject(e,false)}</b> ${action(e, true)}</div>${e.type==='clap' && e.unread ? '<div class="ph"></div>' : ''}</div>`; }).join('')).join('') + `</div>` },
+];
+
+document.getElementById('grid').innerHTML = designs.map(d => `
+  <figure><div class="phone"><div class="scroll">${d.html()}</div></div>
+  <figcaption><div class="tag">${d.tag}</div><h2>${d.title}</h2><p>${d.body}</p><div class="cost">${d.cost}</div></figcaption></figure>`).join('');
+</script>
+</body>
+</html>

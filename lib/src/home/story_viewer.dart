@@ -242,9 +242,15 @@ class _StoryViewerState extends State<StoryViewer> {
             widget.onSeen?.call(_current);
           },
           child: Padding(
-            // The progress and the name start where the status bar's blur has
-            // trailed off, so they read sharp rather than frosted.
-            padding: const EdgeInsets.fromLTRB(12, StatusBarBlur.fade, 12, 12),
+            // The progress and the name start clear of where the status bar's
+            // blur trails off, so they read sharp rather than frosted, with
+            // the room under the island the page has always had.
+            padding: const EdgeInsets.fromLTRB(
+              12,
+              StatusBarBlur.fade + 18,
+              12,
+              12,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -299,6 +305,15 @@ class _StoryViewerState extends State<StoryViewer> {
                                   text: text,
                                   kind: story.kind,
                                 ),
+                        if (story case PactStory(:final week?)
+                            when !story.hasPhoto)
+                          _WeekTally(
+                            // Keyed by the check-in, so today's day pops
+                            // afresh for each story rather than mid-beat.
+                            key: ValueKey('story-week-${story.id}'),
+                            story: story,
+                            week: week,
+                          ),
                         // Bounded on both sides, so a long pact name
                         // ellipsizes inside the shot rather than running off
                         // it.
@@ -339,16 +354,6 @@ class _StoryViewerState extends State<StoryViewer> {
                         },
                         onPressed: _clapping ? null : _clap,
                       ),
-                    const Spacer(),
-                    Text(
-                      '${_member + 1} of ${widget.days.length}',
-                      style: const TextStyle(
-                        fontFamily: WeekPactType.secondary,
-                        fontFamilyFallback: WeekPactType.secondaryFallback,
-                        fontSize: 11,
-                        color: WeekPactDarkCard.muted,
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -786,6 +791,258 @@ class _AchievementText extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// A check-in without a photo, told as where it leaves the week: the pact,
+/// its seven days with today's beating, and the count against what it asks.
+///
+/// The photo is what makes a story of a check-in that has one. Without it, the
+/// one thing that changes from day to day is the week, so the week takes the
+/// middle of the shot rather than an empty frame waiting for a picture.
+class _WeekTally extends StatelessWidget {
+  const _WeekTally({super.key, required this.story, required this.week});
+
+  final PactStory story;
+  final StoryWeek week;
+
+  static const _letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  String get _left => switch (week.left) {
+    <= 0 => 'Done for the week',
+    1 => 'One more this week',
+    final left => '$left more this week',
+  };
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label:
+        '${story.pact.title}: ${week.count} of ${week.target} this week. '
+        '$_left.',
+    excludeSemantics: true,
+    child: Padding(
+      // Clear of the chip along the foot.
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 64),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width - 72,
+                ),
+                child: Text(
+                  story.pact.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: WeekPactDarkCard.ink,
+                    fontSize: 22,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                story.pact.schedule,
+                style: const TextStyle(
+                  fontFamily: WeekPactType.secondary,
+                  fontFamilyFallback: WeekPactType.secondaryFallback,
+                  fontSize: 13,
+                  color: WeekPactDarkCard.muted,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < week.kept.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    _TallyDay(
+                      key: ValueKey('story-week-day-$i'),
+                      letter: _letters[i],
+                      kept: week.kept[i],
+                      today: i == week.today,
+                      tint: story.tint,
+                      badge: story.badge,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 32),
+              Text.rich(
+                TextSpan(
+                  text: '${week.count}',
+                  children: [
+                    TextSpan(
+                      text: ' / ${week.target}',
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0,
+                        color: WeekPactDarkCard.muted,
+                      ),
+                    ),
+                  ],
+                ),
+                key: const ValueKey('story-week-count'),
+                style: const TextStyle(
+                  color: WeekPactDarkCard.ink,
+                  fontSize: 64,
+                  height: 1,
+                  letterSpacing: -2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _left,
+                style: TextStyle(
+                  color: story.tint,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// One day of [_WeekTally]: the pact's badge with a tick where it was kept,
+/// a faint outline where it was not, and its letter underneath.
+///
+/// Today's day beats — a quick swell every couple of seconds — so the eye
+/// lands on the check-in this story is, among the others in its week. Held
+/// still where the platform asks for less motion.
+class _TallyDay extends StatefulWidget {
+  const _TallyDay({
+    super.key,
+    required this.letter,
+    required this.kept,
+    required this.today,
+    required this.tint,
+    required this.badge,
+  });
+
+  final String letter;
+  final bool kept;
+  final bool today;
+  final Color tint;
+  final Color badge;
+
+  @override
+  State<_TallyDay> createState() => _TallyDayState();
+}
+
+class _TallyDayState extends State<_TallyDay>
+    with SingleTickerProviderStateMixin {
+  late final _beat = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  );
+
+  /// A swell over the first eighth of the beat and back over the next, then
+  /// still for the rest, so it reads as a pulse rather than a wobble.
+  late final _scale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 1.25,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 12,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.25,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeIn)),
+      weight: 12,
+    ),
+    TweenSequenceItem(tween: ConstantTween(1.0), weight: 76),
+  ]).animate(_beat);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.today && !MediaQuery.disableAnimationsOf(context)) {
+      if (!_beat.isAnimating) _beat.repeat();
+    } else {
+      _beat.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _beat.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const shape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(20)),
+    );
+    final face = SizedBox.square(
+      dimension: 32,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: widget.kept
+              ? widget.badge
+              : WeekPactDarkCard.ink.withValues(alpha: .06),
+          shape: widget.kept
+              ? shape
+              : shape.copyWith(
+                  side: BorderSide(
+                    color: WeekPactDarkCard.ink.withValues(alpha: .28),
+                    width: 1.5,
+                  ),
+                ),
+          shadows: [
+            // Today wears a halo of the pact's own tint, so it stands out
+            // between beats as well as on them.
+            if (widget.today)
+              BoxShadow(
+                color: widget.tint.withValues(alpha: .35),
+                spreadRadius: 3,
+              ),
+          ],
+        ),
+        child: widget.kept
+            ? const Center(
+                child: HugeIcon(
+                  icon: HugeIconsStrokeRounded.tick02,
+                  color: WeekPactColors.black,
+                  size: 18,
+                  strokeWidth: 2.2,
+                ),
+              )
+            : null,
+      ),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        widget.today ? ScaleTransition(scale: _scale, child: face) : face,
+        const SizedBox(height: 7),
+        Text(
+          widget.letter,
+          style: TextStyle(
+            fontFamily: WeekPactType.secondary,
+            fontFamilyFallback: WeekPactType.secondaryFallback,
+            fontSize: 11,
+            fontWeight: widget.today ? FontWeight.w600 : FontWeight.w400,
+            color: widget.today ? WeekPactDarkCard.ink : WeekPactDarkCard.muted,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// An achievement's words over its own photo: a caption along the foot, on a

@@ -18,20 +18,29 @@ NotificationEntry notification(
   String name = 'Mirnes Halilovic',
   String crew = 'Early Birds',
   String? pactTitle = 'Climb twice',
+  int? pactIndex,
+  Duration? age,
 }) => NotificationEntry(
   eventId: 'event-$index',
   type: type,
   // Newest first, an hour apart, so ordering and the cursor are both visible.
-  createdAt: DateTime.now().toUtc().subtract(Duration(hours: index + 1)),
+  createdAt: DateTime.now().toUtc().subtract(
+    age ?? Duration(minutes: index + 1),
+  ),
   read: read,
-  crewId: 'crew',
+  crewId: crew,
   crewName: crew,
   actorId: 'member-$index',
   displayName: name,
   pactTitle: pactTitle,
   iconKey: 'run',
+  pactIndex: pactIndex,
   clapCount: claps,
 );
+
+/// A row, found by what it says aloud: the sentence, then the crew and when.
+Finder row(Pattern text) =>
+    find.bySemanticsLabel(text is String ? RegExp(RegExp.escape(text)) : text);
 
 Future<void> pumpNotifications(
   WidgetTester tester,
@@ -90,28 +99,17 @@ void main() {
     expect(find.byTooltip('Close notifications'), findsOneWidget);
     expect(find.text('Notifications'), findsOneWidget);
     expect(
-      find.textContaining('completed Climb twice.'),
+      row('completed Climb twice'),
       findsOneWidget,
       reason: 'a crew check-in reads as what they did',
     );
-    expect(
-      find.textContaining('clapped your Climb twice check-in.'),
-      findsNWidgets(2),
-    );
+    expect(row('clapped your Climb twice check-in'), findsNWidgets(2));
     // One clap names one person; several name the first and count the rest.
-    expect(
-      find.textContaining('Mirnes Halilovic clapped your'),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining('Mirnes Halilovic and 2 others clapped your'),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining('Mirnes Halilovic is cheering you on.'),
-      findsOneWidget,
-    );
-    expect(find.text('Climbers'), findsOneWidget);
+    expect(row('Mirnes Halilovic clapped your'), findsOneWidget);
+    expect(row('Mirnes Halilovic and 2 others clapped your'), findsOneWidget);
+    expect(row('Mirnes Halilovic is cheering you on'), findsOneWidget);
+    // Two crews, so each row says which it came from.
+    expect(find.textContaining('Climbers ·'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -124,8 +122,19 @@ void main() {
       ];
     await pumpNotifications(tester, backend);
 
-    // Opening the list clears it, so every row settles as read.
-    expect(find.byKey(const ValueKey('notification-unread-dot')), findsNothing);
+    // Opening the list clears it on the server, but what was new keeps its
+    // mark for this visit — that is what the mark is for.
+    expect(
+      find.byKey(const ValueKey('notification-unread-dot')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('notification-event-0')),
+        matching: find.byKey(const ValueKey('notification-unread-dot')),
+      ),
+      findsOneWidget,
+    );
     expect(backend.markedReadUpTo, backend.notifications.first.createdAt);
   });
 
@@ -205,7 +214,7 @@ void main() {
     backend.notifications = [notification(0)];
     await tester.tap(find.text('TRY AGAIN'));
     await tester.pumpUi();
-    expect(find.textContaining('completed Climb twice.'), findsOneWidget);
+    expect(row('completed Climb twice'), findsOneWidget);
   });
 
   testWidgets('home carries the badge and opens the list', (tester) async {
@@ -250,5 +259,123 @@ void main() {
     expect(badge, findsOneWidget);
     // The bell is still there; it simply wears nothing.
     expect(tester.widget<Badge>(badge).isLabelVisible, isFalse);
+  });
+
+  test('notices file under today, yesterday, the weeks, then the month', () {
+    // Thursday 22 October 2026.
+    final now = DateTime(2026, 10, 22, 15);
+    String at(int month, int day, [int year = 2026]) =>
+        notificationSection(DateTime(year, month, day, 9), now);
+    expect(at(10, 22), 'Today');
+    expect(at(10, 21), 'Yesterday');
+    expect(at(10, 19), 'This week', reason: 'Monday starts the week');
+    expect(at(10, 18), 'Last week', reason: 'the Sunday before it');
+    expect(at(10, 12), 'Last week');
+    expect(at(10, 11), 'October', reason: 'before last week, this month');
+    expect(at(9, 30), 'September');
+    expect(at(1, 2), 'January');
+    expect(at(12, 31, 2025), 'December 2025');
+
+    // On a Monday, yesterday is Sunday: Yesterday, not Last week.
+    final monday = DateTime(2026, 10, 19, 8);
+    expect(
+      notificationSection(DateTime(2026, 10, 18, 20), monday),
+      'Yesterday',
+    );
+    expect(
+      notificationSection(DateTime(2026, 10, 17, 20), monday),
+      'Last week',
+    );
+    expect(notificationSection(DateTime(2026, 10, 11, 20), monday), 'October');
+  });
+
+  testWidgets('sections run newest first, one label each', (tester) async {
+    final backend = DashboardBackend()
+      ..notifications = [
+        notification(0, age: const Duration(minutes: 5)),
+        notification(1, age: const Duration(minutes: 6)),
+        notification(2, age: const Duration(days: 9)),
+        notification(3, age: const Duration(days: 60)),
+      ];
+    await pumpNotifications(tester, backend);
+    final now = DateTime.now();
+    final labels = {
+      for (final e in backend.notifications)
+        notificationSection(e.createdAt.toLocal(), now).toUpperCase(),
+    }.toList();
+    for (final l in labels) {
+      expect(find.text(l), findsOneWidget);
+    }
+    final tops = [for (final l in labels) tester.getTopLeft(find.text(l)).dy];
+    expect(tops, [...tops]..sort());
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('crew tabs cut the list to one crew, with its new count', (
+    tester,
+  ) async {
+    final backend = DashboardBackend()
+      ..notifications = [
+        notification(0, crew: 'Climbers'),
+        notification(1, crew: 'Early Birds'),
+        notification(2, crew: 'Climbers', read: true),
+      ];
+    await pumpNotifications(tester, backend);
+    expect(find.byKey(const ValueKey('notifications-tab-all')), findsOneWidget);
+    expect(find.bySemanticsLabel('All, 2 new'), findsOneWidget);
+    expect(find.bySemanticsLabel('Climbers, 1 new'), findsOneWidget);
+    expect(find.bySemanticsLabel('Early Birds, 1 new'), findsOneWidget);
+    expect(find.byKey(const ValueKey('notification-event-1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('notifications-tab-Climbers')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('notification-event-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('notification-event-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('notification-event-1')), findsNothing);
+    // Cut to one crew, the rows stop saying which crew.
+    expect(find.textContaining('Climbers ·'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('notifications-tab-all')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('notification-event-1')), findsOneWidget);
+  });
+
+  testWidgets('one crew needs no tabs', (tester) async {
+    final backend = DashboardBackend()
+      ..notifications = [notification(0), notification(1)];
+    await pumpNotifications(tester, backend);
+    expect(find.byKey(const ValueKey('notifications-tab-all')), findsNothing);
+  });
+
+  testWidgets('a pact shows as a chip in its colours, a badge says what', (
+    tester,
+  ) async {
+    final backend = DashboardBackend()
+      ..notifications = [
+        notification(0, pactIndex: 2),
+        notification(1, type: 'check_in_clapped', claps: 1),
+        notification(2, type: 'crew_nudge', pactTitle: null),
+      ];
+    await pumpNotifications(tester, backend);
+    ShapeDecoration fill(String key) =>
+        tester.widget<Container>(find.byKey(ValueKey(key))).decoration!
+            as ShapeDecoration;
+    expect(fill('notification-pact-event-0').color, WeekPactColors.pactTint(2));
+    // A pact the server sent no colour for is still a chip, in a neutral
+    // wash rather than someone else's colour.
+    expect(
+      fill('notification-pact-event-1').color,
+      isNot(WeekPactColors.pactTint(0)),
+    );
+    expect(
+      find.byKey(const ValueKey('notification-pact-event-2')),
+      findsNothing,
+    );
+    expect(
+      fill('notification-badge-event-0').color,
+      WeekPactColors.pactBadge(2),
+    );
+    expect(fill('notification-badge-event-1').color, WeekPactColors.brass);
+    expect(fill('notification-badge-event-2').color, WeekPactColors.lantern);
   });
 }

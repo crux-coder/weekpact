@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No-photo check-ins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --black:#191B19; --surface:#1F2627; --canvas:#222A2B;
+    --ink:#EDF3F2; --muted:#AAB8B9; --border:#67797C;
+    --clap:#E6D7A6; --kept:#B8CC8E; --pending:#C6CACB; --streak:#E08A45;
+    /* Mint pact (index 1) */
+    --tint:#83E5BC; --badge:#54D6A5;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 100px; background:#121616; color:var(--ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1500px; margin:0 auto; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-.4px; margin:0 0 10px; }
+  .lede { color:var(--muted); max-width:78ch; line-height:1.6; font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:44px 28px; }
+  figure { margin:0; display:flex; flex-direction:column; align-items:center; }
+  figcaption { width:300px; margin-top:16px; }
+  figcaption .tag { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  figcaption h2 { font-size:17px; margin:4px 0 6px; font-weight:600; }
+  figcaption p { margin:0; font-size:13.5px; line-height:1.55; color:var(--muted); }
+  figcaption .cost { margin-top:8px; font-size:12px; color:var(--ink); opacity:.8; }
+  figure.pick figcaption .tag { color:var(--clap); }
+
+  /* ---------- phone + viewer chrome (story_viewer.dart) ---------- */
+  .phone { width:300px; height:620px; border-radius:44px; background:var(--black);
+    padding:46px 12px 12px; display:flex; flex-direction:column; position:relative;
+    box-shadow:0 0 0 8px #0b0d0d, 0 24px 60px rgba(0,0,0,.5); overflow:hidden; }
+  .phone::before { content:''; position:absolute; top:12px; left:50%; translate:-50% 0;
+    width:90px; height:24px; border-radius:20px; background:#000; }
+  .segs { display:flex; gap:4px; }
+  .segs i { flex:1; height:3px; border-radius:2px; background:rgba(237,243,242,.28); }
+  .segs i.on { background:var(--ink); }
+  .head { display:flex; align-items:center; gap:9px; margin:10px 0; }
+  .av { width:32px; height:32px; border-radius:11px; padding:1.5px; background:var(--badge); }
+  .av span { display:grid; place-items:center; width:100%; height:100%; border-radius:10px;
+    background:var(--surface); font-size:12px; }
+  .who { flex:1; line-height:1.25; }
+  .who b { display:block; font-size:14px; font-weight:600; }
+  .who small { font-size:11px; color:var(--muted); }
+  .x { width:20px; height:20px; opacity:.9; }
+  .stage { flex:1; border-radius:28px; overflow:hidden; position:relative; }
+  .foot { display:flex; align-items:center; margin-top:10px; }
+  .clap { height:38px; padding:0 16px; border-radius:13px; border:1.5px solid var(--clap);
+    color:var(--clap); display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600; }
+  .foot small { margin-left:auto; font-size:11px; color:var(--muted); }
+
+  /* shared bits */
+  .wash { position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 70% 25%, rgba(84,214,165,.45), transparent 50%),
+      radial-gradient(circle at 25% 12%, rgba(131,229,188,.5), transparent 62%),
+      linear-gradient(170deg, #1f4a3c 0%, var(--surface) 58%, var(--black) 100%); }
+  .chip { position:absolute; left:12px; bottom:12px; display:flex; align-items:center; gap:8px;
+    padding:6px 12px 6px 6px; border-radius:12px; background:var(--tint); color:var(--black);
+    font-size:13.5px; font-weight:600; box-shadow:0 2px 0 #63ae8f; }
+  .badge { display:grid; place-items:center; border-radius:30%; background:var(--badge); color:var(--black); }
+  .badge svg { width:58%; height:58%; }
+  .chip .badge { width:24px; height:24px; }
+  .center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; }
+  svg { display:block; }
+
+  /* 1 · poster */
+  .poster { background:var(--tint); color:var(--black); }
+  .poster .bigbadge { width:96px; height:96px; border-radius:30px; background:var(--badge);
+    display:grid; place-items:center; box-shadow:0 4px 0 #3aa680; margin-bottom:26px; }
+  .poster .bigbadge svg { width:52px; height:52px; }
+  .poster h3 { font-size:34px; line-height:1.05; letter-spacing:-.8px; margin:0 0 12px; font-weight:800; }
+  .poster .kept { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600;
+    background:rgba(25,27,25,.09); padding:7px 12px; border-radius:11px; }
+  .poster .bg-icon { position:absolute; right:-70px; bottom:-70px; width:220px; height:220px; opacity:.13; transform:rotate(-14deg); }
+
+  /* 2 · week tally */
+  .tally h3 { font-size:22px; font-weight:700; margin:0 0 4px; }
+  .tally .sub { color:var(--muted); font-size:13px; margin-bottom:30px; }
+  .days { display:flex; gap:7px; }
+  .day { display:flex; flex-direction:column; align-items:center; gap:7px; font-size:11px; color:var(--muted); }
+  .dot { width:30px; height:30px; border-radius:10px; border:1.5px dashed rgba(237,243,242,.3); display:grid; place-items:center; }
+  .dot.done { border:0; background:var(--badge); color:var(--black); }
+  .dot svg { width:16px; height:16px; }
+  .day.today { color:var(--ink); font-weight:600; }
+  .day.today .dot { width:30px; height:30px; animation:pop 2.4s ease-in-out infinite; box-shadow:0 0 0 3px rgba(131,229,188,.35); }
+  @keyframes pop { 0%,100% { transform:scale(1) } 12% { transform:scale(1.25) } 24% { transform:scale(1) } }
+  .tally .big { font-size:64px; font-weight:800; letter-spacing:-2px; line-height:1; margin-top:34px; }
+  .tally .big span { color:var(--muted); font-size:30px; font-weight:600; letter-spacing:0; }
+  .tally .left { margin-top:6px; font-size:13.5px; color:var(--tint); font-weight:600; }
+
+  /* 3 · stamp */
+  .stampbg { position:absolute; inset:0; background:
+      repeating-linear-gradient(0deg, transparent 0 27px, rgba(25,27,25,.06) 27px 28px), #F0F5F4; }
+  .ticket { position:relative; width:220px; background:#fff; color:var(--black); border-radius:16px; padding:20px 18px 18px;
+    box-shadow:0 10px 30px rgba(0,0,0,.18); transform:rotate(-3deg); text-align:left; }
+  .ticket::after { content:''; position:absolute; left:14px; right:14px; top:96px; border-top:2px dashed #d0d8d7; }
+  .ticket .t1 { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#46535A; font-weight:600; }
+  .ticket .t2 { font-size:22px; font-weight:700; margin:4px 0 0; }
+  .ticket .t3 { font-size:12px; color:#46535A; margin-top:48px; display:flex; justify-content:space-between; }
+  .ticket .t3 b { display:block; color:var(--black); font-size:15px; margin-top:2px; }
+  .tally, .chorus { padding-bottom:64px; }
+  .stamp { position:absolute; right:-30px; top:-30px; width:108px; height:108px; border-radius:50%;
+    border:4px solid #2f9e78; color:#2f9e78; display:grid; place-items:center; transform:rotate(14deg);
+    font-weight:800; font-size:22px; letter-spacing:.06em; background:rgba(131,229,188,.18);
+    mix-blend-mode:multiply; }
+  .stamp::before { content:''; position:absolute; inset:5px; border-radius:50%; border:1.5px solid #2f9e78; }
+  .stamp small { display:block; font-size:9px; letter-spacing:.12em; font-weight:600; margin-top:-2px; text-align:center; }
+
+  /* 4 · crew chorus */
+  .chorus h3 { font-size:24px; font-weight:700; margin:16px 0 4px; }
+  .chorus .sub { color:var(--muted); font-size:13px; }
+  .faces { display:grid; grid-template-columns:repeat(3,58px); gap:14px 16px; margin-top:30px; }
+  .face { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .face span { width:54px; height:54px; border-radius:18px; display:grid; place-items:center; font-size:15px; font-weight:600;
+    background:var(--surface); color:var(--ink); border:2px solid var(--badge); }
+  .face.me span { background:var(--badge); color:var(--black); border-color:var(--tint); box-shadow:0 0 0 4px rgba(131,229,188,.25); }
+  .face.wait span { border:2px dashed rgba(237,243,242,.28); color:var(--muted); background:transparent; }
+  .chorus .order { margin-top:26px; font-size:14px; font-weight:600; color:var(--tint); }
+
+  /* 5 · note */
+  .note .q { font-size:27px; line-height:1.22; font-weight:600; letter-spacing:-.4px; text-align:left; align-self:stretch; }
+  .note .q::before { content:'“'; display:block; font-size:60px; line-height:.6; color:var(--tint); margin-bottom:10px; }
+  .note .meta { align-self:stretch; text-align:left; margin-top:20px; color:var(--muted); font-size:13px; }
+  .note .center { justify-content:center; padding:28px 26px 70px; }
+
+  /* 6 · combo */
+  .combo { background:var(--tint); color:var(--black); }
+  .combo .top { position:absolute; top:22px; left:22px; right:22px; display:flex; align-items:center; gap:10px; }
+  .combo .top .badge { width:40px; height:40px; box-shadow:0 3px 0 #3aa680; }
+  .combo .top b { font-size:15px; font-weight:700; }
+  .combo .top small { display:block; font-size:12px; opacity:.7; font-weight:500; }
+  .combo .mid { position:absolute; left:22px; right:22px; top:110px; }
+  .combo .mid .q { font-size:28px; line-height:1.16; font-weight:700; letter-spacing:-.6px; }
+  .combo .strip { position:absolute; left:22px; right:22px; bottom:62px; display:flex; gap:6px; }
+  .combo .strip i { flex:1; height:30px; border-radius:9px; background:rgba(25,27,25,.08); display:grid; place-items:center; font-style:normal; font-size:10.5px; font-weight:600; color:rgba(25,27,25,.5); }
+  .combo .strip i.done { background:var(--black); color:var(--tint); }
+  .combo .strip i.today { background:var(--black); color:var(--tint); outline:2px solid var(--black); outline-offset:2px; }
+  .combo .count { position:absolute; left:22px; bottom:22px; font-size:13px; font-weight:600; }
+  .combo .count span { opacity:.6; font-weight:500; }
+  .combo .bg-icon { position:absolute; right:-50px; top:150px; width:240px; height:240px; opacity:.1; transform:rotate(-14deg); }
+
+  .verdict { margin-top:56px; max-width:78ch; font-size:15px; line-height:1.65; color:var(--muted); border-top:1px solid #2b3536; padding-top:24px; }
+  .verdict b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Check-ins without a photo, as a story</h1>
+  <p class="lede">Today a pact that doesn't ask for a photo opens as the pact's colour wash with the chip in the corner: <b>a blank frame waiting for a picture that never comes</b>. Every direction below uses only data the app already has (pact title, icon, sorbet, kept time, this week's check-ins, crew) unless marked otherwise. Shown on the Mint pact "Run 5k".</p>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="verdict"><b>Recommendation:</b> start with <b>6 · Poster + week</b>. The flat sorbet card tells a text check-in apart from a photo at a glance, the title carries the meaning, and the week strip gives the story a little news ("3 of 4") so it isn't the same frame every day. It needs no schema change. Later, adding the optional note (5) drops straight into the empty middle of the card. <b>4 · Crew chorus</b> is the strongest social nudge, but it repeats across every member's story for the same pact, so it's better as a one-off end card than as each check-in.</p>
+</div>
+
+<script>
+  const I = {
+    run:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.5" r="1.8"/><path d="M8 20l3-5 3 2 1 4"/><path d="M6 11l3-3 4 1 2 4 3 1"/><path d="M11 15l2-6"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    x:'<svg class="x" viewBox="0 0 24 24" fill="none" stroke="#EDF3F2" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    clap:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l4.5-4.5a1.6 1.6 0 012.3 2.3L11 11.6"/><path d="M9.5 8.5l3-3a1.6 1.6 0 012.3 2.3l-3.6 3.6"/><path d="M13 9.2l1.8-1.8a1.6 1.6 0 012.3 2.3l-5.5 5.5c-2 2-5 2-7 0s-2-5 0-7L7 6.2"/><path d="M17 3l.5-1.5M20 5.5l1.5-.5M19.5 2.5l1-1"/></svg>',
+  };
+  const chip = `<div class="chip"><div class="badge">${I.run}</div>Run 5k</div>`;
+  const days = ['M','T','W','T','F','S','S'];
+
+  const mocks = [
+    { tag:'Today', title:'Colour wash', body:'What ships now. Reads as a photo that failed to load; the only content is the chip.', cost:'—',
+      stage:`<div class="wash"></div>${chip}` },
+
+    { tag:'Direction 1', title:'Pact poster', body:'Flip to the flat sorbet card itself: giant badge, title set big, "Kept 7:42". Instantly reads as a different kind of story than a photo, and the title finally carries the story.', cost:'Effort: small · no schema change',
+      stage:`<div class="poster" style="position:absolute;inset:0"><div class="bg-icon">${I.run}</div>
+        <div class="center"><div class="bigbadge">${I.run}</div><h3>Run 5k</h3>
+        <div class="kept">${I.check.replace('<svg','<svg width="15" height="15"')} Kept at 7:42</div></div></div>` },
+
+    { tag:'Direction 2', title:'Week tally', body:'The news is progress: this week\'s days, with today\'s square popping in as you watch. "3 of 4 — one to go." Each day\'s story is different, which a static card never is.', cost:'Effort: small · uses week check-ins',
+      stage:`<div class="wash"></div><div class="center tally"><h3>Run 5k</h3><div class="sub">4 days a week</div>
+        <div class="days">${days.map((d,i)=>`<div class="day ${i===3?'today':''}"><div class="dot ${[0,2,3].includes(i)?'done':''}">${[0,2,3].includes(i)?I.check:''}</div>${d}</div>`).join('')}</div>
+        <div class="big">3<span> / 4</span></div><div class="left">One more this week</div></div>${chip}` },
+
+    { tag:'Direction 3', title:'Stamped ticket', body:'A proof-of-attendance card with a rubber "KEPT" stamp that thuds on as the story opens. Playful and tactile; leans on the honour system with a wink.', cost:'Effort: medium · light canvas, custom stamp art',
+      stage:`<div class="stampbg"></div><div class="center"><div class="ticket"><div class="t1">Pact · Week 43</div><div class="t2">Run 5k</div>
+        <div class="stamp"><div>KEPT<small>THU 22 OCT</small></div></div>
+        <div class="t3"><div>Kept by<b>Amra</b></div><div style="text-align:right">At<b>7:42</b></div></div></div></div>` },
+
+    { tag:'Direction 4', title:'Crew chorus', body:'Who else kept this pact today, with this person lit up. "Amra was 3rd of 6." Strong social nudge for the ones not in yet.', cost:'Effort: medium · uses crew check-ins; repeats across members',
+      stage:`<div class="wash"></div><div class="center chorus"><div class="badge" style="width:52px;height:52px">${I.run}</div><h3>Run 5k</h3><div class="sub">Kept today by 4 of 6</div>
+        <div class="faces">${[['DK',''],['LS',''],['AM','me'],['JM',''],['EH','wait'],['NB','wait']].map(([n,c])=>`<div class="face ${c}"><span>${n}</span>${c==='me'?'Amra':c==='wait'?'Not yet':'7:0'+Math.floor(Math.random()*9)}</div>`).join('')}</div>
+        <div class="order">Amra was 3rd today</div></div>${chip}` },
+
+    { tag:'Direction 5', title:'One-line note', body:'Let the check-in sheet take an optional line ("what did you do?"), set big like an achievement\'s text. Most personal, and gives claps something to answer.', cost:'Effort: larger · new column + input on check-in',
+      stage:`<div class="wash"></div><div class="center note" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:28px 26px 70px"><div class="q">Along the river before work. Legs were dead but it's done.</div><div class="meta">5.2 km · kept at 7:42</div></div>${chip}` },
+
+    { tag:'Recommended', pick:true, title:'6 · Poster + week', body:'Direction 1\'s sorbet card with Direction 2\'s strip along the foot. Title up top, the middle left open for a note later (shown filled with the pact\'s schedule today).', cost:'Effort: small now · note slots in later',
+      stage:`<div class="combo" style="position:absolute;inset:0"><div class="bg-icon">${I.run}</div>
+        <div class="top"><div class="badge">${I.run}</div><div><b>Run 5k</b><small>Kept at 7:42</small></div></div>
+        <div class="mid"><div class="q">Kept it.<br>Three runs in,<br>one to go.</div></div>
+        <div class="strip">${days.map((d,i)=>`<i class="${i===3?'today':[0,2].includes(i)?'done':''}">${d}</i>`).join('')}</div>
+        <div class="count">3 of 4 <span>this week</span></div></div>` },
+  ];
+
+  document.getElementById('grid').innerHTML = mocks.map(m => `
+    <figure class="${m.pick?'pick':''}">
+      <div class="phone">
+        <div class="segs"><i class="on"></i><i class="on"></i><i></i></div>
+        <div class="head"><div class="av"><span>AM</span></div><div class="who"><b>Amra</b><small>7:42</small></div>${I.x}</div>
+        <div class="stage">${m.stage}</div>
+        <div class="foot"><div class="clap">${I.clap} Clap · 2</div><small>2 of 6</small></div>
+      </div>
+      <figcaption><div class="tag">${m.tag}</div><h2>${m.title}</h2><p>${m.body}</p><div class="cost">${m.cost}</div></figcaption>
+    </figure>`).join('');
+</script>
+</body>
+</html>

@@ -10,8 +10,6 @@ import 'package:flutter/services.dart';
 import 'home_surface.dart';
 import '../theme/weekpact_theme.dart';
 
-import 'package:card_swiper/card_swiper.dart';
-
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -23,7 +21,6 @@ import '../pacts/pacts_backend.dart';
 import '../widgets/pact_icon_badge.dart';
 import '../widgets/page_frame.dart';
 import '../widgets/dashed_border.dart';
-import '../widgets/edge_bounce.dart';
 import 'home_backend.dart';
 import '../notifications/notifications_page.dart';
 import 'stories_rail.dart';
@@ -1180,20 +1177,18 @@ class TodayPactsCard extends StatefulWidget {
     super.key,
     required this.week,
     this.height,
-    this.horizontalBleed = 0,
     required this.userId,
     required this.savingPact,
     required this.onToggle,
   });
 
-  /// How much of the next card shows past the front one: enough to say there
-  /// is another card behind this one, and no more. The strip carries nothing —
-  /// no icon, no score — because a card you cannot act on has nothing to say,
-  /// and what it used to say was read off the corner of the card in front.
-  static double peekOf(double width) => math.min(14.0, width * .045);
+  /// The row of dots under the cards, and the gap above it: how many pacts
+  /// there are and which one is in front. The loading skeleton keeps the same
+  /// room, so the cards stand in the same place either way.
+  static const dotsHeight = 8.0;
+  static const dotsGap = 12.0;
 
   final double? height;
-  final double horizontalBleed;
   final CrewWeek week;
   final String userId;
   final String? savingPact;
@@ -1202,8 +1197,21 @@ class TodayPactsCard extends StatefulWidget {
   State<TodayPactsCard> createState() => _TodayPactsCardState();
 }
 
+/// The crew's pacts as a cover flow: the focused card is exactly as wide as
+/// the cards above it, and the ones either side shrink and dim, with only a
+/// sliver of each showing in the page's margin.
 class _TodayPactsCardState extends State<TodayPactsCard> {
-  final _controller = SwiperController();
+  /// How much a neighbour shrinks, and how far past the content's edge it
+  /// starts. The page margin is 12, so 4 in leaves an 8pt sliver showing.
+  static const _shrink = .14;
+  static const _gap = 4.0;
+
+  /// Each page a hair narrower than the box, so the pages either side reach
+  /// into it and get painted: a page wholly outside its viewport is not
+  /// drawn, and the slivers would never show. The card itself is still laid
+  /// out at the full width, over its page.
+  static const _fraction = .98;
+  final _controller = PageController(viewportFraction: _fraction);
   int _index = 0;
   List<CrewPact> get _pacts => widget.week.pacts;
 
@@ -1214,6 +1222,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
       _index = 0;
       return;
     }
+    // Stay on the same pact when the list changes under it.
     final previousId = _index < oldWidget.week.pacts.length
         ? oldWidget.week.pacts[_index].id
         : null;
@@ -1224,9 +1233,7 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     if (nextIndex != _index) {
       _index = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _pacts.isNotEmpty) {
-          _controller.move(_index, animation: false);
-        }
+        if (mounted && _controller.hasClients) _controller.jumpToPage(_index);
       });
     }
   }
@@ -1243,166 +1250,87 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final height = widget.height ?? (248 + math.max(0.0, scale - 1) * 200);
-    // The card takes the whole of it. It used to share it with a row of dots
-    // under the stack, but the next card already peeks out beside the front
-    // one, which says there is more and where it is; the dots only said it
-    // again, smaller.
-    final cardHeight = math.max(80.0, height);
+    final checked = widget.week.checkedToday(widget.userId);
     return SizedBox(
       height: height,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: cardHeight,
+          Expanded(
             child: LayoutBuilder(
-              builder: (context, space) {
-                final previewCount = math.min(1, pacts.length - 1);
-                final peek = TodayPactsCard.peekOf(space.maxWidth);
-                // Keep card width stable even when there is no next card.
-                final reserve = peek;
-                final width = space.maxWidth - reserve * 2;
-                final viewportWidth =
-                    space.maxWidth + widget.horizontalBleed * 2;
-                // Park the outgoing card right out of the box. One card is in
-                // front and one peeks in behind it; a sliver of a third at the
-                // left edge would read as an artefact of the page's padding
-                // rather than as a card.
-                final previousTravel = width + 12 + peek;
-                return OverflowBox(
-                  minWidth: space.maxWidth + widget.horizontalBleed * 2,
-                  maxWidth: space.maxWidth + widget.horizontalBleed * 2,
-                  // Reserve paint space for the stacked cards during transitions.
-                  minHeight: cardHeight + 48,
-                  maxHeight: cardHeight + 48,
-                  child: EdgeBounce(
-                    atStart: _index == 0,
-                    atEnd: _index == pacts.length - 1,
-                    child: Swiper(
-                      key: const ValueKey('pact-stack'),
-                      controller: _controller,
-                      itemCount: pacts.length,
-                      layout: SwiperLayout.STACK,
-                      itemWidth: width,
-                      itemHeight: cardHeight - 20,
-                      axisDirection: AxisDirection.right,
-                      scrollDirection: Axis.horizontal,
-                      loop: false,
-                      autoplay: false,
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? 0
-                          : 280,
-                      onIndexChanged: (index) {
-                        if (index == _index) return;
-                        setState(() => _index = index);
-                        unawaited(
-                          HapticFeedback.mediumImpact().catchError(
-                            (Object _) {},
+              builder: (context, box) => PageView.builder(
+                key: const ValueKey('pact-stack'),
+                controller: _controller,
+                // The card's raised edge and its completion pop reach past its box.
+                clipBehavior: Clip.none,
+                itemCount: pacts.length,
+                onPageChanged: (index) {
+                  setState(() => _index = index);
+                  unawaited(
+                    HapticFeedback.mediumImpact().catchError((Object _) {}),
+                  );
+                },
+                itemBuilder: (context, index) => AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final ready =
+                        _controller.hasClients &&
+                        _controller.position.haveDimensions;
+                    final page = ready ? _controller.page! : _index.toDouble();
+                    final d = index - page;
+                    final away = d.abs().clamp(0.0, 1.0);
+                    // Shrunk about its centre, then moved so its near edge sits
+                    // [_gap] past the focused card's, which holds mid-swipe too.
+                    final width = box.maxWidth;
+                    return Transform.translate(
+                      offset: Offset(
+                        d * (width * (1 - _fraction - _shrink / 2) + _gap),
+                        0,
+                      ),
+                      child: Transform.scale(
+                        scale: 1 - _shrink * away,
+                        child: Opacity(
+                          opacity: 1 - .35 * away,
+                          child: IgnorePointer(
+                            ignoring: away > .5,
+                            child: ExcludeSemantics(
+                              excluding: away > .5,
+                              child: child,
+                            ),
                           ),
-                        );
-                      },
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 0,
-                          vertical: 2,
                         ),
-                        child: Builder(
-                          builder: (context) {
-                            // Follow the stack's interpolated transforms, rather
-                            // than snapping offsets when the selected index changes.
-                            var stackScale = 1.0;
-                            var stackX = 0.0;
-                            var transforms = 0;
-                            context.visitAncestorElements((element) {
-                              final ancestor = element.widget;
-                              if (ancestor is Transform) {
-                                if (transforms == 0) {
-                                  stackScale = ancestor.transform.storage[0];
-                                } else {
-                                  stackX = ancestor.transform.storage[12];
-                                }
-                                transforms++;
-                              }
-                              return transforms < 2;
-                            });
-                            // The stack only scales the cards behind the
-                            // front one, so the card sliding out reads its
-                            // strip progress from how far it has travelled.
-                            final depth = stackScale >= 1
-                                ? (-stackX / viewportWidth).clamp(0.0, 1.0)
-                                : ((1 - stackScale) / .1).clamp(0.0, 3.0);
-                            // The swiper scales around the right edge. Cancel its
-                            // native offset so each rear card exposes one strip.
-                            return Transform.translate(
-                              key: ValueKey('pact-slide-stack-$index'),
-                              offset: stackScale >= 1
-                                  // The front card rests dead centre (stackX is
-                                  // 0 there) and slides out to `previousTravel`.
-                                  ? Offset(
-                                      stackX *
-                                          (previousTravel / viewportWidth - 1),
-                                      0,
-                                    )
-                                  : Offset(
-                                      (depth * peek - stackX) / stackScale,
-                                      (depth * 6 -
-                                              (cardHeight - 20) *
-                                                  (1 - stackScale) /
-                                                  2) /
-                                          stackScale,
-                                    ),
-                              child: IgnorePointer(
-                                ignoring: stackX < -.01,
-                                child: ExcludeSemantics(
-                                  excluding: stackX < -.01,
-                                  child: Opacity(
-                                    opacity: (previewCount + 1 - depth).clamp(
-                                      0.0,
-                                      1.0,
-                                    ),
-                                    child: SizedBox.expand(
-                                      child: _PactCompletionEffect(
-                                        key: ValueKey(
-                                          'completion-${pacts[index].id}',
-                                        ),
-                                        completed: widget.week
-                                            .checkedToday(widget.userId)
-                                            .contains(pacts[index].id),
-                                        child: _PactCard(
-                                          depth: depth,
-                                          key: ValueKey(pacts[index].id),
-                                          pact: pacts[index],
-                                          week: widget.week,
-                                          userId: widget.userId,
-                                          color: WeekPactColors.pactTint(index),
-                                          badge: WeekPactColors.pactBadge(
-                                            index,
-                                          ),
-                                          busy:
-                                              widget.savingPact ==
-                                              pacts[index].id,
-                                          onToggle:
-                                              widget.savingPact != null ||
-                                                  widget.onToggle == null
-                                              ? null
-                                              : () => widget.onToggle!(
-                                                  pacts[index].id,
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      ),
+                    );
+                  },
+                  child: OverflowBox(
+                    minWidth: box.maxWidth,
+                    maxWidth: box.maxWidth,
+                    child: _PactCompletionEffect(
+                      key: ValueKey('completion-${pacts[index].id}'),
+                      completed: checked.contains(pacts[index].id),
+                      child: _PactCard(
+                        key: ValueKey(pacts[index].id),
+                        pact: pacts[index],
+                        week: widget.week,
+                        userId: widget.userId,
+                        color: WeekPactColors.pactTint(index),
+                        badge: WeekPactColors.pactBadge(index),
+                        busy: widget.savingPact == pacts[index].id,
+                        onToggle:
+                            widget.savingPact != null || widget.onToggle == null
+                            ? null
+                            : () => widget.onToggle!(pacts[index].id),
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
+          ),
+          const SizedBox(height: TodayPactsCard.dotsGap),
+          _PactDots(
+            controller: _controller,
+            count: pacts.length,
+            index: _index,
           ),
         ],
       ),
@@ -1410,7 +1338,81 @@ class _TodayPactsCardState extends State<TodayPactsCard> {
   }
 }
 
-/// Celebrates a confirmed state change, never the tap or an initial load.
+/// One dot per pact under the cards, the front one drawn long. It follows the
+/// swipe as it happens rather than snapping on release, and a dot is a way to
+/// its pact as well as a mark of it. A single pact gets no dots, but keeps
+/// their room.
+class _PactDots extends StatelessWidget {
+  const _PactDots({
+    required this.controller,
+    required this.count,
+    required this.index,
+  });
+
+  final PageController controller;
+  final int count;
+  final int index;
+
+  static const _dot = TodayPactsCard.dotsHeight;
+  static const _long = 18.0;
+  static const _gap = 6.0;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: _dot,
+    child: count < 2
+        ? null
+        : AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) {
+              final page =
+                  controller.hasClients && controller.position.haveDimensions
+                  ? controller.page!
+                  : index.toDouble();
+              return FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < count; i++) ...[
+                      if (i > 0) const SizedBox(width: _gap),
+                      Tooltip(
+                        message: 'Pact ${i + 1} of $count',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => MediaQuery.disableAnimationsOf(context)
+                              ? controller.jumpToPage(i)
+                              : controller.animateToPage(
+                                  i,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                ),
+                          child: _mark(
+                            context,
+                            (1 - (i - page).abs()).clamp(0.0, 1.0),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+  );
+
+  /// A dot at [front] of the way to being the front one: longer and fully
+  /// inked at 1, a short faint dot at 0.
+  Widget _mark(BuildContext context, double front) => Container(
+    width: _dot + (_long - _dot) * front,
+    height: _dot,
+    decoration: BoxDecoration(
+      color: context.ink.withValues(alpha: .25 + .75 * front),
+      borderRadius: WeekPactMetrics.pill,
+    ),
+  );
+}
+
 class _PactCompletionEffect extends StatefulWidget {
   const _PactCompletionEffect({
     super.key,
@@ -1492,9 +1494,7 @@ class _PactCard extends StatelessWidget {
     required this.badge,
     required this.busy,
     required this.onToggle,
-    this.depth = 0,
   });
-  final double depth;
   final CrewPact pact;
   final CrewWeek week;
   final String userId;
@@ -1533,7 +1533,6 @@ class _PactCard extends StatelessWidget {
           final shrink =
               constraints.maxHeight /
               math.max(minimumHeight, constraints.maxHeight);
-          final reveal = (1 - depth).clamp(0.0, 1.0);
           final content = FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.center,
@@ -1732,37 +1731,22 @@ class _PactCard extends StatelessWidget {
             ),
           );
           // The badge is the card's own, at one size, and it scales with the
-          // rest of the face. It fades as the card falls back into the stack —
-          // the strip behind the front card carries nothing.
+          // rest of the face.
           final iconSize = _iconBadge * shrink;
-          // The card tint stays put; only its foreground follows the stack.
           return Stack(
             fit: StackFit.expand,
             clipBehavior: Clip.none,
             children: [
-              ExcludeSemantics(
-                excluding: reveal < 1,
-                child: IgnorePointer(
-                  ignoring: reveal < 1,
-                  child: Opacity(
-                    key: ValueKey('pact-content-opacity-${pact.id}'),
-                    opacity: reveal,
-                    child: content,
-                  ),
-                ),
-              ),
+              content,
               Positioned(
                 right: 0,
                 top: 0,
                 child: IgnorePointer(
-                  child: Opacity(
-                    opacity: reveal,
-                    child: PactIconBadge(
-                      key: ValueKey('pact-icon-${pact.id}'),
-                      icon: PactIcon.find(pact.iconKey).data,
-                      tint: badge,
-                      size: iconSize,
-                    ),
+                  child: PactIconBadge(
+                    key: ValueKey('pact-icon-${pact.id}'),
+                    icon: PactIcon.find(pact.iconKey).data,
+                    tint: badge,
+                    size: iconSize,
                   ),
                 ),
               ),
@@ -1928,11 +1912,6 @@ class _TodaySkeletonState extends State<TodaySkeleton>
     super.dispose();
   }
 
-  Widget _line(double width, double height, {Color? color}) => Align(
-    alignment: Alignment.centerLeft,
-    child: SkeletonBar(width: width, height: height, color: color),
-  );
-
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading your home',
@@ -2008,174 +1987,58 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                 key: ValueKey('skeleton-crew-today-bar'),
               ),
               const SizedBox(height: 12),
+              // The pacts' slot, drawn as the cover flow draws it: the
+              // focused card at full width, a sliver of the next one past the
+              // content's edge, and the dots under them.
               Expanded(
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 24,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SkeletonBar(width: 88, height: 14),
-                          SkeletonBar(width: 42, height: 12),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: LayoutBuilder(
-                          builder: (context, bounds) {
-                            final peek = TodayPactsCard.peekOf(bounds.maxWidth);
-                            return Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // The card behind, showing the same sliver the
-                                // stack shows and carrying nothing, as it
-                                // carries nothing once the week has loaded.
-                                Positioned(
-                                  left: peek * 4,
-                                  right: 0,
-                                  top: 6,
-                                  bottom: 6,
-                                  child: HomeSurface(
-                                    tint: WeekPactColors.pactPalette[1],
-                                    shape: WeekPactMetrics.pactCardShape,
-                                    raised: true,
-                                    depth: WeekPactMetrics.cardDepth,
-                                    child: const SizedBox.expand(),
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  left: peek,
-                                  right: peek,
-                                  child: HomeSurface(
-                                    key: const ValueKey('skeleton-pact-card'),
-                                    tint: WeekPactColors.pactPalette.first,
-                                    shape: WeekPactMetrics.pactCardShape,
-                                    raised: true,
-                                    depth: WeekPactMetrics.cardDepth,
-                                    padding: homeCardInset,
-                                    child: LayoutBuilder(
-                                      builder: (context, space) => Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Expanded(
-                                            flex: 2,
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(child: _line(150, 20)),
-                                                const SizedBox(width: 12),
-                                                SkeletonBar(
-                                                  width: math.min(
-                                                    44,
-                                                    space.maxHeight * .16,
-                                                  ),
-                                                  height: math.min(
-                                                    44,
-                                                    space.maxHeight * .16,
-                                                  ),
-                                                  shape: WeekPactMetrics
-                                                      .buttonShape,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 3,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                _line(
-                                                  110,
-                                                  math.min(
-                                                    58,
-                                                    space.maxHeight * .18,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  height: space.maxHeight * .02,
-                                                ),
-                                                _line(
-                                                  100,
-                                                  math.min(
-                                                    13,
-                                                    space.maxHeight * .05,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              for (var i = 0; i < 5; i++) ...[
-                                                if (i > 0)
-                                                  const SizedBox(width: 5),
-                                                Expanded(
-                                                  child: SkeletonBar(
-                                                    height: math.min(
-                                                      10,
-                                                      space.maxHeight * .04,
-                                                    ),
-                                                    radius: 3,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                          Spacer(),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Row(
-                                              children: [
-                                                for (
-                                                  var day = 0;
-                                                  day < 7;
-                                                  day++
-                                                ) ...[
-                                                  if (day > 0)
-                                                    const SizedBox(width: 5),
-                                                  Expanded(
-                                                    child: SkeletonBar(
-                                                      height: double.infinity,
-                                                      radius: 8,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            height: space.maxHeight * .04,
-                                          ),
-                                          SkeletonBar(
-                                            height: math.min(
-                                              48,
-                                              space.maxHeight * .16,
-                                            ),
-                                            shape: WeekPactMetrics.buttonShape,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                child: LayoutBuilder(
+                  builder: (context, space) => Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: space.maxWidth + 4,
+                        top: space.maxHeight * .07,
+                        width: space.maxWidth * .86,
+                        height: space.maxHeight * .86,
+                        child: Opacity(
+                          opacity: .65,
+                          child: HomeSurface(
+                            tint: WeekPactColors.pactTint(1),
+                            shape: WeekPactMetrics.pactCardShape,
+                            raised: true,
+                            depth: WeekPactMetrics.cardDepth,
+                            child: const SizedBox.expand(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(
-                      height: 24,
-                      child: Center(child: SkeletonBar(width: 32, height: 6)),
-                    ),
+                      Positioned.fill(
+                        child: HomeSurface(
+                          key: const ValueKey('skeleton-pact-card'),
+                          tint: WeekPactColors.pactTint(0),
+                          shape: WeekPactMetrics.pactCardShape,
+                          raised: true,
+                          depth: WeekPactMetrics.cardDepth,
+                          padding: homeCardInset,
+                          child: const _SkeletonPactFace(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: TodayPactsCard.dotsGap),
+              SizedBox(
+                height: TodayPactsCard.dotsHeight,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < 3; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      SkeletonBar(
+                        width: i == 0 ? 18 : TodayPactsCard.dotsHeight,
+                        height: TodayPactsCard.dotsHeight,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -2184,5 +2047,99 @@ class _TodaySkeletonState extends State<TodaySkeleton>
         ),
       ),
     ),
+  );
+}
+
+/// A pact card's face while the week loads: the title, badge, count, bar and
+/// button in the places [_PactCard] puts them, from the same measures and
+/// scaled to the box the same way, so nothing moves when the week arrives.
+class _SkeletonPactFace extends StatelessWidget {
+  const _SkeletonPactFace();
+
+  /// A bar in the card's own ink, as faint as the empty days on its bar.
+  static final _fill = _ink.withValues(alpha: .14);
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final height = math.max(_contentHeight, constraints.maxHeight);
+      final shrink = constraints.maxHeight / height;
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: constraints.maxWidth / shrink,
+          height: height,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: _titleBudget,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: SkeletonBar(width: 170, height: 24, color: _fill),
+                    ),
+                    const Spacer(),
+                    SkeletonBar(
+                      width: _iconBadge,
+                      height: _iconBadge,
+                      shape: WeekPactMetrics.buttonShape,
+                      color: WeekPactColors.pactBadge(0),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: _titleGap),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBar(
+                        width: 200,
+                        height: 56,
+                        radius: 12,
+                        color: _fill,
+                      ),
+                      const SizedBox(height: _captionToBar + 10),
+                      Row(
+                        children: [
+                          for (var i = 0; i < 3; i++) ...[
+                            if (i > 0) const SizedBox(width: 5),
+                            Expanded(
+                              child: SkeletonBar(
+                                height: _segmentHeight,
+                                radius: 6,
+                                color: _fill,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: _barToAction),
+              SizedBox(
+                height: _actionHeight,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: SkeletonBar(
+                    height: WeekPactMetrics.buttonHeight,
+                    shape: WeekPactMetrics.buttonShape,
+                    color: _ink.withValues(alpha: .8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }

@@ -19,64 +19,6 @@ void main() {
   // real face.
   setUpAll(loadAppFont);
 
-  for (final reducedMotion in [false, true]) {
-    testWidgets(
-      'single card releases edge pull with reduced motion $reducedMotion',
-      (tester) async {
-        final backend = DashboardBackend();
-        backend.pacts.pacts = [backend.pacts.pacts.first];
-        final week = await backend.fetchWeek('crew');
-        await tester.pumpWidget(
-          MaterialApp(
-            home: MediaQuery(
-              data: MediaQueryData(disableAnimations: reducedMotion),
-              child: Scaffold(
-                body: TodayPactsCard(
-                  week: week,
-                  userId: '',
-                  savingPact: null,
-                  onToggle: (_) {},
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.pumpUi();
-        final card = find.byKey(ValueKey(week.pacts.single.id));
-        final restingX = tester.getCenter(card).dx;
-        for (final dx in [-140.0, 140.0]) {
-          final pull = await tester.startGesture(tester.getCenter(card));
-          await pull.moveBy(Offset(dx, 0));
-          await tester.pump();
-          expect(
-            (tester.getCenter(card).dx - restingX) * dx.sign,
-            greaterThan(10),
-          );
-          await pull.cancel();
-          await tester.pump();
-          if (reducedMotion) {
-            expect(tester.getCenter(card).dx, closeTo(restingX, 1));
-          } else {
-            await tester.pump(const Duration(milliseconds: 16));
-            expect(
-              (tester.getCenter(card).dx - restingX).abs(),
-              greaterThan(1),
-            );
-          }
-          await tester.pumpUi();
-          expect(tester.getCenter(card).dx, closeTo(restingX, 1));
-        }
-        final vertical = await tester.startGesture(tester.getCenter(card));
-        await vertical.moveBy(const Offset(10, 140));
-        await tester.pump();
-        expect(tester.getCenter(card).dx, closeTo(restingX, 1));
-        await vertical.up();
-        await tester.pumpUi();
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
-
   testWidgets('a long pact name shrinks to fit rather than being cut', (
     tester,
   ) async {
@@ -172,7 +114,7 @@ void main() {
     // The second pact carries the week's one completed day.
     await tester.drag(
       find.byKey(const ValueKey('pact-stack')),
-      const Offset(-320, 0),
+      const Offset(-650, 0),
     );
     await tester.pumpUi();
     final segments = tester
@@ -200,7 +142,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('cards sit centered and stop at both ends', (tester) async {
+  testWidgets('cards fill the width and stop at both ends', (tester) async {
     final backend = DashboardBackend();
     backend.pacts.pacts.add(
       const CrewPact(
@@ -229,54 +171,16 @@ void main() {
     void expectSelected(int index) {
       final pact = week.pacts[index];
       expect(find.text(pact.title).hitTestable(), findsOneWidget);
-      // The stack used to carry a "3 pacts" count in a heading above it, and
-      // dots under it after that. The card behind peeking out says there is
-      // more, and the card is unmistakably a pact, so all of it went.
       expect(find.text('3 pacts'), findsNothing);
       expect(find.text('YOUR PACTS'), findsNothing);
-      final card = tester.getRect(find.byKey(ValueKey(pact.id)).hitTestable());
+      // One card at a time, edge to edge: nothing peeks in beside it.
+      final card = tester.getRect(find.byKey(ValueKey(pact.id)));
       final stack = tester.getRect(find.byKey(const ValueKey('pact-stack')));
-      expect(
-        tester
-            .widget<Opacity>(
-              find.byKey(ValueKey('pact-content-opacity-${pact.id}')),
-            )
-            .opacity,
-        1,
-      );
-      expect(card.center.dx, closeTo(stack.center.dx, 1));
-      expect(card.left, greaterThan(stack.left));
-      expect(card.right, lessThan(stack.right));
-      if (index > 0) {
-        final previousPact = week.pacts[index - 1];
-        final previous = tester.getRect(find.byKey(ValueKey(previousPact.id)));
-        expect(
-          tester
-              .widget<Opacity>(
-                find.byKey(ValueKey('pact-content-opacity-${previousPact.id}')),
-              )
-              .opacity,
-          closeTo(0, .001),
-        );
-        // The card left behind carries nothing: its icon goes with the rest
-        // of its face, at the card's one icon size rather than a strip's.
-        final outgoingIcon = tester.getRect(
-          find.byKey(ValueKey('pact-icon-${previousPact.id}')),
-        );
-        final frontIcon = tester.getRect(
-          find.byKey(ValueKey('pact-icon-${pact.id}')),
-        );
-        expect(outgoingIcon.width, closeTo(frontIcon.width, .01));
-        // The outgoing card parks right out of the box, so the stack shows
-        // one card and the sliver of the next.
-        expect(previous.left, lessThan(stack.left));
-        expect(previous.right, lessThanOrEqualTo(stack.left + 1));
-        expect(previous.top, closeTo(card.top, 1));
-        expect(previous.bottom, closeTo(card.bottom, 1));
-        expect(
-          find.byKey(ValueKey('check-in-${previousPact.title}')).hitTestable(),
-          findsNothing,
-        );
+      expect(card.left, closeTo(stack.left, 1));
+      expect(card.right, closeTo(stack.right, 1));
+      for (final other in week.pacts) {
+        if (other == pact) continue;
+        expect(find.text(other.title).hitTestable(), findsNothing);
       }
       expect(tester.takeException(), isNull);
     }
@@ -291,168 +195,57 @@ void main() {
     }
 
     expectSelected(0);
-    Future<void> expectEdgeBounce(int index, double dx) async {
-      final card = find.byKey(ValueKey(week.pacts[index].id)).hitTestable();
-      final restingX = tester.getCenter(card).dx;
-      final pull = await tester.startGesture(tester.getCenter(card));
-      await pull.moveBy(Offset(dx.sign * 24, 0));
-      await tester.pump();
-      await pull.moveBy(Offset(dx, 0));
-      await tester.pump();
-      final movement = (tester.getCenter(card).dx - restingX) * dx.sign;
-      expect(movement, greaterThan(10));
-      expect(movement, lessThan(dx.abs()));
-      await pull.up();
-      await tester.pumpUi();
-      expect(tester.getCenter(card).dx, closeTo(restingX, 1));
-      expectSelected(index);
-    }
-
-    await expectEdgeBounce(0, 140);
     await swipe(650, 0);
     await swipe(-650, 1);
     await swipe(-650, 2);
-    await expectEdgeBounce(2, -140);
     await swipe(-650, 2);
-    await swipe(-650, 2);
-    expect(
-      find.byKey(const ValueKey('pact-icon-move')).hitTestable(),
-      findsNothing,
-    );
-    final returningContent = find.byKey(
-      const ValueKey('pact-content-opacity-read'),
-    );
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byKey(const ValueKey('pact-stack'))),
-    );
-    await gesture.moveBy(const Offset(24, 0));
-    await tester.pump();
-    var previousOpacity = tester.widget<Opacity>(returningContent).opacity;
-    for (var frame = 0; frame < 5; frame++) {
-      await gesture.moveBy(const Offset(40, 0));
-      await tester.pump(const Duration(milliseconds: 16));
-      final opacity = tester.widget<Opacity>(returningContent).opacity;
-      expect(opacity, greaterThan(previousOpacity));
-      expect(opacity, lessThan(1));
-      previousOpacity = opacity;
-    }
-    await gesture.moveBy(const Offset(450, 0));
-    await gesture.up();
-    await tester.pumpUi();
-    expectSelected(1);
-    await swipe(650, 0);
+    await swipe(650, 1);
     await swipe(650, 0);
   });
 
-  testWidgets(
-    'the icon rides its card at the top-right anchor as the stack scales',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final backend = DashboardBackend();
-      backend.pacts.pacts.add(
-        const CrewPact(
-          id: 'third',
-          crewId: 'crew',
-          title: 'Stretch',
-          frequency: PactFrequency.daily,
-          daysPerWeek: 7,
-          iconKey: 'yoga',
-        ),
-      );
-      final week = await backend.fetchWeek('crew');
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(12),
-              child: TodayPactsCard(
-                week: week,
-                userId: '',
-                savingPact: null,
-                onToggle: (_) {},
-              ),
+  testWidgets('the icon and the check-in button sit on the card\'s inset', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(12),
+            child: TodayPactsCard(
+              week: week,
+              userId: '',
+              savingPact: null,
+              onToggle: (_) {},
             ),
           ),
         ),
-      );
-      await tester.pumpUi();
-      final card = tester.getRect(nearestCopy(tester, const ValueKey('move')));
-      final button = tester.getRect(
-        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
-      );
-      expect(button.left, closeTo(card.left + homeCardInset.left, 1));
-      expect(button.right, closeTo(card.right - homeCardInset.right, 1));
-      final dashes = tester.getRect(
-        find.byKey(const ValueKey('pact-progress-move')).hitTestable(),
-      );
-      expect(dashes.left, closeTo(button.left, 1));
-      expect(dashes.width, closeTo(button.width, 1));
-      final fullIcon = tester
-          .getRect(nearestCopy(tester, const ValueKey('pact-icon-move')))
-          .width;
-      final icon = nearestCopy(tester, const ValueKey('pact-icon-read'));
-      final initialIcon = tester.getRect(icon).width;
-      final incomingCard = nearestCopy(tester, const ValueKey('read'));
-      final incomingBounds = tester.getRect(incomingCard);
-      final rightInset =
-          (incomingBounds.right - tester.getRect(icon).right) /
-          incomingBounds.width;
-      final topInset =
-          (tester.getRect(icon).top - incomingBounds.top) /
-          incomingBounds.height;
-      expect(initialIcon, lessThan(fullIcon));
-      final activeIconBounds = tester.getRect(
-        nearestCopy(tester, const ValueKey('pact-icon-move')),
-      );
-      expect(activeIconBounds.top, closeTo(card.top + homeCardInset.top, 1));
-      expect(
-        activeIconBounds.right,
-        closeTo(card.right - homeCardInset.right, 1),
-      );
-      expect(find.text('Read 20 pages').hitTestable(), findsNothing);
-      expect(find.text('Stretch').hitTestable(), findsNothing);
-      final gesture = await tester.startGesture(card.center);
-      await gesture.moveBy(const Offset(-24, 0));
-      await tester.pump();
-      var previous = initialIcon;
-      for (var frame = 0; frame < 5; frame++) {
-        await gesture.moveBy(const Offset(-20, 0));
-        await tester.pump(const Duration(milliseconds: 16));
-        final iconBounds = tester.getRect(icon);
-        final cardBounds = tester.getRect(incomingCard);
-        expect(
-          (cardBounds.right - iconBounds.right) / cardBounds.width,
-          closeTo(rightInset, .001),
-        );
-        expect(
-          (iconBounds.top - cardBounds.top) / cardBounds.height,
-          closeTo(topInset, .001),
-        );
-        final size = iconBounds.width;
-        expect(size, greaterThanOrEqualTo(previous - .01));
-        previous = size;
-      }
-      expect(previous, greaterThan(initialIcon));
-      expect(previous, lessThan(fullIcon));
-      await gesture.moveBy(const Offset(-180, 0));
-      await gesture.up();
-      await tester.pumpUi();
-      expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-      expect(
-        tester
-            .getRect(nearestCopy(tester, const ValueKey('pact-icon-read')))
-            .width,
-        closeTo(fullIcon, 1),
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    await tester.pumpUi();
+    final card = tester.getRect(find.byKey(const ValueKey('move')));
+    final button = tester.getRect(
+      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    );
+    expect(button.left, closeTo(card.left + homeCardInset.left, 1));
+    expect(button.right, closeTo(card.right - homeCardInset.right, 1));
+    final dashes = tester.getRect(
+      find.byKey(const ValueKey('pact-progress-move')).hitTestable(),
+    );
+    expect(dashes.left, closeTo(button.left, 1));
+    expect(dashes.width, closeTo(button.width, 1));
+    final icon = tester.getRect(find.byKey(const ValueKey('pact-icon-move')));
+    expect(icon.top, closeTo(card.top + homeCardInset.top, 1));
+    expect(icon.right, closeTo(card.right - homeCardInset.right, 1));
+    expect(tester.takeException(), isNull);
+  });
 
-  testWidgets('swiping card stays within the vertical clipping bounds', (
+  testWidgets('neighbours shrink, and only a sliver shows past the edge', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -464,71 +257,51 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: TodayPactsCard(
-              week: week,
-              height: 400,
-              horizontalBleed: 12,
-              userId: '',
-              savingPact: null,
-              onToggle: (_) {},
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: TodayPactsCard(
+                week: week,
+                height: 400,
+                userId: '',
+                savingPact: null,
+                onToggle: (_) {},
+              ),
             ),
           ),
         ),
       ),
     );
     await tester.pumpUi();
-    Finder pactCopy() => nearestCopy(tester, const ValueKey('move'));
-    final pact = pactCopy();
-    Rect paintedBounds(Finder finder) {
-      final box = tester.renderObject<RenderBox>(finder);
-      return MatrixUtils.transformRect(
-        box.getTransformTo(null),
-        Offset.zero & box.size,
-      );
-    }
+    final stack = tester.getRect(find.byKey(const ValueKey('pact-stack')));
+    final front = tester.getRect(find.byKey(const ValueKey('move')));
+    final next = tester.getRect(find.byKey(const ValueKey('read')));
+    // The focused card spans the content; the next one is smaller and
+    // starts just past the content's edge, so 8 of the margin's 12 show it.
+    expect(front.left, closeTo(stack.left, 1));
+    expect(front.right, closeTo(stack.right, 1));
+    expect(next.width, closeTo(stack.width * .86, 1));
+    expect(next.height, lessThan(front.height));
+    expect(next.left, closeTo(stack.right + 4, 1));
+    // It can be seen, not used: its check-in is not a target.
+    expect(
+      find.byKey(const ValueKey('check-in-Read 20 pages')).hitTestable(),
+      findsNothing,
+    );
 
-    final restingBottom = paintedBounds(pact).bottom;
-    void checkFrame() {
-      if (pact.evaluate().isEmpty) return;
-      final box = tester.renderObject<RenderBox>(pact);
-      // A slide must remain upright even while the pointer is moving.
-      expect(box.getTransformTo(null).storage[1], closeTo(0, .001));
-      final bounds = paintedBounds(pact);
-      final clips = find.ancestor(of: pact, matching: find.byType(ClipRect));
-      expect(clips, findsWidgets);
-      for (final clip in clips.evaluate()) {
-        final clipBox = clip.renderObject! as RenderBox;
-        final viewport = MatrixUtils.transformRect(
-          clipBox.getTransformTo(null),
-          Offset.zero & clipBox.size,
-        );
-        expect(bounds.top, greaterThanOrEqualTo(viewport.top - 1));
-        expect(bounds.bottom, lessThanOrEqualTo(viewport.bottom + 1));
-      }
-      final incoming = paintedBounds(
-        nearestCopy(tester, const ValueKey('read')),
-      );
-      expect(incoming.bottom, lessThanOrEqualTo(restingBottom + 1));
-      expect(
-        incoming.top,
-        greaterThanOrEqualTo(
-          tester.getRect(find.byKey(const ValueKey('pact-stack'))).top,
-        ),
-      );
-    }
-
-    final gesture = await tester.startGesture(tester.getCenter(pact));
-    for (var step = 0; step < 13; step++) {
+    final gesture = await tester.startGesture(stack.center);
+    for (var step = 0; step < 8; step++) {
       await gesture.moveBy(const Offset(-20, 0));
       await tester.pump(const Duration(milliseconds: 16));
-      checkFrame();
+      // Mid-swipe the two cards trade sizes, with the same small gap held
+      // between them throughout.
+      final out = tester.getRect(find.byKey(const ValueKey('move')));
+      final incoming = tester.getRect(find.byKey(const ValueKey('read')));
+      expect(incoming.left - out.right, closeTo(4, 1));
+      expect(incoming.center.dy, closeTo(out.center.dy, .01));
     }
     await gesture.up();
-    for (var frame = 0; frame < 20; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      checkFrame();
-    }
     await tester.pumpUi();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -612,97 +385,52 @@ void main() {
     },
   );
 
-  testWidgets(
-    'slide and stack keeps the selected card upright and provides haptics',
-    (tester) async {
-      final haptics = <Object?>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+  testWidgets('moving to another pact gives one haptic tap', (tester) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
-        (call) async {
-          if (call.method == 'HapticFeedback.vibrate') {
-            haptics.add(call.arguments);
-          }
-          return null;
-        },
-      );
-      addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
-      );
-      final week = await DashboardBackend().fetchWeek('crew');
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: WeekPactTheme.dark,
-          home: Scaffold(
-            body: TodayPactsCard(
-              horizontalBleed: 12,
-              week: week,
-              userId: '',
-              savingPact: null,
-              onToggle: (_) {},
-            ),
+        null,
+      ),
+    );
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        home: Scaffold(
+          body: TodayPactsCard(
+            week: week,
+            userId: '',
+            savingPact: null,
+            onToggle: (_) {},
           ),
         ),
-      );
-      await tester.pumpUi();
-      expect(haptics, isEmpty);
-      final first = nearestCopy(tester, const ValueKey('pact-slide-stack-0'));
-      expect(
-        tester.widget<Transform>(first).transform.storage[1],
-        closeTo(0, .001),
-      );
-      final front = tester.getRect(nearestCopy(tester, const ValueKey('move')));
-      final behind = tester.getRect(
-        nearestCopy(tester, const ValueKey('read')),
-      );
-      expect(behind.right, greaterThan(front.right));
-      expect(behind.top, greaterThan(front.top));
-      expect(behind.bottom, lessThan(front.bottom));
-      // The card behind carries nothing but its tint: its face, icon and all,
-      // is faded right out, and only the strip past the front card shows.
-      expect(
-        tester
-            .widget<Opacity>(
-              nearestCopy(tester, const ValueKey('pact-content-opacity-read')),
-            )
-            .opacity,
-        closeTo(0, .001),
-      );
-      expect(find.text('Read 20 pages').hitTestable(), findsNothing);
-      expect(behind.width, lessThan(front.width));
-      // There are no dots under the stack: the next card peeking out is the
-      // way on, and a swipe brings it forward.
-      expect(find.byTooltip('Pact 2 of 2'), findsNothing);
-      await tester.drag(
-        find.byKey(const ValueKey('pact-stack')),
-        const Offset(-650, 0),
-      );
-      await tester.pumpUi();
-      expect(
-        tester
-            .widget<Transform>(
-              nearestCopy(tester, const ValueKey('pact-slide-stack-1')),
-            )
-            .transform
-            .storage[1],
-        closeTo(0, .001),
-      );
-      expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
-      // Brought forward, the card's face is back — icon and all.
-      expect(
-        tester
-            .widget<Opacity>(
-              nearestCopy(tester, const ValueKey('pact-content-opacity-read')),
-            )
-            .opacity,
-        closeTo(1, .001),
-      );
-      expect(haptics, ['HapticFeedbackType.mediumImpact']);
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    await tester.pumpUi();
+    expect(haptics, isEmpty);
+    expect(find.text('Read 20 pages').hitTestable(), findsNothing);
+    // A dot per pact under the cards.
+    expect(find.byTooltip('Pact 1 of 2'), findsOneWidget);
+    expect(find.byTooltip('Pact 2 of 2'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('pact-stack')),
+      const Offset(-650, 0),
+    );
+    await tester.pumpUi();
+    expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+    expect(haptics, ['HapticFeedbackType.mediumImpact']);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'many pacts and crew members fit narrow screens with large text',
@@ -757,28 +485,65 @@ void main() {
       );
       await tester.pumpUi();
       expect(find.text('1 of 14'), findsNothing);
-      // No dots under the stack, however many pacts there are.
-      expect(find.byTooltip('Pact 1 of 14'), findsNothing);
+      // Fourteen dots still fit a narrow screen, scaled down if they must be.
+      expect(find.byTooltip('Pact 1 of 14'), findsOneWidget);
+      expect(find.byTooltip('Pact 14 of 14'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
-}
 
-// Looping renders extra copies; inspect the largest copy nearest the viewport.
-Finder nearestCopy(WidgetTester tester, Key key) {
-  final candidates = find.byKey(key).evaluate().toList();
-  final center = tester.getCenter(find.byKey(const ValueKey('pact-stack')));
-  double score(Element element) {
-    final box = element.renderObject! as RenderBox;
-    final bounds = MatrixUtils.transformRect(
-      box.getTransformTo(null),
-      Offset.zero & box.size,
+  testWidgets('the front pact\'s dot is long, and a dot goes to its pact', (
+    tester,
+  ) async {
+    final week = await DashboardBackend().fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TodayPactsCard(
+            week: week,
+            userId: '',
+            savingPact: null,
+            onToggle: (_) {},
+          ),
+        ),
+      ),
     );
-    return bounds.width - (bounds.center.dx - center.dx).abs() * 10;
-  }
+    await tester.pumpUi();
+    double width(int i) => tester
+        .getSize(
+          find.descendant(
+            of: find.byTooltip('Pact $i of 2'),
+            matching: find.byType(Container),
+          ),
+        )
+        .width;
+    expect(width(1), greaterThan(width(2)));
+    expect(find.text('Move for 30 min').hitTestable(), findsOneWidget);
 
-  candidates.sort((a, b) => score(b).compareTo(score(a)));
-  return find.byElementPredicate(
-    (element) => identical(element, candidates.first),
-  );
+    await tester.tap(find.byTooltip('Pact 2 of 2'));
+    await tester.pumpUi();
+    expect(find.text('Read 20 pages').hitTestable(), findsOneWidget);
+    expect(width(2), greaterThan(width(1)));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a single pact has no dots', (tester) async {
+    final backend = DashboardBackend();
+    backend.pacts.pacts = [backend.pacts.pacts.first];
+    final week = await backend.fetchWeek('crew');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TodayPactsCard(
+            week: week,
+            userId: '',
+            savingPact: null,
+            onToggle: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.byTooltip('Pact 1 of 1'), findsNothing);
+  });
 }

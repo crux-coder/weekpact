@@ -114,9 +114,8 @@ void main() {
     // Days with photos are buttons that say how many; the rest are not.
     expect(find.bySemanticsLabel('September 3: 2 photos'), findsOneWidget);
     expect(find.bySemanticsLabel('September 4: no photos'), findsOneWidget);
-    // The month's most-clapped check-in sits under the calendar.
-    expect(find.text('Mirnes · Hangboard'), findsOneWidget);
-    expect(find.text('Sep 10 · 4 claps'), findsOneWidget);
+    // Nothing is singled out under the calendar any more.
+    expect(find.textContaining('MOST CLAPPED'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -143,13 +142,20 @@ void main() {
       matching: find.byType(IconButton),
     );
     expect(tester.widget<IconButton>(next).onPressed, isNull);
+    Rect sheet() =>
+        tester.getRect(find.byKey(const ValueKey('crew-month-photos-sheet')));
+    Rect back() => tester.getRect(find.byTooltip('Previous month').last);
+    final september = sheet();
+    final septemberBack = back();
 
     await tester.tap(find.byTooltip('Previous month').last);
     await tester.pumpUi();
     expect(backend.requestedMonths, ['2026-09-01', '2026-08-01']);
     expect(find.text('1 photo · 1 day'), findsOneWidget);
-    // No claps in August, so nothing is called most clapped.
-    expect(find.byKey(const ValueKey('month-most-clapped')), findsNothing);
+    // August runs over six weeks and September five; the sheet and its
+    // chevrons stand exactly where they were.
+    expect(sheet(), september);
+    expect(back(), septemberBack);
 
     // Back to September comes from what was already loaded.
     await tester.tap(find.byTooltip('Next month').last);
@@ -162,11 +168,22 @@ void main() {
     final backend = _backend()..failMonthPhotos = true;
     await _pump(tester, backend);
     await _openMonth(tester);
-    expect(find.text('Could not load photos'), findsOneWidget);
+    expect(
+      find.text('Could not load photos · Tap to try again'),
+      findsOneWidget,
+    );
+    final sheet = tester.getRect(
+      find.byKey(const ValueKey('crew-month-photos-sheet')),
+    );
 
     backend.failMonthPhotos = false;
-    await tester.tap(find.text('TRY AGAIN'));
+    await tester.tap(find.byKey(const ValueKey('month-photos-retry')));
     await tester.pumpUi();
     expect(find.text('4 photos · 3 days'), findsOneWidget);
+    // Retrying in place: the sheet is the height it was while failed.
+    expect(
+      tester.getRect(find.byKey(const ValueKey('crew-month-photos-sheet'))),
+      sheet,
+    );
   });
 }

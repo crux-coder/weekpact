@@ -2,7 +2,6 @@ import 'package:weekpact/src/home/today_widgets.dart';
 
 import 'support/pump_ui.dart';
 
-import 'package:card_swiper/card_swiper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
@@ -168,7 +167,7 @@ void main() {
           await tester.pumpUi();
           expect(tester.takeException(), isNull);
           expect(find.text('WeekPact'), findsNothing);
-          expect(find.byType(Swiper), findsOneWidget);
+          expect(find.byKey(const ValueKey('pact-stack')), findsOneWidget);
           final verticalScrolls = tester
               .stateList<ScrollableState>(find.byType(Scrollable))
               .where(
@@ -185,9 +184,10 @@ void main() {
             find.byKey(const ValueKey('move')).hitTestable(),
           );
           final crewBounds = tester.getRect(board);
-          expect(activePact.center.dx, closeTo(crewBounds.center.dx, 1));
-          expect(activePact.left, greaterThan(crewBounds.left));
-          expect(activePact.right, lessThan(crewBounds.right));
+          // The front pact card is as wide as the cards above it; the next
+          // one peeks out into the page's margin instead.
+          expect(activePact.left, closeTo(crewBounds.left, 1));
+          expect(activePact.right, closeTo(crewBounds.right, 1));
           final titleBottom = tester.getBottomRight(find.byType(HomeHeader)).dy;
           final crewTop = crewBounds.top;
           // Home leads with the crew's day — the stories rail. The page's own
@@ -228,7 +228,7 @@ void main() {
           expect(find.byKey(const ValueKey('crew-streak')), findsNothing);
           expect(board, findsOneWidget);
           await tester.timedDrag(
-            find.byType(Swiper),
+            find.byKey(const ValueKey('pact-stack')),
             Offset(-size.width * .7, 0),
             const Duration(milliseconds: 300),
           );

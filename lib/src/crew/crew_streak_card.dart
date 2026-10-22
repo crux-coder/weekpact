@@ -69,6 +69,19 @@ class CrewStreakCard extends StatelessWidget {
     return past?.shareOut.elementAtOrNull(day.weekday - DateTime.monday);
   }
 
+  /// The pact the crew kept most on [day], from the same two sources as
+  /// [_shareOn]. Null where nobody kept one, or where the history does not
+  /// say.
+  String? _topPactOn(DateTime day) {
+    final iso = day.toIso8601String().substring(0, 10);
+    if (iso.compareTo(week.weekStart) >= 0) {
+      return iso.compareTo(week.today) <= 0 ? week.topPact(iso) : null;
+    }
+    final monday = mondayOf(day).toIso8601String().substring(0, 10);
+    final past = history?.where((w) => w.weekStart == monday).firstOrNull;
+    return past?.topPacts.elementAtOrNull(day.weekday - DateTime.monday);
+  }
+
   @override
   Widget build(BuildContext context) {
     final weeks = week.streakWeeks;
@@ -350,14 +363,22 @@ class CrewStreakCard extends StatelessWidget {
       final isToday = day == today;
       final future = day.isAfter(today);
       final out = !future && (_shareOn(day) ?? 0) > 0;
+      // A day the crew was out wears the badge colour of the pact it kept
+      // most, the deeper of the pact's pair, which holds up as a dot on both
+      // themes. A day whose pact is not to hand stays in ink.
+      final top = out
+          ? week.pacts.indexWhere((p) => p.id == _topPactOn(day))
+          : -1;
+      final fill = top >= 0 ? WeekPactColors.pactBadge(top) : ink;
       // A squircle, like the app's cards and tiles, at the corner a card
       // this small reads as.
       return Container(
+        key: ValueKey('streak-day-${day.toIso8601String().substring(0, 10)}'),
         width: _dot,
         height: _dot,
         decoration: ShapeDecoration(
           color: out
-              ? ink
+              ? fill
               : future || isToday
               ? null
               : ink.withValues(alpha: .07),

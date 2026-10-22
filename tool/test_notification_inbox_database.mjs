@@ -66,6 +66,7 @@ assert.deepEqual(
   { type: 'pact_completed', crew_name: 'Climbers', display_name: 'Ada Vega', pact_title: 'Climb twice', icon_key: 'target', read: false },
 );
 assert.equal(page[0].avatar_path, `${owner}/avatar.png`, 'the actor\'s avatar comes with it');
+assert.equal(page[0].pact_index, 0, 'the crew\'s first pact is the first colour');
 assert.equal((await inbox(quiet)).length, 1, 'a member with no device reads the same list');
 assert.equal((await inbox(owner)).length, 0, 'the person who checked in is not told about themselves');
 assert.equal(await unread(quiet), 1);
@@ -101,6 +102,21 @@ assert.deepEqual(
   'the pages line up with the whole list',
 );
 assert.deepEqual(all.map(e => e.created_at), [...all.map(e => e.created_at)].sort().reverse(), 'newest first');
+
+// The colour follows the pact's place in the crew's list: a pact made earlier
+// moves this one along to the next colour.
+await db.query(
+  "insert into crew_pacts(id,crew_id,title,frequency,days_per_week,icon_key,created_by,created_at) values($1,$2,'Stretch','daily',7,'target',$3,now() - interval '30 days')",
+  [id(21), crew, owner],
+);
+assert.equal(
+  (await inbox(mate)).find(entry => entry.type === 'pact_completed').pact_index, 1,
+  'an older pact goes first',
+);
+assert.equal(
+  (await inbox(owner)).find(entry => entry.type === 'crew_nudge')?.pact_index ?? null, null,
+  'a notice about no pact has no colour',
+);
 
 // Deleting what a notification was about takes the notification with it.
 const clapped = (await inbox(owner))[0];

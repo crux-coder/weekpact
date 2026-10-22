@@ -8,9 +8,7 @@ import '../home/home_backend.dart';
 import '../home/stories.dart';
 import '../home/story_viewer.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/app_components.dart';
 import 'crew_month_calendar.dart';
-import 'crew_pact_week_card.dart';
 
 /// Opens the crew's month in photos as a drawer over the crew week page.
 ///
@@ -40,8 +38,7 @@ Future<void> showCrewMonthPhotosSheet({
 
 /// The month as a calendar of photos: each day the crew kept a photo shows
 /// its most-clapped one, with a count when there were more, and opens the
-/// day's photos in the story viewer. Under it, the month's most-clapped
-/// check-in.
+/// day's photos in the story viewer.
 class CrewMonthPhotosSheet extends StatefulWidget {
   const CrewMonthPhotosSheet({
     super.key,
@@ -130,19 +127,9 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
     if (!_loaded.containsKey(month)) _load(month);
   }
 
-  WeekMember? _member(String id) =>
-      widget.week.members.where((m) => m.id == id).firstOrNull;
-
-  String _name(String id) => id == widget.userId
-      ? 'You'
-      : switch (_member(id)?.displayName.trim()) {
-          final name? when name.isNotEmpty => name,
-          _ => 'Crew member',
-        };
-
   /// Opens [stories] — one day's — in the story viewer, a member at a time
-  /// in the crew's order with the viewer first, starting on [first]'s.
-  void _open(List<PactStory> stories, {PactStory? first}) {
+  /// in the crew's order with the viewer first.
+  void _open(List<PactStory> stories) {
     final days = <MemberDay>[];
     final members = [...widget.week.members]
       ..sort(
@@ -164,14 +151,10 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
     }
     if (days.isEmpty) return;
     unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
-    final start = first == null
-        ? 0
-        : days.indexWhere((d) => d.member.id == first.checkIn.userId);
     StoryViewer.open(
       context,
       days: days,
       viewerId: widget.userId,
-      initial: start < 0 ? 0 : start,
       backend: widget.backend,
     );
   }
@@ -196,12 +179,11 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
     for (final story in stories ?? const <PactStory>[]) {
       (byDay[story.checkIn.day] ??= []).add(story);
     }
-    final best = stories == null || stories.isEmpty ? null : _cover(stories);
     final title = _month.year == _today.year
         ? crewMonthNames[_month.month - 1]
         : '${crewMonthNames[_month.month - 1]} ${_month.year}';
     final subtitle = failed
-        ? 'Could not load photos'
+        ? 'Could not load photos · Tap to try again'
         : stories == null
         ? 'Loading photos…'
         : stories.isEmpty
@@ -256,11 +238,19 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: failed ? context.errorInk : context.muted,
-                            fontSize: 14,
+                        // A failed month is retried from its own line, so the
+                        // sheet keeps its height rather than growing a button.
+                        GestureDetector(
+                          key: const ValueKey('month-photos-retry'),
+                          onTap: failed ? () => _load(_month) : null,
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: failed ? context.errorInk : context.muted,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ],
@@ -281,14 +271,6 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
                   ),
                 ],
               ),
-              if (failed)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () => _load(_month),
-                    child: const Text('TRY AGAIN'),
-                  ),
-                ),
               const SizedBox(height: 14),
               GestureDetector(
                 // A swipe across the month steps it the way the chevrons do.
@@ -305,15 +287,6 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
                   onOpen: _open,
                 ),
               ),
-              if (best != null && best.clapCount > 0) ...[
-                const SizedBox(height: 14),
-                _MostClapped(
-                  story: best,
-                  name: _name(best.checkIn.userId),
-                  onTap: () =>
-                      _open(byDay[best.checkIn.day] ?? [best], first: best),
-                ),
-              ],
             ],
           ),
         ),
@@ -340,6 +313,17 @@ class _PhotoGrid extends StatelessWidget {
   final void Function(List<PactStory>) onOpen;
 
   static const _gap = 5.0;
+
+  /// The month's weeks, padded out with blank ones to six — the most any
+  /// month spans — so every month's grid stands the same height.
+  static List<DateTime> _sixWeeks(DateTime month) {
+    final weeks = monthWeeks(month);
+    while (weeks.length < 6) {
+      final last = weeks.last;
+      weeks.add(DateTime(last.year, last.month, last.day + 7));
+    }
+    return weeks;
+  }
 
   @override
   Widget build(BuildContext context) => Column(
@@ -372,7 +356,7 @@ class _PhotoGrid extends StatelessWidget {
           ],
         ),
       ),
-      for (final monday in monthWeeks(month)) ...[
+      for (final monday in _sixWeeks(month)) ...[
         const SizedBox(height: _gap),
         Row(
           children: [
@@ -493,108 +477,6 @@ class _PhotoGrid extends StatelessWidget {
                   ),
                 ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The month's most-clapped check-in, under the calendar.
-class _MostClapped extends StatelessWidget {
-  const _MostClapped({
-    required this.story,
-    required this.name,
-    required this.onTap,
-  });
-  final PactStory story;
-  final String name;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final claps = story.clapCount;
-    final date = crewDateLabel(DateTime.parse(story.checkIn.day));
-    return Semantics(
-      button: true,
-      label:
-          'Most clapped: $name, ${story.pact.title}, $date, $claps ${claps == 1 ? 'clap' : 'claps'}',
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          key: const ValueKey('month-most-clapped'),
-          onTap: onTap,
-          child: AppSurface(
-            fillColor: WeekPactColors.cream,
-            builder: (_) => Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: ShapeDecoration(
-                      color: story.tint,
-                      shape: ContinuousRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: Image.network(
-                      story.photoUrl!,
-                      fit: BoxFit.cover,
-                      cacheWidth: 216,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: const BoxDecoration(
-                            color: WeekPactColors.black,
-                            borderRadius: WeekPactMetrics.pill,
-                          ),
-                          child: const Text(
-                            'MOST CLAPPED',
-                            style: TextStyle(
-                              color: WeekPactColors.cream,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '$name · ${story.pact.title}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: WeekPactColors.black,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$date · $claps ${claps == 1 ? 'clap' : 'claps'}',
-                          style: const TextStyle(
-                            color: WeekPactColors.mutedLight,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ),

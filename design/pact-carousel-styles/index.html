@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pact carousels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --black:#191B19; --canvas:#222A2B; --surface:#1F2627; --ink:#EDF3F2; --muted:#AAB8B9;
+    --border:#67797C; --cream:#F0F5F4; --kept:#3F7A6B; --clap:#E6D7A6;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 100px; background:#121616; color:var(--ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1500px; margin:0 auto; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-.4px; margin:0 0 10px; }
+  .lede { color:var(--muted); max-width:78ch; line-height:1.6; font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:44px 28px; }
+  figure { margin:0; display:flex; flex-direction:column; align-items:center; }
+  figcaption { width:300px; margin-top:14px; }
+  figcaption .tag { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  figure.now figcaption .tag { color:var(--clap); }
+  figcaption h2 { font-size:17px; margin:4px 0 6px; font-weight:600; }
+  figcaption p { margin:0; font-size:13.5px; line-height:1.55; color:var(--muted); }
+  figcaption .cost { margin-top:8px; font-size:12px; color:var(--ink); opacity:.8; }
+
+  /* phone, showing the bottom of Home so the card can be read against the cards above it */
+  .phone { width:300px; height:560px; border-radius:44px; background:var(--canvas);
+    padding:22px 12px 14px; display:flex; flex-direction:column; gap:12px; position:relative;
+    box-shadow:0 0 0 8px #0b0d0d, 0 24px 60px rgba(0,0,0,.5); overflow:hidden; }
+  .ghost { border-radius:20px; background:var(--surface); border:1px solid #2f3a3b; flex:none; }
+  .ghost.a { height:118px; }
+  .ghost.b { height:66px; }
+  .edge { position:absolute; top:0; bottom:0; width:0; border-left:1px dashed rgba(240,213,78,.35); pointer-events:none; z-index:50; }
+  .edge.l { left:12px; } .edge.r { right:12px; }
+  .phone.hide-edges .edge { display:none; }
+
+  .track { position:relative; height:262px; flex:none; touch-action:pan-y; cursor:grab; user-select:none; -webkit-user-select:none; }
+  .track:active { cursor:grabbing; }
+  .slot { position:absolute; top:0; left:0; height:250px; will-change:transform; transform-origin:center center; }
+  .dots { display:flex; justify-content:center; gap:6px; height:8px; }
+  .dots i { width:6px; height:6px; border-radius:3px; background:rgba(237,243,242,.25); transition:width .2s, background .2s; }
+  .dots i.on { width:16px; background:var(--ink); }
+
+  /* pact card (today_widgets.dart _PactCard) */
+  .pcard { position:absolute; inset:0; overflow:hidden; border-radius:22px; background:var(--t);
+    color:var(--black); padding:12px; box-shadow:0 3px 0 var(--e), inset 0 0 0 1px var(--e); }
+  .pin { width:252px; height:100%; display:flex; flex-direction:column; }
+    .row1 { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .row1 h3 { margin:2px 0 0; font-size:21px; font-weight:700; line-height:1.15; letter-spacing:-.2px; }
+  .badge { flex:none; width:52px; height:52px; border-radius:16px; background:var(--b); display:grid; place-items:center;
+    box-shadow:0 2px 0 var(--e), inset 0 0 0 1px var(--e); }
+  .badge svg { width:24px; height:24px; }
+  .count { margin-top:auto; display:flex; align-items:baseline; gap:6px; }
+  .count b { font-size:58px; font-weight:700; line-height:.9; letter-spacing:-2px; }
+  .count span { font-size:28px; font-weight:700; opacity:.75; }
+  .count em { font-style:normal; font-size:14px; font-weight:600; opacity:.75; }
+  .segs { display:flex; gap:5px; margin:12px 0; }
+  .segs i { flex:1; height:12px; border-radius:5px; background:rgba(25,27,25,.25); }
+  .segs i.on { background:var(--black); }
+  .btn { height:44px; border-radius:14px; background:var(--black); color:var(--cream); display:flex; align-items:center;
+    justify-content:center; gap:8px; font-weight:600; font-size:15px; box-shadow:0 2px 0 #000; }
+  .btn.done { background:var(--cream); color:var(--kept); box-shadow:0 2px 0 var(--e), inset 0 0 0 1px var(--e); }
+  .btn svg { width:18px; height:18px; }
+
+  .controls { display:flex; justify-content:center; gap:10px; margin-top:-2px; }
+  .controls button { width:34px; height:28px; border-radius:10px; border:1px solid #3a4647; background:transparent; color:var(--muted); font:inherit; cursor:pointer; }
+  .controls button:hover { color:var(--ink); border-color:var(--border); }
+
+  .toolbar { display:flex; align-items:center; gap:10px; margin:-18px 0 30px; font-size:13px; color:var(--muted); }
+  .toolbar label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .verdict { margin-top:56px; max-width:78ch; font-size:15px; line-height:1.65; color:var(--muted); border-top:1px solid #2b3536; padding-top:24px; }
+  .verdict b { color:var(--ink); }
+  @media (max-width:360px) { .phone { transform:scale(.92); } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Pact card carousels</h1>
+  <p class="lede">Eight ways the pact stack could move, each one live: <b>drag or swipe the cards</b>, or use the arrows. Every phone shows the bottom of Home with the streak and week cards above, so you can see how each style sits against them. The dashed yellow lines mark the content edges.</p>
+  <div class="toolbar"><label><input type="checkbox" id="edges" checked> Show content edges</label></div>
+  <div class="grid" id="grid"></div>
+  <p class="verdict"><b>How to read these:</b> the first two keep the card flush with everything above it, which is what you asked for. <b>Gapped pages</b> is the same as now with a little air between cards while swiping, so they don't look glued together. <b>Peek</b> and <b>Hero</b> say "there's more" without dots but give up the flush edge. <b>Stacked deck</b> is the old one. <b>Cover flow</b> is the most playful and the least like the rest of the app.</p>
+</div>
+
+<script>
+const W = 276, GAP = 12;
+const icon = {
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l7-7M16 5h3v3"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13"/></svg>',
+  shoe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5V9l4 1.5L10 7l3 4 5 1.5c1.7.5 3 1.7 3 3.5v.5H3z"/><path d="M3 18.5h18"/></svg>',
+  yoga:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 8v6M5 10l7 2 7-2M8 20l4-6 4 6"/></svg>',
+  circle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/></svg>',
+  tick:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l4 4L18 6.5M10 16.5l1 1L21 7.5"/></svg>',
+};
+// Sorbet tint, badge, and the darker edge the app mixes from the tint.
+const pacts = [
+  { title:'Hangboard', icon:'target', t:'#FFB8BC', b:'#FF99A1', e:'#c98a8e', kept:0, of:3 },
+  { title:'Read 20 pages', icon:'book', t:'#83E5BC', b:'#54D6A5', e:'#5fa98a', kept:1, of:3, today:true },
+  { title:'Run 5k', icon:'shoe', t:'#FCC17C', b:'#F1AA4F', e:'#bd8d57', kept:2, of:4 },
+  { title:'Stretch', icon:'yoga', t:'#B7CEFF', b:'#9ABAFF', e:'#8697bb', kept:3, of:7 },
+];
+const card = p => `
+  <div class="pcard" style="--t:${p.t};--b:${p.b};--e:${p.e}"><div class="pin">
+    <div class="row1"><h3>${p.title}</h3><div class="badge">${icon[p.icon]}</div></div>
+    <div class="count"><b>${p.kept}</b><span>/ ${p.of}</span><em>days this week</em></div>
+    <div class="segs">${Array.from({length:p.of},(_,i)=>`<i class="${i<p.kept?'on':''}"></i>`).join('')}</div>
+    <div class="btn ${p.today?'done':''}">${p.today?icon.tick+' Checked in today':icon.circle+' Check in'}</div>
+  </div></div>`;
+
+const lerp = (a,b,t) => a + (b-a)*t;
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+
+/* Each style says how wide a card is and where card i sits when the
+   carousel stands at fractional position p (d = i - p). */
+const styles = [
+  { tag:'Now', title:'Full-width pages', body:'What the app does after today\'s change: one card, flush with the cards above, sliding out whole as the next slides in edge to edge.', cost:'Built · PageView',
+    place:d => ({ x:d*W, o:Math.abs(d) < 1 ? 1 : 0 }) },
+  { tag:'Option', title:'Gapped pages', body:'Same flush card at rest, but a 12pt gap opens between cards while you swipe, matching the gap between every other card on Home.', cost:'One line · PageView with padding and viewportFraction',
+    place:d => ({ x:d*(W+GAP), o:Math.abs(d) < 1 ? 1 : 0 }) },
+  { tag:'Option', title:'Pages + dots', body:'Full-width pages with a dot row underneath, so you know how many pacts there are and which one you\'re on. Costs a few pixels of height.', cost:'Small · PageView + indicator',
+    dots:true, place:d => ({ x:d*(W+GAP), o:Math.abs(d) < 1 ? 1 : 0 }) },
+  { tag:'Option', title:'Peek', body:'Card is a little narrower and the next one shows 16pt at the right edge. Says "swipe me" without dots, but the card no longer lines up with the cards above.', cost:'Small · PageView viewportFraction ≈ .9',
+    narrow:true, width:248, place:d => ({ x:d*(248+GAP) }) },
+  { tag:'Option', title:'Hero (Material 3)', body:'Big focused card with the next pact shrunk to a narrow preview beside it. Good for many pacts; the focused card loses about a quarter of its width.', cost:'Medium · Flutter CarouselView.weighted',
+    narrow:true, width:210, hero:true },
+  { tag:'Before', title:'Stacked deck', body:'What it was: the next card sits behind, scaled down and peeking out on the right. Front card is inset from the content edges.', cost:'Was card_swiper + offset maths',
+    narrow:true, width:248, place:d => d < 0
+      ? ({ x:14 + d*(248+GAP+28), z:10 })
+      : ({ x:14 + clamp(d,0,2)*14, s:1-clamp(d,0,2)*.07, z:10-Math.ceil(d), o:d>1.6?0:1, fade:clamp(d,0,1) }) },
+  { tag:'Option', title:'Cover flow', body:'Neighbours shrink and dim either side of the focused card. Playful and clearly a carousel, but it reads differently from everything else on Home.', cost:'Medium · PageView + per-page transform',
+    narrow:true, width:224, place:d => ({ x:26 + d*196, s:1-Math.min(Math.abs(d),1)*.16, o:1-Math.min(Math.abs(d),1.5)*.45, z:10-Math.round(Math.abs(d)*2) }) },
+  { tag:'Chosen', now:true, title:'Cover flow, full width', body:'The focused card spans the content, flush with the cards above. Its neighbours shrink to 86% and dim, and only an 8pt sliver of each shows in the page margin. Mid-swipe a 4pt gap stays between cards.', cost:'Building now · PageView + per-page transform',
+    place:coverFull },
+];
+
+// Full-width cover flow: card at d sits at d*W, shrunk around its centre, then
+// pulled in so its inner edge rests 4pt past the content edge.
+function coverFull(d) {
+  const a = Math.min(Math.abs(d), 1), s = 1 - .14 * a;
+  return { x: d*W + d*(4 - W*.14/2), s, o: Math.abs(d) > 1.2 ? 0 : 1 - .35*a, z: 10 - Math.round(Math.abs(d)*2) };
+}
+
+// Hero: widths flow between the focused card and the small preview.
+function heroLayout(p, n) {
+  const big = 210, small = 52;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const d = i - p;
+    let x, w;
+    if (d <= 0) { x = d*(big+8); w = big; }
+    else if (d <= 1) { w = lerp(big, small, d); x = d*(big+8); }
+    else { w = small; x = (big+8) + (d-1)*(small+8); }
+    out.push({ x, w });
+  }
+  return out;
+}
+
+const grid = document.getElementById('grid');
+styles.forEach((st, si) => {
+  const fig = document.createElement('figure');
+  if (st.now) fig.className = 'now';
+  fig.innerHTML = `
+    <div class="phone"><div class="edge l"></div><div class="edge r"></div>
+      <div class="ghost a"></div><div class="ghost b"></div>
+      <div class="track">${pacts.map(p=>`<div class="slot" style="width:${st.width||W}px">${card(p)}</div>`).join('')}</div>
+      ${st.dots?`<div class="dots">${pacts.map(()=>'<i></i>').join('')}</div>`:''}
+    </div>
+    <div class="controls" style="margin-top:12px"><button aria-label="Previous pact">‹</button><button aria-label="Next pact">›</button></div>
+    <figcaption><div class="tag">${st.tag}</div><h2>${st.title}</h2><p>${st.body}</p><div class="cost">${st.cost}</div></figcaption>`;
+  grid.appendChild(fig);
+
+  const track = fig.querySelector('.track');
+  const slots = [...track.querySelectorAll('.slot')];
+  const dots = [...fig.querySelectorAll('.dots i')];
+  const n = pacts.length;
+  // The card's face is laid out at the card's resting width, inside its inset.
+  track.querySelectorAll('.pin').forEach(pin => pin.style.width = ((st.width||W) - 24) + 'px');
+  const step = st.hero ? 218 : st.width ? (st.title==='Cover flow' ? 196 : st.width + GAP) : W;
+  let p = 0, anim = null;
+
+  function render() {
+    if (st.hero) {
+      heroLayout(p, n).forEach((l, i) => {
+        slots[i].style.width = l.w + 'px';
+        slots[i].style.transform = `translateX(${l.x}px)`;
+        slots[i].style.opacity = l.x < -l.w || l.x > 300 ? 0 : 1;
+      });
+    } else {
+      slots.forEach((el, i) => {
+        const r = st.place(i - p);
+        el.style.transform = `translateX(${r.x}px) scale(${r.s ?? 1})`;
+        el.style.zIndex = r.z ?? 1;
+        el.style.opacity = r.o ?? 1;
+        const pin = el.querySelector('.pin');
+        pin.style.opacity = r.fade != null ? 1 - r.fade : 1;
+      });
+    }
+    const at = Math.round(clamp(p, 0, n-1));
+    dots.forEach((d, i) => d.classList.toggle('on', i === at));
+  }
+
+  function animateTo(target) {
+    cancelAnimationFrame(anim);
+    const from = p, start = performance.now(), dur = 280;
+    const tick = now => {
+      const t = Math.min(1, (now - start) / dur);
+      p = lerp(from, target, 1 - Math.pow(1 - t, 3));
+      render();
+      if (t < 1) anim = requestAnimationFrame(tick);
+    };
+    anim = requestAnimationFrame(tick);
+  }
+
+  // Drag, with rubber-banding past either end and a flick to change pact.
+  let startX = 0, startP = 0, lastX = 0, lastT = 0, vel = 0, dragging = false;
+  track.addEventListener('pointerdown', e => {
+    dragging = true; cancelAnimationFrame(anim);
+    startX = lastX = e.clientX; startP = p; lastT = performance.now(); vel = 0;
+    track.setPointerCapture(e.pointerId);
+  });
+  track.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const now = performance.now();
+    vel = (e.clientX - lastX) / Math.max(1, now - lastT);
+    lastX = e.clientX; lastT = now;
+    let next = startP - (e.clientX - startX) / step;
+    if (next < 0) next = next * .3;
+    if (next > n-1) next = n-1 + (next-(n-1)) * .3;
+    p = next; render();
+  });
+  const end = () => {
+    if (!dragging) return; dragging = false;
+    let target = Math.round(p);
+    if (Math.abs(vel) > .3) target = vel < 0 ? Math.ceil(p) : Math.floor(p);
+    animateTo(clamp(target, 0, n-1));
+  };
+  track.addEventListener('pointerup', end);
+  track.addEventListener('pointercancel', end);
+  const [prev, next] = fig.querySelectorAll('.controls button');
+  prev.onclick = () => animateTo(clamp(Math.round(p) - 1, 0, n-1));
+  next.onclick = () => animateTo(clamp(Math.round(p) + 1, 0, n-1));
+  render();
+});
+
+document.getElementById('edges').addEventListener('change', e => {
+  document.querySelectorAll('.phone').forEach(ph => ph.classList.toggle('hide-edges', !e.target.checked));
+});
+</script>
+</body>
+</html>

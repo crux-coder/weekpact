@@ -263,6 +263,9 @@ void main() {
       final loadingCrew = tester.getRect(
         find.byKey(const ValueKey('skeleton-streak-card')),
       );
+      final loadingPact = tester.getRect(
+        find.byKey(const ValueKey('skeleton-pact-card')),
+      );
       backend.loading!.complete(week);
       backend.loading = null;
       await tester.pumpUi();
@@ -272,6 +275,12 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('home-streak-card'))),
         loadingCrew,
       );
+      // The pact card lands exactly where its skeleton stood.
+      final pact = tester.getRect(find.byKey(const ValueKey('move')));
+      expect(pact.left, closeTo(loadingPact.left, 1));
+      expect(pact.top, closeTo(loadingPact.top, 1));
+      expect(pact.right, closeTo(loadingPact.right, 1));
+      expect(pact.bottom, closeTo(loadingPact.bottom, 1));
       expect(find.text('Check in').hitTestable(), findsOneWidget);
       backend.failSave = true;
       await tester.tap(
