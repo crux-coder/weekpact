@@ -139,6 +139,18 @@ void main() {
     await tester.tap(_tile('eli'));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('nudge-dialog')), findsOneWidget);
+    // The squircle draws its own edge; the dialog's Material must not trace a
+    // second, rectangular outline around it.
+    final shape = tester
+        .widget<Dialog>(
+          find.descendant(
+            of: find.byKey(const ValueKey('nudge-dialog')),
+            matching: find.byType(Dialog),
+          ),
+        )
+        .shape;
+    expect(shape, isA<OutlinedBorder>());
+    expect((shape! as OutlinedBorder).side, BorderSide.none);
     await tester.tap(find.byKey(const ValueKey('send-nudge')));
     await tester.pumpUi();
     expect(backend.sent, ['eli']);

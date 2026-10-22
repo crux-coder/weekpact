@@ -36,6 +36,9 @@ class AppDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      // The theme's dialog shape carries an outline, which would trace a plain
+      // rounded rectangle around the squircle; the surface draws its own edge.
+      shape: const RoundedRectangleBorder(),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: AppSurface(
         fillColor: context.surface,
