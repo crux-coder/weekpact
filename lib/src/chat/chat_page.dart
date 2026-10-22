@@ -11,6 +11,7 @@ import '../home/home_backend.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../widgets/squircle_button_border.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/avatar_shape.dart';
@@ -1172,7 +1173,9 @@ class _Composer extends StatelessWidget {
           Expanded(
             child: AppSurface(
               raised: false,
-              borderRadius: 22,
+              // The squircle the app's controls are cut to, as the send
+              // button beside it is, rather than a pill.
+              shape: WeekPactMetrics.buttonShape,
               builder: (context) => CaretAtEndOnFocus(
                 controller: controller,
                 child: TextField(
@@ -1248,16 +1251,18 @@ class _RoundButton extends StatelessWidget {
         label: tooltip,
         child: Material(
           color: fill,
-          shape: CircleBorder(
+          shape: SquircleButtonBorder(
             side: BorderSide(
               color: Color.lerp(fill, WeekPactColors.black, .2)!,
             ),
           ),
           child: InkWell(
-            customBorder: const CircleBorder(),
+            customBorder: const SquircleButtonBorder(),
             onTap: onPressed,
             child: SizedBox.square(
-              dimension: 46,
+              // The height of a one-line field beside it, so the two
+              // squircles stand level.
+              dimension: 50,
               child: AppIcon(
                 icon: icon,
                 size: 20,
