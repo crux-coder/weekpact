@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show StorageException;
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';
+import '../widgets/squircle_button_border.dart';
 import 'check_in_gallery.dart';
 import 'home_backend.dart';
 import 'photo_check_in_page.dart';
@@ -176,13 +178,22 @@ class _AchievementComposerState extends State<_AchievementComposer> {
       unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
       Navigator.pop(context, posted);
     } catch (error) {
+      // What went wrong is kept for the console: "could not post" alone left
+      // a refused photo and a refused post looking the same.
+      debugPrint('Posting a story failed: $error');
       if (!mounted) return;
       setState(() {
         _posting = false;
         // The server caps a member's day, and says so in its own words.
-        _error = error.toString().contains('five achievements')
-            ? 'That’s five posts today. Save the next one for tomorrow.'
-            : 'Could not post. Try again.';
+        _error = switch (error.toString()) {
+          final e when e.contains('five achievements') =>
+            'That’s five posts today. Save the next one for tomorrow.',
+          final e when e.contains('unavailable') =>
+            'That photo didn’t go up. Retake it and post again.',
+          _ when error is StorageException =>
+            'Could not upload the photo. Try again.',
+          _ => 'Could not post. Try again.',
+        };
       });
     }
   }
@@ -379,8 +390,9 @@ class _PhotoPreview extends StatelessWidget {
   );
 }
 
-/// Achievement or story, as one switch with a side for each: the chosen side
-/// slides under a thumb in its own colour, carrying its own glyph, so which
+/// Achievement or story, as one switch with a side for each, cut to the
+/// squircle every compact control in the app wears: the chosen side slides
+/// under a thumb in its own colour, carrying its own glyph, so which
 /// one is on reads before the words do. The same gold and trophy, lavender
 /// and camera, that the post will wear in the rail and the viewer.
 class PostKindToggle extends StatelessWidget {
@@ -394,51 +406,49 @@ class PostKindToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final motion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 200);
     return Container(
       height: _height,
       padding: const EdgeInsets.all(_inset),
       decoration: ShapeDecoration(
         color: context.canvas,
-        shape: StadiumBorder(side: BorderSide(color: context.border)),
+        shape: SquircleButtonBorder(side: BorderSide(color: context.border)),
       ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            alignment: value == PostKind.achievement
-                ? Alignment.centerLeft
-                : Alignment.centerRight,
-            child: FractionallySizedBox(
-              widthFactor: .5,
-              heightFactor: 1,
-              child: AnimatedContainer(
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 200),
-                decoration: ShapeDecoration(
-                  color: value.tint,
-                  shape: const StadiumBorder(),
-                  shadows: [
-                    BoxShadow(
-                      color: Color.lerp(value.tint, Colors.black, .24)!,
-                      offset: const Offset(0, 1.5),
-                    ),
-                  ],
+      child: LayoutBuilder(
+        builder: (context, space) {
+          final half = space.maxWidth / 2;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // The thumb is exactly one side's box, so the side it sits
+              // under is centred in it by construction rather than by eye.
+              AnimatedPositioned(
+                duration: motion,
+                curve: Curves.easeOutCubic,
+                left: value == PostKind.achievement ? 0 : half,
+                top: 0,
+                bottom: 0,
+                width: half,
+                child: AnimatedContainer(
+                  duration: motion,
+                  decoration: ShapeDecoration(
+                    color: value.tint,
+                    shape: const SquircleButtonBorder(),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Row(
-            children: [
-              for (final kind in PostKind.values)
-                Expanded(child: _side(context, kind)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final kind in PostKind.values)
+                    Expanded(child: _side(context, kind)),
+                ],
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -454,10 +464,11 @@ class PostKindToggle extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         key: ValueKey('post-kind-${kind.name}'),
-        customBorder: const StadiumBorder(),
+        customBorder: const SquircleButtonBorder(),
         onTap: onChanged == null || on ? null : () => onChanged!(kind),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // The unchosen side keeps its colour in its glyph, so both
             // options are colour coded before either is picked.
