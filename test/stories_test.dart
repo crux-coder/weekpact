@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
+import 'package:weekpact/src/home/achievement_composer.dart';
 import 'package:weekpact/src/home/clap_control.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/home/stories.dart';
 import 'package:weekpact/src/home/story_seen_store.dart';
 import 'package:weekpact/src/home/story_viewer.dart';
@@ -12,6 +14,7 @@ import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
+import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
 const _today = '2026-09-09';
@@ -92,6 +95,7 @@ Future<void> pumpStoriesHome(
   DashboardBackend? backend,
   StorySeenStore? seen,
   ThemeData? theme,
+  CheckInPhotoCapture? capturePhoto,
 }) async {
   final home = backend ?? StoriesBackend();
   await tester.pumpWidget(
@@ -104,6 +108,7 @@ Future<void> pumpStoriesHome(
         pactsBackend: home.pacts,
         homeBackend: home,
         storySeenStore: seen,
+        captureCheckInPhoto: capturePhoto,
       ),
     ),
   );
@@ -402,19 +407,24 @@ void main() {
     expect(find.textContaining('Read 20 pages'), findsWidgets);
   });
 
-  testWidgets('with nothing kept, your tile offers an achievement, not a '
-      'camera', (tester) async {
+  testWidgets('with nothing kept, your tile opens the achievement camera', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await pumpStoriesHome(tester, backend: StoriesBackend(yourCheckIns: []));
+    await pumpStoriesHome(
+      tester,
+      backend: StoriesBackend(yourCheckIns: []),
+      capturePhoto: captureTestCheckInPhoto,
+    );
     // The pact card below is where a check-in is made, so an empty tile of
-    // your own opens nothing to view — only the achievement composer.
+    // your own opens nothing to view — only the camera for an achievement.
     await tester.tap(find.byKey(const ValueKey('story-tile-')));
     await tester.pumpUi();
     expect(find.byType(StoryViewer), findsNothing);
-    expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
+    expect(find.byType(PhotoCheckInPage), findsOneWidget);
     // And it is not a nudge either: you cannot nudge yourself out of bed.
     expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -519,32 +529,57 @@ void main() {
     expect(backend.claps, isEmpty);
   });
 
-  testWidgets('the + on your tile posts an achievement to today\'s rail', (
-    tester,
-  ) async {
+  testWidgets('the + opens the camera first, then the words, and posts to '
+      'today\'s rail', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final backend = StoriesBackend();
-    await pumpStoriesHome(tester, backend: backend);
+    await pumpStoriesHome(
+      tester,
+      backend: backend,
+      capturePhoto: captureTestCheckInPhoto,
+    );
     // Only your own tile carries the +.
     expect(find.byKey(const ValueKey('story-tile-compose')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
     await tester.pumpUi();
+    // The same camera a photo check-in opens, and no way past it.
+    expect(find.byType(PhotoCheckInPage), findsOneWidget);
+    expect(find.text('Post a story'), findsOneWidget);
+    expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
+    await takeTestPhoto(tester);
+    expect(find.text('NEXT'), findsOneWidget);
+    await submitTestPhoto(tester);
+    expect(find.byType(PhotoCheckInPage), findsNothing);
+    // Then the words, under the picture just taken.
     expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
+    expect(find.byKey(const ValueKey('achievement-photo')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('remove-achievement-photo')),
+      findsNothing,
+    );
+    expect(backend.achievements, isEmpty);
+    // An achievement until the toggle says otherwise.
+    expect(
+      tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
+      PostKind.achievement,
+    );
     await tester.enterText(
       find.descendant(
         of: find.byKey(const ValueKey('achievement-text')),
         matching: find.byType(EditableText),
       ),
-      '  Ran 5 miles  ',
+      '  Climbed my first 6c  ',
     );
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('post-achievement')));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
-    expect(backend.achievements.single.text, 'Ran 5 miles');
+    expect(backend.achievements.single.text, 'Climbed my first 6c');
+    expect(backend.achievements.single.kind, PostKind.achievement);
+    expect(backend.lastAchievementPhoto, testCheckInPhoto);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('story-tile-')),
@@ -553,13 +588,20 @@ void main() {
       findsOneWidget,
     );
 
-    // Your own achievement opens with a way to take it down.
+    // In the viewer: the photo, the words as its caption, the gold chip — and
+    // a way for its author to take it down.
     await tester.tap(find.byKey(const ValueKey('story-tile-')));
     await tester.pumpUi();
     // Your check-in came first; the achievement is the next story.
     await tester.tapAt(const Offset(340, 400));
     await tester.pumpUi();
-    expect(find.text('Ran 5 miles'), findsOneWidget);
+    expect(find.byKey(const ValueKey('story-photo')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('story-achievement-caption')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('story-achievement')), findsOneWidget);
+    expect(find.text('Climbed my first 6c'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('delete-achievement')));
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('confirm-delete-achievement')));
@@ -567,5 +609,92 @@ void main() {
     expect(backend.deletedAchievements, ['achievement-1']);
     expect(find.byType(StoryViewer), findsNothing);
     expect(find.byKey(const ValueKey('story-tile-achievement')), findsNothing);
+  });
+
+  testWidgets('putting the camera away starts nothing', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend();
+    await pumpStoriesHome(
+      tester,
+      backend: backend,
+      capturePhoto: captureTestCheckInPhoto,
+    );
+    await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
+    await tester.pumpUi();
+    await tester.tap(find.byTooltip('Close photo check-in'));
+    await tester.pumpUi();
+    expect(find.byType(PhotoCheckInPage), findsNothing);
+    expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
+    expect(backend.achievements, isEmpty);
+  });
+
+  testWidgets('the toggle makes it a plain story: lavender, a camera, and '
+      'no trophy in the rail', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend();
+    await pumpStoriesHome(
+      tester,
+      backend: backend,
+      capturePhoto: captureTestCheckInPhoto,
+    );
+    await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
+    await tester.pumpUi();
+    await submitTestPhoto(tester);
+    await tester.tap(find.byKey(const ValueKey('post-kind-story')));
+    await tester.pumpUi();
+    expect(
+      tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
+      PostKind.story,
+    );
+    // The preview's chip follows the toggle, as do the words asked for.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('achievement-photo')),
+        matching: find.text('Story'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('What’s the story?'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('achievement-text')),
+        matching: find.byType(EditableText),
+      ),
+      'Sunrise on the morning run',
+    );
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('post-achievement')));
+    await tester.pumpUi();
+    expect(backend.achievements.single.kind, PostKind.story);
+    // A plain story is in the rail, but earns no trophy.
+    expect(find.byKey(const ValueKey('story-tile-achievement')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('story-tile-')));
+    await tester.pumpUi();
+    await tester.tapAt(const Offset(340, 400));
+    await tester.pumpUi();
+    final chip = find.byKey(const ValueKey('story-achievement'));
+    expect(
+      find.descendant(of: chip, matching: find.text('Story')),
+      findsOneWidget,
+    );
+    expect(
+      (tester
+                  .widget<Container>(
+                    find
+                        .descendant(of: chip, matching: find.byType(Container))
+                        .first,
+                  )
+                  .decoration!
+              as ShapeDecoration)
+          .color,
+      WeekPactColors.story,
+    );
   });
 }

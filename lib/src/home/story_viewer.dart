@@ -186,7 +186,7 @@ class _StoryViewerState extends State<StoryViewer> {
         key: const ValueKey('delete-achievement-dialog'),
         icon: HugeIconsStrokeRounded.delete02,
         iconColor: WeekPactColors.salmon,
-        title: 'Delete this achievement?',
+        title: 'Delete this ${story.kind.label.toLowerCase()}?',
         message: 'It comes off the crew’s day, claps and all.',
         actions: [
           AppButton(
@@ -287,10 +287,18 @@ class _StoryViewerState extends State<StoryViewer> {
                             story: story,
                           ),
                         if (story case AchievementStory(:final text))
-                          _AchievementText(
-                            key: const ValueKey('story-achievement-text'),
-                            text: text,
-                          ),
+                          story.hasPhoto
+                              ? _AchievementCaption(
+                                  key: const ValueKey(
+                                    'story-achievement-caption',
+                                  ),
+                                  text: text,
+                                )
+                              : _AchievementText(
+                                  key: const ValueKey('story-achievement-text'),
+                                  text: text,
+                                  kind: story.kind,
+                                ),
                         // Bounded on both sides, so a long pact name
                         // ellipsizes inside the shot rather than running off
                         // it.
@@ -305,8 +313,9 @@ class _StoryViewerState extends State<StoryViewer> {
                                 key: const ValueKey('story-pact'),
                                 story: story,
                               ),
-                              AchievementStory() => const _AchievementChip(
-                                key: ValueKey('story-achievement'),
+                              AchievementStory(:final kind) => _AchievementChip(
+                                key: const ValueKey('story-achievement'),
+                                kind: kind,
                               ),
                             },
                           ),
@@ -323,9 +332,11 @@ class _StoryViewerState extends State<StoryViewer> {
                         key: const ValueKey('story-clap'),
                         count: _counts[story.id] ?? 0,
                         clapped: _clapped.contains(story.id),
-                        what: story is AchievementStory
-                            ? 'achievement'
-                            : 'check-in',
+                        what: switch (story) {
+                          AchievementStory(:final kind) =>
+                            kind.label.toLowerCase(),
+                          PactStory() => 'check-in',
+                        },
                         onPressed: _clapping ? null : _clap,
                       ),
                     const Spacer(),
@@ -568,7 +579,9 @@ class _Head extends StatelessWidget {
           IconButton(
             key: const ValueKey('delete-achievement'),
             onPressed: onDelete,
-            tooltip: 'Delete achievement',
+            tooltip: story is AchievementStory
+                ? 'Delete ${(story as AchievementStory).kind.label.toLowerCase()}'
+                : 'Delete',
             icon: const HugeIcon(
               icon: HugeIconsStrokeRounded.delete02,
               color: WeekPactDarkCard.ink,
@@ -736,9 +749,10 @@ class _PactChip extends StatelessWidget {
 /// takes, rather than a caption's. Scaled down, never cut, so a full 160
 /// characters still fits a short phone.
 class _AchievementText extends StatelessWidget {
-  const _AchievementText({super.key, required this.text});
+  const _AchievementText({super.key, required this.text, required this.kind});
 
   final String text;
+  final PostKind kind;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -754,11 +768,7 @@ class _AchievementText extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const HugeIcon(
-                icon: achievementIcon,
-                color: WeekPactColors.achievement,
-                size: 40,
-              ),
+              HugeIcon(icon: kind.icon, color: kind.tint, size: 40),
               const SizedBox(height: 16),
               Text(
                 text,
@@ -778,40 +788,80 @@ class _AchievementText extends StatelessWidget {
   );
 }
 
-/// What the shot is, on the shot: an achievement rather than a pact.
+/// An achievement's words over its own photo: a caption along the foot, on a
+/// shade deep enough to read over any picture, standing above the chip. The
+/// photo is the shot here, so the words step down from the middle.
+class _AchievementCaption extends StatelessWidget {
+  const _AchievementCaption({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.bottomCenter,
+    child: DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x00191B19), Color(0xCC191B19)],
+        ),
+      ),
+      child: Padding(
+        // Clear of the chip along the foot.
+        padding: const EdgeInsets.fromLTRB(16, 48, 16, 60),
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            maxLines: 5,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: WeekPactDarkCard.ink,
+              fontSize: 20,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// What the shot is, on the shot: an achievement or a plain story rather
+/// than a pact.
 ///
 /// The pact chip's twin — the same squircle and lifted edge, in the same
-/// corner — so the two read as one family, with gold and a trophy where a
-/// pact puts its sorbet and badge. That corner is the one place a story says
-/// which kind it is, and it says it the same way for both.
+/// corner — so they read as one family, with the kind's own colour and glyph
+/// where a pact puts its sorbet and badge. That corner is the one place a
+/// story says which kind it is, and it says it the same way for all three.
 class _AchievementChip extends StatelessWidget {
-  const _AchievementChip({super.key});
+  const _AchievementChip({super.key, required this.kind});
+
+  final PostKind kind;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
     decoration: ShapeDecoration(
-      color: WeekPactColors.achievement,
+      color: kind.tint,
       shape: WeekPactMetrics.buttonShape,
       shadows: [
         BoxShadow(
-          color: Color.lerp(WeekPactColors.achievement, Colors.black, .24)!,
+          color: Color.lerp(kind.tint, Colors.black, .24)!,
           offset: WeekPactMetrics.raisedOffset,
         ),
       ],
     ),
-    child: const Row(
+    child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        PactIconBadge(
-          icon: achievementIcon,
-          tint: WeekPactColors.achievementBadge,
-          size: 24,
-        ),
-        SizedBox(width: 8),
+        PactIconBadge(icon: kind.icon, tint: kind.badge, size: 24),
+        const SizedBox(width: 8),
         Text(
-          'Achievement',
-          style: TextStyle(
+          kind.label,
+          style: const TextStyle(
             color: WeekPactColors.black,
             fontSize: 13.5,
             height: 1.2,
@@ -835,7 +885,7 @@ class _Photo extends StatelessWidget {
     child: Image.network(
       url,
       fit: BoxFit.cover,
-      semanticLabel: 'Check-in photo',
+      semanticLabel: 'Story photo',
       loadingBuilder: (context, child, progress) =>
           progress == null ? child : const _PhotoPlaceholder(),
       errorBuilder: (_, _, _) => const _PhotoPlaceholder(failed: true),

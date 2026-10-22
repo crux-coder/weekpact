@@ -181,6 +181,13 @@ abstract final class WeekPactColors {
   static const achievement = gold;
   static const achievementBadge = Color(0xFFF2B935);
 
+  /// A plain story: a photo and words posted outside any pact without the
+  /// claim of a win. `lavender`, the palette's spare note, so it is told from
+  /// an achievement's gold and from the pacts' sorbet alike; `storyBadge`
+  /// takes it deeper for the ring and the badge.
+  static const story = lavender;
+  static const storyBadge = Color(0xFF9F84F0);
+
   /// A day kept, on the crew week's calendar. Sea glass sat on the old marine
   /// card set; on a warm card it read as the one cool thing on the page, so
   /// the kept day is a warm green off the same quay. It clears 10:1 with card

@@ -35,6 +35,12 @@ const templates: Record<string, Renderer> = {
       ? `${text(payload.actor_name, "A crew member", 60)} clapped your achievement: “${text(payload.achievement_text, "", 120)}”`
       : `${text(payload.actor_name, "A crew member", 60)} clapped your achievement.`,
   }),
+  story_clapped: (payload) => ({
+    title: "Your crew is clapping",
+    body: typeof payload.achievement_text === "string" && payload.achievement_text.trim()
+      ? `${text(payload.actor_name, "A crew member", 60)} clapped your story: “${text(payload.achievement_text, "", 120)}”`
+      : `${text(payload.actor_name, "A crew member", 60)} clapped your story.`,
+  }),
   // The crew as the title, then who said what; just who and where when the
   // event carries no text.
   chat_message: (payload) => {

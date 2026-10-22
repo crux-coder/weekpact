@@ -8,12 +8,38 @@ import 'home_backend.dart';
 /// The one glyph an achievement is drawn with, wherever it appears.
 const achievementIcon = HugeIconsStrokeRounded.champion;
 
+/// How each kind of post is drawn, wherever it appears: the rail, the viewer,
+/// and the toggle that picks between them. Gold and a trophy for a win,
+/// lavender and a camera for a plain story.
+extension PostKindLook on PostKind {
+  List<List<dynamic>> get icon => switch (this) {
+    PostKind.achievement => achievementIcon,
+    PostKind.story => HugeIconsStrokeRounded.camera02,
+  };
+
+  Color get tint => switch (this) {
+    PostKind.achievement => WeekPactColors.achievement,
+    PostKind.story => WeekPactColors.story,
+  };
+
+  Color get badge => switch (this) {
+    PostKind.achievement => WeekPactColors.achievementBadge,
+    PostKind.story => WeekPactColors.storyBadge,
+  };
+
+  String get label => switch (this) {
+    PostKind.achievement => 'Achievement',
+    PostKind.story => 'Story',
+  };
+}
+
 /// One thing a member did today, as the rail and the viewer draw it: a pact
-/// check-in, or an achievement posted outside any pact.
+/// check-in, or an achievement or story posted outside any pact.
 ///
 /// The two are mixed in one member's day, in the order they happened, and
 /// told apart by colour and by the chip the viewer pins to each: a check-in
-/// wears its pact's sorbet and badge, an achievement wears gold and a trophy.
+/// wears its pact's sorbet and badge, an achievement gold and a trophy, a
+/// plain story lavender and a camera.
 sealed class Story {
   const Story();
 
@@ -74,10 +100,11 @@ class PactStory extends Story {
   bool get viewerClapped => checkIn.viewerClapped;
 }
 
-/// An achievement, read as a story: the member's own words over a gold wash.
+/// A post outside any pact, read as a story: the member's own words over
+/// their photo, in the colours of its [PostKind].
 ///
-/// Gold is the podium's colour for a week fully kept, and none of the pact
-/// sorbets, so an achievement never reads as one more pact in the rail.
+/// Neither kind's colour is one of the pact sorbets, so a post never reads as
+/// one more pact in the rail.
 class AchievementStory extends Story {
   const AchievementStory(this.achievement);
 
@@ -88,18 +115,19 @@ class AchievementStory extends Story {
   @override
   String get userId => achievement.userId;
   @override
-  String? get photoUrl => null;
+  String? get photoUrl => achievement.photoUrl;
   @override
   DateTime? get keptAt => achievement.postedAt;
   @override
-  Color get tint => WeekPactColors.achievement;
+  Color get tint => kind.tint;
   @override
-  Color get badge => WeekPactColors.achievementBadge;
+  Color get badge => kind.badge;
   @override
   int get clapCount => achievement.clapCount;
   @override
   bool get viewerClapped => achievement.viewerClapped;
   String get text => achievement.text;
+  PostKind get kind => achievement.kind;
 }
 
 /// One member's day, as the rail draws it: their stories, whether they have
@@ -126,8 +154,10 @@ class MemberDay {
   bool get isIn => stories.isNotEmpty;
 
   /// Whether any of today's stories is an achievement, which the rail marks
-  /// with a trophy on the tile.
-  bool get hasAchievement => stories.any((s) => s is AchievementStory);
+  /// with a trophy on the tile. A plain story earns no mark: its ring says it.
+  bool get hasAchievement => stories.any(
+    (s) => s is AchievementStory && s.kind == PostKind.achievement,
+  );
 
   /// The crew's day, in the order the rail shows it: you first, then whoever
   /// has something unseen, then the seen ones, then whoever is not in yet.

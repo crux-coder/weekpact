@@ -103,16 +103,30 @@ class PactCheckIn {
   String get id => '$pactId/$userId/$day';
 }
 
+/// What a post outside any pact claims to be: a win, or simply something the
+/// member wanted the crew to see. The poster picks as they write the words.
+enum PostKind {
+  achievement,
+  story;
+
+  static PostKind parse(Object? name) =>
+      name == 'story' ? PostKind.story : PostKind.achievement;
+}
+
 /// A win a member posted to the crew outside any pact — a first 6c, a five
-/// mile run. It sits in the stories rail beside the day's check-ins and takes
-/// claps the same way, but it keeps no pact: nothing about the week, the
-/// streak or a nudge counts it.
+/// mile run — or, as a [PostKind.story], simply a moment from their day. It
+/// sits in the stories rail beside the day's check-ins and takes claps the
+/// same way, but it keeps no pact: nothing about the week, the streak or a
+/// nudge counts it.
 class Achievement {
   const Achievement({
     required this.id,
     required this.userId,
     required this.day,
     required this.text,
+    this.kind = PostKind.achievement,
+    this.photoPath,
+    this.photoUrl,
     this.postedAt,
     this.clapCount = 0,
     this.viewerClapped = false,
@@ -124,6 +138,12 @@ class Achievement {
   /// The crew's day it was posted on, `yyyy-MM-dd`.
   final String day;
   final String text;
+  final PostKind kind;
+
+  /// The photo posted with it, when one was. Stored and signed as a check-in
+  /// photo is, in the same bucket.
+  final String? photoPath;
+  final String? photoUrl;
   final DateTime? postedAt;
   final int clapCount;
   final bool viewerClapped;
@@ -136,9 +156,24 @@ class Achievement {
     userId: row['user_id'] as String,
     day: row['posted_on'] as String,
     text: row['body'] as String,
+    kind: PostKind.parse(row['kind']),
+    photoPath: row['photo_path'] as String?,
     postedAt: DateTime.tryParse(row['created_at'] as String? ?? ''),
     clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
     viewerClapped: row['viewer_clapped'] as bool? ?? false,
+  );
+
+  Achievement withPhotoUrl(String? url) => Achievement(
+    id: id,
+    userId: userId,
+    day: day,
+    text: text,
+    kind: kind,
+    photoPath: photoPath,
+    photoUrl: url,
+    postedAt: postedAt,
+    clapCount: clapCount,
+    viewerClapped: viewerClapped,
   );
 }
 
@@ -449,6 +484,7 @@ class NotificationEntry {
   String get action => switch (type) {
     'check_in_clapped' => 'clapped your ${pactTitle ?? 'pact'} check-in',
     'achievement_clapped' => 'clapped your achievement',
+    'story_clapped' => 'clapped your story',
     'pact_completed' => 'completed ${pactTitle ?? 'a pact'}',
     'crew_nudge' => 'is cheering you on',
     _ => 'sent you a notification',
@@ -544,11 +580,16 @@ abstract interface class HomeBackend {
     Map<String, Uint8List> photos = const {},
   });
 
-  /// Posts [text] to the crew as one of today's achievements and returns it
-  /// as the server dated it.
+  /// Posts [text] to the crew as one of today's achievements, with the
+  /// [photo] every achievement carries, and returns it as the server dated
+  /// it. [today] is
+  /// the crew's day the photo is filed under, as a check-in photo's is.
   Future<Achievement> postAchievement({
     required String crewId,
     required String text,
+    required String today,
+    required Uint8List photo,
+    PostKind kind = PostKind.achievement,
   });
 
   /// Takes down one of the viewer's own achievements, claps and all.
@@ -729,14 +770,64 @@ class SupabaseHomeBackend implements HomeBackend {
   Future<Achievement> postAchievement({
     required String crewId,
     required String text,
-  }) async => Achievement.fromJson(
-    Map<String, dynamic>.from(
-      await client.rpc(
-        'post_crew_achievement',
-        params: {'target_crew_id': crewId, 'achievement_body': text.trim()},
-      ),
-    ),
-  );
+    required String today,
+    required Uint8List photo,
+    PostKind kind = PostKind.achievement,
+  }) async {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) throw StateError('Sign in to post.');
+    if (photo.isEmpty || photo.length > 5 * 1024 * 1024) {
+      throw StateError('Invalid achievement photo.');
+    }
+    final path = '$userId/$crewId/achievements/$today/${_nonce()}.png';
+    try {
+      await client.storage
+          .from('check-in-photos')
+          .uploadBinary(
+            path,
+            photo,
+            fileOptions: const FileOptions(
+              contentType: 'image/png',
+              upsert: false,
+            ),
+          );
+      final posted = Achievement.fromJson(
+        Map<String, dynamic>.from(
+          await client.rpc(
+            'post_crew_achievement',
+            params: {
+              'target_crew_id': crewId,
+              'achievement_body': text.trim(),
+              'photo': path,
+              'post_kind': kind.name,
+            },
+          ),
+        ),
+      );
+      final urls = await _signed('check-in-photos', [path]);
+      return posted.withPhotoUrl(urls[path]);
+    } finally {
+      // As a check-in's: queued only when nothing ended up naming it.
+      try {
+        await client.rpc(
+          'discard_unused_check_in_photos',
+          params: {
+            'paths': [path],
+          },
+        );
+      } catch (_) {
+        /* Orphan sweeper retries. */
+      }
+    }
+  }
+
+  static String _nonce() {
+    final random = math.Random.secure();
+    return List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+  }
 
   @override
   Future<void> deleteAchievement(String achievementId) => client.rpc(
@@ -826,15 +917,15 @@ class SupabaseHomeBackend implements HomeBackend {
     // Today's photos, signed for the stories rail. Only today's: the rail
     // shows the day, and the week's older check-ins are counted rather than
     // opened.
-    final stories = await _signed(
-      'check-in-photos',
-      week.checkIns
-          .where((i) => i.day == week.today)
-          .map((i) => i.photoPath)
-          .nonNulls
-          .toSet()
-          .toList(),
-    );
+    final stories = await _signed('check-in-photos', [
+      ...{
+        ...week.checkIns
+            .where((i) => i.day == week.today)
+            .map((i) => i.photoPath)
+            .nonNulls,
+        ...achievements.map((a) => a.photoPath).nonNulls,
+      },
+    ]);
     final paths = week.members
         .where((m) => m.avatarPath == '${m.id}/avatar.png')
         .map((m) => m.avatarPath!)
@@ -870,7 +961,9 @@ class SupabaseHomeBackend implements HomeBackend {
           .toList(),
       streakWeeks: week.streakWeeks,
       latestActivity: activity == null ? null : CrewActivity.fromJson(activity),
-      achievements: achievements,
+      achievements: [
+        for (final a in achievements) a.withPhotoUrl(stories[a.photoPath]),
+      ],
     );
   }
 
@@ -993,6 +1086,9 @@ class MissingHomeBackend implements HomeBackend {
   Future<Achievement> postAchievement({
     required String crewId,
     required String text,
+    required String today,
+    required Uint8List photo,
+    PostKind kind = PostKind.achievement,
   }) => Future.error(StateError('Supabase is not configured.'));
   @override
   Future<void> deleteAchievement(String achievementId) =>

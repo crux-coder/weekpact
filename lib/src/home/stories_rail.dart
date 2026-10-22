@@ -7,6 +7,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/avatar_shape.dart';
+import 'home_backend.dart';
 import 'home_surface.dart';
 import 'stories.dart';
 
@@ -19,9 +20,10 @@ import 'stories.dart';
 /// at all.
 ///
 /// Checking in belongs to the pact card below, photo and all, so the rail
-/// never posts a check-in. What it does post is an achievement — a win that
-/// keeps no pact and so has no card to be made on. Your own tile carries the
-/// "+" for it; a member who has posted one wears a trophy on theirs.
+/// never posts a check-in. What it does post is a photo outside any pact — an
+/// achievement, or a plain story — which has no card to be made on. Your own
+/// tile carries the "+" for it; a member who has posted an achievement wears
+/// a trophy on theirs.
 class StoriesRail extends StatelessWidget {
   const StoriesRail({
     super.key,
@@ -50,8 +52,9 @@ class StoriesRail extends StatelessWidget {
   /// discovers is a feature nobody has.
   final void Function(MemberDay day)? onNudge;
 
-  /// Starts an achievement. Reached from your own tile only: its "+", a long
-  /// press, and a plain tap while you have nothing to open yet.
+  /// Starts a post — an achievement or a plain story. Reached from your own
+  /// tile only: its "+", a long press, and a plain tap while you have nothing
+  /// to open yet.
   final VoidCallback? onCompose;
 
   /// How far past the page's own padding the rail runs, so tiles leave the
@@ -152,7 +155,8 @@ class _StoryTile extends StatelessWidget {
         .map(
           (s) => switch (s) {
             PactStory(:final pact) => pact.title,
-            AchievementStory() => 'an achievement',
+            AchievementStory(kind: PostKind.achievement) => 'an achievement',
+            AchievementStory() => 'a story',
           },
         )
         .toSet()
@@ -194,7 +198,7 @@ class _StoryTile extends StatelessWidget {
     final pressHint = onNudge != null
         ? 'Nudge them'
         : onCompose != null
-        ? 'Share an achievement'
+        ? 'Post a story'
         : null;
     return Semantics(
       button: tap != null,

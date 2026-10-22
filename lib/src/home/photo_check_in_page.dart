@@ -99,8 +99,17 @@ class PhotoCheckInPage extends StatefulWidget {
     this.pickPhoto = pickCheckInPhoto,
     required this.save,
     this.openSettings = openAppSettings,
+    this.submitLabel = 'CHECK IN',
   });
+
+  /// The title over the camera: the pact being checked in, or whatever else
+  /// the picture is for.
   final String pactTitle;
+
+  /// What the button under a taken picture says. An achievement's camera
+  /// hands the picture on to the words that go with it rather than posting
+  /// it, so it says so.
+  final String submitLabel;
 
   /// Days of this pact already kept this week, today not counted: the
   /// picture being taken is what adds today.
@@ -525,7 +534,7 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
     children: [
       AppButton(
         key: const ValueKey('submit-photo-check-in'),
-        label: 'CHECK IN',
+        label: widget.submitLabel,
         color: WeekPactColors.cream,
         foregroundColor: WeekPactColors.black,
         isLoading: _saving,

@@ -776,7 +776,8 @@ class _HomeDestinationState extends State<_HomeDestination>
     if (mounted) setState(() => _seen.addAll(opened));
   }
 
-  /// Posts an achievement to the crew in view, from the "+" on your own tile.
+  /// Posts an achievement to the crew in view, from the "+" on your own tile:
+  /// the camera first, then the words.
   ///
   /// What the server answers with goes straight into the day in hand, so
   /// your tile wears the trophy the moment the sheet is down rather than on
@@ -785,11 +786,13 @@ class _HomeDestinationState extends State<_HomeDestination>
   Future<void> _composeAchievement() async {
     final crew = _crew;
     if (crew == null || _week == null) return;
-    final posted = await showAchievementComposer(
+    final posted = await composeAchievement(
       context: context,
       backend: widget.backend,
       crewId: crew.id,
       crewName: crew.name,
+      today: _week!.today,
+      capturePhoto: widget.captureCheckInPhoto,
     );
     final week = _week;
     if (!mounted || posted == null || week == null || _crew?.id != crew.id) {

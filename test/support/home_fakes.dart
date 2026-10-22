@@ -127,6 +127,7 @@ class DashboardBackend implements HomeBackend {
   /// page posted, clapped or took down.
   List<Achievement> achievements = [];
   bool failAchievement = false;
+  Uint8List? lastAchievementPhoto;
   final achievementClaps = <({String id, bool clapped})>[];
   final deletedAchievements = <String>[];
 
@@ -134,13 +135,20 @@ class DashboardBackend implements HomeBackend {
   Future<Achievement> postAchievement({
     required String crewId,
     required String text,
+    required String today,
+    required Uint8List photo,
+    PostKind kind = PostKind.achievement,
   }) async {
     if (failAchievement) throw StateError('offline');
+    lastAchievementPhoto = photo;
     final posted = Achievement(
       id: 'achievement-${achievements.length + 1}',
       userId: viewerId,
       day: '2026-09-09',
       text: text.trim(),
+      kind: kind,
+      photoPath: 'viewer/crew/achievements/photo.png',
+      photoUrl: 'https://example.test/achievement.png',
       postedAt: DateTime.utc(2026, 9, 9, 12),
     );
     achievements = [...achievements, posted];
