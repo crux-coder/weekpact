@@ -29,6 +29,8 @@ class SetupCrew extends MissingCrewBackend {
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) async {
     created++;
     return crew = CrewDetails(

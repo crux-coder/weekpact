@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
@@ -40,6 +42,8 @@ class LimitedCrews extends MultipleCrews {
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) async {
     attempts++;
     if (relentsAfterUpgrade && upgraded) {

@@ -17,6 +17,7 @@ import '../widgets/app_sheet.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import '../home/home_backend.dart';
+import 'crew_profile.dart';
 import 'crew_roster.dart';
 
 /// The two halves of a crew's page, in the order its tabs stand.
@@ -390,6 +391,24 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     }
   }
 
+  CrewEditingBackend? get _editingBackend {
+    final backend = widget.backend;
+    return backend is CrewEditingBackend ? backend as CrewEditingBackend : null;
+  }
+
+  /// The owner's sheet for the crew's name, description and photo.
+  Future<void> _editCrew() async {
+    final crew = _crew;
+    final backend = _editingBackend;
+    if (crew == null || !crew.isOwner || backend == null) return;
+    final updated = await showAppSheet<CrewDetails>(
+      context: context,
+      builder: (_) => CrewEditor(crew: crew, backend: backend),
+    );
+    if (!mounted || updated == null || _crew?.id != updated.id) return;
+    setState(() => _crew = updated);
+  }
+
   PactCrew _pactCrew(CrewDetails crew) => PactCrew(
     id: crew.id,
     name: crew.name,
@@ -641,6 +660,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         position: PopupMenuPosition.under,
         onSelected: (action) => action(),
         itemBuilder: (context) => [
+          if (crew.isOwner && _editingBackend != null)
+            PopupMenuItem(
+              value: _editCrew,
+              child: _menuEntry(
+                context,
+                icon: HugeIconsStrokeRounded.edit02,
+                label: 'Edit crew',
+              ),
+            ),
           PopupMenuItem(
             value: () => _changeMembership(),
             child: _menuEntry(
@@ -710,6 +738,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _crewProfile(context, crew),
+        const SizedBox(height: 14),
         // The crew itself, where a caption used to repeat the header above it
         // and the faces below it.
         CrewSummaryCard(
@@ -740,6 +770,47 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           else
             _buildPacts(context, crew),
         ],
+      ],
+    );
+  }
+
+  /// The crew's photo and what it is for. An owner with nothing written yet
+  /// is offered the editor in its place.
+  Widget _crewProfile(BuildContext context, CrewDetails crew) {
+    final description = crew.description?.trim() ?? '';
+    final canEdit = crew.isOwner && _editingBackend != null;
+    return Row(
+      children: [
+        CrewAvatar(
+          key: const ValueKey('crew-page-avatar'),
+          name: crew.name,
+          url: crew.avatarUrl,
+          size: 56,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: description.isNotEmpty
+              ? Text(
+                  description,
+                  key: const ValueKey('crew-page-description'),
+                  style: TextStyle(
+                    color: context.ink,
+                    fontSize: 15,
+                    height: 1.35,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )
+              : canEdit
+              ? Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    key: const ValueKey('crew-page-add-description'),
+                    onPressed: _editCrew,
+                    child: const Text('Add a description'),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }

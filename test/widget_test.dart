@@ -529,7 +529,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
 
-    await tester.enterText(find.byType(TextFormField), 'Weekend Warriors');
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'Weekend Warriors',
+    );
+    await tester.ensureVisible(find.text('CREATE CREW'));
     await tester.tap(find.text('CREATE CREW'));
     await tester.pumpUi();
 
@@ -809,15 +813,24 @@ class FakeCrewBackend implements CrewBackend, CrewSharingBackend {
   @override
   Future<CrewDetails?> fetchCrew({String? crewId}) async => crew;
 
+  /// The photo the last crew was created with.
+  Uint8List? createdAvatar;
+
   @override
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) async {
     createdCrews.add(name);
+    createdAvatar = avatar;
     crew = CrewDetails(
       id: '11111111-1111-4111-8111-111111111111',
       name: name,
+      description: description?.trim().isEmpty ?? true
+          ? null
+          : description!.trim(),
       timezone: timezone,
       ownerId: 'owner-id',
       currentUserRole: 'owner',

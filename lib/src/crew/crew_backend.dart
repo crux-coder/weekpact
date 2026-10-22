@@ -1,5 +1,7 @@
 import 'crew_sharing.dart';
 
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pacts/pacts_backend.dart';
@@ -33,10 +35,19 @@ class CrewDetails {
     required this.currentUserRole,
     required this.members,
     this.createdAt,
+    this.description,
+    this.avatarUrl,
   });
 
   final String id;
   final String name;
+
+  /// A line about what the crew is for, set by its owner. Null when unset.
+  final String? description;
+
+  /// A signed URL for the crew's photo, or null when it has none or the URL
+  /// could not be made. Each upload has its own path, so this changes with it.
+  final String? avatarUrl;
   final String timezone;
   final String ownerId;
   final String currentUserRole;
@@ -139,6 +150,8 @@ abstract interface class CrewBackend {
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   });
 
   /// Joins the crew behind [code] (or a legacy link token). Joining a crew
@@ -163,8 +176,39 @@ abstract interface class CrewDeletionBackend {
   Future<void> deleteCrew(String crewId);
 }
 
+/// Changing a crew's name, description and photo, for its owner.
+///
+/// Beside [CrewBackend] for the same reason as [CrewDeletionBackend]: the
+/// crew page offers the editor only when its backend can save one.
+abstract interface class CrewEditingBackend {
+  /// Saves [name] and [description] (blank clears it). A null [avatar] keeps
+  /// the photo the crew has. Row-level security lets only the owner through.
+  Future<CrewDetails> updateCrew({
+    required String crewId,
+    required String name,
+    String? description,
+    Uint8List? avatar,
+  });
+}
+
+/// Where crew photos live, and how long a signed link to one lasts.
+const crewAvatarBucket = 'crew-avatars';
+const _crewAvatarLifetime = 3600;
+
+/// The longest description a crew may carry, as the database checks it.
+const crewDescriptionMaxLength = 280;
+
+String? _cleanDescription(String? description) {
+  final trimmed = description?.trim() ?? '';
+  return trimmed.isEmpty ? null : trimmed;
+}
+
 class SupabaseCrewBackend
-    implements CrewBackend, CrewSharingBackend, CrewDeletionBackend {
+    implements
+        CrewBackend,
+        CrewSharingBackend,
+        CrewDeletionBackend,
+        CrewEditingBackend {
   @override
   Future<String> inviteCode(String crewId) async =>
       await _client.rpc('crew_invite_code', params: {'p_crew': crewId})
@@ -192,7 +236,8 @@ class SupabaseCrewBackend
         .from('crew_members')
         .select(
           'crew_id,user_id,email,role,joined_at,'
-          'crews!inner(id,name,timezone,owner_id,created_at)',
+          'crews!inner(id,name,description,avatar_path,timezone,owner_id,'
+          'created_at)',
         )
         .eq('user_id', userId);
     if (crewId != null) query = query.eq('crew_id', crewId);
@@ -214,6 +259,8 @@ class SupabaseCrewBackend
     return CrewDetails(
       id: selectedId,
       name: crew['name'] as String,
+      description: crew['description'] as String?,
+      avatarUrl: await _signAvatar(crew['avatar_path'] as String?),
       timezone: crew['timezone'] as String,
       ownerId: crew['owner_id'] as String,
       createdAt: DateTime.tryParse(crew['created_at'] as String? ?? ''),
@@ -235,14 +282,92 @@ class SupabaseCrewBackend
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) async {
     final userId = _requireUserId();
     final row = await _client
         .from('crews')
-        .insert({'name': name.trim(), 'timezone': timezone, 'owner_id': userId})
+        .insert({
+          'name': name.trim(),
+          'description': _cleanDescription(description),
+          'timezone': timezone,
+          'owner_id': userId,
+        })
         .select('id')
         .single();
-    return (await fetchCrew(crewId: row['id'] as String))!;
+    final crewId = row['id'] as String;
+    if (avatar != null) {
+      // The photo needs the crew's id, so it follows the insert. By then the
+      // crew exists: failing here would send the owner back to make a second
+      // one, so the crew goes ahead without a photo they can add from Edit.
+      try {
+        await _saveAvatar(crewId, avatar);
+      } catch (_) {}
+    }
+    return (await fetchCrew(crewId: crewId))!;
+  }
+
+  @override
+  Future<CrewDetails> updateCrew({
+    required String crewId,
+    required String name,
+    String? description,
+    Uint8List? avatar,
+  }) async {
+    _requireUserId();
+    final updated = await _client
+        .from('crews')
+        .update({
+          'name': name.trim(),
+          'description': _cleanDescription(description),
+        })
+        .eq('id', crewId)
+        .select('id');
+    // As with deleting, a member's update matches no row rather than raising.
+    if (updated.isEmpty) throw StateError('Only the owner can edit a crew.');
+    if (avatar != null) await _saveAvatar(crewId, avatar);
+    final crew = await fetchCrew(crewId: crewId);
+    if (crew == null) throw StateError('This crew is no longer available.');
+    return crew;
+  }
+
+  /// Uploads [avatar] under a fresh name, points the crew at it, then clears
+  /// out the photos it replaced.
+  Future<void> _saveAvatar(String crewId, Uint8List avatar) async {
+    if (avatar.isEmpty || avatar.length > 5 * 1024 * 1024) {
+      throw ArgumentError('Choose a photo smaller than 5 MB.');
+    }
+    final path = '$crewId/${DateTime.now().millisecondsSinceEpoch}.png';
+    final bucket = _client.storage.from(crewAvatarBucket);
+    await bucket.uploadBinary(
+      path,
+      avatar,
+      fileOptions: const FileOptions(contentType: 'image/png'),
+    );
+    await _client.from('crews').update({'avatar_path': path}).eq('id', crewId);
+    try {
+      final stale = [
+        for (final file in await bucket.list(path: crewId))
+          if ('$crewId/${file.name}' != path) '$crewId/${file.name}',
+      ];
+      if (stale.isNotEmpty) await bucket.remove(stale);
+    } catch (_) {
+      // Leftovers cost storage, not correctness; the next save retries.
+    }
+  }
+
+  Future<String?> _signAvatar(String? path) async {
+    if (path == null) return null;
+    try {
+      return await _client.storage
+          .from(crewAvatarBucket)
+          .createSignedUrl(path, _crewAvatarLifetime);
+    } catch (_) {
+      // The crew still reads without its photo; the face falls back to
+      // initials.
+      return null;
+    }
   }
 
   @override
@@ -296,6 +421,16 @@ class SupabaseCrewBackend
 
   @override
   Future<void> deleteCrew(String crewId) async {
+    // Storage does not cascade, and once the row is gone nobody owns the
+    // folder any more, so the photos go first. Only the owner may remove them,
+    // which is also the only person whose delete below goes through.
+    try {
+      final bucket = _client.storage.from(crewAvatarBucket);
+      final files = await bucket.list(path: crewId);
+      if (files.isNotEmpty) {
+        await bucket.remove([for (final file in files) '$crewId/${file.name}']);
+      }
+    } catch (_) {}
     // The row and nothing else: every table hanging off a crew cascades, and
     // `crews_delete_for_owner` is what decides whether this deletes anything
     // at all. A member's attempt matches no row rather than raising, so the
@@ -350,5 +485,7 @@ class MissingCrewBackend implements CrewBackend, CrewDeletionBackend {
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) => Future.error(_error);
 }

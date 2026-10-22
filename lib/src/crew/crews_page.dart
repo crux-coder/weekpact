@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../auth/avatar_picker.dart';
 import '../home/home_backend.dart';
 import '../invites/invite_code_entry.dart';
 import '../invites/invite_links.dart';
@@ -17,6 +19,7 @@ import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
 import 'crew_page.dart';
 import 'crew_page_layout.dart';
+import 'crew_profile.dart';
 import 'crew_roster.dart';
 import 'device_timezone.dart';
 
@@ -39,6 +42,7 @@ class CrewsPage extends StatefulWidget {
     this.onInviteCode,
     this.onCrewLeft,
     this.onCrewCreated,
+    this.pickCrewAvatar,
   });
 
   final CrewBackend backend;
@@ -59,12 +63,16 @@ class CrewsPage extends StatefulWidget {
   final VoidCallback? onCrewLeft;
   final ValueChanged<CrewDetails>? onCrewCreated;
 
+  /// Injected by tests, which have no gallery for the native picker to open.
+  final AvatarPicker? pickCrewAvatar;
+
   @override
   State<CrewsPage> createState() => _CrewsPageState();
 }
 
 class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
   final _crewNameController = TextEditingController();
+  final _crewDescriptionController = TextEditingController();
   final _createFormKey = GlobalKey<FormState>();
 
   List<PactCrew>? _crews;
@@ -73,6 +81,8 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
   bool _loading = false;
   bool _showCreate = false;
   bool _creating = false;
+  bool _pickingPhoto = false;
+  Uint8List? _crewPhoto;
   String? _error;
   int _request = 0;
 
@@ -80,13 +90,20 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // The photo placeholder shows the name's first letter as it is typed.
+    _crewNameController.addListener(_onCrewNameChanged);
     _refresh();
+  }
+
+  void _onCrewNameChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _crewNameController.dispose();
+    _crewDescriptionController.dispose();
     super.dispose();
   }
 
@@ -189,10 +206,16 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
       final crew = await widget.backend.createCrew(
         name: _crewNameController.text,
         timezone: await deviceTimezone(),
+        description: _crewDescriptionController.text,
+        avatar: _crewPhoto,
       );
       if (!mounted) return;
-      setState(() => _showCreate = false);
+      setState(() {
+        _showCreate = false;
+        _crewPhoto = null;
+      });
       _crewNameController.clear();
+      _crewDescriptionController.clear();
       widget.onCrewSelected?.call(crew.id);
       await _refresh();
       if (!mounted) return;
@@ -255,11 +278,19 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
     if (invite != null && mounted) onCode(invite);
   }
 
-  String? _validateCrewName(String? value) {
-    final name = value?.trim() ?? '';
-    if (name.length < 2) return 'Use at least 2 characters';
-    if (name.length > 60) return 'Use no more than 60 characters';
-    return null;
+  Future<void> _chooseCrewPhoto() async {
+    if (_creating || _pickingPhoto) return;
+    setState(() {
+      _pickingPhoto = true;
+      _error = null;
+    });
+    final picked = await pickCrewPhoto(widget.pickCrewAvatar);
+    if (!mounted) return;
+    setState(() {
+      _pickingPhoto = false;
+      _crewPhoto = picked.photo ?? _crewPhoto;
+      _error = picked.error;
+    });
   }
 
   @override
@@ -360,12 +391,29 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 20),
+                  CrewPhotoField(
+                    name: _crewNameController.text,
+                    photo: _crewPhoto,
+                    picking: _pickingPhoto,
+                    onPick: _creating ? null : _chooseCrewPhoto,
+                  ),
+                  const SizedBox(height: 12),
                   AppTextField(
                     label: 'CREW NAME',
                     hint: 'Early Birds',
                     controller: _crewNameController,
-                    validator: _validateCrewName,
-                    textInputAction: TextInputAction.done,
+                    validator: validateCrewName,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    label: 'DESCRIPTION',
+                    hint: 'What this crew is about (optional)',
+                    controller: _crewDescriptionController,
+                    validator: validateCrewDescription,
+                    keyboardType: TextInputType.multiline,
+                    minLines: 2,
+                    maxLines: 4,
                   ),
                   const SizedBox(height: 22),
                   // The crew's week runs on the zone this device is in, taken
@@ -435,6 +483,14 @@ class CrewListCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             child: Row(
               children: [
+                CrewAvatar(
+                  key: ValueKey('crew-card-avatar-${crew.id}'),
+                  name: crew.name,
+                  url: crew.avatarUrl,
+                  size: 48,
+                  color: WeekPactColors.black.withValues(alpha: .10),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

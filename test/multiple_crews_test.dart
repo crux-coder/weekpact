@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -67,6 +69,8 @@ class MultipleCrews extends FakeCrewBackend {
   Future<CrewDetails> createCrew({
     required String name,
     required String timezone,
+    String? description,
+    Uint8List? avatar,
   }) async {
     final c = details('third', name);
     entries.add(c);

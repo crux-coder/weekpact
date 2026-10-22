@@ -8,11 +8,15 @@ class PactCrew {
     required this.name,
     required this.timezone,
     required this.isOwner,
+    this.avatarUrl,
   });
   final String id;
   final String name;
   final String timezone;
   final bool isOwner;
+
+  /// A signed URL for the crew's photo, when it has one.
+  final String? avatarUrl;
 }
 
 class CrewPact {
@@ -86,10 +90,28 @@ class SupabasePactsBackend implements PactsBackend {
     if (user == null) throw StateError('Sign in to view your pacts.');
     final rows = await _client
         .from('crew_members')
-        .select('role,crews!inner(id,name,timezone)')
+        .select('role,crews!inner(id,name,timezone,avatar_path)')
         .eq('user_id', user.id)
         .order('joined_at')
         .order('crew_id');
+    final paths = [
+      for (final row in rows)
+        if ((row['crews'] as Map)['avatar_path'] case final String path) path,
+    ];
+    var urls = <String, String>{};
+    if (paths.isNotEmpty) {
+      try {
+        final signed = await _client.storage
+            .from('crew-avatars')
+            .createSignedUrlsResult(paths, 3600);
+        urls = {
+          for (final result in signed)
+            if (result is SignedUrlSuccess) result.path: result.signedUrl,
+        };
+      } catch (_) {
+        // The list still stands on names; the faces fall back to initials.
+      }
+    }
     return rows
         .map((row) {
           final crew = row['crews'] as Map<String, dynamic>;
@@ -98,6 +120,7 @@ class SupabasePactsBackend implements PactsBackend {
             name: crew['name'] as String,
             timezone: crew['timezone'] as String,
             isOwner: row['role'] == 'owner',
+            avatarUrl: urls[crew['avatar_path']],
           );
         })
         .toList(growable: false);

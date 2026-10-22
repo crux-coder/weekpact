@@ -154,7 +154,7 @@ void main() {
     expect(find.byType(CrewPage), findsNothing);
     expect(find.text('You left the crew.'), findsOneWidget);
   });
-  testWidgets('the create form asks for a name and nothing else', (
+  testWidgets('the create form asks for a name, a description and a photo', (
     tester,
   ) async {
     final backend = MembershipBackend()..crew = null;
@@ -178,8 +178,10 @@ void main() {
     expect(find.text('UTC'), findsNothing);
     expect(find.text('Europe/Sarajevo'), findsNothing);
     expect(find.text('WEEK STARTS MONDAY'), findsNothing);
-    // One field, and it is the name.
-    expect(find.byType(TextFormField), findsOneWidget);
+    // The name, and an optional line about the crew.
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.text('DESCRIPTION'), findsOneWidget);
+    expect(find.text('Add photo'), findsOneWidget);
   });
 
   testWidgets('owner confirms removal and member list refreshes', (

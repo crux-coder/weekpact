@@ -529,6 +529,8 @@ class AppTextField extends StatelessWidget {
     this.obscureText = false,
     this.onToggleObscure,
     this.autofillHints,
+    this.minLines,
+    this.maxLines = 1,
   });
 
   final String? label;
@@ -540,6 +542,10 @@ class AppTextField extends StatelessWidget {
   final bool obscureText;
   final VoidCallback? onToggleObscure;
   final Iterable<String>? autofillHints;
+
+  /// Lines the field opens at and grows to, for text longer than a name.
+  final int? minLines;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -567,6 +573,8 @@ class AppTextField extends StatelessWidget {
             textInputAction: textInputAction,
             obscureText: obscureText,
             autofillHints: autofillHints,
+            minLines: minLines,
+            maxLines: maxLines,
             style: TextStyle(
               color: context.fieldInk,
               fontSize: 17,
