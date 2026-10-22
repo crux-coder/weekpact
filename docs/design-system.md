@@ -201,10 +201,11 @@ brand mark as text.
 
 `website/` is the third surface, and it carries the same system rather than a
 look of its own. `src/styles/global.css` holds it: the app's colours as custom
-properties (`--canvas`, `--cream`, the ten `pactPalette` tints, the
-charcoal card as `--dark-*`), the two faces (`WeekPact` is RobotoCondensed and
-the default, `WeekPactText` is Roboto for body copy, captions and numerals),
-and four corners matching `WeekPactMetrics`.
+properties (`--canvas` is `darkCanvas`, `--cream`, the ten `pactPalette` tints
+by name — `--clay` through `--wheat` — `--sea` for `mintGreen`, and the
+charcoal card as `--dark-*`), Rubik in the four weights the app ships (the
+`WeekPact` family; nothing on the site asks for more than 700), and four
+corners matching `WeekPactMetrics`.
 
 One recipe raises every box. A `.surface` is given its `--fill` and derives its
 own outline and edge the way `AppSurface` does — `color-mix(in srgb, #000 28%,
@@ -225,18 +226,30 @@ curve: `--r-card` becomes `cardCurve` (40), `--r-panel` and `--r-button` become
 deliberately left out — a control, a cell or a flat panel is a rounded rect of
 `controlRadius` on the web the same as it is in the app.
 
+The primary action is the welcome screen's: sea glass with an uppercase,
+letterspaced label, and `.button--ink` is its graphite "I have an invite code"
+beside it. Headlines end on a full stop in the heading's own ink, as the
+welcome screen's do; a page can still hand the layout a `tint` for its stops,
+and none does. Feature cards on the landing page wear a pact's pair — the
+`pactTint` as the card and the matching `pactBadge` on its icon tile — and the
+closing card redraws the welcome screen's fanned hand of pact cards in HTML.
+
 `src/components/HugeIcon.astro` carries the same Hugeicons Stroke Rounded 1.1.7
 glyphs the app draws with, inlined as path data at build time so a page ships
 only the marks it uses. A name on the site means the same mark it means in
-`AppIcon`.
+`AppIcon`; new ones are copied from the package's `stroke_rounded.dart`.
 
-The wordmark's full stop is tinted per page, the way `PageHeading`'s is: the
-layout takes a `tint` prop — mint on the landing page, sky on the invitation
-and open-app handoffs, butter on Support, coral on Privacy and 404 — and every
-`.dot` on the page reads it. The handoff pages are deliberately the same page as
-the crew invitation email: charcoal canvas, wordmark above it, one cream card
-holding everything else, sky icon panel and mint primary action. Changing one
-means changing the other.
+The phone on the landing page shows real screens, not mock-ups.
+`test/website_screenshots_test.dart` renders Home, Chat and a crew's Pacts tab
+for a fictional crew at an iPhone's 3x with its safe-area insets; regenerate
+them after a UI change with
+`flutter test test/website_screenshots_test.dart --dart-define=CAPTURE_WEBSITE=true`,
+which writes `website/public/screenshots/`. Keep the example free of emoji —
+the test renderer has no emoji font and draws them as boxes.
+
+The handoff pages are deliberately the same page as the crew invitation email:
+charcoal canvas, wordmark above it, one cream card holding everything else, an
+icon panel and the primary action. Changing one means changing the other.
 
 ## Verification
 

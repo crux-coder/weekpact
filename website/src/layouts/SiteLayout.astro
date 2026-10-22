@@ -2,10 +2,10 @@
 import '../styles/global.css';
 import { readSiteConfig } from '../lib/config.mjs';
 import HugeIcon from '../components/HugeIcon.astro';
-// `tint` is the wordmark's full stop, the way `PageHeading` tints a
-// destination's: the page is recognisable before its title is read.
+// `tint` colours the page's full stops. Most pages leave it alone and the stop
+// takes its heading's ink, as the app's own headlines do now.
 interface Props { title: string; description: string; privatePage?: boolean; home?: boolean; tint?: string; }
-const { title, description, privatePage = false, home = false, tint = 'var(--mint)' } = Astro.props;
+const { title, description, privatePage = false, home = false, tint } = Astro.props;
 const config = readSiteConfig();
 const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
 ---
@@ -16,14 +16,14 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="referrer" content="no-referrer" />
-    <meta name="theme-color" content="#2B302C" />
+    <meta name="theme-color" content="#222A2B" />
     <meta name="color-scheme" content="dark" />
     {privatePage && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/app-icon.png" />
-    <link rel="preload" href="/fonts/RobotoCondensed-Bold.ttf" as="font" type="font/ttf" crossorigin />
-    <link rel="preload" href="/fonts/Roboto-Regular.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/Rubik-Bold.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/Rubik-Regular.ttf" as="font" type="font/ttf" crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="WeekPact" />
     <meta property="og:title" content={title} />
@@ -34,13 +34,13 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta name="twitter:card" content="summary" />
     <title>{title}</title>
   </head>
-  <body style={`--tint:${tint}`}>
+  <body style={tint && `--tint:${tint}`}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header container">
       <a class="wordmark" href="/" aria-label="WeekPact home"><img src="/app-icon.png" width="40" height="40" alt="" /><span>WeekPact<span class="dot">.</span></span></a>
       <nav aria-label="Main navigation">
         {home
-          ? <><a href="#how-it-works">How it works</a><a class="nav-cta" href="/open/">Open WeekPact <HugeIcon name="arrowUpRight01" size={17} /></a></>
+          ? <><a href="#inside">Inside the app</a><a href="#how-it-works">How it works</a><a class="nav-cta" href="/open/">Open WeekPact <HugeIcon name="arrowUpRight01" size={17} /></a></>
           : <a class="text-link" href="/">Back to home</a>}
       </nav>
     </header>

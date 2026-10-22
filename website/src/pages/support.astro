@@ -2,22 +2,22 @@
 import SiteLayout from '../layouts/SiteLayout.astro';
 import HugeIcon from '../components/HugeIcon.astro';
 ---
-<SiteLayout tint="var(--butter)" title="Support · WeekPact" description="Get help with WeekPact sign-in, password recovery, invitations and account deletion.">
+<SiteLayout title="Support · WeekPact" description="Get help with WeekPact sign-in, invite codes and account deletion.">
   <main id="main" class="container reading">
     <article class="surface surface--card reading-card">
-      <span class="icon-tile" style="--fill:var(--butter)"><HugeIcon name="customerService" size={26} /></span>
+      <span class="icon-tile" style="--fill:var(--straw)"><HugeIcon name="customerService" size={26} /></span>
       <p class="eyebrow">We’re here to help</p>
-      <h1>WeekPact support<span class="dot" style="color:var(--butter)">.</span></h1>
-    <p>Need a hand? Email <a href="mailto:codepeaktrail@gmail.com">codepeaktrail@gmail.com</a>. Include your device, app version and what happened. Never send your password, reset link or invitation token.</p>
-    <h2>I forgot my password</h2>
-    <p>On the login screen, choose “Forgot password or need a confirmation email?”, enter your account email, then choose “Send reset link”. Open the email on the same device and app installation where you requested it, choose a new password and sign in again. Check your spam folder if it does not arrive.</p>
-    <h2>My confirmation email is missing</h2>
-    <p>Open the same recovery screen and choose “Resend confirmation email”. Use the latest email and open it on the device where you signed up. If a link has expired or was already used, request a new one. After confirming on a different device, try logging in with your email and password.</p>
+      <h1>WeekPact support<span class="dot">.</span></h1>
+    <p>Need a hand? Email <a href="mailto:codepeaktrail@gmail.com">codepeaktrail@gmail.com</a>. Include your device, app version and what happened. Never send your password or a reset link.</p>
+    <h2>How do I sign in?</h2>
+    <p>Choose “Continue with Apple” or “Continue with Google”. There is no password to remember, and your name comes from that account. If you joined with an email and password before, choose “Joined with email before? Log in with email” on the welcome screen.</p>
+    <h2>I forgot my email password</h2>
+    <p>This only applies to accounts made with an email and password. On the email log-in screen, choose “Forgot your password?”, enter your account email and follow the link we send. Open it on the same device where you requested it, then choose a new password. Check your spam folder if it does not arrive.</p>
     <h2>I cannot join my crew</h2>
-    <p>Open the invite link on your phone and sign in or create an account; the invite then opens in the app. Links expire after seven days; ask the crew owner to send a fresh invitation if needed. You can create and join multiple crews, and switch between them in the app.</p>
+    <p>Every crew has a six-character invite code. Ask anyone in the crew to share it from the crew’s page. If you are new, tap “I have an invite code” on the welcome screen; if you already use WeekPact, open the Crews tab and choose “Join with a code”. Opening a shared invite link on your phone fills the code in for you. If a code stops working, the crew owner may have reset it — ask for the new one. You can belong to several crews and switch between them at the top of Home.</p>
     <h2>How do I delete my account?</h2>
-    <p>Choose Account → Delete account, enter your current password and confirm. The deletion option is also available during profile setup. If you forgot your password, reset it first. You do not need to email support to delete your account.</p>
-    <p>Deletion removes your profile and activity, including pacts you created and all check-ins on those pacts. A crew you own passes to its longest-standing remaining member, or is deleted if empty. Read the <a href="/privacy/">privacy policy</a> for details.</p>
+    <p>Choose Account → Delete account and confirm. Accounts made with Apple or Google confirm by typing DELETE; accounts made with an email confirm with their current password. You do not need to email support to delete your account.</p>
+    <p>Deletion removes your profile and activity, including pacts you created, all check-ins on those pacts and your chat messages. A crew you own passes to its longest-standing remaining member, or is deleted if empty. Read the <a href="/privacy/">privacy policy</a> for details.</p>
     <h2>How do I change notifications?</h2>
     <p>Use Account → Notifications in the app. If notifications are blocked at the device level, enable them in your device settings. You can use WeekPact without push notifications.</p>
     <h2>Still stuck?</h2>

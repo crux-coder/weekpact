@@ -7,9 +7,8 @@
 .handoff-wrap{width:min(100%,540px)}
 .handoff-label{display:block;margin-bottom:12px}
 .handoff-card{padding:32px 32px 34px}
-.handoff-icon{--fill:var(--sky);width:56px;height:56px}
-.handoff h1{font-size:clamp(36px,5.6vw,48px);margin-top:24px;max-width:11ch}
-.handoff h1 .dot{color:var(--sky)}
+.handoff-icon{--fill:var(--sea);width:56px;height:56px}
+.handoff h1{font-size:clamp(32px,5vw,42px);margin-top:24px;max-width:11ch}
 .handoff-description{font-size:16px;line-height:1.65;margin-block:16px 26px}
 .open-feedback,.notice{
   --fill:var(--inset);
@@ -45,7 +44,7 @@
 .code-box{
   --fill:#fff;
   display:grid;place-items:center;height:56px;
-  font-family:'WeekPactText',sans-serif;font-size:26px;font-weight:600;color:var(--ink);
+  font-size:26px;font-weight:600;color:var(--ink);
   background:var(--fill);
   border:1px solid color-mix(in srgb,#000 28%,var(--fill));
   border-radius:var(--r-control);
@@ -53,11 +52,11 @@
 .invite-steps{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:14px}
 .invite-steps li{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;color:var(--muted)}
 .invite-steps strong{color:var(--ink);font-weight:600}
-.code-inline{font-family:'WeekPactText',sans-serif;letter-spacing:.08em}
+.code-inline{letter-spacing:.08em}
 .step-number{
-  --fill:var(--sky);
+  --fill:var(--sea);
   display:grid;place-items:center;flex:none;width:26px;height:26px;
-  font-family:'WeekPactText',sans-serif;font-size:13px;font-weight:600;color:var(--ink);
+  font-size:13px;font-weight:600;color:var(--ink);
   background:var(--fill);
   border:1px solid color-mix(in srgb,#000 28%,var(--fill));
   border-radius:var(--r-control);

@@ -10,7 +10,7 @@ const stores = config.iosInstallUrl && !config.androidInstallUrl ? 'the App Stor
   : config.androidInstallUrl && !config.iosInstallUrl ? 'Google Play'
   : 'the App Store or Google Play';
 ---
-<SiteLayout title={invite ? 'Your crew invitation — WeekPact' : 'Open WeekPact'} description="Open WeekPact to connect with your crew." privatePage tint="var(--sky)">
+<SiteLayout title={invite ? 'Your crew invitation — WeekPact' : 'Open WeekPact'} description="Open WeekPact to connect with your crew." privatePage>
   <main id="main" class="handoff container" data-handoff data-mode={invite ? 'invite' : 'open'}>
     <div class="handoff-wrap">
       <span class="handoff-label eyebrow">{invite ? 'Crew invitation' : 'Open WeekPact'}</span>

@@ -18,6 +18,12 @@ npm run preview
 
 The output is `website/dist/`. Flutter's `web/` directory remains its own application target.
 
+The phone screens on the homepage are rendered from the app itself. After a UI change, regenerate them from the repository root:
+
+```sh
+flutter test test/website_screenshots_test.dart --dart-define=CAPTURE_WEBSITE=true
+```
+
 ## Configuration
 
 Set these in `website/.env` or the hosting provider's build environment, then rebuild:

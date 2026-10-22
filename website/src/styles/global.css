@@ -1,61 +1,78 @@
 /* WeekPact on the web: the app's visual system, in CSS.
-   Charcoal canvas, bright squircle cards with dark ink, a 1px color-matched
-   outline over a solid offset edge, and no blurred shadows or gradients.
-   See docs/design-system.md — the values here are that document's values. */
+   A petrol charcoal canvas carrying pale squircle cards with dark ink, a 1px
+   colour-matched outline over a solid offset edge, and no blurred shadows or
+   gradients. See docs/design-system.md — the values here are
+   `weekpact_theme.dart`'s values. */
 
-@font-face{font-family:WeekPact;src:url('/fonts/RobotoCondensed-Regular.ttf') format('truetype');font-style:normal;font-weight:400 600;font-display:swap}
-@font-face{font-family:WeekPact;src:url('/fonts/RobotoCondensed-Bold.ttf') format('truetype');font-style:normal;font-weight:700 900;font-display:swap}
-@font-face{font-family:WeekPactText;src:url('/fonts/Roboto-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
-@font-face{font-family:WeekPactText;src:url('/fonts/Roboto-Medium.ttf') format('truetype');font-style:normal;font-weight:500 700;font-display:swap}
+/* Rubik is the whole of the app's type, in the four weights it ships. The two
+   names mirror `WeekPactType.primary` and `.secondary`: one face today, kept
+   as two roles so a caption still says it is a caption. */
+@font-face{font-family:WeekPact;src:url('/fonts/Rubik-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:WeekPact;src:url('/fonts/Rubik-Medium.ttf') format('truetype');font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:WeekPact;src:url('/fonts/Rubik-SemiBold.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:WeekPact;src:url('/fonts/Rubik-Bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
 
 :root{
-  /* Canvas. One theme, as in the app: charcoal carrying bright cards. */
-  --canvas:#2b302c;
-  --canvas-ink:#f3f5f2;
-  --canvas-muted:#b8beb5;
-  --canvas-line:#747e70;
+  /* Canvas. One theme, as in the app: `darkCanvas` carrying pale cards. */
+  --canvas:#222a2b;
+  --canvas-ink:#edf3f2;
+  --canvas-muted:#aab8b9;
+  --canvas-line:#67797c;
 
   /* Card ink. Card content is always dark, on every tint. */
-  --cream:#f5f6f5;
+  --cream:#f0f5f4;
   --ink:#191b19;
-  --muted:#51564f;
-  --inset:#dddfd7;
+  --muted:#46535a;
+  --inset:#d7e0df;
 
-  /* The charcoal card — the second and only other card language. */
-  --dark-fill:#292a29;
-  --dark-outline:#747e70;
-  --dark-ink:#f5f6f5;
-  --dark-muted:#b8beb5;
+  /* `WeekPactDarkCard` — the second and only other card language. */
+  --dark-fill:#1f2627;
+  --dark-outline:#67797c;
+  --dark-ink:#f0f5f4;
+  --dark-muted:#aab8b9;
 
-  /* pactPalette, held light enough for near-black card ink. */
-  --lemon:#e8d05a;
-  --mint:#8cdcac;
-  --sky:#8ac9ec;
-  --coral:#f9a08a;
-  --lavender:#bca9ee;
-  --peach:#f7c382;
-  --lime:#c4e07a;
-  --aqua:#89d7d2;
-  --orchid:#e3a8d6;
-  --butter:#efd98d;
-  --streak:#ff9138;
-  --done:#3f7a57;
+  /* `pactPalette`: warm and held low, so a card reads as tinted paper. */
+  --clay:#d0b2a4;
+  --sage:#b4c8a2;
+  --blush:#d6b2b6;
+  --olive:#bec596;
+  --straw:#d6ccae;
+  --rosewood:#c6a39f;
+  --moss:#b5ccae;
+  --apricot:#d4c0aa;
+  --mushroom:#bfaca1;
+  --wheat:#d8d4ba;
 
-  /* Corners. Four, as in the app, and a screen reaches for one of them.
-     These are the corners as plain rounded rects — `controlRadius` and
-     `cardCorner`. The @supports block below swaps the three squircle corners
-     for the larger numbers the same corner needs once it is drawn as one
-     (`cardCurve`, `panelCurve`), which is what `curveFor` does in the app. */
+  /* The cooler panel colours, which sit on the canvas rather than a pact. */
+  --sea:#a8d2cc;      /* mintGreen — the primary action */
+  --stone:#cde0dc;
+  --cool-grey:#9fcbd9;
+  --sand:#e0d9c0;
+  --graphite:#363f40;
+  --graphite-edge:#66716f;
+
+  /* The loud few, for small marks only. */
+  --sky:#87cffa;
+  --salmon:#ff836f;
+  --streak:#e08a45;
+  --gold:#f0d54e;
+  --crew-progress:#f2f3ae;
+  --done:#3f7a6b;
+
+  /* Corners. Four, as in `WeekPactMetrics`. These are the plain rounded-rect
+     radii (`controlRadius`, `cardCorner`); the @supports block below swaps
+     the squircle corners for the larger numbers the same corner needs once it
+     is drawn as one (`cardCurve`, `panelCurve`), which is `curveFor`. */
   --r-control:8px;
   --r-panel:14px;
-  --r-card:20px;
+  --r-card:18px;
   --r-button:14px;
 
   /* Depth. A solid offset edge, never a blur. */
   --depth:2px;
   --card-depth:3px;
 
-  font-family:WeekPact,'Arial Narrow',sans-serif;
+  font-family:WeekPact,Arial,sans-serif;
   color:var(--canvas-ink);
   background:var(--canvas);
   font-synthesis:none;
@@ -63,24 +80,24 @@
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:32px;-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100svh;display:flex;flex-direction:column;background:var(--canvas);font-size:18px;line-height:1.45}
+body{margin:0;min-height:100svh;display:flex;flex-direction:column;background:var(--canvas);font-size:17px;line-height:1.5}
 main{flex:1}
 h1,h2,h3,h4,p{margin:0}
-h1,h2,h3,h4{line-height:1.04;font-weight:700;letter-spacing:-.02em}
+/* Four weights and only four: 700 display, 600 emphasis, 500 label, 400 body.
+   Size and colour carry hierarchy; weight is the last resort. */
+h1,h2,h3,h4{line-height:1.08;font-weight:700;letter-spacing:-.015em}
 a{color:inherit;text-underline-offset:4px}
 a,button{-webkit-tap-highlight-color:transparent}
 svg{flex-shrink:0;vertical-align:middle}
-:focus-visible{outline:3px solid var(--mint);outline-offset:4px;border-radius:2px}
+:focus-visible{outline:3px solid var(--sea);outline-offset:4px;border-radius:2px}
 [hidden]{display:none!important}
 
-/* Body copy, captions and numerals take the wider companion face. */
-.body-face,p,li,input,.eyebrow,.caption,.num{font-family:WeekPactText,Arial,sans-serif}
-.eyebrow{font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--canvas-muted)}
+.eyebrow{font-size:11px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:var(--canvas-muted)}
 .caption{font-size:13px;line-height:1.6;color:var(--canvas-muted)}
 
-/* A card's full stop carries its destination's tint, so the surface is
-   recognisable before its title is read. */
-.dot{color:var(--tint,var(--mint))}
+/* Headlines end on a full stop, as the app's welcome does. It takes the
+   heading's own ink unless a page gives it a tint. */
+.dot{color:var(--tint,inherit)}
 
 /* ---- Raised surfaces -------------------------------------------------
    One recipe, shared by every box on the site. Give a surface its `--fill`
@@ -118,14 +135,14 @@ svg{flex-shrink:0;vertical-align:middle}
     --r-panel:24px;  /* panelCurve */
     --r-button:24px; /* SquircleButtonBorder, which caps its curve at 24 */
   }
-  .surface,.button,.icon-tile,.nav-cta,.wordmark img{corner-shape:squircle}
+  .surface,.button,.icon-tile,.nav-cta,.wordmark img,.pact-card{corner-shape:squircle}
 }
 /* `--r-control` is deliberately absent above: a control, a cell or a flat
    panel is a rounded rect of `controlRadius` in the app too, and stays one. */
 
 /* A flat glyph on its own small raised panel — the app's `RaisedIcon`. */
 .icon-tile{
-  --fill:var(--mint);
+  --fill:var(--sea);
   display:grid;place-items:center;flex:none;
   width:52px;height:52px;
   color:var(--ink);
@@ -136,13 +153,14 @@ svg{flex-shrink:0;vertical-align:middle}
 }
 
 /* ---- Buttons ---------------------------------------------------------
-   Mint primary wherever it arrives, on the same squircle face with its own
-   outline and lifted edge. Pressing compresses the edge. */
+   The app's primary: sea glass (`mintGreen`) with an uppercase label, as on
+   the welcome screen, on the same squircle face with its own outline and
+   lifted edge. Pressing compresses the edge. */
 .button{
-  --fill:var(--mint);
-  display:inline-flex;align-items:center;justify-content:center;gap:12px;
-  min-height:48px;padding:11px 22px;
-  font-family:inherit;font-size:18px;font-weight:700;line-height:1.15;letter-spacing:-.01em;
+  --fill:var(--sea);
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:48px;padding:12px 24px;
+  font-family:inherit;font-size:15px;font-weight:600;line-height:1.15;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink);background:var(--fill);
   border:1px solid color-mix(in srgb,#000 28%,var(--fill));
   box-shadow:0 var(--depth) 0 color-mix(in srgb,#000 24%,var(--fill));
@@ -152,48 +170,48 @@ svg{flex-shrink:0;vertical-align:middle}
 }
 .button:hover{filter:brightness(1.05)}
 .button:active{transform:translateY(var(--depth));box-shadow:0 0 0 color-mix(in srgb,#000 24%,var(--fill))}
-.button--ink{--fill:#2f3430;color:var(--cream);border-color:#484848;box-shadow:0 var(--depth) 0 #484848}
+.button--ink{--fill:var(--graphite);color:var(--cream);border-color:var(--graphite-edge);box-shadow:0 var(--depth) 0 var(--graphite-edge)}
 .button--quiet{--fill:var(--inset)}
 .button--wide{display:flex;width:100%}
 
 .text-link{display:inline-flex;align-items:center;gap:8px;font-size:17px;font-weight:600;text-decoration:none}
 .text-link:hover{text-decoration:underline}
 
-.skip-link{position:fixed;z-index:3;left:20px;top:-100px;background:var(--mint);color:var(--ink);padding:12px 16px;border-radius:var(--r-control);font-weight:700}
+.skip-link{position:fixed;z-index:3;left:20px;top:-100px;background:var(--sea);color:var(--ink);padding:12px 16px;border-radius:var(--r-control);font-weight:600}
 .skip-link:focus{top:12px}
 
 /* ---- Frame -----------------------------------------------------------*/
 .container{width:min(1240px,calc(100% - 80px));margin-inline:auto}
 .site-header{display:flex;align-items:center;justify-content:space-between;gap:30px;padding-block:26px}
-.wordmark{display:inline-flex;align-items:center;gap:10px;font-size:30px;font-weight:700;letter-spacing:-.035em;line-height:1;text-decoration:none;white-space:nowrap}
+.wordmark{display:inline-flex;align-items:center;gap:10px;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1;text-decoration:none;white-space:nowrap}
 .wordmark img{display:block;flex:none;width:36px;height:36px;border-radius:9px}
 @supports (corner-shape:squircle){.wordmark img{border-radius:14px}}
-.site-header nav{display:flex;align-items:center;gap:26px;font-family:WeekPactText,Arial,sans-serif;font-size:15px}
+.site-header nav{display:flex;align-items:center;gap:26px;font-size:15px}
 .site-header nav a{text-decoration:none}
 .site-header nav a:not(.nav-cta):hover{text-decoration:underline}
 .nav-cta{
-  --fill:var(--mint);
+  --fill:var(--sea);
   display:inline-flex;align-items:center;gap:8px;
-  padding:10px 18px;font-weight:700;color:var(--ink);background:var(--fill);
+  padding:10px 18px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--fill);
   border:1px solid color-mix(in srgb,#000 28%,var(--fill));
   box-shadow:0 var(--depth) 0 color-mix(in srgb,#000 24%,var(--fill));
   border-radius:var(--r-button);
 }
 .nav-cta:active{transform:translateY(var(--depth));box-shadow:none}
 
-.site-footer{border-top:1px solid #f3f5f21f;margin-top:auto}
+.site-footer{border-top:1px solid #edf3f21f;margin-top:auto}
 .footer-content{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;padding-block:26px}
-.site-footer .wordmark{font-size:21px}
+.site-footer .wordmark{font-size:19px}
 .site-footer .wordmark img{width:26px;height:26px;border-radius:7px}
 @supports (corner-shape:squircle){.site-footer .wordmark img{border-radius:10px}}
 .site-footer nav{display:flex;gap:20px}
-.site-footer nav a,.site-footer p{font-family:WeekPactText,Arial,sans-serif;font-size:13px;color:var(--canvas-muted)}
+.site-footer nav a,.site-footer p{font-size:13px;color:var(--canvas-muted)}
 
 /* ---- Long-form pages: one cream card holds the reading ---------------*/
 .reading{padding-block:34px 72px}
 .reading-card{max-width:860px;margin-inline:auto;padding:44px 48px;overflow-wrap:anywhere}
-.reading-card h1{font-size:clamp(38px,6vw,58px);margin-block:14px 8px}
-.reading-card h2{font-size:26px;margin-top:38px}
+.reading-card h1{font-size:clamp(34px,5vw,50px);margin-block:14px 8px}
+.reading-card h2{font-size:23px;margin-top:38px}
 .reading-card p,.reading-card ul{margin-top:16px;font-size:16px;line-height:1.7;color:var(--muted)}
 .reading-card li+li{margin-top:12px}
 .reading-card ul{padding-left:20px}
@@ -206,7 +224,7 @@ svg{flex-shrink:0;vertical-align:middle}
 
 .not-found{display:grid;place-items:center;padding-block:70px 110px;text-align:center}
 .not-found .surface{max-width:560px;padding:48px 40px}
-.not-found h1{font-size:clamp(40px,7vw,60px)}
+.not-found h1{font-size:clamp(36px,6vw,52px)}
 .not-found p{margin-top:16px;font-size:17px;line-height:1.6}
 .not-found .actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:20px;margin-top:28px}
 
@@ -215,14 +233,14 @@ svg{flex-shrink:0;vertical-align:middle}
   .container{width:calc(100% - 36px)}
   body{font-size:17px}
   .site-header{padding-block:20px;gap:16px}
-  .wordmark{font-size:25px}
+  .wordmark{font-size:22px}
   .wordmark img{width:30px;height:30px}
   .site-header nav{gap:16px;font-size:14px}
   .site-header nav a:not(.nav-cta):not(.text-link){display:none}
   .nav-cta{padding:9px 14px;white-space:nowrap}
   .reading{padding-block:20px 48px}
   .reading-card{padding:28px 22px;border-radius:var(--r-panel)}
-  .reading-card h2{font-size:23px;margin-top:30px}
+  .reading-card h2{font-size:21px;margin-top:30px}
   .not-found .surface{padding:34px 24px}
   .footer-content{padding-block:22px}
 }
