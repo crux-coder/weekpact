@@ -561,11 +561,26 @@ void main() {
       findsNothing,
     );
     expect(backend.achievements, isEmpty);
-    // An achievement until the toggle says otherwise.
+    // A plain story until the toggle says otherwise, and it is the left side.
+    expect(
+      tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
+      PostKind.story,
+    );
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('post-kind-story'))).dx,
+      lessThan(
+        tester
+            .getCenter(find.byKey(const ValueKey('post-kind-achievement')))
+            .dx,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('post-kind-achievement')));
+    await tester.pumpUi();
     expect(
       tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
       PostKind.achievement,
     );
+    expect(find.text('What did you achieve?'), findsOneWidget);
     await tester.enterText(
       find.descendant(
         of: find.byKey(const ValueKey('achievement-text')),
@@ -631,8 +646,8 @@ void main() {
     expect(backend.achievements, isEmpty);
   });
 
-  testWidgets('the toggle makes it a plain story: lavender, a camera, and '
-      'no trophy in the rail', (tester) async {
+  testWidgets('left alone, it is a plain story: lavender, a camera, and no '
+      'trophy in the rail', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -646,8 +661,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
     await tester.pumpUi();
     await submitTestPhoto(tester);
-    await tester.tap(find.byKey(const ValueKey('post-kind-story')));
-    await tester.pumpUi();
     expect(
       tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
       PostKind.story,

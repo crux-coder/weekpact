@@ -127,8 +127,8 @@ class _AchievementComposerState extends State<_AchievementComposer> {
   String? _error;
 
   /// What the post is: a win, or a plain story. Picked on the toggle above
-  /// the words, and an achievement until it is.
-  PostKind _kind = PostKind.achievement;
+  /// the words, and a plain story until it is.
+  PostKind _kind = PostKind.story;
 
   /// The picture taken for this achievement, ready for upload. The camera
   /// prepares it exactly as it prepares a check-in's.
@@ -390,7 +390,7 @@ class _PhotoPreview extends StatelessWidget {
   );
 }
 
-/// Achievement or story, as one switch with a side for each, cut to the
+/// Story or achievement, as one switch with a side for each, cut to the
 /// squircle every compact control in the app wears: the chosen side slides
 /// under a thumb in its own colour, carrying its own glyph, so which
 /// one is on reads before the words do. The same gold and trophy, lavender
@@ -400,6 +400,10 @@ class PostKindToggle extends StatelessWidget {
 
   final PostKind value;
   final ValueChanged<PostKind>? onChanged;
+
+  /// Story first: it is what most posts are, so it sits on the left, where
+  /// the switch starts.
+  static const _order = [PostKind.story, PostKind.achievement];
 
   static const _height = 48.0;
   static const _inset = 4.0;
@@ -427,7 +431,7 @@ class PostKindToggle extends StatelessWidget {
               AnimatedPositioned(
                 duration: motion,
                 curve: Curves.easeOutCubic,
-                left: value == PostKind.achievement ? 0 : half,
+                left: value == _order.first ? 0 : half,
                 top: 0,
                 bottom: 0,
                 width: half,
@@ -442,7 +446,7 @@ class PostKindToggle extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final kind in PostKind.values)
+                  for (final kind in _order)
                     Expanded(child: _side(context, kind)),
                 ],
               ),
