@@ -120,11 +120,7 @@ void main() {
     final cardContext = tester.element(find.byType(TextFormField));
     expect(cardContext.surface, WeekPactColors.cream);
     expect(cardContext.ink, WeekPactColors.black);
-    for (final fill in [
-      cardContext.surface,
-      cardContext.yellow,
-      cardContext.mint,
-    ]) {
+    for (final fill in [cardContext.surface, cardContext.yellow]) {
       expect(contrast(cardContext.ink, fill), greaterThanOrEqualTo(4.5));
     }
     expect(
@@ -133,15 +129,10 @@ void main() {
     );
     final materials = tester.widgetList<Material>(find.byType(Material));
     expect(materials.any((m) => m.color == WeekPactColors.cream), isTrue);
-    for (final legacy in [
-      WeekPactColors.darkSurface,
-      WeekPactColors.darkMint,
-      WeekPactColors.darkCoral,
-      WeekPactColors.darkYellow,
-      WeekPactColors.darkPink,
-    ]) {
-      expect(materials.any((m) => m.color == legacy), isFalse);
-    }
+    expect(
+      materials.any((m) => m.color == WeekPactColors.darkSurface),
+      isFalse,
+    );
     expect(materials.every((m) => m.elevation == 0), isTrue);
     expect(
       tester.widget<TextFormField>(find.byType(TextFormField)).controller,

@@ -45,10 +45,6 @@ class ProAccess {
   final String? managementUrl;
   final bool sandbox;
 
-  /// Whether the store can show a manage-subscription screen for this
-  /// purchase, which is what makes cancelling reachable.
-  bool get manageable => (managementUrl ?? '').isNotEmpty;
-
   /// Active but not renewing: the subscription runs out at [expiresAt].
   bool get cancelled => active && !willRenew;
 

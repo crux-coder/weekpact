@@ -91,11 +91,6 @@ class ChatSession extends ChangeNotifier {
   Map<String, DateTime> get reads => Map.unmodifiable(_reads);
   final _reads = <String, DateTime>{};
 
-  /// Whether the live connection is up. Messages still send without it; they
-  /// just arrive from others on the next refresh.
-  bool get connected => _connected;
-  bool _connected = false;
-
   ChatConnection? _connection;
   StreamSubscription<ChatEvent>? _subscription;
   Timer? _typingIdleTimer;
@@ -294,7 +289,6 @@ class ChatSession extends ChangeNotifier {
   void _onEvent(ChatEvent event) {
     switch (event) {
       case ChatConnected():
-        _connected = true;
         _notify();
         unawaited(_catchUp());
       case ChatMessageChanged(:final message):
@@ -388,7 +382,6 @@ class ChatSession extends ChangeNotifier {
     _subscription = null;
     final connection = _connection;
     _connection = null;
-    _connected = false;
     await connection?.close();
   }
 

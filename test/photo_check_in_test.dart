@@ -5,12 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/home/check_in_camera.dart';
-import 'package:weekpact/src/home/check_in_photo_viewer.dart';
 import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
-import 'support/home_fakes.dart';
 import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -55,17 +53,6 @@ Future<void> openDrawer(
   await tester.tap(find.text('Open'));
   await tester.pumpUi();
   if (takePicture) await takeTestPhoto(tester);
-}
-
-class PhotoBackend extends DashboardBackend {
-  int attempts = 0;
-  final paths = <String>[];
-  @override
-  Future<Uint8List> fetchCheckInPhoto(String path) async {
-    paths.add(path);
-    if (attempts++ == 0) throw StateError('offline');
-    return testCheckInPhoto;
-  }
 }
 
 void main() {
@@ -367,29 +354,6 @@ void main() {
     await submitTestPhoto(tester);
     expect(tester.takeException(), isNull);
     expect(find.byType(PhotoCheckInPage), findsNothing);
-  });
-  testWidgets('viewer retries a private download with the same path', (
-    tester,
-  ) async {
-    final backend = PhotoBackend();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: WeekPactTheme.light,
-        home: Scaffold(
-          body: CheckInPhotoViewer(
-            backend: backend,
-            path: 'crew/photo.png',
-            title: 'Read',
-          ),
-        ),
-      ),
-    );
-    await tester.pumpUi();
-    expect(find.text('Photo unavailable'), findsOneWidget);
-    await tester.tap(find.text('RETRY'));
-    await tester.pumpUi();
-    expect(find.byType(Image), findsOneWidget);
-    expect(backend.paths, ['crew/photo.png', 'crew/photo.png']);
   });
   testWidgets(
     'camera processor keeps the whole frame at a 1280 long side and rejects '
