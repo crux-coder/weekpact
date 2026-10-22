@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/photo_fakes.dart';
+
+import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/nudge_sheet.dart';
 
@@ -226,12 +230,20 @@ void main() {
   testWidgets('you cannot nudge yourself, or anyone already out', (
     tester,
   ) async {
-    await pumpStoriesHome(tester, backend: NudgeFromRailBackend());
-    // Your own tile is dashed until you have kept something, and it is still
-    // not a tile to press: you cannot nudge yourself out of bed.
+    await pumpStoriesHome(
+      tester,
+      backend: NudgeFromRailBackend(),
+      capturePhoto: captureTestCheckInPhoto,
+    );
+    // Your own tile is dashed until you have kept something, and a press on
+    // it is not a nudge — you cannot nudge yourself out of bed — but the way
+    // to post a story.
     await tester.longPress(_tile(''));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
+    expect(find.byType(CameraStep<Achievement>), findsOneWidget);
+    await tester.tap(find.byTooltip('Close camera'));
+    await tester.pumpUi();
     // Bea is in, so her tile's gestures are already spoken for: a press opens
     // nothing, and a tap opens her stories.
     await tester.longPress(_tile('bea'));

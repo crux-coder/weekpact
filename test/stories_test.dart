@@ -424,7 +424,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('story-tile-')));
     await tester.pumpUi();
     expect(find.byType(StoryViewer), findsNothing);
-    expect(find.byType(PhotoCheckInPage), findsOneWidget);
+    expect(find.byType(CameraStep<Achievement>), findsOneWidget);
     // And it is not a nudge either: you cannot nudge yourself out of bed.
     expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -545,14 +545,21 @@ void main() {
     expect(find.byKey(const ValueKey('story-tile-compose')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
     await tester.pumpUi();
-    // The same camera a photo check-in opens, and no way past it.
-    expect(find.byType(PhotoCheckInPage), findsOneWidget);
+    // The same camera a photo check-in opens, as a page of its own, and no
+    // way past it.
+    expect(find.byType(CameraStep<Achievement>), findsOneWidget);
     expect(find.text('Post a story'), findsOneWidget);
     expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
+    // The picture goes straight on to the next page, the words.
     await takeTestPhoto(tester);
-    expect(find.text('NEXT'), findsOneWidget);
-    await submitTestPhoto(tester);
-    expect(find.byType(PhotoCheckInPage), findsNothing);
+    expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
+    // Back is the camera again: that is how a picture is retaken.
+    await tester.tap(find.byTooltip('Back to camera'));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
+    expect(find.byType(CameraStep<Achievement>), findsOneWidget);
+    await takeTestPhoto(tester);
+    expect(find.byType(CameraStep<Achievement>), findsNothing);
     // Then the words, under the picture just taken.
     expect(find.byKey(const ValueKey('achievement-composer')), findsOneWidget);
     expect(find.byKey(const ValueKey('achievement-photo')), findsOneWidget);
@@ -639,9 +646,9 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
     await tester.pumpUi();
-    await tester.tap(find.byTooltip('Close photo check-in'));
+    await tester.tap(find.byTooltip('Close camera'));
     await tester.pumpUi();
-    expect(find.byType(PhotoCheckInPage), findsNothing);
+    expect(find.byType(CameraStep<Achievement>), findsNothing);
     expect(find.byKey(const ValueKey('achievement-composer')), findsNothing);
     expect(backend.achievements, isEmpty);
   });
@@ -660,7 +667,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('story-tile-compose')));
     await tester.pumpUi();
-    await submitTestPhoto(tester);
+    await takeTestPhoto(tester);
     expect(
       tester.widget<PostKindToggle>(find.byType(PostKindToggle)).value,
       PostKind.story,

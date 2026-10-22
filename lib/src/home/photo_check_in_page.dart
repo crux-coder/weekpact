@@ -17,8 +17,9 @@ import 'home_backend.dart';
 
 typedef CheckInPhotoCapture = Future<Uint8List?> Function();
 
-/// Opens the camera as a full-height drawer and completes with whether the
-/// check-in was saved.
+/// The photo check-in, as two pages on the stack: the camera, then the
+/// picture with "Check in" under it. Completes with whether the check-in was
+/// saved.
 Future<bool> showPhotoCheckIn({
   required BuildContext context,
   required HomeBackend backend,
@@ -34,7 +35,7 @@ Future<bool> showPhotoCheckIn({
   CheckInPhotoCapture pickPhoto = pickCheckInPhoto,
   OpenAppSettings openSettings = openAppSettings,
 }) async {
-  return await presentPhotoCheckIn(
+  return await presentPhotoCheckIn<bool>(
         context,
         (_) => PhotoCheckInPage(
           pactTitle: pactTitle,
@@ -54,42 +55,19 @@ Future<bool> showPhotoCheckIn({
       false;
 }
 
-/// The drawer the camera comes up in: the full height under the status bar,
-/// pulled down to dismiss like any other sheet. Completes once the drawer is
-/// gone, not merely popped, so what follows it does not play behind it.
-Future<bool?> presentPhotoCheckIn(
+/// Pushes the first page of a photo flow — the camera — as a page of its own,
+/// rising from the bottom the way a task you can put away does. Each step
+/// after it is pushed on top, so back is always the step before. Completes
+/// with what the last step finished with, or null when the flow was put away.
+Future<T?> presentPhotoCheckIn<T>(
   BuildContext context,
   WidgetBuilder builder,
-) async {
-  ModalRoute<bool>? route;
-  final result = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: WeekPactColors.black,
-    barrierColor: WeekPactColors.barrier,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(WeekPactMetrics.sheetRadius),
-      ),
-    ),
-    clipBehavior: Clip.antiAlias,
-    constraints: BoxConstraints.tightFor(
-      width: MediaQuery.sizeOf(context).width,
-    ),
-    builder: (context) {
-      route ??= ModalRoute.of<bool>(context);
-      return FractionallySizedBox(heightFactor: 1, child: builder(context));
-    },
-  );
-  await route?.completed;
-  return result;
-}
+) => Navigator.of(context)
+    .push<T>(MaterialPageRoute<T>(fullscreenDialog: true, builder: builder));
 
-/// The photo check-in as a camera, not a form: the feed fills the screen, a
-/// round shutter sits under it with the lens switch to its right, and the
-/// picture then takes the feed's place, full size, with "Check in" under it.
-class PhotoCheckInPage extends StatefulWidget {
+/// A photo check-in's first page: the camera, with the week's progress on the
+/// pact under it. A picture taken here opens [PhotoCheckInReviewPage] on top.
+class PhotoCheckInPage extends StatelessWidget {
   const PhotoCheckInPage({
     super.key,
     required this.pactTitle,
@@ -99,17 +77,8 @@ class PhotoCheckInPage extends StatefulWidget {
     this.pickPhoto = pickCheckInPhoto,
     required this.save,
     this.openSettings = openAppSettings,
-    this.submitLabel = 'CHECK IN',
   });
-
-  /// The title over the camera: the pact being checked in, or whatever else
-  /// the picture is for.
   final String pactTitle;
-
-  /// What the button under a taken picture says. An achievement's camera
-  /// hands the picture on to the words that go with it rather than posting
-  /// it, so it says so.
-  final String submitLabel;
 
   /// Days of this pact already kept this week, today not counted: the
   /// picture being taken is what adds today.
@@ -117,6 +86,61 @@ class PhotoCheckInPage extends StatefulWidget {
 
   /// The pact's target for the week. Zero hides the progress readout.
   final int daysPerWeek;
+  final CheckInPhotoCapture pickPhoto;
+  final CheckInPhotoCapture? capturePhoto;
+  final Future<void> Function(Uint8List) save;
+  final OpenAppSettings openSettings;
+
+  @override
+  Widget build(BuildContext context) => CameraStep<bool>(
+    title: pactTitle,
+    closeTooltip: 'Close photo check-in',
+    capturePhoto: capturePhoto,
+    pickPhoto: pickPhoto,
+    openSettings: openSettings,
+    footer: _WeekProgress(kept: daysKept, target: daysPerWeek),
+    next: (context, photo) => Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => PhotoCheckInReviewPage(
+          pactTitle: pactTitle,
+          photo: photo,
+          save: save,
+        ),
+      ),
+    ),
+  );
+}
+
+/// The camera as a page: the feed fills a rounded card, a round shutter sits
+/// in it with the gallery to its left and the lens switch to its right, and
+/// whatever the flow wants said about the picture sits under it.
+///
+/// A picture taken or chosen here is handed to [next], which pushes the step
+/// after this one. When that step finishes, this page closes with its result;
+/// when it is backed out of, this page is the camera again — going back is
+/// how a picture is retaken. The camera is let go while another step stands
+/// over it, and opened again on the way back.
+class CameraStep<T> extends StatefulWidget {
+  const CameraStep({
+    super.key,
+    required this.title,
+    required this.next,
+    this.closeTooltip = 'Close camera',
+    this.footer,
+    this.capturePhoto,
+    this.pickPhoto = pickCheckInPhoto,
+    this.openSettings = openAppSettings,
+  });
+
+  final String title;
+  final String closeTooltip;
+
+  /// Pushes the next step with the picture, and completes with what the flow
+  /// finished with — null when that step was backed out of.
+  final Future<T?> Function(BuildContext context, CapturedPhoto photo) next;
+
+  /// Under the card while the camera is live: a check-in's week, say.
+  final Widget? footer;
 
   /// The gallery, for a picture already taken. Null bytes mean the person
   /// backed out of the picker.
@@ -125,29 +149,28 @@ class PhotoCheckInPage extends StatefulWidget {
   /// A capture of the page's own, in place of the live preview. Tests hand
   /// one in so the flow runs without a camera.
   final CheckInPhotoCapture? capturePhoto;
-  final Future<void> Function(Uint8List) save;
 
   /// The way into the system Settings, injected so a test can assert the door
   /// was opened. A refused camera is the one error here that trying again
   /// cannot answer.
   final OpenAppSettings openSettings;
+
   @override
-  State<PhotoCheckInPage> createState() => _PhotoCheckInPageState();
+  State<CameraStep<T>> createState() => _CameraStepState<T>();
 }
 
-class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
+class _CameraStepState<T> extends State<CameraStep<T>> {
   VoidCallback? _cameraAction;
   VoidCallback? _switchCamera;
-  CapturedPhoto? _photo;
   bool _capturing = false;
-  bool _saving = false;
   bool _denied = false;
+
+  /// A later step is standing over this one, so the camera is let go.
+  bool _away = false;
   String? _error;
 
-  bool get _busy => _capturing || _saving;
-
   Future<void> _capture() async {
-    if (_busy || _photo != null) return;
+    if (_capturing || _away) return;
     setState(() {
       _capturing = true;
       _error = null;
@@ -156,11 +179,9 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
     try {
       final photo = await widget.capturePhoto!();
       if (mounted && photo != null && photo.isNotEmpty) {
-        setState(
-          () => _photo = CapturedPhoto(
-            preview: photo,
-            prepare: () async => photo,
-          ),
+        setState(() => _capturing = false);
+        await _advance(
+          CapturedPhoto(preview: photo, prepare: () async => photo),
         );
       }
     } on PlatformException catch (e) {
@@ -186,23 +207,22 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
     }
   }
 
-  /// A picture from the gallery takes the feed's place exactly as a shot
-  /// does, and is prepared for upload the same way.
+  /// A picture from the gallery goes on exactly as a shot does, and is
+  /// prepared for upload the same way.
   Future<void> _pick() async {
-    if (_busy || _photo != null) return;
+    if (_capturing || _away) return;
     setState(() {
       _capturing = true;
       _error = null;
     });
+    CapturedPhoto? picked;
     try {
       final bytes = await widget.pickPhoto();
-      if (mounted && bytes != null && bytes.isNotEmpty) {
-        setState(
-          () => _photo = CapturedPhoto(
-            preview: bytes,
-            prepare: () => CheckInCamera.prepare(bytes),
-          )..warm(),
-        );
+      if (bytes != null && bytes.isNotEmpty) {
+        picked = CapturedPhoto(
+          preview: bytes,
+          prepare: () => CheckInCamera.prepare(bytes),
+        )..warm();
       }
     } catch (_) {
       if (mounted) {
@@ -211,18 +231,247 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
     } finally {
       if (mounted) setState(() => _capturing = false);
     }
+    if (mounted && picked != null) await _advance(picked);
   }
 
+  /// On to the next step with [photo]. Its result closes this page with it;
+  /// coming back without one is a retake, and the camera opens again.
+  Future<void> _advance(CapturedPhoto photo) async {
+    setState(() {
+      _away = true;
+      _cameraAction = null;
+      _switchCamera = null;
+      _error = null;
+    });
+    final result = await widget.next(context, photo);
+    if (!mounted) return;
+    if (result != null) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+    setState(() => _away = false);
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_capturing,
+    child: Scaffold(
+      backgroundColor: WeekPactColors.black,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The feed sits in its own rounded card, inset from the edges,
+            // the way a phone camera app frames it: the shutter lives inside
+            // the card and whatever the flow says sits beneath it.
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_stageRadius),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _stage(),
+                      // Soft shade behind the controls, so a bright feed
+                      // never swallows the pale close button, title and
+                      // shutter.
+                      const IgnorePointer(child: _Shade()),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _PhotoTopBar(
+                            title: widget.title,
+                            tooltip: widget.closeTooltip,
+                            icon: HugeIconsStrokeRounded.cancel01,
+                            onPressed: _capturing
+                                ? null
+                                : () => Navigator.of(context).maybePop(),
+                          ),
+                          const Spacer(),
+                          if (!_denied)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                              child: _captureControls(),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            _bottomStrip(),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  /// The feed, filling the card. Let go of while a later step stands over
+  /// this one, so the camera is not running behind a page nobody can see.
+  Widget _stage() {
+    if (_away) return const ColoredBox(color: WeekPactColors.black);
+    if (widget.capturePhoto == null) {
+      return CheckInCameraPreview(
+        onActionChanged: (action) => setState(() => _cameraAction = action),
+        onSwitchChanged: (action) => setState(() => _switchCamera = action),
+        onDeniedChanged: (denied) => setState(() => _denied = denied),
+        onCaptured: _advance,
+        onBusyChanged: (busy) => setState(() => _capturing = busy),
+      );
+    }
+    return ColoredBox(
+      color: WeekPactColors.darkCanvas,
+      child: Center(
+        child: _capturing
+            ? const CircularProgressIndicator(color: WeekPactColors.cream)
+            : const AppIcon(
+                icon: HugeIconsStrokeRounded.camera01,
+                size: 40,
+                color: WeekPactColors.darkMuted,
+              ),
+      ),
+    );
+  }
+
+  /// What sits under the card: the flow's own footer while the camera is
+  /// live, and Settings when the camera was refused. Errors read here too,
+  /// above whichever action answers them.
+  Widget _bottomStrip() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_error != null) ...[
+          _PhotoError(_error!),
+          const SizedBox(height: 12),
+        ],
+        if (_denied)
+          _deniedControls()
+        else
+          widget.footer ?? const SizedBox(height: 8),
+      ],
+    ),
+  );
+
+  /// The shutter in the middle, the gallery to its left and the lens switch
+  /// to its right.
+  Widget _captureControls() {
+    final onShutter = _capturing || _away
+        ? null
+        : widget.capturePhoto != null
+        ? _capture
+        : _cameraAction;
+    return SizedBox(
+      height: _ShutterButton.size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          _ShutterButton(
+            key: const ValueKey('take-picture'),
+            isLoading: _capturing,
+            onPressed: onShutter,
+          ),
+          Positioned(
+            left: 0,
+            child: _RoundControl(
+              key: const ValueKey('pick-photo'),
+              tooltip: 'Choose from gallery',
+              icon: HugeIconsStrokeRounded.image02,
+              onPressed: _capturing ? null : _pick,
+            ),
+          ),
+          if (_switchCamera != null)
+            Positioned(
+              right: 0,
+              child: _RoundControl(
+                tooltip: 'Switch camera',
+                icon: HugeIconsStrokeRounded.cameraRotated01,
+                onPressed: _capturing ? null : _switchCamera,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// A refused camera is the one failure here that the shutter cannot answer:
+  /// the OS will not ask again, so a shutter that quietly reopens the camera
+  /// can only fail the same way. Settings is offered as the action, with the
+  /// retry kept underneath for someone who has just granted it.
+  Widget _deniedControls() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      AppButton(
+        key: const ValueKey('open-camera-settings'),
+        label: 'OPEN SETTINGS',
+        color: WeekPactColors.cream,
+        foregroundColor: WeekPactColors.black,
+        onPressed: _capturing ? null : () => unawaited(widget.openSettings()),
+      ),
+      const SizedBox(height: 8),
+      AppButton(
+        key: const ValueKey('retry-camera'),
+        label: 'TRY AGAIN',
+        color: WeekPactColors.darkSurface,
+        foregroundColor: WeekPactColors.darkInk,
+        onPressed: _capturing
+            ? null
+            : widget.capturePhoto != null
+            ? _capture
+            : _cameraAction,
+      ),
+      // A refused camera does not refuse the flow: a picture already taken
+      // can still stand in for it.
+      TextButton(
+        key: const ValueKey('pick-photo'),
+        onPressed: _capturing ? null : _pick,
+        style: TextButton.styleFrom(
+          foregroundColor: WeekPactColors.cream,
+          disabledForegroundColor: WeekPactColors.darkMuted,
+        ),
+        child: const Text('CHOOSE FROM GALLERY'),
+      ),
+    ],
+  );
+}
+
+const _stageRadius = 28.0;
+
+/// A photo check-in's second page: the picture, full size, with "Check in"
+/// under it. Back, or "Retake photo", is the camera again.
+class PhotoCheckInReviewPage extends StatefulWidget {
+  const PhotoCheckInReviewPage({
+    super.key,
+    required this.pactTitle,
+    required this.photo,
+    required this.save,
+  });
+
+  final String pactTitle;
+  final CapturedPhoto photo;
+  final Future<void> Function(Uint8List) save;
+
+  @override
+  State<PhotoCheckInReviewPage> createState() => _PhotoCheckInReviewPageState();
+}
+
+class _PhotoCheckInReviewPageState extends State<PhotoCheckInReviewPage> {
+  bool _saving = false;
+  String? _error;
+
   Future<void> _save() async {
-    final photo = _photo;
-    if (photo == null || _busy) return;
+    if (_saving) return;
     setState(() {
       _saving = true;
       _error = null;
     });
     Uint8List bytes;
     try {
-      bytes = await photo.prepared;
+      bytes = await widget.photo.prepared;
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -248,153 +497,115 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
     }
   }
 
-  void _retake() => setState(() {
-    _photo = null;
-    _cameraAction = null;
-    _switchCamera = null;
-    _error = null;
-  });
-
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !_busy,
-    // Pulling the drawer down pops it outright, past the guard above. While
-    // a picture is being taken or saved the pull is claimed here instead, so
-    // the drawer stays put until the work is done.
-    child: GestureDetector(
-      onVerticalDragStart: _busy ? (_) {} : null,
-      onVerticalDragUpdate: _busy ? (_) {} : null,
-      onVerticalDragEnd: _busy ? (_) {} : null,
-      child: Material(
-        color: WeekPactColors.black,
-        child: SafeArea(
-          top: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  margin: const EdgeInsets.only(top: 8),
-                  decoration: const BoxDecoration(
-                    color: WeekPactColors.darkBorder,
-                    borderRadius: WeekPactMetrics.pill,
+    canPop: !_saving,
+    child: Scaffold(
+      backgroundColor: WeekPactColors.black,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_stageRadius),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.memory(
+                        widget.photo.preview,
+                        gaplessPlayback: true,
+                        fit: BoxFit.cover,
+                        semanticLabel: 'Your check-in photo',
+                      ),
+                      const IgnorePointer(child: _Shade()),
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: _PhotoTopBar(
+                          title: widget.pactTitle,
+                          tooltip: 'Retake photo',
+                          icon: HugeIconsStrokeRounded.arrowLeft01,
+                          onPressed: _saving
+                              ? null
+                              : () => Navigator.of(context).maybePop(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              // The feed sits in its own rounded card, inset from the edges,
-              // the way a phone camera app frames it: the shutter lives inside
-              // the card and the check-in actions in the strip beneath it.
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(_stageRadius),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _stage(),
-                        // Soft shade behind the controls, so a bright picture
-                        // or feed never swallows the pale close button, title
-                        // and shutter.
-                        const IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                stops: [0, .18, .72, 1],
-                                colors: [
-                                  Color(0x99191B19),
-                                  Color(0x00191B19),
-                                  Color(0x00191B19),
-                                  Color(0xB3191B19),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _topBar(),
-                            const Spacer(),
-                            if (_photo == null && !_denied)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  0,
-                                  20,
-                                  20,
-                                ),
-                                child: _captureControls(),
-                              ),
-                          ],
-                        ),
-                      ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_error != null) ...[
+                    _PhotoError(_error!),
+                    const SizedBox(height: 12),
+                  ],
+                  AppButton(
+                    key: const ValueKey('submit-photo-check-in'),
+                    label: 'CHECK IN',
+                    color: WeekPactColors.cream,
+                    foregroundColor: WeekPactColors.black,
+                    isLoading: _saving,
+                    onPressed: _saving ? null : _save,
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).maybePop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: WeekPactColors.cream,
+                      disabledForegroundColor: WeekPactColors.darkMuted,
                     ),
+                    child: const Text('RETAKE PHOTO'),
                   ),
-                ),
+                ],
               ),
-              _bottomStrip(),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),
   );
+}
 
-  static const _stageRadius = 28.0;
+/// The way out of a photo page, and what the page is for, across the top of
+/// the card.
+class _PhotoTopBar extends StatelessWidget {
+  const _PhotoTopBar({
+    required this.title,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
 
-  /// The feed, or the picture that replaced it, filling the card.
-  Widget _stage() {
-    final photo = _photo;
-    if (photo != null) {
-      return Image.memory(
-        photo.preview,
-        gaplessPlayback: true,
-        fit: BoxFit.cover,
-        semanticLabel: 'Your check-in photo',
-      );
-    }
-    if (widget.capturePhoto == null) {
-      return CheckInCameraPreview(
-        onActionChanged: (action) => setState(() => _cameraAction = action),
-        onSwitchChanged: (action) => setState(() => _switchCamera = action),
-        onDeniedChanged: (denied) => setState(() => _denied = denied),
-        onCaptured: (photo) => setState(() => _photo = photo),
-        onBusyChanged: (busy) => setState(() => _capturing = busy),
-      );
-    }
-    return ColoredBox(
-      color: WeekPactColors.darkCanvas,
-      child: Center(
-        child: _capturing
-            ? const CircularProgressIndicator(color: WeekPactColors.cream)
-            : const AppIcon(
-                icon: HugeIconsStrokeRounded.camera01,
-                size: 40,
-                color: WeekPactColors.darkMuted,
-              ),
-      ),
-    );
-  }
+  final String title;
+  final String tooltip;
+  final List<List<dynamic>> icon;
+  final VoidCallback? onPressed;
 
-  Widget _topBar() => Padding(
+  @override
+  Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
     child: Row(
       children: [
         IconButton(
-          tooltip: 'Close photo check-in',
-          onPressed: _busy ? null : () => Navigator.pop(context, false),
+          tooltip: tooltip,
+          onPressed: onPressed,
           color: WeekPactColors.cream,
           disabledColor: WeekPactColors.darkMuted,
-          icon: const AppIcon(icon: HugeIconsStrokeRounded.cancel01),
+          icon: AppIcon(icon: icon),
         ),
         Expanded(
           child: Text(
-            widget.pactTitle,
+            title,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -405,151 +616,54 @@ class _PhotoCheckInPageState extends State<PhotoCheckInPage> {
             ),
           ),
         ),
-        // Balances the close button so the title sits in the middle.
+        // Balances the button so the title sits in the middle.
         const SizedBox(width: 48),
       ],
     ),
   );
+}
 
-  /// What sits under the card: the pact while the camera is live, the
-  /// check-in once there is a picture, and Settings when the camera was
-  /// refused. Errors read here too, above whichever action answers them.
-  Widget _bottomStrip() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (_error != null) ...[
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: WeekPactType.secondary,
-                fontFamilyFallback: WeekPactType.secondaryFallback,
-                fontSize: 13,
-                color: WeekPactColors.darkError,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+/// Shade at the card's top and foot, so a bright picture or feed never
+/// swallows the pale controls laid over it.
+class _Shade extends StatelessWidget {
+  const _Shade();
+
+  @override
+  Widget build(BuildContext context) => const DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        stops: [0, .18, .72, 1],
+        colors: [
+          Color(0x99191B19),
+          Color(0x00191B19),
+          Color(0x00191B19),
+          Color(0xB3191B19),
         ],
-        if (_photo != null)
-          _reviewControls()
-        else if (_denied)
-          _deniedControls()
-        else
-          _WeekProgress(kept: widget.daysKept, target: widget.daysPerWeek),
-      ],
+      ),
     ),
   );
+}
 
-  /// The shutter in the middle, the gallery to its left and the lens switch
-  /// to its right.
-  Widget _captureControls() {
-    final onShutter = _busy
-        ? null
-        : widget.capturePhoto != null
-        ? _capture
-        : _cameraAction;
-    return SizedBox(
-      height: _ShutterButton.size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          _ShutterButton(
-            key: const ValueKey('take-picture'),
-            isLoading: _capturing,
-            onPressed: onShutter,
-          ),
-          Positioned(
-            left: 0,
-            child: _RoundControl(
-              key: const ValueKey('pick-photo'),
-              tooltip: 'Choose from gallery',
-              icon: HugeIconsStrokeRounded.image02,
-              onPressed: _busy ? null : _pick,
-            ),
-          ),
-          if (_switchCamera != null)
-            Positioned(
-              right: 0,
-              child: _RoundControl(
-                tooltip: 'Switch camera',
-                icon: HugeIconsStrokeRounded.cameraRotated01,
-                onPressed: _busy ? null : _switchCamera,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+class _PhotoError extends StatelessWidget {
+  const _PhotoError(this.message);
 
-  /// A refused camera is the one failure here that the shutter cannot answer:
-  /// the OS will not ask again, so a shutter that quietly reopens the camera
-  /// can only fail the same way. Settings is offered as the action, with the
-  /// retry kept underneath for someone who has just granted it.
-  Widget _deniedControls() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AppButton(
-        key: const ValueKey('open-camera-settings'),
-        label: 'OPEN SETTINGS',
-        color: WeekPactColors.cream,
-        foregroundColor: WeekPactColors.black,
-        onPressed: _busy ? null : () => unawaited(widget.openSettings()),
-      ),
-      const SizedBox(height: 8),
-      AppButton(
-        key: const ValueKey('retry-camera'),
-        label: 'TRY AGAIN',
-        color: WeekPactColors.darkSurface,
-        foregroundColor: WeekPactColors.darkInk,
-        onPressed: _busy
-            ? null
-            : widget.capturePhoto != null
-            ? _capture
-            : _cameraAction,
-      ),
-      // A refused camera does not refuse the check-in: a picture already
-      // taken can still stand in for it.
-      TextButton(
-        key: const ValueKey('pick-photo'),
-        onPressed: _busy ? null : _pick,
-        style: TextButton.styleFrom(
-          foregroundColor: WeekPactColors.cream,
-          disabledForegroundColor: WeekPactColors.darkMuted,
-        ),
-        child: const Text('CHOOSE FROM GALLERY'),
-      ),
-    ],
-  );
+  final String message;
 
-  Widget _reviewControls() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AppButton(
-        key: const ValueKey('submit-photo-check-in'),
-        label: widget.submitLabel,
-        color: WeekPactColors.cream,
-        foregroundColor: WeekPactColors.black,
-        isLoading: _saving,
-        onPressed: _saving ? null : _save,
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Text(
+      message,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontFamily: WeekPactType.secondary,
+        fontFamilyFallback: WeekPactType.secondaryFallback,
+        fontSize: 13,
+        color: WeekPactColors.darkError,
       ),
-      const SizedBox(height: 4),
-      TextButton(
-        onPressed: _saving ? null : _retake,
-        style: TextButton.styleFrom(
-          foregroundColor: WeekPactColors.cream,
-          disabledForegroundColor: WeekPactColors.darkMuted,
-        ),
-        child: const Text('RETAKE PHOTO'),
-      ),
-    ],
+    ),
   );
 }
 

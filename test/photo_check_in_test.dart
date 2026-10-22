@@ -279,36 +279,46 @@ void main() {
       expect(find.byType(PhotoCheckInPage), findsNothing);
     },
   );
-  testWidgets('the drawer pulls down to dismiss, but not while saving', (
+  testWidgets('each step is its own page, and back is the step before', (
     tester,
   ) async {
     final saving = Completer<void>();
     await openDrawer(
       tester,
+      takePicture: false,
       capture: captureTestCheckInPhoto,
       save: (_) => saving.future,
     );
-    await submitTestPhoto(tester);
-    // Mid-save the pull is swallowed: the drawer stays where it is.
-    await tester.fling(
-      find.byType(PhotoCheckInPage),
-      const Offset(0, 600),
-      2000,
-    );
-    await tester.pumpUi();
+    // The camera is a page of its own, rising over the one it came from.
     expect(find.byType(PhotoCheckInPage), findsOneWidget);
+    expect(find.text('Open'), findsNothing);
+    await takeTestPhoto(tester);
+    // The picture pushes the next page; the camera waits underneath.
+    expect(find.byType(PhotoCheckInReviewPage), findsOneWidget);
+    expect(find.byType(PhotoCheckInPage), findsNothing);
+    // Back is a retake.
+    await tester.tap(find.byTooltip('Retake photo'));
+    await tester.pumpUi();
+    expect(find.byType(PhotoCheckInReviewPage), findsNothing);
+    expect(find.byType(PhotoCheckInPage), findsOneWidget);
+    await takeTestPhoto(tester);
+    await submitTestPhoto(tester);
+    // Mid-save, back is held: the page stays where it is.
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    await navigator.maybePop();
+    await tester.pumpUi();
+    expect(find.byType(PhotoCheckInReviewPage), findsOneWidget);
     saving.complete();
     await tester.pumpUi();
+    // A saved check-in closes the whole flow, not just its last page.
+    expect(find.byType(PhotoCheckInReviewPage), findsNothing);
     expect(find.byType(PhotoCheckInPage), findsNothing);
-    // Idle, the same pull closes it without a check-in.
+    expect(find.text('Open'), findsOneWidget);
+    // Idle, back from the camera closes it without a check-in.
     await tester.tap(find.text('Open'));
     await tester.pumpUi();
     expect(find.byType(PhotoCheckInPage), findsOneWidget);
-    await tester.fling(
-      find.byType(PhotoCheckInPage),
-      const Offset(0, 600),
-      2000,
-    );
+    await navigator.maybePop();
     await tester.pumpUi();
     expect(find.byType(PhotoCheckInPage), findsNothing);
     expect(tester.takeException(), isNull);

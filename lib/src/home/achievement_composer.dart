@@ -8,20 +8,23 @@ import 'package:supabase_flutter/supabase_flutter.dart' show StorageException;
 
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
-import '../widgets/app_sheet.dart';
+import '../widgets/app_icon.dart';
+import '../widgets/page_frame.dart';
 import '../widgets/squircle_button_border.dart';
+import 'check_in_camera.dart';
 import 'check_in_gallery.dart';
 import 'home_backend.dart';
 import 'photo_check_in_page.dart';
 import 'stories.dart';
 
-/// Posts an achievement to [crewId]: a win outside any pact, for the crew's
-/// rail today. Completes with what was posted, or null when it was put away.
+/// Posts a story — or an achievement — to [crewId], for the crew's rail
+/// today. Completes with what was posted, or null when it was put away.
 ///
-/// The camera comes first, as a story's does: the same drawer a photo
-/// check-in opens. Every achievement carries a picture, so there is no way
-/// past it; the words follow, under the picture just taken. Put the camera
-/// away and nothing is started.
+/// Two pages on the stack, the way a photo check-in is: the camera first, the
+/// same one a check-in opens, then [StoryComposerPage] with the picture just
+/// taken. Every post carries a picture, so there is no way past the camera;
+/// backing out of the words is a retake, and closing the camera starts
+/// nothing.
 Future<Achievement?> composeAchievement({
   required BuildContext context,
   required HomeBackend backend,
@@ -30,80 +33,36 @@ Future<Achievement?> composeAchievement({
   required String today,
   CheckInPhotoCapture? capturePhoto,
   CheckInPhotoCapture pickPhoto = pickCheckInPhoto,
-}) async {
-  final photo = await takeAchievementPhoto(
-    context,
+}) => presentPhotoCheckIn<Achievement>(
+  context,
+  (_) => CameraStep<Achievement>(
+    title: 'Post a story',
     capturePhoto: capturePhoto,
     pickPhoto: pickPhoto,
-  );
-  if (photo == null || !context.mounted) return null;
-  return showAchievementComposer(
-    context: context,
-    backend: backend,
-    crewId: crewId,
-    crewName: crewName,
-    today: today,
-    photo: photo,
-    capturePhoto: capturePhoto,
-    pickPhoto: pickPhoto,
-  );
-}
-
-/// The camera drawer, for an achievement. Null when it was put away.
-Future<Uint8List?> takeAchievementPhoto(
-  BuildContext context, {
-  CheckInPhotoCapture? capturePhoto,
-  CheckInPhotoCapture pickPhoto = pickCheckInPhoto,
-}) async {
-  Uint8List? taken;
-  final done = await presentPhotoCheckIn(
-    context,
-    (_) => PhotoCheckInPage(
-      pactTitle: 'Post a story',
-      submitLabel: 'NEXT',
-      capturePhoto: capturePhoto,
-      pickPhoto: pickPhoto,
-      save: (bytes) async => taken = bytes,
-    ),
-  );
-  return done == true ? taken : null;
-}
-
-/// The words step: what the achievement says, under the picture it carries.
-/// The picture can still be retaken here, never taken off.
-Future<Achievement?> showAchievementComposer({
-  required BuildContext context,
-  required HomeBackend backend,
-  required String crewId,
-  required String crewName,
-  required String today,
-  required Uint8List photo,
-  CheckInPhotoCapture? capturePhoto,
-  CheckInPhotoCapture pickPhoto = pickCheckInPhoto,
-}) => showAppSheet<Achievement>(
-  context: context,
-  builder: (context) => AppSheet(
-    builder: (context) => _AchievementComposer(
-      backend: backend,
-      crewId: crewId,
-      crewName: crewName,
-      today: today,
-      photo: photo,
-      capturePhoto: capturePhoto,
-      pickPhoto: pickPhoto,
+    next: (context, photo) => Navigator.of(context).push<Achievement>(
+      MaterialPageRoute<Achievement>(
+        builder: (_) => StoryComposerPage(
+          backend: backend,
+          crewId: crewId,
+          crewName: crewName,
+          today: today,
+          photo: photo,
+        ),
+      ),
     ),
   ),
 );
 
-class _AchievementComposer extends StatefulWidget {
-  const _AchievementComposer({
+/// The second page of a post: the picture, the toggle between a plain story
+/// and an achievement, and the words. Back is the camera again.
+class StoryComposerPage extends StatefulWidget {
+  const StoryComposerPage({
+    super.key,
     required this.backend,
     required this.crewId,
     required this.crewName,
     required this.today,
     required this.photo,
-    this.capturePhoto,
-    this.pickPhoto = pickCheckInPhoto,
   });
 
   final HomeBackend backend;
@@ -111,16 +70,15 @@ class _AchievementComposer extends StatefulWidget {
   final String crewName;
   final String today;
 
-  /// The picture the camera step took.
-  final Uint8List photo;
-  final CheckInPhotoCapture? capturePhoto;
-  final CheckInPhotoCapture pickPhoto;
+  /// The picture the camera step took, prepared for upload the way a
+  /// check-in's is.
+  final CapturedPhoto photo;
 
   @override
-  State<_AchievementComposer> createState() => _AchievementComposerState();
+  State<StoryComposerPage> createState() => _StoryComposerPageState();
 }
 
-class _AchievementComposerState extends State<_AchievementComposer> {
+class _StoryComposerPageState extends State<StoryComposerPage> {
   final _form = GlobalKey<FormState>();
   final _text = TextEditingController();
   bool _posting = false;
@@ -129,10 +87,6 @@ class _AchievementComposerState extends State<_AchievementComposer> {
   /// What the post is: a win, or a plain story. Picked on the toggle above
   /// the words, and a plain story until it is.
   PostKind _kind = PostKind.story;
-
-  /// The picture taken for this achievement, ready for upload. The camera
-  /// prepares it exactly as it prepares a check-in's.
-  late Uint8List _photo = widget.photo;
 
   @override
   void initState() {
@@ -148,16 +102,8 @@ class _AchievementComposerState extends State<_AchievementComposer> {
 
   int get _length => _text.text.trim().characters.length;
 
-  /// Back to the camera for a retake. Putting it away keeps the picture
-  /// that was here.
-  Future<void> _retake() async {
-    if (_posting) return;
-    final photo = await takeAchievementPhoto(
-      context,
-      capturePhoto: widget.capturePhoto,
-      pickPhoto: widget.pickPhoto,
-    );
-    if (mounted && photo != null) setState(() => _photo = photo);
+  void _retake() {
+    if (!_posting) Navigator.of(context).maybePop();
   }
 
   Future<void> _post() async {
@@ -171,7 +117,7 @@ class _AchievementComposerState extends State<_AchievementComposer> {
         crewId: widget.crewId,
         text: _text.text.trim(),
         today: widget.today,
-        photo: _photo,
+        photo: await widget.photo.prepared,
         kind: _kind,
       );
       if (!mounted) return;
@@ -201,102 +147,135 @@ class _AchievementComposerState extends State<_AchievementComposer> {
   @override
   Widget build(BuildContext context) {
     final over = _length > Achievement.maxLength;
-    return Form(
-      key: _form,
-      child: Column(
-        key: const ValueKey('achievement-composer'),
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _PhotoPreview(
-            key: const ValueKey('achievement-photo'),
-            bytes: _photo,
-            kind: _kind,
-            onRetake: _posting ? null : _retake,
-          ),
-          const SizedBox(height: 14),
-          PostKindToggle(
-            key: const ValueKey('post-kind'),
-            value: _kind,
-            onChanged: _posting
-                ? null
-                : (kind) {
-                    unawaited(
-                      HapticFeedback.selectionClick().catchError((Object _) {}),
-                    );
-                    setState(() => _kind = kind);
+    return PopScope(
+      canPop: !_posting,
+      child: Scaffold(
+        body: Form(
+          key: _form,
+          child: PageFrame(
+            header: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Back to camera',
+                  onPressed: _posting ? null : _retake,
+                  icon: const AppIcon(icon: HugeIconsStrokeRounded.arrowLeft01),
+                ),
+                Expanded(
+                  child: Text(
+                    'New story',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                // Balances the button so the title sits in the middle.
+                const SizedBox(width: 48),
+              ],
+            ),
+            footer: AppButton(
+              key: const ValueKey('post-achievement'),
+              label: _posting ? 'POSTING…' : 'POST',
+              isLoading: _posting,
+              onPressed: _length == 0 || over || _posting ? null : _post,
+            ),
+            child: Column(
+              key: const ValueKey('achievement-composer'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _PhotoPreview(
+                  key: const ValueKey('achievement-photo'),
+                  bytes: widget.photo.preview,
+                  kind: _kind,
+                  onRetake: _posting ? null : _retake,
+                ),
+                const SizedBox(height: 14),
+                PostKindToggle(
+                  key: const ValueKey('post-kind'),
+                  value: _kind,
+                  onChanged: _posting
+                      ? null
+                      : (kind) {
+                          unawaited(
+                            HapticFeedback.selectionClick().catchError(
+                              (Object _) {},
+                            ),
+                          );
+                          setState(() => _kind = kind);
+                        },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  switch (_kind) {
+                    PostKind.achievement => 'What did you achieve?',
+                    PostKind.story => 'What’s the story?',
                   },
-          ),
-          const SizedBox(height: 16),
-          Text(
-            switch (_kind) {
-              PostKind.achievement => 'What did you achieve?',
-              PostKind.story => 'What’s the story?',
-            },
-            style: TextStyle(
-              color: context.ink,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    color: context.ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${switch (_kind) {
+                    PostKind.achievement => 'A win outside your pacts.',
+                    PostKind.story => 'A moment from your day.',
+                  }} ${widget.crewName.trim().isEmpty ? 'Your crew' : widget.crewName.trim()} '
+                  'sees it in today’s stories, and can clap for it.',
+                  style: TextStyle(
+                    color: context.muted,
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  key: const ValueKey('achievement-text'),
+                  hint: switch (_kind) {
+                    PostKind.achievement => 'Climbed my first 6c',
+                    PostKind.story => 'Sunrise on the morning run',
+                  },
+                  controller: _text,
+                  minLines: 3,
+                  maxLines: 5,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  validator: (value) {
+                    final text = value?.trim() ?? '';
+                    if (text.isEmpty) return 'Say a few words about it.';
+                    if (text.characters.length > Achievement.maxLength) {
+                      return 'Keep it to ${Achievement.maxLength} characters.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$_length / ${Achievement.maxLength}',
+                    style: TextStyle(
+                      fontFamily: WeekPactType.secondary,
+                      fontFamilyFallback: WeekPactType.secondaryFallback,
+                      fontSize: 12,
+                      color: over ? context.errorInk : context.muted,
+                    ),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: context.errorInk, fontSize: 13),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${switch (_kind) {
-              PostKind.achievement => 'A win outside your pacts.',
-              PostKind.story => 'A moment from your day.',
-            }} ${widget.crewName.trim().isEmpty ? 'Your crew' : widget.crewName.trim()} '
-            'sees it in today’s stories, and can clap for it.',
-            style: TextStyle(color: context.muted, fontSize: 14, height: 1.35),
-          ),
-          const SizedBox(height: 16),
-          AppTextField(
-            key: const ValueKey('achievement-text'),
-            hint: switch (_kind) {
-              PostKind.achievement => 'Climbed my first 6c',
-              PostKind.story => 'Sunrise on the morning run',
-            },
-            controller: _text,
-            minLines: 3,
-            maxLines: 5,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            validator: (value) {
-              final text = value?.trim() ?? '';
-              if (text.isEmpty) return 'Say a few words about it.';
-              if (text.characters.length > Achievement.maxLength) {
-                return 'Keep it to ${Achievement.maxLength} characters.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$_length / ${Achievement.maxLength}',
-              style: TextStyle(
-                fontFamily: WeekPactType.secondary,
-                fontFamilyFallback: WeekPactType.secondaryFallback,
-                fontSize: 12,
-                color: over ? context.errorInk : context.muted,
-              ),
-            ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: TextStyle(color: context.errorInk, fontSize: 13),
-            ),
-          ],
-          const SizedBox(height: 16),
-          AppButton(
-            key: const ValueKey('post-achievement'),
-            label: _posting ? 'POSTING…' : 'POST',
-            isLoading: _posting,
-            onPressed: _length == 0 || over || _posting ? null : _post,
-          ),
-        ],
+        ),
       ),
     );
   }
