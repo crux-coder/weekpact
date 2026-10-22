@@ -1,3 +1,4 @@
+import '../widgets/app_components.dart';
 import '../widgets/avatar_shape.dart';
 import '../crew/crew_streak_card.dart';
 import '../crew/crew_switcher.dart';
@@ -391,9 +392,10 @@ class CrewTodayBar extends StatelessWidget {
   /// as a chart rather than as the week's door, so the row kept its own.
   static const height = 80.0;
 
-  /// The inset the row keeps off the surface's edge. Tighter at the right,
-  /// where the chevron already carries its own optical margin.
-  static const _inset = EdgeInsets.fromLTRB(14, 12, 10, 12);
+  /// The inset the row keeps off the surface's edge. The handle at the right
+  /// is a solid shape with no optical margin of its own, so it gets the same
+  /// room the first day does.
+  static const _inset = EdgeInsets.fromLTRB(14, 12, 14, 12);
 
   /// One day's column, and the gap between it and its letter. The column takes
   /// the height the row gained: a taller bar is a finer reading of the day,
@@ -609,44 +611,61 @@ class CrewTodayBar extends StatelessWidget {
     );
   }
 
-  /// The handle into the week, past the hairline that separates the picture
-  /// from the thing you press.
+  /// The handle into the week: a raised squircle with an arrow, in the green
+  /// a kept day wears, standing in the row as one more column with "WEEK"
+  /// under it where a day has its letter.
   ///
-  /// It carried today's count as `2/4` over `TODAY` and no longer does: the
-  /// ringed column already draws that figure, and a number beside a picture of
-  /// the same number is the sentence this row was built to replace, set
-  /// smaller. What is left is where the press goes.
-  Widget _door(BuildContext context, bool open) => Container(
-    margin: const EdgeInsets.only(left: 11),
-    padding: const EdgeInsets.only(left: 11),
-    decoration: BoxDecoration(
-      border: Border(
-        left: BorderSide(color: context.ink.withValues(alpha: .14)),
-      ),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Crew week',
-          maxLines: 1,
-          style: TextStyle(
-            color: context.muted,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+  /// It was "Crew week" and a chevron behind a hairline, muted, and read as a
+  /// caption rather than as something to press. The whole row still opens the
+  /// week; this is where the eye is told so. A row that opens nothing draws no
+  /// handle at all.
+  Widget _door(BuildContext context, bool open) {
+    if (!open) return const SizedBox.shrink();
+    final (fill, _) = _keptColors(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 10),
+      child: Column(
+        key: const ValueKey('crew-week-door'),
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // The face is the track less its raised edge, so the edge lands on
+          // the line the days' troughs stand on and the tops meet too.
+          SizedBox(
+            width: _doorWidth,
+            height: _trackHeight - _depth,
+            child: AppSurface(
+              fillColor: fill,
+              borderRadius: 10,
+              builder: (context) => const Center(
+                child: HugeIcon(
+                  icon: HugeIconsStrokeRounded.arrowRight01,
+                  color: WeekPactColors.black,
+                  size: 26,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
           ),
-        ),
-        if (open) ...[
-          const SizedBox(width: 2),
-          HugeIcon(
-            icon: HugeIconsStrokeRounded.arrowRight01,
-            color: context.muted,
-            size: 18,
+          const SizedBox(height: _depth + _labelGap),
+          Text(
+            'WEEK',
+            maxLines: 1,
+            style: TextStyle(
+              color: context.ink,
+              fontSize: 10,
+              height: 1,
+              letterSpacing: .6,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
-      ],
-    ),
-  );
+      ),
+    );
+  }
+
+  /// The handle's width: wider than a day, so it reads as the row's control
+  /// rather than as an eighth day.
+  static const _doorWidth = 46.0;
 
   /// The row while the week loads: the seven columns' places, drawn as
   /// troughs, and the tally's. No handle — there is nothing yet to open.

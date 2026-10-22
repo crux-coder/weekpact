@@ -6,6 +6,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'clap_control.dart';
 import '../pacts/pact_icons.dart';
+import '../theme/status_bar_blur.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/pact_icon_badge.dart';
@@ -191,7 +192,9 @@ class _StoryViewerState extends State<StoryViewer> {
             widget.onSeen?.call(_current);
           },
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            // The progress and the name start where the status bar's blur has
+            // trailed off, so they read sharp rather than frosted.
+            padding: const EdgeInsets.fromLTRB(12, StatusBarBlur.fade, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

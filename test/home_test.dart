@@ -330,7 +330,7 @@ void main() {
     // day — with today's count beside it. The sentence it used to spell out is
     // what a screen reader still hears.
     expect(find.byKey(const ValueKey('crew-today-bar')), findsOneWidget);
-    expect(find.text('Crew week'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-door')), findsOneWidget);
     // The columns carry the count; nothing beside them repeats it in figures.
     expect(find.text('1/2'), findsNothing);
     expect(find.text('1 of 2 checked in today'), findsNothing);

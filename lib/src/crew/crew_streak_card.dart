@@ -160,8 +160,10 @@ class CrewStreakCard extends StatelessWidget {
                     children: [
                       const Text('View month'),
                       const SizedBox(width: 2),
+                      // Down, not right: the month opens as a sheet over Home,
+                      // not as a page Home is left for.
                       HugeIcon(
-                        icon: HugeIconsStrokeRounded.arrowRight01,
+                        icon: HugeIconsStrokeRounded.arrowDown01,
                         size: 16,
                         color: context.ink,
                         strokeWidth: 2,

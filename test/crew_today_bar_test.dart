@@ -136,7 +136,8 @@ void main() {
     expect(fill(tester, '2026-09-09')!.height, 9);
     // The columns are the count. Nothing beside them says it again in figures.
     expect(find.text('1/4'), findsNothing);
-    expect(find.text('Crew week'), findsOneWidget);
+    // A bar that opens nothing wears no handle.
+    expect(find.byKey(const ValueKey('crew-week-door')), findsNothing);
   });
 
   testWidgets('one person out of a large crew is never drawn as nobody', (
@@ -202,7 +203,8 @@ void main() {
       find.bySemanticsLabel('2 of 4 checked in today, open the crew week'),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('open-crew-week')));
+    expect(find.byKey(const ValueKey('crew-week-door')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('crew-week-door')));
     expect(opened, 1);
 
     // The same week with nowhere to go says the count and stops there.
@@ -215,7 +217,6 @@ void main() {
       ),
     );
     expect(find.bySemanticsLabel('2 of 4 checked in today'), findsOneWidget);
-    expect(find.text('Crew week'), findsOneWidget);
     semantics.dispose();
   });
 
@@ -228,7 +229,7 @@ void main() {
       CrewTodayBar.height,
     );
     // No handle while there is nothing to open, and no label promising one.
-    expect(find.text('Crew week'), findsNothing);
+    expect(find.byKey(const ValueKey('crew-week-door')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

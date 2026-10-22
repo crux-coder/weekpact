@@ -19,14 +19,15 @@ class StatusBarBlur extends StatefulWidget {
 
   final Widget child;
 
+  /// How far below the status bar the blur trails off. Anything that must stay
+  /// sharp at the top of a screen starts at least this far below the bar.
+  static const fade = 28.0;
+
   @override
   State<StatusBarBlur> createState() => _StatusBarBlurState();
 }
 
 class _StatusBarBlurState extends State<StatusBarBlur> {
-  /// How far below the status bar the blur trails off.
-  static const _fade = 28.0;
-
   /// The blur behind the status bar, in logical pixels.
   static const _sigma = 10.0;
 
@@ -55,7 +56,7 @@ class _StatusBarBlurState extends State<StatusBarBlur> {
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
     if (top == 0) return widget.child;
-    final height = top + _fade;
+    final height = top + StatusBarBlur.fade;
     final canvas = context.canvas;
     final program = _program;
     return Stack(
