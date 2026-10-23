@@ -262,9 +262,17 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
       appBar: AppBar(
         title: Text(widget.solo ? 'Start solo' : 'Start your crew'),
       ),
+      // The form runs on under the home indicator rather than stopping at
+      // the safe area; the padding keeps its end clear.
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            20 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),

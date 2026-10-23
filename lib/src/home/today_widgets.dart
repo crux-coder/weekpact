@@ -3,11 +3,8 @@ import '../widgets/avatar_shape.dart';
 import '../crew/crew_streak_card.dart';
 import '../crew/crew_switcher.dart';
 
-import 'dart:async';
-
-import 'package:flutter/services.dart';
-
 import 'home_surface.dart';
+import 'pact_deck.dart';
 import '../theme/weekpact_theme.dart';
 
 import 'dart:math' as math;
@@ -16,9 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-import '../pacts/pact_icons.dart';
 import '../pacts/pacts_backend.dart';
-import '../widgets/pact_icon_badge.dart';
 import '../widgets/page_frame.dart';
 import '../widgets/dashed_border.dart';
 import 'home_backend.dart';
@@ -35,22 +30,11 @@ const _doneFill = WeekPactColors.cream;
 const _segmentHeight = 16.0;
 const _doneMark = WeekPactColors.doneMark;
 
-/// The pact's icon badge on the card: the card tint is too quiet to tell two
-/// pacts apart on its own, so this is what does. See [PactIconBadge].
-const _iconBadge = 56.0;
-
-/// The height the card keeps for a pact's name, whatever that name is.
-///
-/// A constant, not the title's natural height: the card scales its whole face
-/// to whatever Home gives it, and the scale is computed from one content
-/// height for every card in the stack. If the title box grew with the name,
-/// a four-line pact would push the number and the button past the bottom of a
-/// box sized for a one-line one. 80 is four lines at the size four lines end
-/// up at, and a single line still sets at the full display size inside it.
-const _titleBudget = 80.0;
-
-/// The gap between the name and the count below it.
-const _titleGap = 10.0;
+/// The card's measures above its body, shared with the crew week's cards
+/// through [PactCardFace].
+const _iconBadge = PactCardFace.iconBadge;
+const _titleBudget = PactCardFace.titleBudget;
+const _titleGap = PactCardFace.titleGap;
 
 /// The count's own type: the kept-days number, and the caption under it.
 const _countSize = 76.0;
@@ -215,69 +199,6 @@ class _CrewFace extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// A title at the largest size that still fits the box it is given.
-///
-/// A pact is named by the person who made it, so the card cannot assume the
-/// name is short. Holding one display size and cutting what does not fit means
-/// "Walk the dog around the park before work" arrives as "Walk the dog around
-/// the…" — the card keeps its type scale and loses the pact's meaning.
-/// Stepping the size down keeps the whole name, and only a name too long to
-/// fit even at [minFontSize] takes the ellipsis.
-class _FittedTitle extends StatelessWidget {
-  const _FittedTitle({required this.text, required this.style});
-
-  final String text;
-
-  /// The title's type, at the size a short name gets. [TextStyle.fontSize]
-  /// must be set: it is the ceiling the fit steps down from.
-  final TextStyle style;
-
-  static const maxLines = 4;
-
-  /// The floor. Below this the title stops being the card's headline, so a
-  /// name that still does not fit is cut instead.
-  static const minFontSize = 15.0;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final scaler = MediaQuery.textScalerOf(context);
-      var size = style.fontSize!;
-      // A whole point at a time, not a binary search: the range is ten points
-      // wide, and a round size keeps two cards in the same stack on the same
-      // type scale instead of landing on 21.4 and 21.9.
-      while (size > minFontSize &&
-          !_fits(context, scaler, size, constraints.biggest)) {
-        size -= 1;
-      }
-      return Text(
-        text,
-        maxLines: maxLines,
-        overflow: TextOverflow.ellipsis,
-        style: style.copyWith(fontSize: size),
-      );
-    },
-  );
-
-  /// Both bounds have to hold. [maxLines] alone would let four lines of 25pt
-  /// through, which is half again the height the card keeps for a name;
-  /// height alone would let a name set as one endless line.
-  bool _fits(BuildContext context, TextScaler scaler, double size, Size box) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: style.copyWith(fontSize: size),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: scaler,
-      maxLines: maxLines,
-    )..layout(maxWidth: box.width);
-    final fits = !painter.didExceedMaxLines && painter.height <= box.height;
-    painter.dispose();
-    return fits;
   }
 }
 
@@ -1172,7 +1093,7 @@ class _Podium extends StatelessWidget {
   );
 }
 
-class TodayPactsCard extends StatefulWidget {
+class TodayPactsCard extends StatelessWidget {
   const TodayPactsCard({
     super.key,
     required this.week,
@@ -1182,235 +1103,43 @@ class TodayPactsCard extends StatefulWidget {
     required this.onToggle,
   });
 
-  /// The row of dots under the cards, and the gap above it: how many pacts
-  /// there are and which one is in front. The loading skeleton keeps the same
-  /// room, so the cards stand in the same place either way.
-  static const dotsHeight = 8.0;
-  static const dotsGap = 12.0;
-
   final double? height;
   final CrewWeek week;
   final String userId;
   final String? savingPact;
   final ValueChanged<String>? onToggle;
-  @override
-  State<TodayPactsCard> createState() => _TodayPactsCardState();
-}
-
-/// The crew's pacts as a cover flow: the focused card is exactly as wide as
-/// the cards above it, and the ones either side shrink and dim, with only a
-/// sliver of each showing in the page's margin.
-class _TodayPactsCardState extends State<TodayPactsCard> {
-  /// How much a neighbour shrinks, and how far past the content's edge it
-  /// starts. The page margin is 12, so 4 in leaves an 8pt sliver showing.
-  static const _shrink = .14;
-  static const _gap = 4.0;
-
-  /// Each page a hair narrower than the box, so the pages either side reach
-  /// into it and get painted: a page wholly outside its viewport is not
-  /// drawn, and the slivers would never show. The card itself is still laid
-  /// out at the full width, over its page.
-  static const _fraction = .98;
-  final _controller = PageController(viewportFraction: _fraction);
-  int _index = 0;
-  List<CrewPact> get _pacts => widget.week.pacts;
-
-  @override
-  void didUpdateWidget(covariant TodayPactsCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_pacts.isEmpty) {
-      _index = 0;
-      return;
-    }
-    // Stay on the same pact when the list changes under it.
-    final previousId = _index < oldWidget.week.pacts.length
-        ? oldWidget.week.pacts[_index].id
-        : null;
-    final retainedIndex = _pacts.indexWhere((pact) => pact.id == previousId);
-    final nextIndex = retainedIndex >= 0
-        ? retainedIndex
-        : math.min(_index, _pacts.length - 1);
-    if (nextIndex != _index) {
-      _index = nextIndex;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _controller.hasClients) _controller.jumpToPage(_index);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final pacts = _pacts;
+    final pacts = week.pacts;
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    final height = widget.height ?? (248 + math.max(0.0, scale - 1) * 200);
-    final checked = widget.week.checkedToday(widget.userId);
+    final deckHeight = height ?? (248 + math.max(0.0, scale - 1) * 200);
+    final checked = week.checkedToday(userId);
     return SizedBox(
-      height: height,
-      child: Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, box) => PageView.builder(
-                key: const ValueKey('pact-stack'),
-                controller: _controller,
-                // The card's raised edge and its completion pop reach past its box.
-                clipBehavior: Clip.none,
-                itemCount: pacts.length,
-                onPageChanged: (index) {
-                  setState(() => _index = index);
-                  unawaited(
-                    HapticFeedback.mediumImpact().catchError((Object _) {}),
-                  );
-                },
-                itemBuilder: (context, index) => AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    final ready =
-                        _controller.hasClients &&
-                        _controller.position.haveDimensions;
-                    final page = ready ? _controller.page! : _index.toDouble();
-                    final d = index - page;
-                    final away = d.abs().clamp(0.0, 1.0);
-                    // Shrunk about its centre, then moved so its near edge sits
-                    // [_gap] past the focused card's, which holds mid-swipe too.
-                    final width = box.maxWidth;
-                    return Transform.translate(
-                      offset: Offset(
-                        d * (width * (1 - _fraction - _shrink / 2) + _gap),
-                        0,
-                      ),
-                      child: Transform.scale(
-                        scale: 1 - _shrink * away,
-                        child: Opacity(
-                          opacity: 1 - .35 * away,
-                          child: IgnorePointer(
-                            ignoring: away > .5,
-                            child: ExcludeSemantics(
-                              excluding: away > .5,
-                              child: child,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                  child: OverflowBox(
-                    minWidth: box.maxWidth,
-                    maxWidth: box.maxWidth,
-                    child: _PactCompletionEffect(
-                      key: ValueKey('completion-${pacts[index].id}'),
-                      completed: checked.contains(pacts[index].id),
-                      child: _PactCard(
-                        key: ValueKey(pacts[index].id),
-                        pact: pacts[index],
-                        week: widget.week,
-                        userId: widget.userId,
-                        color: WeekPactColors.pactTint(index),
-                        badge: WeekPactColors.pactBadge(index),
-                        busy: widget.savingPact == pacts[index].id,
-                        onToggle:
-                            widget.savingPact != null || widget.onToggle == null
-                            ? null
-                            : () => widget.onToggle!(pacts[index].id),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+      height: deckHeight,
+      child: PactDeck(
+        deckKey: const ValueKey('pact-stack'),
+        ids: [for (final pact in pacts) pact.id],
+        itemBuilder: (context, index) => _PactCompletionEffect(
+          key: ValueKey('completion-${pacts[index].id}'),
+          completed: checked.contains(pacts[index].id),
+          child: _PactCard(
+            key: ValueKey(pacts[index].id),
+            pact: pacts[index],
+            week: week,
+            userId: userId,
+            color: WeekPactColors.pactTint(index),
+            badge: WeekPactColors.pactBadge(index),
+            busy: savingPact == pacts[index].id,
+            onToggle: savingPact != null || onToggle == null
+                ? null
+                : () => onToggle!(pacts[index].id),
           ),
-          const SizedBox(height: TodayPactsCard.dotsGap),
-          _PactDots(
-            controller: _controller,
-            count: pacts.length,
-            index: _index,
-          ),
-        ],
+        ),
       ),
     );
   }
-}
-
-/// One dot per pact under the cards, the front one drawn long. It follows the
-/// swipe as it happens rather than snapping on release, and a dot is a way to
-/// its pact as well as a mark of it. A single pact gets no dots, but keeps
-/// their room.
-class _PactDots extends StatelessWidget {
-  const _PactDots({
-    required this.controller,
-    required this.count,
-    required this.index,
-  });
-
-  final PageController controller;
-  final int count;
-  final int index;
-
-  static const _dot = TodayPactsCard.dotsHeight;
-  static const _long = 18.0;
-  static const _gap = 6.0;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: _dot,
-    child: count < 2
-        ? null
-        : AnimatedBuilder(
-            animation: controller,
-            builder: (context, _) {
-              final page =
-                  controller.hasClients && controller.position.haveDimensions
-                  ? controller.page!
-                  : index.toDouble();
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < count; i++) ...[
-                      if (i > 0) const SizedBox(width: _gap),
-                      Tooltip(
-                        message: 'Pact ${i + 1} of $count',
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => MediaQuery.disableAnimationsOf(context)
-                              ? controller.jumpToPage(i)
-                              : controller.animateToPage(
-                                  i,
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
-                                ),
-                          child: _mark(
-                            context,
-                            (1 - (i - page).abs()).clamp(0.0, 1.0),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            },
-          ),
-  );
-
-  /// A dot at [front] of the way to being the front one: longer and fully
-  /// inked at 1, a short faint dot at 0.
-  Widget _mark(BuildContext context, double front) => Container(
-    width: _dot + (_long - _dot) * front,
-    height: _dot,
-    decoration: BoxDecoration(
-      color: context.ink.withValues(alpha: .25 + .75 * front),
-      borderRadius: WeekPactMetrics.pill,
-    ),
-  );
 }
 
 class _PactCompletionEffect extends StatefulWidget {
@@ -1513,246 +1242,158 @@ class _PactCard extends StatelessWidget {
     // every card tint instead of fighting the warm ones. Its edge is mixed from
     // the card's own colour, which keeps the raised edge in family.
     final doneEdge = Color.lerp(color, Colors.black, .35)!;
-    return HomeSurface(
+    return PactCardFace(
+      pact: pact,
       tint: color,
-      radius: WeekPactMetrics.cardCorner,
-      raised: true,
-      depth: WeekPactMetrics.cardDepth,
-      shape: WeekPactMetrics.pactCardShape,
-      outlineColor: Color.lerp(color, Colors.black, .28),
-      padding: homeCardInset,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // What the card's content stands in before it is scaled to the
-          // height Home gives it. One number for every card, whatever state
-          // it is in: two cards in the same stack have to scale alike.
-          final minimumHeight =
-              _contentHeight +
-              math.max(0.0, MediaQuery.textScalerOf(context).scale(1) - 1) *
-                  228;
-          final shrink =
-              constraints.maxHeight /
-              math.max(minimumHeight, constraints.maxHeight);
-          final content = FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: SizedBox(
-              // Compensate for height scaling so the calendar and
-              // action still span the entire inner width of the active card.
-              width: constraints.maxWidth / shrink,
-              height: math.max(minimumHeight, constraints.maxHeight),
-              child: DefaultTextStyle.merge(
-                style: const TextStyle(color: _ink),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: _titleBudget,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Tooltip(
-                              message: pact.title,
-                              child: _FittedTitle(
-                                text: pact.title,
-                                style: const TextStyle(
-                                  fontSize: 25,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                          // What the badge takes out of the title's lines: its
-                          // box, and the gap before it. Nothing more — it is
-                          // drawn flush to the card's inset, so anything extra
-                          // here would be a word stolen from the name to hold
-                          // air.
-                          const SizedBox(width: _iconBadge + 12),
-                        ],
-                      ),
+      badge: badge,
+      bodyHeight:
+          _contentHeight - PactCardFace.titleBudget - PactCardFace.titleGap,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Align(
+              // The count and its bar sit down against the button,
+              // not centred in what the title leaves them: the bar
+              // is the button's own tally, so the two read as one
+              // block and a card that stands taller opens above
+              // them rather than between them.
+              alignment: Alignment.bottomLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // The count line, and nothing beside it. The
+                  // box to its right carried the crew's faces and
+                  // then a days-to-go figure, both of which repeated
+                  // what the rail and the bar already say; the
+                  // count scales down rather than overflowing when
+                  // large text runs the caption past the card.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: _CountRow(
+                      completed: completed,
+                      target: pact.daysPerWeek,
                     ),
-                    const SizedBox(height: _titleGap),
-                    Expanded(
-                      child: Align(
-                        // The count and its bar sit down against the button,
-                        // not centred in what the title leaves them: the bar
-                        // is the button's own tally, so the two read as one
-                        // block and a card that stands taller opens above
-                        // them rather than between them.
-                        alignment: Alignment.bottomLeft,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // The count line, and nothing beside it. The
-                            // box to its right carried the crew's faces and
-                            // then a days-to-go figure, both of which repeated
-                            // what the rail and the bar already say; the
-                            // count scales down rather than overflowing when
-                            // large text runs the caption past the card.
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: _CountRow(
-                                completed: completed,
-                                target: pact.daysPerWeek,
-                              ),
+                  ),
+                  const SizedBox(height: _captionToBar),
+                  Semantics(
+                    key: ValueKey('pact-progress-${pact.id}'),
+                    label: 'Weekly pact progress',
+                    value: '$completed of ${pact.daysPerWeek} days',
+                    child: Row(
+                      children: List.generate(
+                        pact.daysPerWeek,
+                        // Segments are cut to the same squircle as
+                        // the cards and cells around them, held to
+                        // half their height: a continuous corner
+                        // overshoots once it outgrows the box it is
+                        // cutting, and leaves ticks at the ends.
+                        (i) => Expanded(
+                          child: Container(
+                            height: _segmentHeight,
+                            margin: EdgeInsets.only(
+                              right: i == pact.daysPerWeek - 1 ? 0 : 5,
                             ),
-                            const SizedBox(height: _captionToBar),
-                            Semantics(
-                              key: ValueKey('pact-progress-${pact.id}'),
-                              label: 'Weekly pact progress',
-                              value: '$completed of ${pact.daysPerWeek} days',
-                              child: Row(
-                                children: List.generate(
-                                  pact.daysPerWeek,
-                                  // Segments are cut to the same squircle as
-                                  // the cards and cells around them, held to
-                                  // half their height: a continuous corner
-                                  // overshoots once it outgrows the box it is
-                                  // cutting, and leaves ticks at the ends.
-                                  (i) => Expanded(
-                                    child: Container(
-                                      height: _segmentHeight,
-                                      margin: EdgeInsets.only(
-                                        right: i == pact.daysPerWeek - 1
-                                            ? 0
-                                            : 5,
-                                      ),
-                                      decoration: ShapeDecoration(
-                                        color: i < completed
-                                            ? _ink
-                                            : _ink.withValues(alpha: .32),
-                                        shape: ContinuousRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            math.min(
-                                              WeekPactMetrics.curveFor(
-                                                WeekPactMetrics.controlRadius,
-                                              ),
-                                              _segmentHeight / 2,
-                                            ),
-                                          ),
-                                          side: i < completed
-                                              ? const BorderSide(
-                                                  color: WeekPactColors.inkEdge,
-                                                )
-                                              : BorderSide.none,
-                                        ),
-                                        // A day that is kept is raised on the
-                                        // same edge as the check-in button.
-                                        shadows: i < completed
-                                            ? const [
-                                                BoxShadow(
-                                                  color: WeekPactColors.inkEdge,
-                                                  offset: WeekPactMetrics
-                                                      .raisedOffset,
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
+                            decoration: ShapeDecoration(
+                              color: i < completed
+                                  ? _ink
+                                  : _ink.withValues(alpha: .32),
+                              shape: ContinuousRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  math.min(
+                                    WeekPactMetrics.curveFor(
+                                      WeekPactMetrics.controlRadius,
                                     ),
+                                    _segmentHeight / 2,
                                   ),
                                 ),
+                                side: i < completed
+                                    ? const BorderSide(
+                                        color: WeekPactColors.inkEdge,
+                                      )
+                                    : BorderSide.none,
                               ),
+                              // A day that is kept is raised on the
+                              // same edge as the check-in button.
+                              shadows: i < completed
+                                  ? const [
+                                      BoxShadow(
+                                        color: WeekPactColors.inkEdge,
+                                        offset: WeekPactMetrics.raisedOffset,
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                    // The bar belongs to the count, not to the control: it is
-                    // the same fact the number states, drawn. So it sits with
-                    // the number and clears the button. This has to beat the
-                    // ~17px of air the caption's descender already leaves
-                    // above the bar — at 18 the two gaps matched and the bar
-                    // floated between them, reading as neither.
-                    const SizedBox(height: _barToAction),
-                    if (checked)
-                      _CompletedCheckIn(
-                        pactTitle: pact.title,
-                        busy: busy,
-                        onUndo: onToggle,
-                        edge: doneEdge,
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        decoration: const ShapeDecoration(
-                          shape: WeekPactMetrics.buttonShape,
-                          shadows: [
-                            BoxShadow(
-                              color: WeekPactColors.inkEdge,
-                              offset: WeekPactMetrics.raisedOffset,
-                            ),
-                          ],
-                        ),
-                        child: FilledButton.icon(
-                          key: ValueKey('check-in-${pact.title}'),
-                          onPressed: onToggle,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _ink,
-                            foregroundColor: homePaper,
-                            minimumSize: const Size(0, 48),
-                            shape: WeekPactMetrics.buttonShape.copyWith(
-                              side: const BorderSide(
-                                color: WeekPactColors.inkEdge,
-                              ),
-                            ),
-                          ),
-                          icon: busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : HugeIcon(
-                                  icon: HugeIconsStrokeRounded.circle,
-                                  size: 22,
-                                ),
-                          label: Text(
-                            'Check in',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontFamily: WeekPactType.secondary,
-                              fontFamilyFallback:
-                                  WeekPactType.secondaryFallback,
-                              fontSize: 17,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          );
-          // The badge is the card's own, at one size, and it scales with the
-          // rest of the face.
-          final iconSize = _iconBadge * shrink;
-          return Stack(
-            fit: StackFit.expand,
-            clipBehavior: Clip.none,
-            children: [
-              content,
-              Positioned(
-                right: 0,
-                top: 0,
-                child: IgnorePointer(
-                  child: PactIconBadge(
-                    key: ValueKey('pact-icon-${pact.id}'),
-                    icon: PactIcon.find(pact.iconKey).data,
-                    tint: badge,
-                    size: iconSize,
+          ),
+          // The bar belongs to the count, not to the control: it is
+          // the same fact the number states, drawn. So it sits with
+          // the number and clears the button. This has to beat the
+          // ~17px of air the caption's descender already leaves
+          // above the bar — at 18 the two gaps matched and the bar
+          // floated between them, reading as neither.
+          const SizedBox(height: _barToAction),
+          if (checked)
+            _CompletedCheckIn(
+              pactTitle: pact.title,
+              busy: busy,
+              onUndo: onToggle,
+              edge: doneEdge,
+            )
+          else
+            Container(
+              width: double.infinity,
+              decoration: const ShapeDecoration(
+                shape: WeekPactMetrics.buttonShape,
+                shadows: [
+                  BoxShadow(
+                    color: WeekPactColors.inkEdge,
+                    offset: WeekPactMetrics.raisedOffset,
+                  ),
+                ],
+              ),
+              child: FilledButton.icon(
+                key: ValueKey('check-in-${pact.title}'),
+                onPressed: onToggle,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _ink,
+                  foregroundColor: homePaper,
+                  minimumSize: const Size(0, 48),
+                  shape: WeekPactMetrics.buttonShape.copyWith(
+                    side: const BorderSide(color: WeekPactColors.inkEdge),
+                  ),
+                ),
+                icon: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : HugeIcon(icon: HugeIconsStrokeRounded.circle, size: 22),
+                label: Text(
+                  'Check in',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFamily: WeekPactType.secondary,
+                    fontFamilyFallback: WeekPactType.secondaryFallback,
+                    fontSize: 17,
                   ),
                 ),
               ),
-            ],
-          );
-        },
+            ),
+        ],
       ),
     );
   }
@@ -2026,17 +1667,17 @@ class _TodaySkeletonState extends State<TodaySkeleton>
                   ),
                 ),
               ),
-              const SizedBox(height: TodayPactsCard.dotsGap),
+              const SizedBox(height: PactDeck.dotsGap),
               SizedBox(
-                height: TodayPactsCard.dotsHeight,
+                height: PactDeck.dotsHeight,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     for (var i = 0; i < 3; i++) ...[
                       if (i > 0) const SizedBox(width: 6),
                       SkeletonBar(
-                        width: i == 0 ? 18 : TodayPactsCard.dotsHeight,
-                        height: TodayPactsCard.dotsHeight,
+                        width: i == 0 ? 18 : PactDeck.dotsHeight,
+                        height: PactDeck.dotsHeight,
                       ),
                     ],
                   ],

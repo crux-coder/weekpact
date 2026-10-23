@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew pact members</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Straight from weekpact_theme.dart */
+    --canvas:#2B302C; --ink:#191B19; --paper:#ECEDEA; --cream:#F5F6F5;
+    --dark-ink:#F3F5F2; --dark-muted:#B8BEB5; --ink-edge:#484848; --done-mark:#3F7A57;
+    --kept:#8CDCAC;
+    --t0:#FFB8BC; --b0:#FF99A1; --t1:#83E5BC; --b1:#54D6A5; --t3:#B7CEFF; --b3:#9ABAFF;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 120px; background:#101310; color:var(--dark-ink);
+    font-family:'Rubik',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1580px; margin:0 auto; }
+  h1 { font-size:30px; font-weight:700; letter-spacing:-.5px; margin:0 0 12px; }
+  .lede { margin:0 0 8px; color:var(--dark-muted); max-width:78ch; line-height:1.65; font-size:15px; }
+  .note { margin:0 0 36px; color:#7d857b; max-width:78ch; line-height:1.65; font-size:13.5px; }
+  .note b { color:var(--dark-muted); font-weight:600; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,760px),1fr)); gap:22px; }
+  .cell { background:#171A17; border:1px solid #262b26; border-radius:22px; padding:20px; }
+  .cellHead { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .cellHead h2 { font-size:17px; font-weight:600; margin:0; }
+  .key { font-size:10px; font-weight:700; letter-spacing:1.2px; color:#101310; background:var(--dark-muted);
+    padding:3px 7px; border-radius:5px; }
+  .key.pick { background:var(--kept); }
+  .cell > p { color:#9ba299; font-size:13px; line-height:1.6; margin:0 0 6px; max-width:70ch; }
+  .cost { color:#6e756c; font-size:12px; line-height:1.55; margin:0 0 16px; }
+  .cost b { color:#9ba299; font-weight:500; }
+  .stages { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; }
+  /* A 360pt phone less the 12pt page inset: a 336px card, the size Home draws. */
+  .stage { background:var(--canvas); border-radius:16px; padding:14px 12px 16px; width:360px; max-width:100%; }
+  .stageLabel { font-size:10px; font-weight:500; letter-spacing:1.4px; text-transform:uppercase;
+    color:#9aa398; margin:0 0 10px 2px; }
+
+  /* ---- the chassis: the card Home draws (PactCardFace) ---- */
+  .card { --edge:color-mix(in srgb,var(--t) 76%,#000); --line:color-mix(in srgb,var(--t) 72%,#000);
+    background:var(--t); color:var(--ink); border:1px solid var(--line); border-radius:20px;
+    box-shadow:0 3px 0 var(--edge); padding:12px; position:relative; }
+  .head { height:80px; display:flex; gap:12px; }
+  .head .ttl { flex:1; font-size:25px; line-height:1.15; font-weight:700; letter-spacing:-.3px; }
+  .badge { width:56px; height:56px; border-radius:18px; background:var(--b); flex:none;
+    border:1px solid color-mix(in srgb,var(--b) 70%,#000); box-shadow:0 3px 0 color-mix(in srgb,var(--b) 70%,#000);
+    display:flex; align-items:center; justify-content:center; }
+  .badge svg { width:28px; height:28px; }
+  /* The body: exactly the room Home's count, bar and button take. */
+  .body { height:184px; margin-top:10px; position:relative; overflow:hidden; }
+  .body.over::after { content:'overflows'; position:absolute; right:0; bottom:0; background:#c94f59; color:#fff;
+    font-size:10px; padding:2px 6px; border-radius:4px; }
+  .mut { color:rgba(25,27,25,.74); }
+
+  /* faces: the squircle AvatarShape, approximated */
+  .f { --s:34px; width:var(--s); height:var(--s); border-radius:32%; flex:none; position:relative;
+    display:flex; align-items:center; justify-content:center; font-size:calc(var(--s)*.36); font-weight:500;
+    color:var(--ink); background:var(--paper); background-size:cover; }
+  .f.photo { color:transparent; }
+  .f.hole { background:rgba(25,27,25,.24); }
+  .f.ring { box-shadow:0 0 0 2px var(--t); }
+  .f.you { box-shadow:0 0 0 2px var(--t), 0 0 0 4px var(--ink); }
+  .tick { position:absolute; right:-4px; bottom:-4px; width:16px; height:16px; border-radius:50%;
+    background:var(--done-mark); border:2px solid var(--t); display:flex; align-items:center; justify-content:center; }
+  .tick svg { width:9px; height:9px; }
+
+  /* ===== A. Crew count + faces ===== */
+  .A .count { display:flex; align-items:baseline; gap:6px; white-space:nowrap; }
+  .A .count .n { font-size:64px; font-weight:700; line-height:1; letter-spacing:-1px; }
+  .A .count .of { font-size:32px; font-weight:700; color:rgba(25,27,25,.74); }
+  .A .count .cap { font-size:17px; font-weight:500; color:rgba(25,27,25,.74); margin-left:4px; }
+  .A .faces { display:flex; flex-wrap:wrap; gap:8px 6px; margin-top:14px; }
+  .A .faceCol { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .A .pips { display:flex; gap:2px; }
+  .A .pips i { width:5px; height:5px; border-radius:2px; background:rgba(25,27,25,.25); }
+  .A .pips i.on { background:var(--ink); }
+
+  /* ===== B. Race track ===== */
+  .B .lane { position:relative; height:118px; margin-top:8px; }
+  .B .track { position:absolute; left:0; right:0; bottom:22px; height:12px; border-radius:6px; background:rgba(25,27,25,.18); }
+  .B .tick-mark { position:absolute; bottom:22px; width:2px; height:12px; background:rgba(25,27,25,.25); }
+  .B .finish { position:absolute; right:0; bottom:14px; width:14px; height:28px; border-radius:4px;
+    background:repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%) 0 0/7px 7px; }
+  .B .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); }
+  .B .pin .stem { width:2px; height:6px; background:var(--ink); }
+  .B .axis { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between;
+    font-size:11px; font-weight:500; color:rgba(25,27,25,.74); }
+  .B .lead { font-size:15px; font-weight:500; display:flex; justify-content:space-between; }
+  .B .lead b { font-weight:700; }
+
+  /* ===== C. Who came each day ===== */
+  .C .cols { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; height:184px; }
+  .C .col { display:flex; flex-direction:column; align-items:center; gap:4px; border-radius:12px; padding:4px 0 6px; }
+  .C .col.today { background:rgba(255,255,255,.55); box-shadow:inset 0 0 0 1px rgba(25,27,25,.15); }
+  .C .col .d { font-size:11px; font-weight:600; color:rgba(25,27,25,.74); }
+  .C .col .num { font-size:15px; font-weight:700; margin-bottom:2px; }
+  .C .col.future .num, .C .col.future .d { opacity:.45; }
+  .C .stack { display:flex; flex-direction:column; align-items:center; }
+  .C .stack .f { --s:28px; margin-top:-9px; box-shadow:0 0 0 2px var(--t); }
+  .C .stack .f:first-child { margin-top:0; }
+  .C .more { font-size:11px; font-weight:600; margin-top:3px; }
+
+  /* ===== D. Ranked rows, two columns ===== */
+  .D .list { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; }
+  .D .r { display:flex; align-items:center; gap:7px; height:30px; }
+  .D .r .f { --s:26px; font-size:10px; }
+  .D .r .nm { flex:1; min-width:0; font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .D .r .segs { display:flex; gap:2px; width:44px; }
+  .D .r .segs i { flex:1; height:8px; border-radius:3px; background:rgba(25,27,25,.22); }
+  .D .r .segs i.on { background:var(--ink); }
+  .D .r.done .nm::after { content:' ✓'; color:var(--done-mark); font-weight:700; }
+  .D .foot { position:absolute; left:0; right:0; bottom:0; font-size:12px; font-weight:500; color:rgba(25,27,25,.74);
+    display:flex; justify-content:space-between; }
+
+  /* ===== E. Dot matrix ===== */
+  .E .mx { display:grid; gap:3px 3px; align-items:center; }
+  .E .mx .h { font-size:10px; font-weight:600; text-align:center; color:rgba(25,27,25,.74); }
+  .E .mx .h.today { color:var(--ink); }
+  .E .mx .c { height:var(--ch); border-radius:5px; background:rgba(245,246,245,.55); }
+  .E .mx .c.fut { background:rgba(245,246,245,.25); }
+  .E .mx .c.on { background:var(--ink); }
+  .E .mx .c.tdy { box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .E .mx .f { --s:var(--ch); font-size:min(9px,calc(var(--ch)*.42)); line-height:1; border-radius:30%; overflow:hidden; }
+  .E .mx .tot { font-size:min(11px,var(--ch)); line-height:1; font-weight:600; text-align:right; }
+
+  /* ===== F. Today, then the week ===== */
+  .F .split { display:flex; flex-direction:column; gap:8px; }
+  .F .lbl { font-size:13px; font-weight:600; display:flex; justify-content:space-between; margin-bottom:4px; line-height:1.2; }
+  .F .lbl span { color:rgba(25,27,25,.74); font-weight:500; }
+  .F .row { display:flex; align-items:center; }
+  .F .row .f { margin-right:-6px; }
+  .F .row .f:last-child { margin-right:0; }
+  .F .nudge { margin-left:auto; height:30px; padding:0 12px; border-radius:12px; background:var(--ink); color:var(--paper);
+    font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; box-shadow:0 2px 0 var(--ink-edge); }
+  .F .bar { display:flex; height:16px; border-radius:6px; overflow:hidden; gap:2px; }
+  .F .bar i { background:var(--ink); }
+  .F .bar i.rest { background:rgba(25,27,25,.2); }
+
+  .rec { margin-top:28px; background:#171A17; border:1px solid #262b26; border-radius:22px; padding:20px 22px; max-width:900px; }
+  .rec h2 { margin:0 0 8px; font-size:18px; }
+  .rec p, .rec li { color:#b3bab1; font-size:14px; line-height:1.65; }
+  table { border-collapse:collapse; font-size:13px; margin-top:8px; width:100%; }
+  th, td { text-align:left; padding:7px 10px 7px 0; border-bottom:1px solid #262b26; color:#b3bab1; }
+  th { color:#7d857b; font-weight:500; font-size:11px; letter-spacing:1px; text-transform:uppercase; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Crew pact card — showing the whole crew</h1>
+  <p class="lede">The crew week's pact card is now Home's card: same size, tint, edge, 25pt title and 56pt badge. What's left
+    to decide is the body — <b>184pt tall</b>, the room Home spends on the count, bar and button. Today it's a
+    3-row calendar with a pager, so a 6-person crew is never seen at once.</p>
+  <p class="note">Every option is drawn at true phone scale on the real chassis, once with a <b>6-person crew</b> and once
+    with <b>14</b>, so you can see where each one breaks. Data per pact is what <code>CrewWeek.checkIns</code> already
+    carries (who, which pact, which day) — <b>none of these need backend work</b>. Pact: “Move for 30 min”, 5 days a week, today is Thursday.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="rec">
+    <h2>My pick: A, with C as the runner-up</h2>
+    <p><b>A · Crew count + faces</b> is the one that makes the crew card read as Home's card: the same big
+      <i>number / target · caption</i> line in the same type, then the faces where Home has the bar and button. Every
+      member is visible up to ~16, it says who has kept the pact this week at a glance, and the 5-pip strip under each
+      face carries the per-person count without a grid. It loses the day-by-day breakdown — that moves to tapping a face.</p>
+    <p><b>C · Who came each day</b> keeps the calendar's question (which days?) but answers it with faces, so it
+      reads well for a small crew; past ~5 a day it collapses into “+N” and stops naming people.</p>
+    <table>
+      <tr><th>Option</th><th>Fits 6</th><th>Fits 14</th><th>Answers</th><th>Loses</th></tr>
+      <tr><td>A · Count + faces</td><td>Yes</td><td>Yes (2 rows)</td><td>How's the crew doing; who's kept it</td><td>Which days</td></tr>
+      <tr><td>B · Race track</td><td>Yes</td><td>Crowds at the start</td><td>Who's ahead</td><td>Which days; names when bunched</td></tr>
+      <tr><td>C · Who came each day</td><td>Yes</td><td>“+N” per day</td><td>Which days, who</td><td>Per-person totals</td></tr>
+      <tr><td>D · Ranked rows</td><td>Yes</td><td>10 + “4 more”</td><td>Names and totals, ranked</td><td>Which days; the last few</td></tr>
+      <tr><td>E · Dot matrix</td><td>Yes</td><td>Yes, but tiny</td><td>Everything</td><td>Legibility past ~8</td></tr>
+      <tr><td>F · Today, then week</td><td>Yes</td><td>Faces overlap</td><td>Who's in today; nudge</td><td>Per-person week</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+const NAMES = ['You','Mirnes','Amar','Lejla','Dino','Sara','Emir','Hana','Tarik','Ajla','Kenan','Nina','Edin','Mia'];
+const PHOTO = [0,1,3,5,7,9,12]; // who has a picture
+const HUES = [18,200,140,320,40,260,90,0,170,290,60,220,110,340];
+const TODAY = 3, TARGET = 5;
+// days kept per member (Mon..Thu are past/today); fixed so the page is stable
+const KEPT = [[0,1,3],[0,1,2,3],[1],[0,2,3],[],[0,1,2],[3],[0,1],[2,3],[0],[1,2,3],[0,3],[],[1]];
+const members = n => NAMES.slice(0,n).map((name,i)=>({name, i, kept:KEPT[i], you:i===0,
+  photo:PHOTO.includes(i), today:KEPT[i].includes(TODAY)}));
+
+const tick = '<svg viewBox="0 0 10 10"><path d="M2 5.2l2 2L8 3" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+const shoe = '<svg viewBox="0 0 24 24" fill="none" stroke="#191B19" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5c0-1 .5-5 1-6.5 1 .7 3 1 4.2-.3L13 13c2 1.6 5.4 1.2 7.2 2.1.8.4.8 1.4.8 2.4H4.5A1.5 1.5 0 0 1 3 16v-.5Z"/><path d="M3 17.5h18M9.5 10.5l-1.5 1.5M11.5 12l-1.5 1.5"/></svg>';
+
+function face(m, {size=34, hole=false, cls=''}={}) {
+  const ini = m.you ? 'Y' : m.name.slice(0,2).toUpperCase();
+  const bg = m.photo && !hole ? `background:linear-gradient(135deg,hsl(${HUES[m.i]} 45% 62%),hsl(${HUES[m.i]+30} 40% 38%));` : '';
+  return `<div class="f ${m.photo&&!hole?'photo':''} ${hole?'hole':''} ${cls}" style="--s:${size}px;${bg}" title="${m.name}">${ini}</div>`;
+}
+function card(tint, body, over=false) {
+  return `<div class="card" style="--t:var(--t${tint});--b:var(--b${tint})">
+    <div class="head"><div class="ttl">Move for 30 min</div><div class="badge">${shoe}</div></div>
+    <div class="body ${over?'over':''}">${body}</div></div>`;
+}
+const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const OPTIONS = [
+ { k:'A', pick:true, name:'Crew count + faces', tint:0,
+   p:'Home\'s count line in Home\'s type, counting the crew instead of you, then every member as a face. A solid face has checked in this pact today (green tick); a hole has not. Five pips under each face: their week toward the target.',
+   cost:'<b>Small.</b> Reuses <code>_CountRow</code> and <code>_CrewFace</code> from Home. Faces wrap to a second row past 8; tapping one opens that person\'s week.',
+   body(ms){ const done = ms.reduce((s,m)=>s+Math.min(m.kept.length,TARGET),0);
+     const size = ms.length>8 ? 30 : 34;
+     return `<div style="display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+       <div class="count"><span class="n">${ms.filter(m=>m.today).length}</span><span class="of">/ ${ms.length}</span><span class="cap">in today</span></div>
+       <div class="faces">${ms.map(m=>`<div class="faceCol"><div style="position:relative">${face(m,{size,hole:!m.today,cls:m.you?'you':''})}${m.today?`<span class="tick">${tick}</span>`:''}</div>
+         <div class="pips">${Array.from({length:TARGET},(_,i)=>`<i class="${i<m.kept.length?'on':''}"></i>`).join('')}</div></div>`).join('')}</div></div>`; } },
+ { k:'B', name:'Race track', tint:1,
+   p:'One track for the whole crew; each face sits at the share of the target they\'ve kept, the finish flag at 5. Bunched faces stack upward instead of hiding each other. You are ringed in ink.',
+   cost:'<b>Small–medium.</b> Stacking logic for ties. Reads as competition — good for some crews, off-putting for others.',
+   body(ms){ const groups={}; ms.forEach(m=>{const k=Math.min(m.kept.length,TARGET);(groups[k]=groups[k]||[]).push(m);});
+     const lead = [...ms].sort((a,b)=>b.kept.length-a.kept.length)[0];
+     let pins=''; for(const [k,g] of Object.entries(groups)){ const x = 6 + (k/TARGET)*86;
+       g.slice(0,3).forEach((m,j)=>{ pins+=`<div class="pin" style="left:${x}%;bottom:${36+j*30}px;z-index:${10-j}">${face(m,{size:28,cls:m.you?'you':'ring'})}</div>`; });
+       if(g.length>3) pins+=`<div class="pin" style="left:${x}%;bottom:${36+3*30}px;font-size:11px;font-weight:700">+${g.length-3}</div>`; }
+     return `<div class="lead"><span>${lead.you?'You lead':lead.name+' leads'} · <b>${lead.kept.length}/${TARGET}</b></span><span class="mut">${ms.filter(m=>m.kept.length>=TARGET).length} finished</span></div>
+       <div class="lane"><div class="track"></div>${[1,2,3,4].map(i=>`<div class="tick-mark" style="left:${6+i/TARGET*86}%"></div>`).join('')}<div class="finish"></div>${pins}
+       <div class="axis"><span>0</span><span>${TARGET} days</span></div></div>`; } },
+ { k:'C', name:'Who came each day', tint:3,
+   p:'Keeps the calendar\'s question — which days? — but answers it with faces stacked under each weekday instead of a grid of ticks. Today\'s column is lifted, future days are faded.',
+   cost:'<b>Medium.</b> A day with more than 4 check-ins shows 4 faces and “+N”, so it stops naming people in big crews.',
+   body(ms){ return `<div class="cols">${days.map((d,i)=>{ const who=ms.filter(m=>m.kept.includes(i));
+     return `<div class="col ${i===TODAY?'today':''} ${i>TODAY?'future':''}"><span class="d">${d}</span><span class="num">${14+i}</span>
+       <div class="stack">${who.slice(0,4).map(m=>face(m,{size:28})).join('')}</div>${who.length>4?`<span class="more">+${who.length-4}</span>`:''}</div>`;}).join('')}</div>`; } },
+ { k:'D', name:'Ranked rows', tint:0,
+   p:'Two columns of people, most-kept first: face, first name, and a tiny bar toward the target. A tick after the name means they\'re in today.',
+   cost:'<b>Small.</b> Holds 10 at this size; past that, the last row becomes “+4 more” which opens the full list in a sheet.',
+   body(ms){ const s=[...ms].sort((a,b)=>b.kept.length-a.kept.length); const shown=s.length>10?s.slice(0,10):s;
+     return `<div class="list">${shown.map(m=>`<div class="r ${m.today?'done':''}">${face(m,{size:26,cls:m.you?'you':''})}<span class="nm">${m.name}</span>
+       <span class="segs">${Array.from({length:TARGET},(_,i)=>`<i class="${i<m.kept.length?'on':''}"></i>`).join('')}</span></div>`).join('')}</div>
+       ${s.length>10?`<div class="foot"><span>+${s.length-10} more</span><span>See all ›</span></div>`:''}`; } },
+ { k:'E', name:'Dot matrix', tint:1,
+   p:'Today\'s calendar, compressed: rows shrink to fit the crew so everyone is on one card with no pager. Total on the right.',
+   cost:'<b>Small</b> — closest to what ships. Rows go from 22pt (6 people) down to 8pt (14), which is too small to tap or read faces.',
+   body(ms){ const ch = Math.max(7, Math.min(22, Math.floor((184-20)/ms.length)-3));
+     return `<div class="mx" style="--ch:${ch}px;grid-template-columns:${ch+4}px repeat(7,1fr) 22px">
+       <span></span>${days.map((d,i)=>`<span class="h ${i===TODAY?'today':''}">${d[0]}</span>`).join('')}<span></span>
+       ${ms.map(m=>`${face(m,{size:ch})}${days.map((_,i)=>`<span class="c ${m.kept.includes(i)?'on':''} ${i>TODAY?'fut':''} ${i===TODAY?'tdy':''}"></span>`).join('')}<span class="tot">${m.kept.length}</span>`).join('')}</div>`; } },
+ { k:'F', name:'Today, then the week', tint:3,
+   p:'Splits the crew by today: who\'s in (solid faces) and who isn\'t yet (holes) with a nudge right there. Under it, one crew bar for the week: check-ins so far against what the crew promised.',
+   cost:'<b>Small.</b> The nudge sheet exists already. Overlapping faces stop naming people past ~9 per row.',
+   body(ms){ const inn=ms.filter(m=>m.today), out=ms.filter(m=>!m.today); const done=ms.reduce((s,m)=>s+Math.min(m.kept.length,TARGET),0), goal=ms.length*TARGET;
+     return `<div class="split"><div><div class="lbl">In today <span>${inn.length}</span></div><div class="row">${inn.map(m=>face(m,{size:30,cls:'ring'})).join('')}</div></div>
+       <div><div class="lbl">Not yet <span>${out.length}</span></div><div class="row">${out.map(m=>face(m,{size:30,hole:true,cls:'ring'})).join('')}<span class="nudge">Nudge</span></div></div>
+       <div><div class="lbl">Crew this week <span>${done} / ${goal}</span></div><div class="bar"><i style="flex:${done}"></i><i class="rest" style="flex:${goal-done}"></i></div></div></div>`; } },
+];
+
+document.getElementById('grid').innerHTML = OPTIONS.map(o=>`
+  <section class="cell ${o.k}">
+    <div class="cellHead"><span class="key ${o.pick?'pick':''}">${o.k}${o.pick?' · PICK':''}</span><h2>${o.name}</h2></div>
+    <p>${o.p}</p><p class="cost">${o.cost}</p>
+    <div class="stages">${[6,14].map(n=>`<div class="stage"><div class="stageLabel">${n} members</div>${card(o.tint,o.body(members(n)))}</div>`).join('')}</div>
+  </section>`).join('');
+// Flag any body whose content doesn't fit the card's 184pt.
+document.fonts.ready.then(()=>document.querySelectorAll('.body').forEach(b=>{ if (b.scrollHeight > b.clientHeight + 1) b.classList.add('over'); }));
+</script>
+</body>
+</html>

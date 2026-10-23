@@ -61,10 +61,18 @@ class AppSheet extends StatelessWidget {
                   top: Radius.circular(WeekPactMetrics.sheetRadius),
                 ),
               ),
+              // A sheet runs on under the home indicator rather than
+              // stopping at the safe area; the padding keeps its end clear.
               child: SafeArea(
                 top: false,
+                bottom: false,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/crew/crew_pact_week_card.dart';
 import 'package:weekpact/src/crew/crew_week_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
@@ -201,26 +202,24 @@ void main() {
             find.byKey(const ValueKey('crew-pact-carousel')),
           );
           expect(deck.bottom, lessThanOrEqualTo(size.height - 20));
-          for (var page = 1; page < 5; page++) {
-            await tester.tap(find.byTooltip('Next members').hitTestable());
-            await tester.pumpUi();
+          // The whole crew is on the card at once: there is no pager, and
+          // every member's row sits inside the card.
+          expect(find.byTooltip('Next members'), findsNothing);
+          expect(find.textContaining(' of 20 members'), findsNothing);
+          final card = find.byType(CrewPactWeekCard).first;
+          final mondays = find.descendant(
+            of: card,
+            matching: find.byWidgetPredicate(
+              (w) => w is Tooltip && w.message!.startsWith('Sep 14 ·'),
+            ),
+          );
+          expect(mondays, findsNWidgets(20));
+          final cardRect = tester.getRect(card);
+          for (var i = 0; i < 20; i++) {
+            final cell = tester.getRect(mondays.at(i));
+            expect(cell.bottom, lessThanOrEqualTo(cardRect.bottom));
+            expect(cell.height, greaterThan(2));
           }
-          expect(
-            find.text('17–20 of 20 members').hitTestable(),
-            findsOneWidget,
-          );
-          expect(
-            tester
-                .widget<IconButton>(
-                  find
-                      .byWidgetPredicate(
-                        (w) => w is IconButton && w.tooltip == 'Next members',
-                      )
-                      .hitTestable(),
-                )
-                .onPressed,
-            isNull,
-          );
           expect(tester.takeException(), isNull);
         },
       );

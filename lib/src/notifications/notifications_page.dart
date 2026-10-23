@@ -439,7 +439,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 key: const ValueKey('notifications-list'),
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(12, top + 16, 12, 32),
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  top + 16,
+                  12,
+                  32 + MediaQuery.paddingOf(context).bottom,
+                ),
                 itemCount: items.length,
                 itemBuilder: (context, index) => items[index],
               ),

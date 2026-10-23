@@ -135,10 +135,18 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           style: TextStyle(fontWeight: FontWeight.w500),
         ),
       ),
+      // The list runs on under the home indicator rather than stopping at
+      // the safe area; its padding keeps the end clear of it.
       body: SafeArea(
         top: false,
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            24 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

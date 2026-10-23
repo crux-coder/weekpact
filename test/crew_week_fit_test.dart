@@ -119,13 +119,11 @@ void main() {
         final card = tester.getRect(selected);
         // Nothing may sit past the safe area: the page is one viewport.
         expect(card.bottom, lessThanOrEqualTo(size.height - inset));
-        // The carousel runs full bleed: it starts outside the page's own
-        // margin, so the neighbouring pacts reach the screen's edges.
+        // The deck is Home's: the card in front is as wide as the page's
+        // column, with only a sliver of its neighbours in the margin.
         expect(
-          tester
-              .getTopLeft(find.byKey(const ValueKey('crew-pact-carousel')))
-              .dx,
-          lessThan(tester.getTopLeft(find.text('Crew pacts')).dx),
+          card.left,
+          moreOrLessEquals(tester.getTopLeft(find.text('Crew pacts')).dx),
         );
         // The carousel clips its pages, so it has to leave the card's raised
         // edge room below the card or the card reads as cut off.

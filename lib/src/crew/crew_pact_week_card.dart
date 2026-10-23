@@ -2,11 +2,9 @@ import '../widgets/avatar_shape.dart';
 
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../home/home_backend.dart';
@@ -43,7 +41,7 @@ String crewDateLabel(DateTime date, {DateTime? now}) {
 }
 
 /// A plain carousel page: one pact and the crew's days aligned in one calendar.
-class CrewPactWeekCard extends StatefulWidget {
+class CrewPactWeekCard extends StatelessWidget {
   const CrewPactWeekCard({
     super.key,
     required this.week,
@@ -64,28 +62,9 @@ class CrewPactWeekCard extends StatefulWidget {
   final String userId;
 
   @override
-  State<CrewPactWeekCard> createState() => _CrewPactWeekCardState();
-}
-
-class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
-  static const _membersPerPage = 4;
-  int _memberPage = 0;
-
-  void _turnMemberPage(int page) {
-    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
-    setState(() => _memberPage = page);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final week = widget.week;
-    final pact = widget.pact;
-    final pageCount = (widget.members.length / _membersPerPage).ceil();
-    final page = math.min(_memberPage, math.max(0, pageCount - 1));
-    final start = page * _membersPerPage;
-    final visible = widget.members.skip(start).take(_membersPerPage).toList();
     return AppSurface(
-      fillColor: widget.tint,
+      fillColor: tint,
       shape: WeekPactMetrics.pactCardShape,
       borderWidth: 1,
       builder: (context) => Padding(
@@ -96,12 +75,14 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
               0.0,
               MediaQuery.textScalerOf(context).scale(1) - 1,
             );
+            // The whole crew is always on the card: rows shrink to share
+            // the room rather than paging people out of sight. Only a crew
+            // too large for rows at [_minRowHeight] scales the card down.
             final contentHeight = math.max(
               space.maxHeight,
               225 +
-                  visible.length * 56 +
-                  (pageCount > 1 ? 48 : 0) +
-                  extraText * (220 + visible.length * 50),
+                  members.length * _minRowHeight +
+                  extraText * (220 + members.length * 12),
             );
             final shrink = math.min(1.0, space.maxHeight / contentHeight);
             return FittedBox(
@@ -133,12 +114,12 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                         const SizedBox(width: 10),
                         PactIconBadge(
                           icon: PactIcon.find(pact.iconKey).data,
-                          tint: widget.badge ?? WeekPactColors.pactBadge(0),
+                          tint: badge ?? WeekPactColors.pactBadge(0),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    if (visible.isEmpty)
+                    if (members.isEmpty)
                       const Expanded(
                         child: Center(child: Text('No members to show.')),
                       )
@@ -149,63 +130,37 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                             _CalendarHeader(week: week),
                             // Room between the dates and the people: the
                             // header labels the grid, it is not a row of it.
-                            const SizedBox(height: 20),
+                            SizedBox(height: members.length > 6 ? 10 : 20),
                             // Each person gets one row's height and the
                             // rows stack from the top: spread over the card,
-                            // two people read as two unrelated strips.
-                            for (final member in visible)
-                              SizedBox(
-                                height: _rowHeight,
-                                child: _MemberDays(
-                                  week: week,
-                                  pact: pact,
-                                  member: member,
-                                  isYou: member.id == widget.userId,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    if (pageCount > 1)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '${start + 1}–${start + visible.length} of ${widget.members.length} members',
-                                style: TextStyle(
-                                  color: context.muted,
-                                  fontSize: 12,
-                                ),
+                            // two people read as two unrelated strips. A
+                            // large crew shares the room out in thinner rows.
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, rows) {
+                                  final height =
+                                      (rows.maxHeight / members.length)
+                                          .clamp(_minRowHeight, _rowHeight)
+                                          .toDouble();
+                                  return Column(
+                                    children: [
+                                      for (final member in members)
+                                        SizedBox(
+                                          height: height,
+                                          child: _MemberDays(
+                                            week: week,
+                                            pact: pact,
+                                            member: member,
+                                            isYou: member.id == userId,
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
-                          ),
-                          Row(
-                            children: [
-                              IconButton(
-                                tooltip: 'Previous members',
-                                onPressed: page == 0
-                                    ? null
-                                    : () => _turnMemberPage(page - 1),
-                                icon: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.arrowLeft01,
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Next members',
-                                onPressed: page == pageCount - 1
-                                    ? null
-                                    : () => _turnMemberPage(page + 1),
-                                icon: const HugeIcon(
-                                  icon: HugeIconsStrokeRounded.arrowRight01,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     const SizedBox(height: 8),
                     Divider(color: context.border, height: 1),
@@ -227,7 +182,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '${widget.members.length} members · ${week.pacts.length} pacts',
+                                '${members.length} members · ${week.pacts.length} pacts',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: context.muted,
@@ -246,7 +201,7 @@ class _CrewPactWeekCardState extends State<CrewPactWeekCard> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${widget.members.fold(0, (sum, member) => sum + week.completed(member.id))} / ${week.target * widget.members.length}',
+                                  '${members.fold(0, (sum, member) => sum + week.completed(member.id))} / ${week.target * members.length}',
                                   style: const TextStyle(
                                     fontSize: 26,
                                     height: 1,
@@ -282,6 +237,11 @@ const _nameWidth = 52.0;
 
 /// One person's row: a day cell at its full height, with its edge's room.
 const _rowHeight = 54.0;
+
+/// The thinnest a row gets before the card scales instead: a stripe of fill,
+/// enough to read a pattern by, and thin enough that a twenty-strong crew
+/// fits a phone's card without its title and total shrinking.
+const _minRowHeight = 10.0;
 
 class _CalendarHeader extends StatelessWidget {
   const _CalendarHeader({required this.week});
@@ -399,88 +359,133 @@ class _MemberDays extends StatelessWidget {
         .map((checkIn) => checkIn.day)
         .toSet();
     final start = DateTime.parse(week.weekStart);
-    final fallback = Center(
-      child: Text(
-        member.initials,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-      ),
-    );
-    return Row(
-      children: [
-        SizedBox(
-          width: _nameWidth,
-          // The face alone, centred on the row of cells it belongs to. The
-          // name under it pushed the avatar off that line and had to be
-          // truncated to fit anyway; the tooltip still carries it.
-          child: Tooltip(
-            message: '$name${isYou ? ' (you)' : ''}',
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: ShapeDecoration(
-                    shape: const AvatarShape(),
-                    color: context.ink.withValues(alpha: .06),
+    return LayoutBuilder(
+      builder: (context, box) {
+        // One measure for the whole row: the largest square that fits both
+        // the row's height and a day's column, less the air around it and
+        // the raised edge below. The face and every day are drawn at it, so
+        // a person and their days always read as one row of equal tiles.
+        final thin = box.maxHeight < 36;
+        final air = thin ? 1.0 : 3.0;
+        final column = (box.maxWidth - _nameWidth) / 7;
+        final size = math
+            .min(
+              _faceSize,
+              math.min(
+                box.maxHeight - 2 * air - _edgeRoom,
+                column - 2 * (thin ? 2 : 3),
+              ),
+            )
+            .floorToDouble()
+            .clamp(1.0, _faceSize)
+            .toDouble();
+        final fallback = size < 14
+            ? null
+            : Center(
+                child: Text(
+                  member.initials,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: math.min(13, size * .38),
+                    height: 1,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: member.avatarUrl?.trim().isNotEmpty == true
-                      ? Image.network(
-                          member.avatarUrl!,
-                          fit: BoxFit.cover,
-                          gaplessPlayback: true,
-                          errorBuilder: (_, _, _) => fallback,
-                        )
-                      : fallback,
+                ),
+              );
+        return Row(
+          children: [
+            SizedBox(
+              width: _nameWidth,
+              // The face alone, centred on the row of cells it belongs to.
+              // The name under it pushed the avatar off that line and had to
+              // be truncated to fit anyway; the tooltip still carries it.
+              child: Tooltip(
+                message: '$name${isYou ? ' (you)' : ''}',
+                child: Center(
+                  child: Container(
+                    width: size,
+                    height: size,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      shape: const AvatarShape(),
+                      color: context.ink.withValues(alpha: .06),
+                    ),
+                    child: member.avatarUrl?.trim().isNotEmpty == true
+                        ? Image.network(
+                            member.avatarUrl!,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) =>
+                                fallback ?? const SizedBox.shrink(),
+                          )
+                        : fallback,
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        for (var index = 0; index < 7; index++)
-          Expanded(
-            child: Builder(
-              builder: (_) {
-                final date = start.add(Duration(days: index));
-                final key = date.toIso8601String().substring(0, 10);
-                final future = key.compareTo(week.today) > 0;
-                final today = key == week.today;
-                final done = !future && dates.contains(key);
-                final status = future
-                    ? 'Upcoming'
-                    : done
-                    ? 'Completed'
-                    : today
-                    ? 'Not checked in yet'
-                    : 'No check-in';
-                return Semantics(
-                  label:
-                      '$name, ${pact.title}, ${crewDateLabel(date)}: $status',
-                  child: Tooltip(
-                    message: '${crewDateLabel(date)} · $status',
-                    child: _DayCell(done: done, today: today, future: future),
-                  ),
-                );
-              },
-            ),
-          ),
-      ],
+            for (var index = 0; index < 7; index++)
+              Expanded(
+                child: Builder(
+                  builder: (_) {
+                    final date = start.add(Duration(days: index));
+                    final key = date.toIso8601String().substring(0, 10);
+                    final future = key.compareTo(week.today) > 0;
+                    final today = key == week.today;
+                    final done = !future && dates.contains(key);
+                    final status = future
+                        ? 'Upcoming'
+                        : done
+                        ? 'Completed'
+                        : today
+                        ? 'Not checked in yet'
+                        : 'No check-in';
+                    return Semantics(
+                      label:
+                          '$name, ${pact.title}, ${crewDateLabel(date)}: $status',
+                      child: Tooltip(
+                        message: '${crewDateLabel(date)} · $status',
+                        child: Center(
+                          child: _DayCell(
+                            size: size,
+                            done: done,
+                            today: today,
+                            future: future,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
 
+/// The largest a face, and so a day, is drawn.
+const _faceSize = 42.0;
+
+/// The room under a raised cell for its edge, so it never touches the row
+/// below.
+const _edgeRoom = 2.0;
+
 /// One day of one person's week, drawn as the app's raised cell: the same
 /// outline and 2px bottom edge a pact day or a button carries, so the calendar
-/// reads as a grid of pressable tiles rather than a field of pips. The cell
-/// fills its column and row instead of sitting as a small square in the
-/// middle of one, which is what left the grid full of dead space.
+/// reads as a grid of pressable tiles rather than a field of pips. It is a
+/// square the size of the face that heads its row, so a person and their
+/// days read as one row of equal tiles at any crew size.
 class _DayCell extends StatelessWidget {
   const _DayCell({
+    required this.size,
     required this.done,
     required this.today,
     required this.future,
   });
+
+  /// The cell's side: the same as the face at the head of its row.
+  final double size;
   final bool done;
   final bool today;
   final bool future;
@@ -501,46 +506,41 @@ class _DayCell extends StatelessWidget {
     final edge = done
         ? Color.lerp(WeekPactColors.keptDay, Colors.black, .22)!
         : Color.lerp(Colors.white, Colors.black, .20)!;
-    return Padding(
-      // The extra two below is the raised edge's room: without it a done
-      // cell's edge would touch the cell of the next row.
-      padding: const EdgeInsets.fromLTRB(3, 3, 3, 5),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 46),
-          child: SizedBox(
-            width: double.infinity,
-            child: DecoratedBox(
-              decoration: ShapeDecoration(
-                color: face,
-                // The same squircle every card, button and tile is cut to,
-                // stepped down to a cell's corner.
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    WeekPactMetrics.curveFor(WeekPactMetrics.controlRadius),
-                  ),
-                  side: BorderSide(
-                    color: done
-                        ? Color.lerp(WeekPactColors.keptDay, Colors.black, .28)!
-                        : today
-                        ? Color.lerp(Colors.white, Colors.black, .28)!
-                        : context.ink.withValues(alpha: future ? .05 : .10),
-                  ),
-                ),
-                shadows: done || today
-                    ? [
-                        BoxShadow(
-                          color: edge,
-                          offset: WeekPactMetrics.raisedOffset,
-                        ),
-                      ]
-                    : null,
+    // A small cell keeps its fill and gives up the tick and dot once there is
+    // no room to read them.
+    final marked = size >= 22;
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: face,
+          // The same squircle every card, button and tile is cut to, stepped
+          // down to a cell's corner.
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              WeekPactMetrics.curveFor(
+                math.min(WeekPactMetrics.controlRadius, size / 2),
               ),
-              child: Center(
+            ),
+            side: BorderSide(
+              color: done
+                  ? Color.lerp(WeekPactColors.keptDay, Colors.black, .28)!
+                  : today
+                  ? Color.lerp(Colors.white, Colors.black, .28)!
+                  : context.ink.withValues(alpha: future ? .05 : .10),
+            ),
+          ),
+          shadows: done || today
+              ? [BoxShadow(color: edge, offset: WeekPactMetrics.raisedOffset)]
+              : null,
+        ),
+        child: !marked
+            ? null
+            : Center(
                 child: done
-                    ? const HugeIcon(
+                    ? HugeIcon(
                         icon: HugeIconsStrokeRounded.tick02,
-                        size: 18,
+                        size: math.min(18, size * .45),
                       )
                     : Container(
                         width: 5,
@@ -553,9 +553,6 @@ class _DayCell extends StatelessWidget {
                         ),
                       ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

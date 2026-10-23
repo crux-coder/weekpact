@@ -125,10 +125,18 @@ class _PaywallPageState extends State<PaywallPage> {
     final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: WeekPactColors.darkCanvas,
+      // The page runs on under the home indicator rather than stopping at
+      // the safe area; its padding keeps the end clear of it.
       body: SafeArea(
         top: false,
+        bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(20, top + 14, 20, 20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            top + 14,
+            20,
+            20 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

@@ -205,10 +205,18 @@ class _CrewMonthPhotosSheetState extends State<CrewMonthPhotosSheet> {
           top: Radius.circular(WeekPactMetrics.sheetRadius),
         ),
       ),
+      // The photos run on under the home indicator rather than stopping at
+      // the safe area; the padding keeps the last row clear of it.
       child: SafeArea(
         top: false,
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+          padding: EdgeInsets.fromLTRB(
+            12,
+            8,
+            12,
+            20 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

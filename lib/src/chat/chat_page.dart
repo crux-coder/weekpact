@@ -10,6 +10,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import '../crew/crew_page_layout.dart';
 import '../crew/crew_switcher.dart';
 import '../home/home_backend.dart';
+import '../notifications/notifications_page.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
@@ -458,6 +459,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: CrewPageHeading(
+                  // The same bell Home hangs in its corner, so the crew's
+                  // notices are a tap away from the chat as well.
+                  actions: [
+                    NotificationsBell(
+                      key: const ValueKey('chat-notifications'),
+                      backend: widget.homeBackend,
+                      viewerId: widget.userId,
+                      active: widget.active,
+                    ),
+                  ],
                   switcher: crews == null || crews.isEmpty
                       ? null
                       : CrewSwitcher(

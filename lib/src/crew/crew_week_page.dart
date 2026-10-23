@@ -14,9 +14,11 @@ import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/page_frame.dart';
 import 'crew_month_calendar.dart';
+import 'crew_month_photos_sheet.dart';
 import 'crew_page_layout.dart';
 import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
+import 'crew_streak_card.dart';
 import 'crew_switcher.dart';
 import 'past_week_sheet.dart';
 
@@ -226,10 +228,16 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
         return a.displayName.compareTo(b.displayName);
       });
     final top = MediaQuery.paddingOf(context).top;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       body: WeekPactBackground(
+        // The page runs to the screen's bottom edge rather than stopping at
+        // the safe area: a strip of bare canvas there cut the page off as it
+        // scrolled, hiding content that could have shown under the home
+        // indicator. The page keeps its own room for the indicator instead.
         child: SafeArea(
           top: false,
+          bottom: false,
           child: LayoutBuilder(
             builder: (context, viewport) => RefreshIndicator(
               edgeOffset: top,
@@ -259,6 +267,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                       height:
                           viewport.maxHeight -
                           top -
+                          bottom -
                           (_hasHistory ? _historyPeek : 0),
                       child: _overview(context, week, members),
                     ),
@@ -284,6 +293,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                         ),
                       ),
                     ),
+                  // Room to scroll the page's end clear of the home
+                  // indicator; until then the page shows beneath it.
+                  SliverToBoxAdapter(child: SizedBox(height: bottom)),
                 ],
               ),
             ),
@@ -371,6 +383,21 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                             : const Center(child: Text('Your crew’s week')),
                       )
                     else ...[
+                      // The crew's month and streak, exactly as Home shows
+                      // them, ahead of who is leading the week.
+                      CrewStreakCard(
+                        key: const ValueKey('crew-week-streak-card'),
+                        week: week,
+                        history: _historyFailed ? null : _history,
+                        onViewMonth: () => showCrewMonthPhotosSheet(
+                          context: context,
+                          crewId: _crew.id,
+                          backend: widget.backend,
+                          userId: widget.userId,
+                          week: week,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       CrewPodiumPanel(
                         key: const ValueKey('crew-week-podium'),
                         week: week,

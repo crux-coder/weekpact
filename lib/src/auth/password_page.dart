@@ -121,12 +121,20 @@ class _PasswordPageState extends State<PasswordPage> {
       ),
       automaticallyImplyLeading: !widget.recovery,
     ),
+    // The form runs on under the home indicator rather than stopping at the
+    // safe area; the padding keeps its end clear.
     body: SafeArea(
+      bottom: false,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: AppSurface(
               builder: (context) => Padding(
                 padding: const EdgeInsets.all(16),
