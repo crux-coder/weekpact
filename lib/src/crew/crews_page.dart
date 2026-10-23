@@ -661,8 +661,26 @@ class _StreakPill extends StatelessWidget {
 }
 
 /// The list's loading shapes: three cards at the height a loaded one stands.
+///
+/// The skeleton is drawn as one flat tone, so a card and everything on it are
+/// a single block and only its outline is promised. That outline is built the
+/// way [CrewListCard] builds its own — the same padding, the name's line, the
+/// row of faces, the bar and the caption's line, each at its real height — so
+/// the cards that land stand exactly over the ones that were waiting. The two
+/// lines of type are blank text in the card's own sizes rather than numbers
+/// copied from them, so they grow with the reader's text size as the card does.
+/// It is drawn for a week that has landed with pacts in it, which is how most
+/// crews read.
 class CrewsListSkeleton extends StatelessWidget {
   const CrewsListSkeleton({super.key});
+
+  /// A line of type at [size] with nothing on it: as tall as the card's own
+  /// line, and drawn as nothing.
+  static Widget _line(double size, FontWeight weight) => Text(
+    ' ',
+    maxLines: 1,
+    style: TextStyle(fontSize: size, fontWeight: weight),
+  );
 
   @override
   Widget build(BuildContext context) => CrewPageSkeleton(
@@ -673,18 +691,20 @@ class CrewsListSkeleton extends StatelessWidget {
           if (i > 0) const SizedBox(height: 12),
           AppSurface(
             borderRadius: WeekPactMetrics.cardCorner,
-            builder: (context) => const Padding(
-              padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
+            builder: (context) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SkeletonBar(width: 150, height: 22),
-                  SizedBox(height: 12),
-                  SkeletonBar(width: 120, height: 26),
-                  SizedBox(height: 12),
-                  SkeletonBar(height: 8, radius: 999),
-                  SizedBox(height: 8),
-                  SkeletonBar(width: 170, height: 12),
+                  // The name, whose line is taller than the streak beside it.
+                  _line(21, FontWeight.w700),
+                  const SizedBox(height: 10),
+                  // The faces, which stand taller than the count beside them.
+                  const SizedBox(height: 26),
+                  const SizedBox(height: 12),
+                  const SkeletonBar(height: 8, radius: 999),
+                  const SizedBox(height: 8),
+                  _line(13, FontWeight.w500),
                 ],
               ),
             ),

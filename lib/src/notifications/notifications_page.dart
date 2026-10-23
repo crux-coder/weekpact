@@ -983,21 +983,40 @@ class _Avatar extends StatelessWidget {
   );
 }
 
+/// The list's loading shapes: a day's label, then one surface of rows.
+///
+/// The skeleton is drawn as one flat tone, so the surface and the rows on it
+/// are a single block and only its outline is promised. Its rows are built
+/// the way [_NotificationRow] builds a notice — the face's square, then the
+/// sentence's line and the line saying when — out of blank text in the row's
+/// own sizes, so each stands exactly as tall as a real one at any text size.
+/// A notice whose pact runs its sentence onto a second line stands taller;
+/// the skeleton draws the one-line notice, the one every sentence starts as.
 class _NotificationsSkeleton extends StatelessWidget {
   const _NotificationsSkeleton();
+
+  /// A line of type at [style] with nothing on it.
+  static Widget _line(TextStyle style) => Text(' ', maxLines: 1, style: style);
 
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading notifications',
     liveRegion: true,
     child: ExcludeSemantics(
-      // Drawn as the list draws a day: its label, then one surface of rows.
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(4, 12, 4, 10),
-            child: SkeletonBar(width: 48, height: 9),
+          // The label's own padding and line, with a bar the width of
+          // `TODAY` laid along it.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+            child: Stack(
+              alignment: AlignmentDirectional.centerStart,
+              children: [
+                _line(const TextStyle(fontSize: 11, letterSpacing: .9)),
+                const SkeletonBar(width: 40, height: 9),
+              ],
+            ),
           ),
           AppSurface(
             borderRadius: 18,
@@ -1011,20 +1030,30 @@ class _NotificationsSkeleton extends StatelessWidget {
                       indent: 64,
                       color: context.ink.withValues(alpha: .08),
                     ),
-                  const Padding(
-                    padding: EdgeInsets.all(12),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SkeletonBar(width: 36, height: 36, radius: 12),
-                        SizedBox(width: 16),
+                        const SizedBox.square(dimension: 40),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              SkeletonBar(height: 13),
-                              SizedBox(height: 8),
-                              SkeletonBar(width: 90, height: 9),
+                              _line(
+                                const TextStyle(fontSize: 14.5, height: 1.4),
+                              ),
+                              const SizedBox(height: 3),
+                              _line(
+                                const TextStyle(
+                                  fontFamily: WeekPactType.secondary,
+                                  fontFamilyFallback:
+                                      WeekPactType.secondaryFallback,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),

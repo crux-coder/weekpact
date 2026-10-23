@@ -7,8 +7,11 @@ import '../theme/weekpact_theme.dart';
 ///
 /// Every load shows the skeleton, and for at least [minimum], so a quick one
 /// reads as the page arriving rather than as a blink. However the skeleton
-/// is drawn, it shows as one flat tone: see [SkeletonSilhouette]. Every swap crossfades,
-/// with what arrives settling up into place by [rise].
+/// is drawn, it shows as one flat tone: see [SkeletonSilhouette].
+///
+/// Nothing crossfades: what leaves is gone at once, and what arrives fades in
+/// while growing from [zoom] to full size, so it comes into focus where it
+/// stands rather than showing through the skeleton.
 ///
 /// It sizes itself to whatever stands in it, so it works both in a page of
 /// fixed height and inside a scroll view.
@@ -18,8 +21,8 @@ class SkeletonSwitcher extends StatefulWidget {
     required this.skeleton,
     required this.child,
     this.minimum = const Duration(milliseconds: 400),
-    this.fade = const Duration(milliseconds: 350),
-    this.rise = 8,
+    this.fade = const Duration(milliseconds: 450),
+    this.zoom = .98,
     this.onShown,
   });
 
@@ -30,8 +33,8 @@ class SkeletonSwitcher extends StatefulWidget {
   final Duration minimum;
   final Duration fade;
 
-  /// How far below its place the arriving page starts, in logical pixels.
-  final double rise;
+  /// The scale the arriving page starts from.
+  final double zoom;
 
   /// Called each time the skeleton gives way to the page, once the page is
   /// laid out — for a page that measures itself, such as a list that loads
@@ -115,28 +118,15 @@ class _SkeletonSwitcherState extends State<SkeletonSwitcher>
           ? Duration.zero
           : widget.fade,
       switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeOut,
-      // Passed straight through, so the page sizes as it would on its own:
-      // filling a fixed-height page, or as tall as it is in a scroll view.
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.passthrough,
-        alignment: Alignment.topCenter,
-        children: [...previous, ?current],
-      ),
-      transitionBuilder: (child, animation) => AnimatedBuilder(
-        animation: animation,
-        // Only the arrival rises; what leaves runs its animation backwards
-        // and fades where it stands.
-        builder: (context, child) => Transform.translate(
-          offset: Offset(
-            0,
-            animation.status == AnimationStatus.reverse
-                ? 0
-                : widget.rise * (1 - animation.value),
-          ),
+      // Only the arrival is drawn: what it replaces leaves at once rather
+      // than fading under it.
+      layoutBuilder: (current, previous) => current ?? const SizedBox.shrink(),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween(begin: widget.zoom, end: 1.0).animate(animation),
           child: child,
         ),
-        child: FadeTransition(opacity: animation, child: child),
       ),
       child: KeyedSubtree(
         key: key,

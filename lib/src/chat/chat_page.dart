@@ -496,13 +496,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                   },
                 ),
               ),
-              if (session != null)
+              // Standing through the load, disabled, so the messages fade
+              // in where their skeleton stood rather than above a composer
+              // that arrived after them. Only a page with no crew to talk to
+              // goes without.
+              if (crews == null || crews.isNotEmpty)
                 _Composer(
                   controller: _composer,
                   focusNode: _focus,
-                  enabled: session.status == ChatStatus.ready,
+                  enabled: session?.status == ChatStatus.ready,
                   onChanged: (text) {
-                    if (text.trim().isNotEmpty) session.typed();
+                    if (text.trim().isNotEmpty) session?.typed();
                   },
                   onSend: _send,
                 ),
@@ -2045,8 +2049,11 @@ class _ChatSkeleton extends StatelessWidget {
       label: 'Loading chat',
       liveRegion: true,
       child: ExcludeSemantics(
-        child: Align(
-          alignment: Alignment.bottomCenter,
+        // Held to the foot, as the reversed list holds its newest message,
+        // and cut off at the top where the space runs out, as the list is.
+        child: SingleChildScrollView(
+          reverse: true,
+          physics: const NeverScrollableScrollPhysics(),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: Column(

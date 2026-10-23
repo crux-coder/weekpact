@@ -28,15 +28,19 @@ void main() {
     expect(find.text('page'), findsOneWidget);
   });
 
-  testWidgets('a slow load fades in, settling up into place', (tester) async {
+  testWidgets('a slow load zooms in over nothing', (tester) async {
     await _pump(tester, null);
     await tester.pump(const Duration(milliseconds: 600));
     await _pump(tester, const Text('page'));
-    await tester.pump(const Duration(milliseconds: 100));
-    final rising = tester.getTopLeft(find.text('page')).dy;
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 60));
+    // The skeleton is gone at once; the page is still coming into focus.
     expect(find.text('skeleton'), findsNothing);
-    expect(tester.getTopLeft(find.text('page')).dy, lessThan(rising));
+    // Drawn smaller than it stands, so its corner sits inside its place.
+    final growing = tester.getTopLeft(find.text('page'));
+    await tester.pump(const Duration(milliseconds: 300));
+    final settled = tester.getTopLeft(find.text('page'));
+    expect(settled.dx, lessThan(growing.dx));
+    expect(settled.dy, lessThan(growing.dy));
   });
 
   testWidgets('a reload goes back to the skeleton', (tester) async {

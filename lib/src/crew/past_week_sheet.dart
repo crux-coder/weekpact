@@ -11,7 +11,6 @@ import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
-import '../widgets/page_frame.dart';
 import '../widgets/skeleton_switcher.dart';
 import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
@@ -22,7 +21,9 @@ import 'crew_pact_week_card.dart';
 /// stays dimmed behind it, so there is no mistaking one for the other: the
 /// crew's name is not repeated because it is still visible above the sheet,
 /// and the sheet leads with the date instead. [currentWeekStart] is the live
-/// week's Monday, so the sheet can say "last week" when that is what it is.
+/// week's Monday, so the sheet can say "last week" when that is what it is,
+/// and [crewSize] how many are in the crew now, which is how tall the sheet
+/// stands the week's card while it loads.
 ///
 /// The sheet is open or closed, never parked in between: it springs up to one
 /// height, and a drag down either passes [PastWeekSheet.closeThreshold] (or is
@@ -34,6 +35,7 @@ Future<void> showPastWeekSheet({
   required String userId,
   required String weekStart,
   required String currentWeekStart,
+  int? crewSize,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
@@ -55,6 +57,7 @@ Future<void> showPastWeekSheet({
     userId: userId,
     weekStart: weekStart,
     currentWeekStart: currentWeekStart,
+    crewSize: crewSize,
   ),
 );
 
@@ -66,12 +69,18 @@ class PastWeekSheet extends StatefulWidget {
     required this.userId,
     required this.weekStart,
     required this.currentWeekStart,
+    this.crewSize,
   });
   final PactCrew crew;
   final HomeBackend backend;
   final String userId;
   final String weekStart;
   final String currentWeekStart;
+
+  /// How many are in the crew this week, when the page opening the sheet
+  /// knows. A finished week almost always had the same crew, so the card
+  /// waits at that crew's height rather than a guess.
+  final int? crewSize;
 
   /// How far down, as a share of its height, the sheet has to be dragged
   /// before letting go closes it rather than springing it back.
@@ -233,6 +242,9 @@ class _PastWeekSheetState extends State<PastWeekSheet>
     // The sheet scrolls, so the deck takes the card's full height for the
     // whole crew rather than shrinking anyone's row.
     final deckHeight = CrewPactCarousel.heightFor(members.length);
+    // Until the week says who was in it, the crew as it is now, or a pair
+    // when the page that opened the sheet did not say.
+    final waitingDeckHeight = CrewPactCarousel.heightFor(widget.crewSize ?? 2);
     return LayoutBuilder(
       builder: (context, box) {
         final height = box.maxHeight * .92;
@@ -345,7 +357,10 @@ class _PastWeekSheetState extends State<PastWeekSheet>
                   ] else
                     // The week fades in over its skeleton, as Chat does.
                     SkeletonSwitcher(
-                      skeleton: _PastWeekSkeleton(deckHeight: deckHeight),
+                      skeleton: _PastWeekSkeleton(
+                        weekStart: widget.weekStart,
+                        deckHeight: waitingDeckHeight,
+                      ),
                       child: week == null
                           ? null
                           : Column(
@@ -545,8 +560,12 @@ class _ClosedWeekBanner extends StatelessWidget {
   }
 }
 
+/// The week while it loads: the closed-week banner itself, with nothing in
+/// it yet, then the "Crew pacts" line and the deck at the height the card
+/// will take, so the week fades in over its own outline.
 class _PastWeekSkeleton extends StatelessWidget {
-  const _PastWeekSkeleton({required this.deckHeight});
+  const _PastWeekSkeleton({required this.weekStart, required this.deckHeight});
+  final String weekStart;
   final double deckHeight;
 
   @override
@@ -558,17 +577,22 @@ class _PastWeekSkeleton extends StatelessWidget {
         key: const ValueKey('past-week-skeleton'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SkeletonBar(height: 74, shape: WeekPactMetrics.pactCardShape),
-          const SizedBox(height: 18),
-          const SkeletonBar(width: 132, height: 22),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: SkeletonBar(
-              height: deckHeight - 44,
-              shape: WeekPactMetrics.pactCardShape,
+          // The banner is drawn as one tone, so its words never show; only
+          // its outline does, at the height its lines give it.
+          _ClosedWeekBanner(
+            week: CrewWeek(
+              today: weekStart,
+              weekStart: weekStart,
+              timezone: '',
+              pacts: const [],
+              members: const [],
+              checkIns: const [],
             ),
           ),
+          const SizedBox(height: 18),
+          const CrewPactsHeadingSkeleton(),
+          const SizedBox(height: 12),
+          SizedBox(height: deckHeight, child: const CrewPactCarouselSkeleton()),
         ],
       ),
     ),

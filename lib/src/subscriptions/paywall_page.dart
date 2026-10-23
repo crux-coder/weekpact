@@ -5,7 +5,6 @@ import '../auth/account_actions.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
-import '../widgets/page_frame.dart';
 import '../widgets/skeleton_switcher.dart';
 import 'subscription_backend.dart';
 import 'subscription_scope.dart';
@@ -216,13 +215,15 @@ class _PaywallPageState extends State<PaywallPage> {
                 ),
               ],
               const SizedBox(height: 18),
-              if (offer != null && !offer.isEmpty)
+              // Standing through the load, disabled, so the footer under it
+              // does not drop when the plans arrive.
+              if (_loading || (offer != null && !offer.isEmpty))
                 AppButton(
                   label: 'START WEEKPACT PRO',
                   color: _gold,
                   foregroundColor: _ink,
                   isLoading: _busy,
-                  onPressed: _buy,
+                  onPressed: _loading ? null : _buy,
                 ),
               const SizedBox(height: 16),
               _Footer(onRestore: _busy ? null : _restore),
@@ -474,23 +475,42 @@ class _Body extends StatelessWidget {
   );
 }
 
+/// The plans while the store answers: the two plan cards themselves, the
+/// yearly one selected and wearing its saving, with stand-in prices. The
+/// skeleton is drawn as one tone, so none of their words show; what does is
+/// their outline, which is the loaded plans' to the pixel at any text size.
 class _PlansSkeleton extends StatelessWidget {
   const _PlansSkeleton();
+
+  static const _yearly = ProPlan(
+    id: 'yearly',
+    period: PlanPeriod.yearly,
+    price: r'$00.00',
+    amount: 0,
+    pricePerMonth: r'$0.00',
+  );
+  static const _monthly = ProPlan(
+    id: 'monthly',
+    period: PlanPeriod.monthly,
+    price: r'$0.00',
+    amount: 0,
+  );
 
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading plans',
-    child: Column(
-      children: [
-        for (var row = 0; row < 2; row++) ...[
-          SkeletonBar(
-            height: 74,
-            radius: 18,
-            color: WeekPactDarkCard.ink.withValues(alpha: .08),
-          ),
-          if (row == 0) const SizedBox(height: 10),
-        ],
-      ],
+    child: const ExcludeSemantics(
+      child: IgnorePointer(
+        child: Column(
+          key: ValueKey('paywall-plans-skeleton'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Plan(plan: _yearly, selected: true, badge: 'SAVE 00%'),
+            SizedBox(height: 10),
+            _Plan(plan: _monthly, selected: false),
+          ],
+        ),
+      ),
     ),
   );
 }

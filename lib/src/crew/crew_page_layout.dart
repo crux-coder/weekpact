@@ -111,8 +111,9 @@ class CrewPageHeading extends StatelessWidget {
 /// shows the wrong shapes is a worse promise than none.
 ///
 /// It used to open on a progress line. Drawn in the skeleton's one tone it
-/// was only a rule across the page under the header, so its room is kept
-/// and the line is gone.
+/// was only a rule across the page under the header, and the 18 points it
+/// kept after the line went pushed every block below it down by as much: the
+/// loaded page starts straight under the header, so its skeleton does too.
 ///
 /// It used to stand a card in for the crew selector as well. The selector is
 /// the page's title now and lives in the header, above this entirely, so a
@@ -123,22 +124,14 @@ class CrewPageSkeleton extends StatelessWidget {
 
   final String label;
 
-  /// What is loading under the progress line. Defaults to the crew roster.
+  /// What is loading under the header. Defaults to the crew roster.
   final Widget? body;
 
   @override
   Widget build(BuildContext context) => Semantics(
     label: label,
     liveRegion: true,
-    child: ExcludeSemantics(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 18),
-          body ?? const CrewRosterSkeleton(),
-        ],
-      ),
-    ),
+    child: ExcludeSemantics(child: body ?? const CrewRosterSkeleton()),
   );
 }
 
@@ -182,8 +175,14 @@ class CrewSectionLabel extends StatelessWidget {
   );
 }
 
-/// The crew page's own loading shapes: the summary card at its own height,
-/// the heading over the roster, then the stack of bands.
+/// The crew page's own loading shapes: the crew's photo, the summary card at
+/// its own height, the heading over the roster, then the stack of bands.
+///
+/// It opened on the summary card while the page opens on the crew's photo, so
+/// everything from the card down dropped 70 points when the crew landed. The
+/// photo stands first now, in its own shape. What the crew is for, beside it,
+/// is not stood in for: plenty of crews have not written one, and the photo
+/// is as tall as the two lines most of them have.
 ///
 /// It used to be a 120pt caption bar over the bands, which is what the page
 /// used to open with. The caption is gone — [CrewSummaryCard] stands there
@@ -237,6 +236,12 @@ class CrewRosterSkeleton extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      // The photo at the size and the gap the page's own profile row gives it.
+      const Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SkeletonBar(width: 56, height: 56, shape: AvatarShape()),
+      ),
+      const SizedBox(height: 14),
       const CrewSummaryCard.loading(),
       const SizedBox(height: 18),
       if (tabs)

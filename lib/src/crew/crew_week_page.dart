@@ -12,7 +12,6 @@ import '../home/home_backend.dart';
 import '../home/today_widgets.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/page_frame.dart';
 import '../widgets/skeleton_switcher.dart';
 import 'crew_month_calendar.dart';
 import 'crew_page_layout.dart';
@@ -201,6 +200,7 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     userId: widget.userId,
     weekStart: week.weekStart,
     currentWeekStart: _week?.weekStart ?? week.weekStart,
+    crewSize: _week?.members.length,
   );
 
   /// What the line under the crew's name calls the week on show.
@@ -555,13 +555,6 @@ class _CrewWeekSkeletonState extends State<_CrewWeekSkeleton>
     super.dispose();
   }
 
-  /// A card-shaped placeholder: the squircle the real surfaces use, so the
-  /// loading page has the same silhouette as the loaded one.
-  Widget get _card => const SkeletonBar(
-    height: double.infinity,
-    shape: WeekPactMetrics.pactCardShape,
-  );
-
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Loading your crew’s week',
@@ -570,34 +563,17 @@ class _CrewWeekSkeletonState extends State<_CrewWeekSkeleton>
       child: IgnorePointer(
         child: FadeTransition(
           opacity: _opacity,
-          child: Column(
-            key: const ValueKey('crew-week-skeleton'),
+          child: const Column(
+            key: ValueKey('crew-week-skeleton'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // The crew's podium.
-              const CrewPodiumPanel.loading(),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  const SkeletonBar(width: 132, height: 22),
-                  const Spacer(),
-                  const SkeletonBar(width: 38, height: 16),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // The pact carousel's active card, inset the way its page is.
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    5,
-                    0,
-                    5,
-                    WeekPactMetrics.controlDepth + 1,
-                  ),
-                  child: _card,
-                ),
-              ),
-              const SizedBox(height: 12),
+              CrewPodiumPanel.loading(),
+              SizedBox(height: 18),
+              CrewPactsHeadingSkeleton(),
+              SizedBox(height: 12),
+              // The deck takes the rest, as the carousel does.
+              Expanded(child: CrewPactCarouselSkeleton()),
             ],
           ),
         ),
