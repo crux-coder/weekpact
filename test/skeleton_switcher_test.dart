@@ -12,18 +12,10 @@ Future<void> _pump(WidgetTester tester, Widget? child) => tester.pumpWidget(
 );
 
 void main() {
-  testWidgets('a quick load never shows the skeleton', (tester) async {
+  testWidgets('a quick load still shows the skeleton for its minimum', (
+    tester,
+  ) async {
     await _pump(tester, null);
-    await tester.pump(const Duration(milliseconds: 150));
-    await _pump(tester, const Text('page'));
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('skeleton'), findsNothing);
-    expect(find.text('page'), findsOneWidget);
-  });
-
-  testWidgets('a slow load shows the skeleton for its minimum', (tester) async {
-    await _pump(tester, null);
-    await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('skeleton'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 50));
     await _pump(tester, const Text('page'));
@@ -31,26 +23,28 @@ void main() {
     // Still inside the minimum, so the page waits its turn.
     expect(find.text('page'), findsNothing);
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('skeleton'), findsNothing);
     expect(find.text('page'), findsOneWidget);
   });
 
-  testWidgets('a reload holds the old page, untouchable, until it lands', (
-    tester,
-  ) async {
-    var taps = 0;
-    final old = TextButton(onPressed: () => taps++, child: const Text('old'));
-    await _pump(tester, old);
+  testWidgets('a slow load fades in, settling up into place', (tester) async {
     await _pump(tester, null);
+    await tester.pump(const Duration(milliseconds: 600));
+    await _pump(tester, const Text('page'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('old'), findsOneWidget);
+    final rising = tester.getTopLeft(find.text('page')).dy;
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('skeleton'), findsNothing);
-    await tester.tap(find.text('old'), warnIfMissed: false);
-    expect(taps, 0);
-    await _pump(tester, const Text('new', key: ValueKey('new')));
-    await tester.pump(const Duration(milliseconds: 250));
+    expect(tester.getTopLeft(find.text('page')).dy, lessThan(rising));
+  });
+
+  testWidgets('a reload goes back to the skeleton', (tester) async {
+    await _pump(tester, const Text('old'));
+    expect(find.text('skeleton'), findsNothing);
+    await _pump(tester, null);
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('old'), findsNothing);
-    expect(find.text('new'), findsOneWidget);
+    expect(find.text('skeleton'), findsOneWidget);
   });
 }

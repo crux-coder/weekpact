@@ -105,10 +105,14 @@ class CrewPageHeading extends StatelessWidget {
   }
 }
 
-/// The shared loading shell: the same progress line on the Crews list and on
-/// a crew's own page, so opening a crew mid-load does not shift the page. Below that each page
-/// stands in for its own content — [body] — because a skeleton that shows the
-/// wrong shapes is a worse promise than none.
+/// The shared loading shell: the same top on the Crews list and on a crew's
+/// own page, so opening a crew mid-load does not shift the page. Below that
+/// each page stands in for its own content — [body] — because a skeleton that
+/// shows the wrong shapes is a worse promise than none.
+///
+/// It used to open on a progress line. Drawn in the skeleton's one tone it
+/// was only a rule across the page under the header, so its room is kept
+/// and the line is gone.
 ///
 /// It used to stand a card in for the crew selector as well. The selector is
 /// the page's title now and lives in the header, above this entirely, so a
@@ -130,13 +134,7 @@ class CrewPageSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LinearProgressIndicator(
-            minHeight: 2,
-            color: WeekPactColors.coolGrey,
-            backgroundColor: context.ink.withValues(alpha: .06),
-            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           body ?? const CrewRosterSkeleton(),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
+import 'package:weekpact/src/crew/crew_page_layout.dart';
 import 'package:weekpact/src/pacts/pacts_backend.dart';
 import 'package:weekpact/src/pacts/pact_icons.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
@@ -281,7 +282,8 @@ void main() {
     final backend = FakePacts()..crews = [ownerCrew];
     final loading = Completer<void>();
     await pumpPacts(tester, backend, loading: loading);
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.byType(CrewPageSkeleton), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.text('ADD PACT'), findsNothing);
     loading.complete();
     await tester.pumpAndSettle();

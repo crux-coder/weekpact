@@ -139,12 +139,8 @@ void main() {
           CrewsPage(backend: crews, currentUserEmail: 'owner@example.com'),
         );
         // Each page stands in for its own content, so only the shared shell
-        // above the progress line has to line up: opening a crew mid-load
-        // must not shift the progress line.
+        // has to line up: opening a crew mid-load must not shift the page.
         final skeletonTop = tester.getTopLeft(find.byType(CrewPageSkeleton));
-        final indicatorBounds = tester.getRect(
-          find.byType(LinearProgressIndicator),
-        );
         // The list chooses the crew, so neither page carries a switcher.
         expect(find.byType(CrewSwitcher), findsNothing);
         expect(find.byType(CrewsListSkeleton), findsOneWidget);
@@ -156,10 +152,6 @@ void main() {
           ),
         );
         expect(tester.getTopLeft(find.byType(CrewPageSkeleton)), skeletonTop);
-        expect(
-          tester.getRect(find.byType(LinearProgressIndicator)),
-          indicatorBounds,
-        );
         expect(find.byType(CrewRosterSkeleton), findsOneWidget);
         expect(find.byType(CrewsListSkeleton), findsNothing);
         expect(tester.takeException(), isNull);

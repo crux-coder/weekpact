@@ -257,10 +257,6 @@ void main() {
       backend.loading = Completer<CrewWeek>();
       await pumpHome(tester, backend);
       await tester.pump();
-      // A load still running past the delay fades the skeleton in.
-      expect(find.byKey(const ValueKey('skeleton-pact-card')), findsNothing);
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('WeekPact'), findsNothing);
       expect(find.text('CHECK IN'), findsNothing);
       expect(find.byKey(const ValueKey('skeleton-pact-card')), findsOneWidget);

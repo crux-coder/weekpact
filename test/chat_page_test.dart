@@ -5,6 +5,7 @@ import 'package:weekpact/src/chat/chat_session.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
+import 'package:weekpact/src/widgets/page_frame.dart';
 
 import 'support/chat_fakes.dart';
 import 'support/home_fakes.dart';
@@ -87,6 +88,28 @@ void main() {
     await tester.tapAt(tester.getCenter(find.text('Hi')));
     await tester.pumpUi();
     expect(focused(), isFalse);
+  });
+
+  testWidgets('the skeleton draws its bubbles as tall as a message', (
+    tester,
+  ) async {
+    final other = await crewmate(server);
+    addTearDown(other.dispose);
+    await other.send('Morning');
+    await pumpHome(tester, server);
+    await tester.tap(find.byKey(const ValueKey('nav-chat')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final skeleton = find.byWidgetPredicate(
+      (w) => w is SkeletonBar && w.height > 30,
+    );
+    expect(skeleton, findsWidgets);
+    final placeholder = tester.getSize(skeleton.first).height;
+    await tester.pumpUi();
+    final bubble = find
+        .ancestor(of: find.text('Morning'), matching: find.byType(Container))
+        .first;
+    expect(tester.getSize(bubble).height, closeTo(placeholder, .5));
   });
 
   testWidgets('sends and receives messages, with typing', (tester) async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/weekpact_theme.dart';
+import 'skeleton_switcher.dart';
 import 'viewport_scroll_view.dart';
 
 /// Shared full-height page shell. Headers stay visible during initial loading.
@@ -52,7 +53,10 @@ class PageFrame extends StatelessWidget {
             header!,
             const SizedBox(height: WeekPactMetrics.sectionGap),
           ],
-          if (loading) skeleton! else child,
+          SkeletonSwitcher(
+            skeleton: skeleton ?? const SizedBox.shrink(),
+            child: loading ? null : child,
+          ),
         ],
       ),
     );

@@ -232,7 +232,7 @@ void main() {
     final bell = tester.getRect(
       find.byKey(const ValueKey('home-notifications')),
     );
-    final header = tester.getRect(find.byKey(const ValueKey('home-header')));
+    final header = tester.getRect(find.byKey(const ValueKey('home-title-row')));
     expect(bell.right, closeTo(header.right, 1));
     expect(bell.top, closeTo(header.top, 2));
     // Clear of the crew's name, which keeps the page's own middle.

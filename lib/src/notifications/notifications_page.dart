@@ -16,6 +16,7 @@ import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/skeleton_switcher.dart';
 
 /// Opens the list and reports how many notifications are still unread when it
 /// closes, so the badge behind it settles without a second round trip. Backing
@@ -203,6 +204,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   bool _hasMore = true;
   bool _failed = false;
 
+  /// Whether the list has taken over from its skeleton.
+  bool _listShown = false;
+
   /// What the badge should read once this page closes. It is the count the
   /// server had, less what opening the page cleared.
   int _unread = 0;
@@ -256,6 +260,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   void _loadNearEnd() {
+    // Not while the skeleton stands in: it is shorter than the list, and
+    // would read as a list that needs its next page.
+    if (!_listShown) return;
     if (_scroll.hasClients && _scroll.position.extentAfter < 600 && !_failed) {
       unawaited(_loadMore());
     }
@@ -382,45 +389,61 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onSelected: (id) => setState(() => _crew = id),
           ),
         ),
-      for (final (label, entries) in _sections(shown)) ...[
-        _SectionLabel(label),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: AppSurface(
-            key: ValueKey('notifications-section-$label'),
-            borderRadius: 18,
-            builder: (context) => Column(
-              children: [
-                for (final (i, entry) in entries.indexed) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 64,
-                      color: context.ink.withValues(alpha: .08),
-                    ),
-                  _NotificationRow(
-                    key: ValueKey('notification-${entry.eventId}'),
-                    entry: entry,
-                    fresh: _fresh.contains(entry.eventId),
-                    showCrew: crew == null && crews.length > 1,
-                    onTap: switch (entry.checkIn) {
-                      final checkIn? => () => openCheckInStory(
-                        context,
-                        checkIn: checkIn,
-                        viewerId: widget.viewerId,
-                        backend: widget.backend,
+      // The list itself, one slot under the heading, so the first load
+      // fades in over its skeleton rather than cutting.
+      SkeletonSwitcher(
+        skeleton: const _NotificationsSkeleton(),
+        onShown: () {
+          _listShown = true;
+          _loadNearEnd();
+        },
+        child: _loading && _entries.isEmpty
+            ? null
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (label, entries) in _sections(shown)) ...[
+                    _SectionLabel(label),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: AppSurface(
+                        key: ValueKey('notifications-section-$label'),
+                        borderRadius: 18,
+                        builder: (context) => Column(
+                          children: [
+                            for (final (i, entry) in entries.indexed) ...[
+                              if (i > 0)
+                                Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  indent: 64,
+                                  color: context.ink.withValues(alpha: .08),
+                                ),
+                              _NotificationRow(
+                                key: ValueKey('notification-${entry.eventId}'),
+                                entry: entry,
+                                fresh: _fresh.contains(entry.eventId),
+                                showCrew: crew == null && crews.length > 1,
+                                onTap: switch (entry.checkIn) {
+                                  final checkIn? => () => openCheckInStory(
+                                    context,
+                                    checkIn: checkIn,
+                                    viewerId: widget.viewerId,
+                                    backend: widget.backend,
+                                  ),
+                                  null => null,
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      null => null,
-                    },
-                  ),
+                    ),
+                  ],
+                  _trailing(showEmpty),
                 ],
-              ],
-            ),
-          ),
-        ),
-      ],
-      _trailing(showEmpty),
+              ),
+      ),
     ];
     return Scaffold(
       backgroundColor: context.canvas,
@@ -489,7 +512,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
       );
     }
-    if (_loading && _entries.isEmpty) return const _NotificationsSkeleton();
     if (showEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),

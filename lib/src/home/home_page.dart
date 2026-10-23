@@ -817,15 +817,6 @@ class _HomeDestinationState extends State<_HomeDestination>
     }
   }
 
-  /// Whether Home knows which crew it is about yet, which is what decides
-  /// the header's height. See [_selector].
-  bool get _hasSelector => _crews?.isNotEmpty ?? false;
-
-  /// The header's height as the page is drawing it now: the rail alone until
-  /// the crews arrive, and the crew's name over it once they have.
-  double get _headerHeight =>
-      _hasSelector ? HomeHeader.height : HomeHeader.headingHeight;
-
   /// The bell in the top corner: what the crew has told you, and the way into
   /// the list of it. Home is the page people open to see what the crew has
   /// been doing, and this is the corner notifications live in.
@@ -1000,7 +991,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                           // panel and a usable pact card; shorter viewports
                           // scale down.
                           248 +
-                              _headerHeight +
+                              HomeHeader.height +
                               CrewTodayBar.height +
                               12 +
                               CrewStreakCard.height +
@@ -1015,22 +1006,34 @@ class _HomeDestinationState extends State<_HomeDestination>
                             height: pageHeight,
                             child: Builder(
                               builder: (context) {
-                                final selector = _selector();
-                                // A quick load goes straight to the page; a
-                                // slow one fades the skeleton in and out.
-                                return SkeletonSwitcher(
-                                  skeleton: TodaySkeleton(
-                                    selector: selector,
-                                    action: _bell(),
-                                  ),
-                                  child: loading
-                                      ? null
-                                      : Builder(
-                                          // A new crew fades in over the old.
-                                          key: ValueKey(_crew?.id),
-                                          builder: (context) =>
-                                              _page(context, selector, week),
-                                        ),
+                                // The title row stands still, as Chat's
+                                // heading does; only the page under it
+                                // loads, fading from its skeleton.
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    HomeTitleRow(
+                                      key: const ValueKey('home-title-row'),
+                                      selector: _selector(),
+                                      action: _bell(),
+                                    ),
+                                    const SizedBox(height: HomeHeader.gap),
+                                    Expanded(
+                                      child: SkeletonSwitcher(
+                                        skeleton: const TodaySkeleton(),
+                                        child: loading
+                                            ? null
+                                            : Builder(
+                                                // A new crew fades in over
+                                                // the old.
+                                                key: ValueKey(_crew?.id),
+                                                builder: (context) =>
+                                                    _page(context, week),
+                                              ),
+                                      ),
+                                    ),
+                                  ],
                                 );
                               },
                             ),
@@ -1049,7 +1052,7 @@ class _HomeDestinationState extends State<_HomeDestination>
   }
 
   /// Home once the load is in: the crew's day, or why there is none.
-  Widget _page(BuildContext context, Widget? selector, CrewWeek? week) {
+  Widget _page(BuildContext context, CrewWeek? week) {
     if (_error != null) {
       return Center(
         child: Column(
@@ -1100,7 +1103,6 @@ class _HomeDestinationState extends State<_HomeDestination>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeHeader(
-          action: _bell(),
           rail: StoriesRail(
             days: days,
             onNudge: _nudge,
@@ -1111,7 +1113,6 @@ class _HomeDestinationState extends State<_HomeDestination>
             onOpen: (day) => _openStories(days, day),
             onCompose: _composeAchievement,
           ),
-          selector: selector,
         ),
         const SizedBox(height: 12),
         // The month first, then the week it is

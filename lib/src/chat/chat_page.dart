@@ -19,6 +19,7 @@ import '../widgets/app_icon.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/avatar_shape.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/skeleton_switcher.dart';
 import 'chat_backend.dart';
 import 'chat_session.dart';
 
@@ -480,7 +481,21 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 ),
               ),
               if (session != null) _StatusLine(session: session, name: _name),
-              Expanded(child: _body(context, crews, session)),
+              Expanded(
+                // The chat fades in over its skeleton, under a heading and
+                // composer that stay put. Each crew's chat is its own page,
+                // so a switch fades one into the next.
+                child: SkeletonSwitcher(
+                  skeleton: const _ChatSkeleton(),
+                  child: switch (_body(context, crews, session)) {
+                    final body? => KeyedSubtree(
+                      key: ValueKey('chat-body-${crew?.id}'),
+                      child: body,
+                    ),
+                    null => null,
+                  },
+                ),
+              ),
               if (session != null)
                 _Composer(
                   controller: _composer,
@@ -500,7 +515,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _body(
+  /// The chat, or null while it is still loading.
+  Widget? _body(
     BuildContext context,
     List<PactCrew>? crews,
     ChatSession? session,
@@ -514,7 +530,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         ),
       );
     }
-    if (crews == null) return const _ChatSkeleton();
+    if (crews == null) return null;
     if (crews.isEmpty) {
       return const _Notice(
         icon: HugeIconsStrokeRounded.bubbleChat,
@@ -522,9 +538,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         message: 'Start or join a crew, and talk to them here.',
       );
     }
-    if (session == null || session.status == ChatStatus.loading) {
-      return const _ChatSkeleton();
-    }
+    if (session == null || session.status == ChatStatus.loading) return null;
     if (session.status == ChatStatus.failed) {
       return _Notice(
         title: 'Could not open the chat.',
@@ -1272,7 +1286,16 @@ class _MessageRow extends StatelessWidget {
 
   Color get _fill => mine ? WeekPactColors.coolGrey : WeekPactColors.cream;
 
-  BorderRadius get _corners => mine
+  BorderRadius get _corners =>
+      corners(mine: mine, opensRun: opensRun, closesRun: closesRun);
+
+  /// A bubble's corners: round, but tight on the sender's side where it meets
+  /// the bubble above or below it in the same run.
+  static BorderRadius corners({
+    required bool mine,
+    required bool opensRun,
+    required bool closesRun,
+  }) => mine
       ? BorderRadius.only(
           topLeft: _round,
           bottomLeft: _round,
@@ -1285,6 +1308,11 @@ class _MessageRow extends StatelessWidget {
           topLeft: opensRun ? _round : _tight,
           bottomLeft: closesRun ? _round : _tight,
         );
+
+  /// A one-line bubble's height: its padding, a line of text, the time under
+  /// it and the edge along its foot.
+  static const lineHeight =
+      9 * 2 + 16 * 1.3 + 2 + 11 * 1.3 + WeekPactMetrics.controlDepth;
 
   String _time(BuildContext context) =>
       MaterialLocalizations.of(context).formatTimeOfDay(
@@ -1988,38 +2016,109 @@ class _Notice extends StatelessWidget {
 class _ChatSkeleton extends StatelessWidget {
   const _ChatSkeleton();
 
+  /// Runs of bubbles, oldest first: whose they are and how wide each is.
+  static const _runs = [
+    (false, [180.0, 120.0]),
+    (true, [200.0]),
+    (false, [150.0]),
+    (true, [110.0, 170.0]),
+  ];
+
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Loading chat',
-    liveRegion: true,
-    child: ExcludeSemantics(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (mine, width) in const [
-                (false, 180.0),
-                (false, 120.0),
-                (true, 200.0),
-                (false, 150.0),
-                (true, 110.0),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Align(
-                    alignment: mine
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: SkeletonBar(width: width, height: 38, radius: 18),
-                  ),
-                ),
-            ],
+  Widget build(BuildContext context) {
+    final fill = context.ink.withValues(alpha: .14);
+    // Drawn as the list draws its messages: the same runs, corners, faces
+    // and spacing, from the foot of the page up.
+    Widget bubble(bool mine, double width, bool opens, bool closes) =>
+        SkeletonBar(
+          width: width,
+          height: _MessageRow.lineHeight,
+          shape: RoundedRectangleBorder(
+            borderRadius: _MessageRow.corners(
+              mine: mine,
+              opensRun: opens,
+              closesRun: closes,
+            ),
+          ),
+        );
+    return Semantics(
+      label: 'Loading chat',
+      liveRegion: true,
+      child: ExcludeSemantics(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (mine, widths) in _runs)
+                  for (final (i, width) in widths.indexed)
+                    Padding(
+                      padding: EdgeInsets.only(top: i == 0 ? 10 : 2),
+                      child: Align(
+                        alignment: mine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: mine
+                            ? bubble(
+                                true,
+                                width,
+                                i == 0,
+                                i == widths.length - 1,
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: _MessageRow._avatar,
+                                    child: i == 0
+                                        ? FlatAvatar(
+                                            radius: _MessageRow._avatar / 2,
+                                            backgroundColor: fill,
+                                            child: const SizedBox.shrink(),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // The sender's name over a run's first
+                                      // bubble, as a line of 12-point type.
+                                      if (i == 0)
+                                        const Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                            2,
+                                            3,
+                                            0,
+                                            6,
+                                          ),
+                                          child: SkeletonBar(
+                                            width: 56,
+                                            height: 9,
+                                          ),
+                                        ),
+                                      bubble(
+                                        false,
+                                        width,
+                                        i == 0,
+                                        i == widths.length - 1,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

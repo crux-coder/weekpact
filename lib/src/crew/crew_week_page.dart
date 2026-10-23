@@ -13,6 +13,7 @@ import '../home/today_widgets.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/skeleton_switcher.dart';
 import 'crew_month_calendar.dart';
 import 'crew_page_layout.dart';
 import 'crew_pact_carousel.dart';
@@ -106,13 +107,14 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
   }
 
   /// Switches the page to another crew: everything that belonged to the old
-  /// one goes, the page shows its skeleton, and the new crew's week loads.
+  /// one goes, the page shows the week kept for the new one where there is
+  /// one, and its week loads.
   void _selectCrew(String id) {
     final crew = widget.crews.where((c) => c.id == id).firstOrNull;
     if (crew == null || crew.id == _crew.id) return;
     setState(() {
       _crew = crew;
-      _week = null;
+      _week = widget.backend.cachedWeek(crew.id);
       _error = null;
       _history = null;
       _historyFailed = false;
@@ -392,56 +394,67 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                         child: const Text('TRY AGAIN'),
                       ),
                     ],
-                    if (week == null)
-                      Expanded(
-                        child: _refreshing
-                            ? const _CrewWeekSkeleton()
-                            // A failure has its own sentence and its own way
-                            // out, above. Standing "Your crew's week" under
-                            // those reads as the page carrying on regardless.
-                            : _error != null
-                            ? const SizedBox.shrink()
-                            : const Center(child: Text('Your crew’s week')),
-                      )
-                    else ...[
-                      CrewPodiumPanel(
-                        key: const ValueKey('crew-week-podium'),
-                        week: week,
-                        userId: widget.userId,
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Crew pacts',
-                              style: TextStyle(
-                                fontSize: 23,
-                                fontWeight: FontWeight.w700,
+                    // The week fades in over its skeleton, as Chat does.
+                    Expanded(
+                      child: SkeletonSwitcher(
+                        skeleton: const _CrewWeekSkeleton(),
+                        child: week == null
+                            ? _refreshing
+                                  ? null
+                                  // A failure has its own sentence and its
+                                  // own way out, above. Standing "Your crew's
+                                  // week" under those reads as the page
+                                  // carrying on regardless.
+                                  : _error != null
+                                  ? const SizedBox.shrink()
+                                  : const Center(
+                                      child: Text('Your crew’s week'),
+                                    )
+                            : Column(
+                                key: ValueKey('crew-week-${_crew.id}'),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  CrewPodiumPanel(
+                                    key: const ValueKey('crew-week-podium'),
+                                    week: week,
+                                    userId: widget.userId,
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text(
+                                          'Crew pacts',
+                                          style: TextStyle(
+                                            fontSize: 23,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      if (week.pacts.isNotEmpty)
+                                        Text(
+                                          '${_index + 1} / ${week.pacts.length}',
+                                          style: TextStyle(
+                                            color: context.muted,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Expanded(
+                                    child: CrewPactCarousel(
+                                      week: week,
+                                      members: members,
+                                      userId: widget.userId,
+                                      onIndexChanged: (index) =>
+                                          setState(() => _index = index),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ),
-                          if (week.pacts.isNotEmpty)
-                            Text(
-                              '${_index + 1} / ${week.pacts.length}',
-                              style: TextStyle(
-                                color: context.muted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: CrewPactCarousel(
-                          week: week,
-                          members: members,
-                          userId: widget.userId,
-                          onIndexChanged: (index) =>
-                              setState(() => _index = index),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),

@@ -6,6 +6,7 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/skeleton_switcher.dart';
 import 'subscription_backend.dart';
 import 'subscription_scope.dart';
 
@@ -190,12 +191,18 @@ class _PaywallPageState extends State<PaywallPage> {
                 body: 'No ads, ever. Nothing sold on, ever.',
               ),
               const SizedBox(height: 10),
-              if (_loading)
-                const _PlansSkeleton()
-              else if (offer == null || offer.isEmpty)
-                const _Unavailable()
-              else
-                ..._plans(offer),
+              // The plans fade in over their skeleton, as Chat does.
+              SkeletonSwitcher(
+                skeleton: const _PlansSkeleton(),
+                child: _loading
+                    ? null
+                    : offer == null || offer.isEmpty
+                    ? const _Unavailable()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _plans(offer),
+                      ),
+              ),
               if (_failure != null) ...[
                 const SizedBox(height: 14),
                 Text(

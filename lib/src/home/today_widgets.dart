@@ -252,28 +252,36 @@ class HomeHeader extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  height: selectorHeight,
-                  child: Stack(
-                    children: [
-                      if (above != null)
-                        Positioned.fill(child: Center(child: above)),
-                      if (corner != null)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(child: corner),
-                        ),
-                    ],
-                  ),
-                ),
+                HomeTitleRow(selector: above, action: corner),
                 const SizedBox(height: gap),
                 SizedBox(height: railHeight, child: rail),
               ],
             ),
     );
   }
+}
+
+/// Home's title row: the crew's name in the middle and the bell in the
+/// corner. It stands above the page rather than in it, so it stays put while
+/// the page under it loads, as Chat's heading does.
+class HomeTitleRow extends StatelessWidget {
+  const HomeTitleRow({super.key, this.selector, this.action});
+
+  /// The crew switcher. Null until the crews are in.
+  final Widget? selector;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: HomeHeader.selectorHeight,
+    child: Stack(
+      children: [
+        if (selector != null) Positioned.fill(child: Center(child: selector)),
+        if (action != null)
+          Positioned(right: 0, top: 0, bottom: 0, child: Center(child: action)),
+      ],
+    ),
+  );
 }
 
 /// The crew's week under the rail, and the way into the week behind it.
@@ -1509,18 +1517,10 @@ class _CompletedCheckIn extends StatelessWidget {
 }
 
 class TodaySkeleton extends StatefulWidget {
-  const TodaySkeleton({super.key, this.selector, this.action});
+  /// The page under Home's title row while the week loads. The title row
+  /// itself is not drawn: it stands above the page, live, through the load.
+  const TodaySkeleton({super.key});
 
-  /// The live crew switcher, where Home already has one. It rides the loading
-  /// page rather than being drawn as bars, so switching crews neither cuts the
-  /// hand's flight short nor moves the control it was pulled from. Null before
-  /// the crews are in, which the skeleton draws as its own slot.
-  final Widget? selector;
-
-  /// The bell, which does not wait for the crews: it counts what the crew has
-  /// told you, not what this week holds, so it stands in the corner from the
-  /// first frame rather than arriving with the week.
-  final Widget? action;
   @override
   State<TodaySkeleton> createState() => _TodaySkeletonState();
 }
@@ -1564,30 +1564,6 @@ class _TodaySkeletonState extends State<TodaySkeleton>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // The title row, drawn exactly as the loaded page draws it: the
-              // live control rather than a bar, so switching neither blinks
-              // the title out nor moves it, and the bell in the corner from
-              // the first frame. The name itself is not drawn on spec — it
-              // only appears once the page knows which crew it is about.
-              if (widget.selector != null || widget.action != null) ...[
-                SizedBox(
-                  height: HomeHeader.selectorHeight,
-                  child: Stack(
-                    children: [
-                      if (widget.selector != null)
-                        Positioned.fill(child: Center(child: widget.selector)),
-                      if (widget.action != null)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(child: widget.action),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: HomeHeader.gap),
-              ],
               // The rail's own slot: five faces' worth, which is more crew
               // than most have, so the row is full whatever arrives. It runs
               // off the edge on a narrow phone exactly as the rail itself

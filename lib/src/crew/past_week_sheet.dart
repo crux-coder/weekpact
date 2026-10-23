@@ -12,6 +12,7 @@ import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/page_frame.dart';
+import '../widgets/skeleton_switcher.dart';
 import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
 
@@ -341,44 +342,52 @@ class _PastWeekSheetState extends State<PastWeekSheet>
                         child: const Text('TRY AGAIN'),
                       ),
                     ),
-                  ] else if (week == null)
-                    _PastWeekSkeleton(deckHeight: deckHeight)
-                  else ...[
-                    _ClosedWeekBanner(week: week),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Crew pacts',
-                            style: TextStyle(
-                              fontSize: 23,
-                              fontWeight: FontWeight.w700,
+                  ] else
+                    // The week fades in over its skeleton, as Chat does.
+                    SkeletonSwitcher(
+                      skeleton: _PastWeekSkeleton(deckHeight: deckHeight),
+                      child: week == null
+                          ? null
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _ClosedWeekBanner(week: week),
+                                const SizedBox(height: 18),
+                                Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        'Crew pacts',
+                                        style: TextStyle(
+                                          fontSize: 23,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (week.pacts.isNotEmpty)
+                                      Text(
+                                        '${_index + 1} / ${week.pacts.length}',
+                                        style: TextStyle(
+                                          color: context.muted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  height: deckHeight,
+                                  child: CrewPactCarousel(
+                                    week: week,
+                                    members: members,
+                                    userId: widget.userId,
+                                    onIndexChanged: (index) =>
+                                        setState(() => _index = index),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                        if (week.pacts.isNotEmpty)
-                          Text(
-                            '${_index + 1} / ${week.pacts.length}',
-                            style: TextStyle(
-                              color: context.muted,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                      ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: deckHeight,
-                      child: CrewPactCarousel(
-                        week: week,
-                        members: members,
-                        userId: widget.userId,
-                        onIndexChanged: (index) =>
-                            setState(() => _index = index),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
