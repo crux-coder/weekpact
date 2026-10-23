@@ -65,5 +65,19 @@ export function renderNotification(event: NotificationEvent): PushContent {
     version: "1", type: event.event_type, notification_id: event.event_id,
     crew_id: event.crew_id,
     ...(typeof event.payload.pact_id === "string" ? { pact_id: event.payload.pact_id } : {}),
+    ...checkIn(event),
   } };
+}
+
+// The check-in a push is about, under the keys the app's inbox uses, so a tap
+// opens its story: a clap is on the recipient's own check-in, a completed
+// pact on the actor's.
+function checkIn(event: NotificationEvent): Record<string, string> {
+  const { payload } = event;
+  const user = event.event_type === "check_in_clapped" ? payload.recipient_id
+    : event.event_type === "pact_completed" ? payload.check_in_user_id
+    : undefined;
+  return typeof user === "string" && typeof payload.completed_on === "string"
+    ? { check_in_user_id: user, check_in_day: payload.completed_on }
+    : {};
 }

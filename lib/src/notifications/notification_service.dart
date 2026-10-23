@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../home/home_backend.dart';
 import 'messaging_client.dart';
 
 /// Device-level FCM infrastructure. Tokens are not associated with accounts yet.
@@ -225,3 +226,8 @@ String? chatPushCrewId(RemoteMessage message) {
       ? crewId
       : null;
 }
+
+/// The check-in a tapped push is about, or null for any other push. The push
+/// carries it under the same keys as a notification in the list.
+CheckInRef? checkInPushRef(RemoteMessage message) =>
+    CheckInRef.tryRead(message.data);

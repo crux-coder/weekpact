@@ -6,6 +6,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_month_calendar.dart';
 import '../crew/crew_page_layout.dart';
+import '../home/check_in_story.dart';
 import '../home/clap_control.dart';
 import '../home/home_backend.dart';
 import '../home/stories.dart';
@@ -23,8 +24,11 @@ import '../widgets/page_frame.dart';
 Future<int?> showNotificationsPage(
   BuildContext context, {
   required HomeBackend backend,
+  required String viewerId,
 }) => Navigator.of(context).push<int>(
-  MaterialPageRoute(builder: (_) => NotificationsPage(backend: backend)),
+  MaterialPageRoute(
+    builder: (_) => NotificationsPage(backend: backend, viewerId: viewerId),
+  ),
 );
 
 /// The bell, and what it wears: how many of the crew's notices are unread,
@@ -42,10 +46,15 @@ class NotificationsBell extends StatefulWidget {
   const NotificationsBell({
     super.key,
     required this.backend,
+    required this.viewerId,
     this.active = true,
   });
 
   final HomeBackend backend;
+
+  /// The person holding the phone, whom a check-in opened from the list is
+  /// shown to.
+  final String viewerId;
 
   /// Whether the page carrying the bell is the one on screen. Coming back to
   /// it re-reads the count, the way returning to any tab re-reads its page.
@@ -109,6 +118,7 @@ class _NotificationsBellState extends State<NotificationsBell>
     final remaining = await showNotificationsPage(
       context,
       backend: widget.backend,
+      viewerId: widget.viewerId,
     );
     if (!mounted) return;
     setState(() {
@@ -168,10 +178,17 @@ String notificationSection(DateTime at, DateTime now) {
 /// The page reads itself in pages keyed on the last entry, so a notification
 /// arriving mid-scroll cannot shift what is below the fold. Opening it marks read only as far as the first page reached: anything
 /// that lands while it is open is still unread when it closes.
+///
+/// A notice about a check-in opens that check-in's story when tapped.
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key, required this.backend});
+  const NotificationsPage({
+    super.key,
+    required this.backend,
+    required this.viewerId,
+  });
 
   final HomeBackend backend;
+  final String viewerId;
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
@@ -387,6 +404,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     entry: entry,
                     fresh: _fresh.contains(entry.eventId),
                     showCrew: crew == null && crews.length > 1,
+                    onTap: switch (entry.checkIn) {
+                      final checkIn? => () => openCheckInStory(
+                        context,
+                        checkIn: checkIn,
+                        viewerId: widget.viewerId,
+                        backend: widget.backend,
+                      ),
+                      null => null,
+                    },
                   ),
                 ],
               ],
@@ -642,10 +668,14 @@ class _NotificationRow extends StatelessWidget {
     required this.entry,
     required this.fresh,
     required this.showCrew,
+    this.onTap,
   });
 
   final NotificationEntry entry;
   final bool fresh;
+
+  /// What a tap opens; null for a notice with nothing behind it.
+  final VoidCallback? onTap;
 
   /// Whether to say which crew it came from: not when the list is already
   /// cut to one crew, or there is only one.
@@ -658,81 +688,85 @@ class _NotificationRow extends StatelessWidget {
     // rather than run together.
     return Semantics(
       container: true,
+      button: onTap != null,
       label:
           '${entry.subject} ${entry.action} · ${entry.crewName} · $when'
           '${fresh ? ' · unread' : ''}',
       child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: fresh
-                ? LinearGradient(
-                    colors: [
-                      WeekPactColors.salmon.withValues(alpha: .12),
-                      WeekPactColors.salmon.withValues(alpha: 0),
-                    ],
-                    stops: const [0, .7],
-                  )
-                : null,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _BadgedAvatar(entry: entry),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: entry.subject,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+        child: InkWell(
+          onTap: onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: fresh
+                  ? LinearGradient(
+                      colors: [
+                        WeekPactColors.salmon.withValues(alpha: .12),
+                        WeekPactColors.salmon.withValues(alpha: 0),
+                      ],
+                      stops: const [0, .7],
+                    )
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _BadgedAvatar(entry: entry),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: entry.subject,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            ..._action(),
-                          ],
+                              ..._action(),
+                            ],
+                          ),
+                          style: TextStyle(
+                            color: context.ink,
+                            fontSize: 14.5,
+                            height: 1.4,
+                          ),
                         ),
-                        style: TextStyle(
-                          color: context.ink,
-                          fontSize: 14.5,
-                          height: 1.4,
+                        const SizedBox(height: 3),
+                        Text(
+                          showCrew ? '${entry.crewName} · $when' : when,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: WeekPactType.secondary,
+                            fontFamilyFallback: WeekPactType.secondaryFallback,
+                            color: context.muted,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        showCrew ? '${entry.crewName} · $when' : when,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: WeekPactType.secondary,
-                          fontFamilyFallback: WeekPactType.secondaryFallback,
-                          color: context.muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (fresh) ...[
-                  const SizedBox(width: 10),
-                  Container(
-                    key: const ValueKey('notification-unread-dot'),
-                    margin: const EdgeInsets.only(top: 6),
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: WeekPactColors.salmon,
-                      shape: BoxShape.circle,
+                      ],
                     ),
                   ),
+                  if (fresh) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      key: const ValueKey('notification-unread-dot'),
+                      margin: const EdgeInsets.only(top: 6),
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: WeekPactColors.salmon,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

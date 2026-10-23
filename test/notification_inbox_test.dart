@@ -5,6 +5,7 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/notifications/notifications_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/home/story_viewer.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 
 import 'support/home_fakes.dart';
@@ -54,7 +55,7 @@ Future<void> pumpNotifications(
   await tester.pumpWidget(
     MaterialApp(
       theme: WeekPactTheme.light,
-      home: NotificationsPage(backend: backend),
+      home: NotificationsPage(backend: backend, viewerId: 'me'),
     ),
   );
   await tester.pumpUi();
@@ -377,5 +378,103 @@ void main() {
     );
     expect(fill('notification-badge-event-1').color, WeekPactColors.brass);
     expect(fill('notification-badge-event-2').color, WeekPactColors.lantern);
+  });
+
+  test('a notice reads the check-in it is about, when the server says', () {
+    Map<String, dynamic> row([Map<String, dynamic> extra = const {}]) => {
+      'event_id': 'event-1',
+      'type': 'check_in_clapped',
+      'created_at': '2026-09-09T10:00:00Z',
+      'crew_id': 'crew',
+      'actor_id': 'member-1',
+      ...extra,
+    };
+    final checkIn = NotificationEntry.fromJson(
+      row({
+        'pact_id': 'read',
+        'check_in_user_id': 'me',
+        'check_in_day': '2026-09-09',
+      }),
+    ).checkIn;
+    expect(checkIn?.crewId, 'crew');
+    expect(checkIn?.pactId, 'read');
+    expect(checkIn?.userId, 'me');
+    expect(checkIn?.day, '2026-09-09');
+    expect(NotificationEntry.fromJson(row()).checkIn, isNull);
+    expect(
+      NotificationEntry.fromJson(row({'pact_id': 'read'})).checkIn,
+      isNull,
+      reason: 'half a check-in names none',
+    );
+  });
+
+  testWidgets('tapping a notice about a check-in opens its story', (
+    tester,
+  ) async {
+    final backend = DashboardBackend(viewerId: 'me')
+      ..notifications = [
+        NotificationEntry(
+          eventId: 'event-1',
+          type: 'check_in_clapped',
+          createdAt: DateTime.now().toUtc(),
+          read: false,
+          crewId: 'crew',
+          crewName: 'Early Birds',
+          actorId: 'member-1',
+          displayName: 'Mirnes Halilovic',
+          pactTitle: 'Read 20 pages',
+          clapCount: 1,
+          checkIn: const CheckInRef(
+            crewId: 'crew',
+            pactId: 'read',
+            userId: 'me',
+            day: '2026-09-09',
+          ),
+        ),
+        notification(2, type: 'crew_nudge', pactTitle: null),
+      ];
+    await pumpNotifications(tester, backend);
+
+    // A nudge has nothing behind it.
+    await tester.tap(row('is cheering you on'));
+    await tester.pumpUi();
+    expect(find.byType(StoryViewer), findsNothing);
+
+    await tester.tap(row('clapped your Read 20 pages check-in'));
+    await tester.pumpUi();
+    expect(backend.openedCheckIns.single.pactId, 'read');
+    expect(find.byType(StoryViewer), findsOneWidget);
+    expect(find.byKey(const ValueKey('story-pact')), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
+  });
+
+  testWidgets('a check-in taken back since says so rather than opening', (
+    tester,
+  ) async {
+    final backend = DashboardBackend(viewerId: 'me')
+      ..notifications = [
+        NotificationEntry(
+          eventId: 'event-1',
+          type: 'pact_completed',
+          createdAt: DateTime.now().toUtc(),
+          read: false,
+          crewId: 'crew',
+          crewName: 'Early Birds',
+          actorId: 'other',
+          displayName: 'Friend',
+          pactTitle: 'Move for 30 min',
+          checkIn: const CheckInRef(
+            crewId: 'crew',
+            pactId: 'move',
+            userId: 'other',
+            day: '2026-09-09',
+          ),
+        ),
+      ];
+    await pumpNotifications(tester, backend);
+    await tester.tap(row('completed Move for 30 min'));
+    await tester.pumpUi();
+    expect(find.byType(StoryViewer), findsNothing);
+    expect(find.text('This check-in is no longer here.'), findsOneWidget);
   });
 }

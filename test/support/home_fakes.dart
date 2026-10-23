@@ -188,6 +188,15 @@ class DashboardBackend implements HomeBackend {
     return history.skip(start).take(limit).toList();
   }
 
+  /// Every check-in a notification or push asked to open, in order.
+  final openedCheckIns = <CheckInRef>[];
+
+  @override
+  Future<CrewWeek> fetchCheckInWeek(CheckInRef checkIn) {
+    openedCheckIns.add(checkIn);
+    return fetchWeek(checkIn.crewId, weekStart: checkIn.day);
+  }
+
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     fetches++;

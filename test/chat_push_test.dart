@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/home_page.dart';
+import 'package:weekpact/src/home/story_viewer.dart';
 import 'package:weekpact/src/notifications/messaging_client.dart';
 import 'package:weekpact/src/notifications/notification_scope.dart';
 import 'package:weekpact/src/notifications/notification_service.dart';
@@ -215,5 +216,27 @@ void main() {
     expect(find.text('Ana: again'), findsNothing);
     // Nothing was tapped, so nothing was opened.
     expect(find.text('Say hi to Night Owls.'), findsNothing);
+  });
+
+  testWidgets('tapping a push about a check-in opens its story', (
+    tester,
+  ) async {
+    await notifications.initialize();
+    await pumpHome(tester);
+    messaging.opens.add(
+      const RemoteMessage(
+        data: {
+          'version': '1',
+          'type': 'check_in_clapped',
+          'crew_id': 'crew',
+          'pact_id': 'read',
+          'check_in_user_id': viewer,
+          'check_in_day': '2026-09-09',
+        },
+      ),
+    );
+    await tester.pumpUi();
+    expect(find.byType(StoryViewer), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
   });
 }

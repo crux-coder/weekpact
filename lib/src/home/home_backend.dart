@@ -447,6 +447,43 @@ class CrewWeek {
             .round();
 }
 
+/// One check-in, by what names it: the crew, the pact, whose it is and the
+/// day it was kept. Notifications about a check-in carry one, so a tap can
+/// open that check-in's story.
+class CheckInRef {
+  const CheckInRef({
+    required this.crewId,
+    required this.pactId,
+    required this.userId,
+    required this.day,
+  });
+
+  final String crewId;
+  final String pactId;
+  final String userId;
+
+  /// `yyyy-MM-dd`, in the crew's own calendar.
+  final String day;
+
+  /// Reads one out of [row], or null when any part of it is missing.
+  static CheckInRef? tryRead(Map<String, dynamic> row) {
+    final crewId = row['crew_id'];
+    final pactId = row['pact_id'];
+    final userId = row['check_in_user_id'];
+    final day = row['check_in_day'];
+    if (crewId is! String || crewId.isEmpty) return null;
+    if (pactId is! String || pactId.isEmpty) return null;
+    if (userId is! String || userId.isEmpty) return null;
+    if (day is! String || day.isEmpty) return null;
+    return CheckInRef(crewId: crewId, pactId: pactId, userId: userId, day: day);
+  }
+
+  bool matches(PactCheckIn checkIn) =>
+      checkIn.pactId == pactId &&
+      checkIn.userId == userId &&
+      checkIn.day == day;
+}
+
 /// One notification as the reader sees it: what happened, who did it, and
 /// whether this person has already read it.
 ///
@@ -469,6 +506,7 @@ class NotificationEntry {
     this.clapCount = 0,
     this.avatarPath,
     this.avatarUrl,
+    this.checkIn,
   });
 
   final String eventId;
@@ -492,6 +530,10 @@ class NotificationEntry {
   final int clapCount;
   final String? avatarPath;
   final String? avatarUrl;
+
+  /// The check-in the notification is about, which a tap opens. Null for a
+  /// notice about no check-in, or from a server too old to say.
+  final CheckInRef? checkIn;
 
   String get initials {
     final parts = displayName
@@ -540,6 +582,7 @@ class NotificationEntry {
         clapCount: clapCount,
         avatarPath: avatarPath,
         avatarUrl: avatarUrl ?? this.avatarUrl,
+        checkIn: checkIn,
       );
 
   static NotificationEntry fromJson(Map<String, dynamic> row) =>
@@ -557,6 +600,7 @@ class NotificationEntry {
         pactIndex: (row['pact_index'] as num?)?.toInt(),
         clapCount: (row['clap_count'] as num?)?.toInt() ?? 0,
         avatarPath: row['avatar_path'] as String?,
+        checkIn: CheckInRef.tryRead(row),
       );
 }
 
@@ -571,6 +615,10 @@ abstract interface class HomeBackend {
   /// [weekStart] (a Monday, `yyyy-MM-dd`). A past week comes back with the
   /// real [CrewWeek.today], so nothing in it reads as still open.
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart});
+
+  /// The crew's week around [checkIn], with that check-in's photo signed
+  /// whatever day it was kept on, for opening it as a story.
+  Future<CrewWeek> fetchCheckInWeek(CheckInRef checkIn);
 
   /// Finished weeks before [before] (a Monday; this week when null), newest
   /// first, at most [limit] of them and never earlier than the crew's first.
@@ -907,6 +955,37 @@ class SupabaseHomeBackend implements HomeBackend {
   }
 
   @override
+  Future<CrewWeek> fetchCheckInWeek(CheckInRef checkIn) async {
+    // Any day of a week names it, this week's included.
+    final week = await fetchWeek(checkIn.crewId, weekStart: checkIn.day);
+    // Only today's photos come signed; an older one is signed here.
+    final missing = week.checkIns
+        .where((i) => checkIn.matches(i) && i.photoUrl == null)
+        .map((i) => i.photoPath)
+        .nonNulls
+        .toList();
+    final urls = await _signed('check-in-photos', missing);
+    if (urls.isEmpty) return week;
+    return CrewWeek(
+      today: week.today,
+      weekStart: week.weekStart,
+      timezone: week.timezone,
+      pacts: week.pacts,
+      members: week.members,
+      checkIns: [
+        for (final i in week.checkIns)
+          if (urls[i.photoPath] case final url? when checkIn.matches(i))
+            i.withPhotoUrl(url)
+          else
+            i,
+      ],
+      streakWeeks: week.streakWeeks,
+      latestActivity: week.latestActivity,
+      achievements: week.achievements,
+    );
+  }
+
+  @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final row = Map<String, dynamic>.from(
       await client.rpc(
@@ -1101,6 +1180,9 @@ class MissingHomeBackend implements HomeBackend {
       Future.error(StateError('Supabase is not configured.'));
   @override
   Future<void> markNotificationsRead({DateTime? upTo}) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<CrewWeek> fetchCheckInWeek(CheckInRef checkIn) =>
       Future.error(StateError('Supabase is not configured.'));
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) =>

@@ -17,6 +17,7 @@ import '../notifications/notification_scope.dart';
 import '../notifications/notification_service.dart';
 import '../notifications/notifications_page.dart';
 import 'achievement_composer.dart';
+import 'check_in_story.dart';
 import 'home_backend.dart';
 import 'nudge_sheet.dart';
 import 'stories.dart';
@@ -192,15 +193,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeOpenedPush());
   }
 
-  /// A tapped chat push opens Chat on the crew it is about.
+  /// A tapped chat push opens Chat on the crew it is about, and a tapped
+  /// push about a check-in opens that check-in's story over Home.
   void _routeOpenedPush() {
     if (!mounted) return;
     final message = _notifications?.takeOpenedMessage();
-    final crewId = message == null ? null : chatPushCrewId(message);
-    if (crewId == null) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    _selectCrew(crewId);
-    _selectDestination(_chatTab);
+    if (message == null) return;
+    if (chatPushCrewId(message) case final crewId?) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      _selectCrew(crewId);
+      _selectDestination(_chatTab);
+    } else if (checkInPushRef(message) case final checkIn?) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      _selectCrew(checkIn.crewId);
+      _selectDestination(0);
+      unawaited(
+        openCheckInStory(
+          context,
+          checkIn: checkIn,
+          viewerId: widget.user.id,
+          backend: widget.homeBackend,
+        ),
+      );
+    }
   }
 
   @override
@@ -726,6 +741,7 @@ class _HomeDestinationState extends State<_HomeDestination>
   Widget _bell() => NotificationsBell(
     key: const ValueKey('home-notifications'),
     backend: widget.backend,
+    viewerId: widget.userId,
     active: widget.active,
   );
 
