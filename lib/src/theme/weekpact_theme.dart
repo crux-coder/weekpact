@@ -235,7 +235,14 @@ abstract final class WeekPactColors {
 abstract final class WeekPactType {
   static const primary = 'Rubik';
   static const secondary = primary;
-  static const secondaryFallback = <String>['Arial'];
+  static const secondaryFallback = <String>['Arial', ...emojiFallback];
+
+  /// Rubik has no emoji. Named outright, because iOS does not always reach
+  /// the system's emoji face on its own and draws empty boxes instead.
+  static const emojiFallback = <String>[
+    'Apple Color Emoji',
+    'Noto Color Emoji',
+  ];
 }
 
 /// The charcoal card.
@@ -292,6 +299,7 @@ abstract final class WeekPactTheme {
     final base = ThemeData(
       useMaterial3: true,
       fontFamily: WeekPactType.primary,
+      fontFamilyFallback: WeekPactType.emojiFallback,
       brightness: brightness,
       scaffoldBackgroundColor: background,
       colorScheme:

@@ -16,6 +16,7 @@ class ChatMessage {
     this.text,
     this.delivery = ChatDelivery.sent,
     this.deleted = false,
+    this.reactions = const {},
   });
 
   final String id;
@@ -27,11 +28,15 @@ class ChatMessage {
   final ChatDelivery delivery;
   final bool deleted;
 
+  /// Each reacting member's emoji, by user id. Empty once deleted.
+  final Map<String, String> reactions;
+
   ChatMessage copyWith({
     String? text,
     ChatDelivery? delivery,
     DateTime? createdAt,
     bool? deleted,
+    Map<String, String>? reactions,
   }) => ChatMessage(
     id: id,
     senderId: senderId,
@@ -39,6 +44,7 @@ class ChatMessage {
     text: deleted == true ? null : text ?? this.text,
     delivery: delivery ?? this.delivery,
     deleted: deleted ?? this.deleted,
+    reactions: deleted == true ? const {} : reactions ?? this.reactions,
   );
 }
 
@@ -237,6 +243,37 @@ class ChatSession extends ChangeNotifier {
     }
   }
 
+  /// Reacts to a message with [emoji], or takes the reaction back when it is
+  /// the one already given.
+  Future<void> react(String messageId, String emoji) async {
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index < 0) return;
+    final before = _messages[index];
+    if (before.deleted || before.delivery != ChatDelivery.sent) return;
+    final next = before.reactions[userId] == emoji ? null : emoji;
+    _setReaction(messageId, userId, next);
+    _notify();
+    try {
+      await backend.react(messageId, next);
+    } catch (_) {
+      _setReaction(messageId, userId, before.reactions[userId]);
+      _notify();
+      rethrow;
+    }
+  }
+
+  void _setReaction(String messageId, String who, String? emoji) =>
+      _replace(messageId, (m) {
+        if (m.deleted) return m;
+        final reactions = {...m.reactions};
+        if (emoji == null) {
+          reactions.remove(who);
+        } else {
+          reactions[who] = emoji;
+        }
+        return m.copyWith(reactions: reactions);
+      });
+
   /// Tells the crew this device is typing. Throttled, and followed by a stop
   /// once the keyboard has been quiet for [typingIdle].
   void typed() {
@@ -295,6 +332,10 @@ class ChatSession extends ChangeNotifier {
         _typingStopped(message.senderId);
         _merge([message]);
         _notify();
+      case ChatReactionChanged(:final reaction):
+        if (reaction.crewId != crewId) return;
+        _setReaction(reaction.messageId, reaction.userId, reaction.emoji);
+        _notify();
       case ChatReadChanged(:final userId, :final lastReadAt):
         final known = _reads[userId];
         if (known == null || lastReadAt.isAfter(known)) {
@@ -340,14 +381,18 @@ class ChatSession extends ChangeNotifier {
   void _merge(List<ChatMessageRecord> rows) {
     for (final row in rows) {
       if (row.crewId != crewId) continue;
+      final index = _messages.indexWhere((m) => m.id == row.id);
       final message = ChatMessage(
         id: row.id,
         senderId: row.senderId,
         createdAt: row.createdAt.toLocal(),
         text: row.deleted ? null : row.body,
         deleted: row.deleted,
+        reactions: row.deleted
+            ? const {}
+            : row.reactions ??
+                  (index >= 0 ? _messages[index].reactions : const {}),
       );
-      final index = _messages.indexWhere((m) => m.id == row.id);
       if (index >= 0) {
         _messages[index] = message;
       } else {

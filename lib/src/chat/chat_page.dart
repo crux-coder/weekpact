@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../crew/crew_page_layout.dart';
@@ -266,10 +268,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     return name.isEmpty ? 'Crew member' : name.split(RegExp(r'\s+')).first;
   }
 
+  /// Holding a message: what can be done with it, then everybody who has
+  /// seen it, with the reaction each gave beside their name.
   Future<void> _messageActions(ChatMessage message) async {
     final session = _session;
     if (session == null || message.deleted) return;
     final mine = message.senderId == widget.userId;
+    final sent = message.delivery == ChatDelivery.sent;
+    // Reacting counts as having seen it, whatever the read marker says.
+    final people = sent
+        ? _peopleBy(message.reactions, session.readBy(message))
+        : const <String>[];
     unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
     final action = await showAppSheet<_MessageAction>(
       context: context,
@@ -278,32 +287,71 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (message.delivery == ChatDelivery.failed) ...[
-              _SheetAction(
-                icon: HugeIconsStrokeRounded.sent,
-                label: 'Try again',
-                onTap: () => Navigator.pop(context, _MessageAction.retry),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                for (final (i, button) in [
+                  if (message.delivery == ChatDelivery.failed) ...[
+                    _SheetButton(
+                      icon: HugeIconsStrokeRounded.sent,
+                      label: 'Try again',
+                      onTap: () => Navigator.pop(context, _MessageAction.retry),
+                    ),
+                    _SheetButton(
+                      icon: HugeIconsStrokeRounded.delete02,
+                      label: 'Discard',
+                      destructive: true,
+                      onTap: () =>
+                          Navigator.pop(context, _MessageAction.discard),
+                    ),
+                  ],
+                  if (message.text != null)
+                    _SheetButton(
+                      icon: HugeIconsStrokeRounded.copy01,
+                      label: 'Copy',
+                      onTap: () => Navigator.pop(context, _MessageAction.copy),
+                    ),
+                  if (mine && sent)
+                    _SheetButton(
+                      icon: HugeIconsStrokeRounded.delete02,
+                      label: 'Delete',
+                      destructive: true,
+                      onTap: () =>
+                          Navigator.pop(context, _MessageAction.delete),
+                    ),
+                ].indexed) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: button),
+                ],
+              ],
+            ),
+            if (sent) ...[
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  people.isEmpty ? 'Nobody has seen this yet.' : 'Seen by',
+                  style: TextStyle(
+                    color: context.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
-              _SheetAction(
-                icon: HugeIconsStrokeRounded.delete02,
-                label: 'Discard',
-                destructive: true,
-                onTap: () => Navigator.pop(context, _MessageAction.discard),
+              const SizedBox(height: 4),
+              Column(
+                key: const ValueKey('chat-message-people'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final who in people)
+                    _PersonRow(
+                      member: _members[who],
+                      name: _name(who),
+                      reaction: message.reactions[who],
+                    ),
+                ],
               ),
             ],
-            if (message.text != null)
-              _SheetAction(
-                icon: HugeIconsStrokeRounded.copy01,
-                label: 'Copy',
-                onTap: () => Navigator.pop(context, _MessageAction.copy),
-              ),
-            if (mine && message.delivery == ChatDelivery.sent)
-              _SheetAction(
-                icon: HugeIconsStrokeRounded.delete02,
-                label: 'Delete for everyone',
-                destructive: true,
-                onTap: () => Navigator.pop(context, _MessageAction.delete),
-              ),
           ],
         ),
       ),
@@ -331,6 +379,67 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           );
         }
     }
+  }
+
+  Future<void> _react(ChatMessage message, String emoji) async {
+    final session = _session;
+    if (session == null) return;
+    unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
+    try {
+      await session.react(message.id, emoji);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not react. Please try again.')),
+      );
+    }
+  }
+
+  /// A tap on a crewmate's message's reaction: a like, or taking back
+  /// whatever this account gave.
+  Future<void> _toggleReaction(ChatMessage message) =>
+      _react(message, message.reactions[widget.userId] ?? chatReactions.first);
+
+  /// Holding the reaction: every reaction, over the button, to pick from.
+  Future<void> _pickReaction(ChatMessage message, Rect anchor) async {
+    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
+    final mine = message.reactions[widget.userId];
+    final emoji = await showGeneralDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close reactions',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (context, _, _) =>
+          _ReactionPopup(anchor: anchor, selected: mine),
+      transitionBuilder: (context, animation, _, child) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween(
+            begin: .9,
+            end: 1.0,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        ),
+      ),
+    );
+    if (!mounted || emoji == null || emoji == mine) return;
+    await _react(message, emoji);
+  }
+
+  /// Who reacted, in the picker's order, then who has only seen it.
+  List<String> _peopleBy(Map<String, String> reactions, Set<String> seen) {
+    int byName(String a, String b) => _name(a).compareTo(_name(b));
+    final reacted = reactions.keys.toList()
+      ..sort((a, b) {
+        final byEmoji = chatReactions
+            .indexOf(reactions[a]!)
+            .compareTo(chatReactions.indexOf(reactions[b]!));
+        return byEmoji != 0 ? byEmoji : byName(a, b);
+      });
+    final onlySeen = seen.where((id) => !reactions.containsKey(id)).toList()
+      ..sort(byName);
+    return [...reacted, ...onlySeen];
   }
 
   @override
@@ -507,6 +616,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final older = i > 0 ? messages[i - 1] : null;
       final newer = i < messages.length - 1 ? messages[i + 1] : null;
       final opensRun = !_sameRun(older, message);
+      final reactable =
+          message.senderId != widget.userId &&
+          message.delivery == ChatDelivery.sent &&
+          !message.deleted;
       final closesRun = !_sameRun(message, newer);
       items.add(
         _MessageRow(
@@ -521,6 +634,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               ? [for (final id in seenBy) _name(id)]
               : const [],
           onLongPress: () => _messageActions(message),
+          viewerId: widget.userId,
+          onDoubleTap: reactable ? () => _toggleReaction(message) : null,
+          onReact: reactable ? () => _toggleReaction(message) : null,
+          onPickReaction: reactable
+              ? (anchor) => _pickReaction(message, anchor)
+              : null,
+          onShowReactions: () => _messageActions(message),
           onRetry: message.delivery == ChatDelivery.failed
               ? () => _messageActions(message)
               : null,
@@ -553,6 +673,402 @@ extension on ChatSession {
 }
 
 enum _MessageAction { copy, delete, retry, discard }
+
+/// [reactions] (user id to emoji) as each emoji's reactors, in the order the
+/// picker offers them.
+Map<String, List<String>> _groupReactions(Map<String, String> reactions) => {
+  for (final emoji in chatReactions)
+    if (reactions.containsValue(emoji))
+      emoji: [
+        for (final entry in reactions.entries)
+          if (entry.value == emoji) entry.key,
+      ],
+};
+
+/// How each reaction is drawn, and read aloud. The emoji is only what the
+/// server stores; the app draws its own glyph for it.
+const _reactionIcons = <String, List<List<dynamic>>>{
+  '👍': HugeIconsStrokeRounded.thumbsUp,
+  '\u2764\uFE0F': HugeIconsStrokeRounded.favourite,
+  '😂': HugeIconsStrokeRounded.laughing,
+  '🔥': HugeIconsStrokeRounded.fire,
+  '👏': HugeIconsStrokeRounded.handsClapping,
+  '😮': HugeIconsStrokeRounded.surprise,
+};
+
+/// The colour a reaction you gave is drawn in, on the dark canvas.
+const _reactionColors = <String, Color>{
+  '👍': WeekPactColors.sky,
+  '\u2764\uFE0F': WeekPactColors.salmon,
+  '😂': WeekPactColors.gold,
+  '🔥': WeekPactColors.lantern,
+  '👏': WeekPactColors.brass,
+  '😮': WeekPactColors.lavender,
+};
+const _reactionNames = <String, String>{
+  '👍': 'Like',
+  '\u2764\uFE0F': 'Love',
+  '😂': 'Haha',
+  '🔥': 'Fire',
+  '👏': 'Clap',
+  '😮': 'Wow',
+};
+
+/// The reaction glyphs filled in: Hugeicons' free set is outlines only, so
+/// each outline's main shape is filled here. The faces' outlines are open,
+/// so they get a disc of their own to fill.
+final _filledReactionIcons = <String, List<List<dynamic>>>{
+  '👍': _filledShapes(HugeIconsStrokeRounded.thumbsUp, {0, 1}),
+  '\u2764\uFE0F': _filledShapes(HugeIconsStrokeRounded.favourite, {0}),
+  '😂': [
+    _faceDisc,
+    ..._filledShapes(HugeIconsStrokeRounded.laughing, {3, 4}),
+  ],
+  '🔥': _filledShapes(HugeIconsStrokeRounded.fire, {0}),
+  '👏': _filledShapes(HugeIconsStrokeRounded.handsClapping, {0}),
+  '😮': _filledShapes(HugeIconsStrokeRounded.surprise, {0}),
+};
+
+const _faceDisc = [
+  'circle',
+  {'key': 'disc', 'cx': '12', 'cy': '12', 'r': '10', 'fill': 'currentColor'},
+];
+
+List<List<dynamic>> _filledShapes(List<List<dynamic>> icon, Set<int> shapes) =>
+    [
+      for (final (i, element) in icon.indexed)
+        shapes.contains(i)
+            ? [
+                element[0],
+                {...element[1] as Map<String, dynamic>, 'fill': 'currentColor'},
+              ]
+            : element,
+    ];
+
+/// A reaction's glyph: filled in its own colour, with the details in a
+/// darker shade of it, unless [color] asks for a plain outline.
+class _ReactionIcon extends StatelessWidget {
+  const _ReactionIcon({required this.emoji, required this.size, this.color});
+  final String emoji;
+  final double size;
+
+  /// The outline's colour, for a reaction not given.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final outline = color;
+    final fill = _reactionColors[emoji] ?? context.ink;
+    return Semantics(
+      label: _reactionNames[emoji],
+      child: HugeIcon(
+        icon: outline == null
+            ? _filledReactionIcons[emoji] ?? HugeIconsStrokeRounded.smile
+            : _reactionIcons[emoji] ?? HugeIconsStrokeRounded.smile,
+        size: size,
+        color: outline ?? Color.lerp(fill, WeekPactColors.black, .6),
+        secondaryColor: outline == null ? fill : null,
+        strokeWidth: outline == null ? 1.6 : 1.8,
+      ),
+    );
+  }
+}
+
+/// The row of reactions at the top of a message's sheet.
+class _ReactionPicker extends StatelessWidget {
+  const _ReactionPicker({required this.selected, required this.onPick});
+  final String? selected;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      for (final emoji in chatReactions)
+        Semantics(
+          button: true,
+          selected: emoji == selected,
+          child: InkResponse(
+            key: ValueKey('chat-react-$emoji'),
+            onTap: () => onPick(emoji),
+            radius: 26,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: emoji == selected
+                    ? WeekPactColors.black.withValues(alpha: .1)
+                    : Colors.transparent,
+              ),
+              child: _ReactionIcon(emoji: emoji, size: 26),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+/// The reactions beside a bubble, in the bubble's own colour. On a
+/// crewmate's message the main squircle is yours: a muted like until you
+/// react, then your reaction, filled. A smaller one next to it, outward,
+/// holds everybody else's, each with how many gave it.
+class _Reactions extends StatelessWidget {
+  const _Reactions({
+    required this.messageId,
+    required this.reactions,
+    required this.viewerId,
+    required this.fill,
+    required this.onShowReactions,
+    this.onReact,
+    this.onPickReaction,
+  });
+
+  final String messageId;
+  final Map<String, String> reactions;
+  final String viewerId;
+  final Color fill;
+  final VoidCallback onShowReactions;
+
+  /// Null on your own message: there is no reaction of yours to give.
+  final VoidCallback? onReact;
+
+  /// Given where your reaction is on screen, so a picker can open over it.
+  final ValueChanged<Rect>? onPickReaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = reactions[viewerId];
+    final others = _groupReactions({
+      for (final entry in reactions.entries)
+        if (entry.key != viewerId) entry.key: entry.value,
+    });
+    final edge = Color.lerp(fill, WeekPactColors.black, .22)!;
+    final react = onReact;
+    final pick = onPickReaction;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (react != null && pick != null)
+          Semantics(
+            button: true,
+            label: mine == null ? 'React' : 'Reacted ${_reactionNames[mine]}',
+            child: _SpringPress(
+              key: ValueKey('chat-reaction-button-$messageId'),
+              onTap: react,
+              onLongPress: pick,
+              child: _Lipped(
+                fill: fill,
+                edge: edge,
+                child: SizedBox.square(
+                  dimension: 30,
+                  child: Center(
+                    child: _ReactionIcon(
+                      emoji: mine ?? chatReactions.first,
+                      size: mine == null ? 16 : 19,
+                      // Faint until you react, so a given reaction stands out.
+                      color: mine == null
+                          ? WeekPactColors.mutedLight.withValues(alpha: .35)
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (others.isNotEmpty) ...[
+          if (react != null) const SizedBox(width: 3),
+          Semantics(
+            button: true,
+            label: 'See reactions',
+            child: _SpringPress(
+              key: ValueKey('chat-reaction-others-$messageId'),
+              onTap: onShowReactions,
+              onLongPress: (_) => onShowReactions(),
+              child: _Lipped(
+                fill: fill,
+                edge: edge,
+                child: Container(
+                  height: 22,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final (i, entry) in others.entries.indexed) ...[
+                        if (i > 0) const SizedBox(width: 5),
+                        _ReactionIcon(emoji: entry.key, size: 13),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${entry.value.length}',
+                          style: const TextStyle(
+                            color: WeekPactColors.black,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A squircle in [fill] with the same lip along its foot as the bubbles.
+class _Lipped extends StatelessWidget {
+  const _Lipped({required this.fill, required this.edge, required this.child});
+  final Color fill;
+  final Color edge;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: ShapeDecoration(
+      color: edge,
+      shape: const SquircleButtonBorder(),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: WeekPactMetrics.controlDepth),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: fill,
+          shape: const SquircleButtonBorder(),
+        ),
+        child: child,
+      ),
+    ),
+  );
+}
+
+/// Squeezes [child] while a finger is on it and springs it back on release.
+class _SpringPress extends StatefulWidget {
+  const _SpringPress({
+    super.key,
+    required this.child,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  /// Given where the child is on screen.
+  final ValueChanged<Rect> onLongPress;
+
+  @override
+  State<_SpringPress> createState() => _SpringPressState();
+}
+
+class _SpringPressState extends State<_SpringPress>
+    with SingleTickerProviderStateMixin {
+  late final _scale = AnimationController.unbounded(vsync: this, value: 1);
+
+  static const _pressed = .82;
+  static final _spring = SpringDescription.withDampingRatio(
+    mass: 1,
+    stiffness: 420,
+    ratio: .45,
+  );
+
+  bool get _still => MediaQuery.disableAnimationsOf(context);
+
+  void _down() {
+    if (_still) return;
+    _scale.animateTo(
+      _pressed,
+      duration: const Duration(milliseconds: 90),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _release() {
+    if (_still) return;
+    _scale.animateWith(
+      SpringSimulation(_spring, _scale.value, 1, _scale.velocity),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scale.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTapDown: (_) => _down(),
+    onTapUp: (_) => _release(),
+    onTapCancel: _release,
+    onTap: widget.onTap,
+    onLongPress: () {
+      final box = context.findRenderObject()! as RenderBox;
+      widget.onLongPress(box.localToGlobal(Offset.zero) & box.size);
+    },
+    child: ScaleTransition(scale: _scale, child: widget.child),
+  );
+}
+
+/// Every reaction in a strip over [anchor], or under it when there is no
+/// room above. Closes with the one picked.
+class _ReactionPopup extends StatelessWidget {
+  const _ReactionPopup({required this.anchor, required this.selected});
+  final Rect anchor;
+  final String? selected;
+
+  static const _height = 64.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    final width = math.min(304.0, screen.width - 16);
+    final left = (anchor.center.dx - width / 2).clamp(
+      8.0,
+      screen.width - width - 8,
+    );
+    final above = anchor.top - _height - 8;
+    final top = above >= padding.top + 8 ? above : anchor.bottom + 8;
+    return Stack(
+      children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: width,
+          height: _height,
+          child: Material(
+            type: MaterialType.transparency,
+            child: DecoratedBox(
+              key: const ValueKey('chat-reaction-popup'),
+              decoration: const ShapeDecoration(
+                color: WeekPactColors.cream,
+                shape: SquircleButtonBorder(),
+                shadows: [
+                  BoxShadow(
+                    color: Color(0x33000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: _ReactionPicker(
+                selected: selected,
+                onPick: (emoji) => Navigator.pop(context, emoji),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// The line under the crew's name: who is in the chat now. Nothing while
 /// nobody else is.
@@ -707,6 +1223,11 @@ class _MessageRow extends StatelessWidget {
     required this.closesRun,
     required this.seenBy,
     required this.onLongPress,
+    required this.viewerId,
+    required this.onShowReactions,
+    this.onReact,
+    this.onPickReaction,
+    this.onDoubleTap,
     this.onRetry,
   });
 
@@ -718,11 +1239,27 @@ class _MessageRow extends StatelessWidget {
   final bool closesRun;
   final List<String> seenBy;
   final VoidCallback onLongPress;
+  final String viewerId;
+  final VoidCallback onShowReactions;
+
+  /// Null on your own messages, which are reacted to rather than on.
+  final VoidCallback? onReact;
+  final ValueChanged<Rect>? onPickReaction;
+  final VoidCallback? onDoubleTap;
   final VoidCallback? onRetry;
 
   static const _avatar = 28.0;
   static const _round = Radius.circular(18);
   static const _tight = Radius.circular(6);
+
+  /// A crewmate's message always offers your reaction; your own shows the
+  /// others' once somebody has reacted.
+  bool get _hasReaction =>
+      !message.deleted &&
+      message.delivery == ChatDelivery.sent &&
+      (onReact != null || message.reactions.isNotEmpty);
+
+  Color get _fill => mine ? WeekPactColors.coolGrey : WeekPactColors.cream;
 
   BorderRadius get _corners => mine
       ? BorderRadius.only(
@@ -783,7 +1320,7 @@ class _MessageRow extends StatelessWidget {
   );
 
   Widget _bubble(BuildContext context) {
-    final fill = mine ? WeekPactColors.coolGrey : WeekPactColors.cream;
+    final fill = _fill;
     final edge = Color.lerp(fill, WeekPactColors.black, .22)!;
     final faded = message.deleted;
     final Widget content;
@@ -837,14 +1374,26 @@ class _MessageRow extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final maxBubble = math.min(width * .74, 460.0);
     final footer = _footer(context);
-    final bubble = GestureDetector(
+    final Widget body = GestureDetector(
       onLongPress: onLongPress,
+      onDoubleTap: onDoubleTap,
       onTap: onRetry,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxBubble),
         child: _bubble(context),
       ),
     );
+    // The reaction floats beside the bubble's outer side, halfway down.
+    final bubble = !_hasReaction
+        ? body
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (mine) ...[_reactions(), const SizedBox(width: 6)],
+              Flexible(child: body),
+              if (!mine) ...[const SizedBox(width: 6), _reactions()],
+            ],
+          );
     return Semantics(
       label: '$senderName, ${_time(context)}',
       child: Padding(
@@ -905,6 +1454,16 @@ class _MessageRow extends StatelessWidget {
       ),
     );
   }
+
+  Widget _reactions() => _Reactions(
+    messageId: message.id,
+    reactions: message.reactions,
+    viewerId: viewerId,
+    fill: _fill,
+    onReact: onReact,
+    onPickReaction: onPickReaction,
+    onShowReactions: onShowReactions,
+  );
 
   /// Under a bubble: that it did not send, or who has seen it.
   Widget? _footer(BuildContext context) {
@@ -1279,8 +1838,10 @@ class _RoundButton extends StatelessWidget {
   }
 }
 
-class _SheetAction extends StatelessWidget {
-  const _SheetAction({
+/// One of a message's actions, side by side with the others at the top of
+/// its sheet.
+class _SheetButton extends StatelessWidget {
+  const _SheetButton({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -1294,25 +1855,72 @@ class _SheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = destructive ? context.errorInk : context.ink;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Row(
-          children: [
-            AppIcon(icon: icon, color: color, size: 20),
-            const SizedBox(width: 12),
-            Text(
-              label,
+    return Material(
+      color: WeekPactColors.neutralInset,
+      shape: const SquircleButtonBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIcon(icon: icon, color: color, size: 20),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Somebody in a message's sheet: who they are, and the reaction they gave,
+/// or a quiet tick for having seen it.
+class _PersonRow extends StatelessWidget {
+  const _PersonRow({required this.member, required this.name, this.reaction});
+  final WeekMember? member;
+  final String name;
+  final String? reaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final reaction = this.reaction;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Row(
+        children: [
+          _ChatAvatar(member: member, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: color,
+                color: context.ink,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ],
-        ),
+          ),
+          if (reaction != null)
+            _ReactionIcon(emoji: reaction, size: 22)
+          else
+            AppIcon(
+              icon: HugeIconsStrokeRounded.tickDouble02,
+              size: 16,
+              color: context.muted,
+            ),
+        ],
       ),
     );
   }

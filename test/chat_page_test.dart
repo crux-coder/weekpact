@@ -132,6 +132,125 @@ void main() {
     expect(find.text('Seen by Crew member'), findsOneWidget);
   });
 
+  testWidgets('a crewmate\'s message likes on tap and picks on hold', (
+    tester,
+  ) async {
+    final other = await crewmate(server);
+    addTearDown(other.dispose);
+    await other.send('Ran 10k');
+    await pumpHome(tester, server);
+    await tester.tap(find.byKey(const ValueKey('nav-chat')));
+    await tester.pumpUi();
+    final id = other.messages.single.id;
+    final button = find.byKey(ValueKey('chat-reaction-button-$id'));
+
+    // Always there, and a tap is a like; another tap takes it back.
+    expect(button, findsOneWidget);
+    await tester.tap(button);
+    await tester.pumpUi();
+    expect(other.messages.single.reactions, {viewer: '👍'});
+    await tester.tap(button);
+    await tester.pumpUi();
+    expect(other.messages.single.reactions, isEmpty);
+
+    // Holding opens every reaction; the one picked replaces the like.
+    await tester.longPress(button);
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('chat-reaction-popup')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('chat-react-🔥')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('chat-reaction-popup')), findsNothing);
+    expect(other.messages.single.reactions, {viewer: '🔥'});
+
+    // A tap now takes the fire back, and a double tap on the bubble likes.
+    await tester.tap(button);
+    await tester.pumpUi();
+    expect(other.messages.single.reactions, isEmpty);
+    await tester.tap(find.text('Ran 10k'));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.text('Ran 10k'));
+    await tester.pumpUi();
+    expect(other.messages.single.reactions, {viewer: '👍'});
+
+    // Theirs sit beside yours with their count, and the sheet says who.
+    final others = find.byKey(ValueKey('chat-reaction-others-$id'));
+    expect(others, findsNothing);
+    await other.react(id, '❤️');
+    await tester.pumpUi();
+    expect(
+      find.descendant(of: others, matching: find.text('1')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getCenter(others).dx,
+      greaterThan(tester.getCenter(button).dx),
+    );
+    // Holding the message lists who reacted, with what, and no picker.
+    await tester.longPress(find.text('Ran 10k'));
+    await tester.pumpUi();
+    final people = find.byKey(const ValueKey('chat-message-people'));
+    expect(
+      find.descendant(of: people, matching: find.text('You')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: people, matching: find.text('Crew member')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('chat-react-👍')), findsNothing);
+    expect(find.text('Copy'), findsOneWidget);
+    // Not yours to delete.
+    expect(find.text('Delete'), findsNothing);
+  });
+
+  testWidgets('your own message shows a reaction only once given', (
+    tester,
+  ) async {
+    final other = await crewmate(server);
+    addTearDown(other.dispose);
+    await pumpHome(tester, server);
+    await tester.tap(find.byKey(const ValueKey('nav-chat')));
+    await tester.pumpUi();
+    await tester.enterText(find.byKey(const ValueKey('chat-input')), 'PB');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-send')));
+    await tester.pumpUi();
+    final id = other.messages.single.id;
+    final others = find.byKey(ValueKey('chat-reaction-others-$id'));
+    expect(others, findsNothing);
+    final people = find.byKey(const ValueKey('chat-message-people'));
+    final crewmateRow = find.descendant(
+      of: people,
+      matching: find.text('Crew member'),
+    );
+
+    // Holding it says nobody has seen it, until they read it.
+    await tester.longPress(find.text('PB'));
+    await tester.pumpUi();
+    expect(find.text('Nobody has seen this yet.'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpUi();
+    await other.markRead();
+    await tester.pumpUi();
+    await tester.longPress(find.text('PB'));
+    await tester.pumpUi();
+    expect(crewmateRow, findsOneWidget);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpUi();
+
+    await other.react(id, '👏');
+    await tester.pumpUi();
+    expect(others, findsOneWidget);
+    // There is no reaction of yours to give on your own message.
+    expect(find.byKey(ValueKey('chat-reaction-button-$id')), findsNothing);
+    // Tapping theirs opens the same list.
+    await tester.tap(others);
+    await tester.pumpUi();
+    expect(crewmateRow, findsOneWidget);
+    expect(other.messages.single.reactions, {'other': '👏'});
+  });
+
   testWidgets('a failed message says so and sends on retry', (tester) async {
     await pumpHome(tester, server);
     await tester.tap(find.byKey(const ValueKey('nav-chat')));

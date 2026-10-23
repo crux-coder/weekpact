@@ -148,6 +148,58 @@ void main() {
     expect(server.messages.values.single.body, isEmpty);
   });
 
+  test('reactions reach the crew, toggle and replace each other', () async {
+    final alice = await open('alice');
+    final bob = await open('bob');
+    await alice.send('PB today');
+    await settle();
+    final id = alice.messages.single.id;
+
+    await bob.react(id, '🔥');
+    await settle();
+    expect(alice.messages.single.reactions, {'bob': '🔥'});
+    expect(bob.messages.single.reactions, {'bob': '🔥'});
+
+    // Another emoji replaces it; the same one again takes it back.
+    await bob.react(id, '👏');
+    await alice.react(id, '👏');
+    await settle();
+    expect(alice.messages.single.reactions, {'bob': '👏', 'alice': '👏'});
+    await bob.react(id, '👏');
+    await settle();
+    expect(alice.messages.single.reactions, {'alice': '👏'});
+
+    // Somebody opening later reads them with the history.
+    final fresh = await open('bob');
+    expect(fresh.messages.single.reactions, {'alice': '👏'});
+  });
+
+  test('a failed reaction is put back', () async {
+    final alice = await open('alice');
+    await alice.send('Hi');
+    await settle();
+    server.failReactions = true;
+    await expectLater(
+      alice.react(alice.messages.single.id, '😂'),
+      throwsStateError,
+    );
+    expect(alice.messages.single.reactions, isEmpty);
+  });
+
+  test('unsending a message clears its reactions', () async {
+    final alice = await open('alice');
+    final bob = await open('bob');
+    await alice.send('Oops');
+    await settle();
+    final id = alice.messages.single.id;
+    await bob.react(id, '😂');
+    await settle();
+    await alice.delete(id);
+    await settle();
+    expect(bob.messages.single.reactions, isEmpty);
+    expect(server.reactions[id], isNull);
+  });
+
   test('empty and oversized messages are refused', () async {
     final alice = await open('alice');
     expect(await alice.send('   '), isFalse);

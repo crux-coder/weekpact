@@ -15,12 +15,16 @@ class FakeChatServer {
   final Map<String, Set<String>> members;
   final messages = <String, ChatMessageRecord>{};
   final reads = <String, Map<String, DateTime>>{};
+
+  /// Message id to each reacting user's emoji.
+  final reactions = <String, Map<String, String>>{};
   final connections = <FakeChatConnection>[];
 
   var _clock = DateTime.utc(2026, 10, 21, 9);
   DateTime tick() => _clock = _clock.add(const Duration(seconds: 1));
 
   bool failSends = false;
+  bool failReactions = false;
 
   void _emit(String crewId, ChatEvent event) {
     for (final connection in [...connections]) {
@@ -98,7 +102,18 @@ class FakeChatBackend implements ChatBackend {
             )
             .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return rows.take(limit).toList();
+    return [
+      for (final m in rows.take(limit))
+        ChatMessageRecord(
+          id: m.id,
+          crewId: m.crewId,
+          senderId: m.senderId,
+          body: m.body,
+          createdAt: m.createdAt,
+          deletedAt: m.deletedAt,
+          reactions: {...?server.reactions[m.id]},
+        ),
+    ];
   }
 
   @override
@@ -135,6 +150,43 @@ class FakeChatBackend implements ChatBackend {
     );
     server.messages[messageId] = deleted;
     server._emit(row.crewId, ChatMessageChanged(deleted));
+    for (final who in [...?server.reactions.remove(messageId)?.keys]) {
+      server._emit(
+        row.crewId,
+        ChatReactionChanged(
+          ChatReactionRecord(
+            messageId: messageId,
+            crewId: row.crewId,
+            userId: who,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<void> react(String messageId, String? emoji) async {
+    final row = server.messages[messageId];
+    if (row == null || row.deleted) throw StateError('No such message');
+    _member(row.crewId);
+    if (server.failReactions) throw StateError('offline');
+    final reactions = server.reactions.putIfAbsent(messageId, () => {});
+    if (emoji == null) {
+      reactions.remove(userId);
+    } else {
+      reactions[userId] = emoji;
+    }
+    server._emit(
+      row.crewId,
+      ChatReactionChanged(
+        ChatReactionRecord(
+          messageId: messageId,
+          crewId: row.crewId,
+          userId: userId,
+          emoji: emoji,
+        ),
+      ),
+    );
   }
 
   @override

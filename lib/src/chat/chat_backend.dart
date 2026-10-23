@@ -11,6 +11,7 @@ class ChatMessageRecord {
     required this.body,
     required this.createdAt,
     this.deletedAt,
+    this.reactions,
   });
 
   final String id;
@@ -21,6 +22,10 @@ class ChatMessageRecord {
   final String body;
   final DateTime createdAt;
   final DateTime? deletedAt;
+
+  /// Each reacting member's emoji, by user id. Null when the row came without
+  /// them, as a live update does: whatever is already known still stands.
+  final Map<String, String>? reactions;
 
   bool get deleted => deletedAt != null;
 
@@ -34,6 +39,43 @@ class ChatMessageRecord {
         deletedAt: row['deleted_at'] == null
             ? null
             : DateTime.parse(row['deleted_at'] as String),
+        reactions: row['chat_reactions'] is List
+            ? {
+                for (final r
+                    in (row['chat_reactions'] as List)
+                        .cast<Map<String, dynamic>>())
+                  if (r['emoji'] is String)
+                    r['user_id'] as String: r['emoji'] as String,
+              }
+            : null,
+      );
+}
+
+/// The emoji a message can be reacted with: what the server's column allows.
+const chatReactions = ['👍', '\u2764\uFE0F', '😂', '🔥', '👏', '😮'];
+
+/// One member's reaction to one message.
+class ChatReactionRecord {
+  const ChatReactionRecord({
+    required this.messageId,
+    required this.crewId,
+    required this.userId,
+    this.emoji,
+  });
+
+  final String messageId;
+  final String crewId;
+  final String userId;
+
+  /// Null once it is taken back.
+  final String? emoji;
+
+  factory ChatReactionRecord.fromJson(Map<String, dynamic> row) =>
+      ChatReactionRecord(
+        messageId: row['message_id'] as String,
+        crewId: row['crew_id'] as String,
+        userId: row['user_id'] as String,
+        emoji: row['emoji'] as String?,
       );
 }
 
@@ -51,6 +93,11 @@ class ChatConnected extends ChatEvent {
 class ChatMessageChanged extends ChatEvent {
   const ChatMessageChanged(this.message);
   final ChatMessageRecord message;
+}
+
+class ChatReactionChanged extends ChatEvent {
+  const ChatReactionChanged(this.reaction);
+  final ChatReactionRecord reaction;
 }
 
 class ChatReadChanged extends ChatEvent {
@@ -92,6 +139,9 @@ abstract interface class ChatBackend {
   });
   Future<void> deleteMessage(String messageId);
 
+  /// Sets this account's reaction to a message, or takes it back with null.
+  Future<void> react(String messageId, String? emoji);
+
   Future<void> markRead(String crewId, DateTime at);
   Future<Map<String, DateTime>> fetchReads(String crewId);
 
@@ -115,7 +165,10 @@ class SupabaseChatBackend implements ChatBackend {
     DateTime? before,
     int limit = 40,
   }) async {
-    var query = _client.from('chat_messages').select().eq('crew_id', crewId);
+    var query = _client
+        .from('chat_messages')
+        .select('*, chat_reactions(user_id, emoji)')
+        .eq('crew_id', crewId);
     if (before != null) {
       query = query.lt('created_at', before.toUtc().toIso8601String());
     }
@@ -144,6 +197,12 @@ class SupabaseChatBackend implements ChatBackend {
   Future<void> deleteMessage(String messageId) => _client.rpc<void>(
     'delete_chat_message',
     params: {'target_message_id': messageId},
+  );
+
+  @override
+  Future<void> react(String messageId, String? emoji) => _client.rpc<void>(
+    'react_to_chat_message',
+    params: {'target_message_id': messageId, 'reaction': emoji},
   );
 
   @override
@@ -232,6 +291,20 @@ class _SupabaseChatConnection implements ChatConnection {
           callback: _message,
         )
         .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'chat_reactions',
+          filter: filter,
+          callback: _reaction,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'chat_reactions',
+          filter: filter,
+          callback: _reaction,
+        )
+        .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'chat_reads',
@@ -286,6 +359,14 @@ class _SupabaseChatConnection implements ChatConnection {
     }
   }
 
+  void _reaction(PostgresChangePayload payload) {
+    try {
+      _add(ChatReactionChanged(ChatReactionRecord.fromJson(payload.newRecord)));
+    } catch (_) {
+      // As with messages: the next refresh has it.
+    }
+  }
+
   void _presence() {
     final users = <String>{};
     for (final state in _channel.presenceState()) {
@@ -335,6 +416,8 @@ class MissingChatBackend implements ChatBackend {
   }) async => _missing();
   @override
   Future<void> deleteMessage(String messageId) async => _missing();
+  @override
+  Future<void> react(String messageId, String? emoji) async => _missing();
   @override
   Future<void> markRead(String crewId, DateTime at) async => _missing();
   @override
