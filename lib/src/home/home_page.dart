@@ -5,6 +5,7 @@ import '../invites/invite_code_entry.dart';
 import '../invites/invite_links.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_sheet.dart';
+import '../widgets/skeleton_switcher.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
 
@@ -607,8 +608,21 @@ class _HomeDestinationState extends State<_HomeDestination>
       setState(() {
         _crews = crews;
         if (crew?.id != _crew?.id) {
-          _week = null;
+          // The new crew opens on the week kept for it, where there is one,
+          // rather than on a skeleton; the fetch below brings it up to date.
+          final cached = crew == null
+              ? null
+              : widget.backend.cachedWeek(crew.id);
+          _week = cached;
           _history = null;
+          _nudges = cached?.nudges ?? const {};
+          _seen
+            ..clear()
+            ..addAll(
+              cached == null
+                  ? const <String>{}
+                  : widget.seenStore.read(widget.userId, cached.today),
+            );
         }
         _crew = crew;
         _error = null;
@@ -1002,164 +1016,21 @@ class _HomeDestinationState extends State<_HomeDestination>
                             child: Builder(
                               builder: (context) {
                                 final selector = _selector();
-                                if (loading) {
-                                  // The switcher stays mounted through a
-                                  // switch, so the hand it is putting away
-                                  // finishes its flight rather than blinking
-                                  // out with the page under it.
-                                  return TodaySkeleton(
+                                // A quick load goes straight to the page; a
+                                // slow one fades the skeleton in and out.
+                                return SkeletonSwitcher(
+                                  skeleton: TodaySkeleton(
                                     selector: selector,
                                     action: _bell(),
-                                  );
-                                }
-                                if (_error != null) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          _error!,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(color: context.ink),
+                                  ),
+                                  child: loading
+                                      ? null
+                                      : Builder(
+                                          // A new crew fades in over the old.
+                                          key: ValueKey(_crew?.id),
+                                          builder: (context) =>
+                                              _page(context, selector, week),
                                         ),
-                                        TextButton(
-                                          onPressed: _refresh,
-                                          child: const Text('TRY AGAIN'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                                if (_crews != null && _crews!.isEmpty) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Your week starts with a crew.',
-                                          style: TextStyle(
-                                            color: context.ink,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        AppButton(
-                                          label: 'START YOUR CREW',
-                                          onPressed: widget.onChooseStart,
-                                        ),
-                                        TextButton(
-                                          onPressed: widget.onOpenCrews,
-                                          child: const Text(
-                                            'Have an invite code? Join a crew',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                                if (week == null) {
-                                  return const SizedBox.shrink();
-                                }
-                                final days = MemberDay.read(
-                                  week,
-                                  viewerId: widget.userId,
-                                  seen: _seen,
-                                );
-                                return Column(
-                                  key: ValueKey(_crew!.id),
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    HomeHeader(
-                                      action: _bell(),
-                                      rail: StoriesRail(
-                                        days: days,
-                                        onNudge: _nudge,
-                                        // Past the page's own margin, so a
-                                        // long crew leaves at the screen's
-                                        // edge rather than at the card's.
-                                        bleed: 12,
-                                        onOpen: (day) =>
-                                            _openStories(days, day),
-                                        onCompose: _composeAchievement,
-                                      ),
-                                      selector: selector,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    // The month first, then the week it is
-                                    // running through, then today's pacts.
-                                    CrewStreakCard(
-                                      key: const ValueKey('home-streak-card'),
-                                      week: week,
-                                      history: _history,
-                                      onViewMonth: () =>
-                                          showCrewMonthPhotosSheet(
-                                            context: context,
-                                            crewId: _crew!.id,
-                                            backend: widget.backend,
-                                            userId: widget.userId,
-                                            week: week,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    CrewTodayBar(
-                                      week: week,
-                                      onOpenWeek: _openCrewWeek,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (_saveError != null)
-                                      SizedBox(
-                                        height: 40,
-                                        child: Text(
-                                          _saveError!,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: context.errorInk,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                    Expanded(
-                                      child: week.pacts.isEmpty
-                                          ? Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    'No pacts yet.',
-                                                    style: TextStyle(
-                                                      color: context.ink,
-                                                      fontSize: 24,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  AppButton(
-                                                    label: _crew!.isOwner
-                                                        ? 'SET UP YOUR FIRST PACT'
-                                                        : 'VIEW PACTS',
-                                                    onPressed: _crew!.isOwner
-                                                        ? widget.onStartCrew
-                                                        : widget.onOpenPacts,
-                                                  ),
-                                                ],
-                                              ),
-                                            )
-                                          : LayoutBuilder(
-                                              builder: (context, space) =>
-                                                  TodayPactsCard(
-                                                    height: space.maxHeight,
-                                                    week: week,
-                                                    userId: widget.userId,
-                                                    savingPact: _savingPact,
-                                                    onToggle: _togglePact,
-                                                  ),
-                                            ),
-                                    ),
-                                  ],
                                 );
                               },
                             ),
@@ -1174,6 +1045,139 @@ class _HomeDestinationState extends State<_HomeDestination>
           ],
         ),
       ),
+    );
+  }
+
+  /// Home once the load is in: the crew's day, or why there is none.
+  Widget _page(BuildContext context, Widget? selector, CrewWeek? week) {
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.ink),
+            ),
+            TextButton(onPressed: _refresh, child: const Text('TRY AGAIN')),
+          ],
+        ),
+      );
+    }
+    if (_crews != null && _crews!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Your week starts with a crew.',
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            AppButton(
+              label: 'START YOUR CREW',
+              onPressed: widget.onChooseStart,
+            ),
+            TextButton(
+              onPressed: widget.onOpenCrews,
+              child: const Text('Have an invite code? Join a crew'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (week == null) {
+      return const SizedBox.shrink();
+    }
+    final days = MemberDay.read(week, viewerId: widget.userId, seen: _seen);
+    return Column(
+      key: ValueKey(_crew!.id),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        HomeHeader(
+          action: _bell(),
+          rail: StoriesRail(
+            days: days,
+            onNudge: _nudge,
+            // Past the page's own margin, so a
+            // long crew leaves at the screen's
+            // edge rather than at the card's.
+            bleed: 12,
+            onOpen: (day) => _openStories(days, day),
+            onCompose: _composeAchievement,
+          ),
+          selector: selector,
+        ),
+        const SizedBox(height: 12),
+        // The month first, then the week it is
+        // running through, then today's pacts.
+        CrewStreakCard(
+          key: const ValueKey('home-streak-card'),
+          week: week,
+          history: _history,
+          onViewMonth: () => showCrewMonthPhotosSheet(
+            context: context,
+            crewId: _crew!.id,
+            backend: widget.backend,
+            userId: widget.userId,
+            week: week,
+          ),
+        ),
+        const SizedBox(height: 12),
+        CrewTodayBar(week: week, onOpenWeek: _openCrewWeek),
+        const SizedBox(height: 12),
+        if (_saveError != null)
+          SizedBox(
+            height: 40,
+            child: Text(
+              _saveError!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: context.errorInk, fontSize: 13),
+            ),
+          ),
+        Expanded(
+          child: week.pacts.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'No pacts yet.',
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      AppButton(
+                        label: _crew!.isOwner
+                            ? 'SET UP YOUR FIRST PACT'
+                            : 'VIEW PACTS',
+                        onPressed: _crew!.isOwner
+                            ? widget.onStartCrew
+                            : widget.onOpenPacts,
+                      ),
+                    ],
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, space) => TodayPactsCard(
+                    height: space.maxHeight,
+                    week: week,
+                    userId: widget.userId,
+                    savingPact: _savingPact,
+                    onToggle: _togglePact,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
