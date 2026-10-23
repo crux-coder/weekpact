@@ -363,7 +363,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
-        children: [
+        // Each tab is clipped to itself. Home's pact deck lays its next card
+        // out past the screen's edge, unclipped so a sliver shows in the
+        // margin, and without this the rest of that card slid into Chat as
+        // the tabs changed.
+        children: <Widget>[
           _HomeDestination(
             key: ValueKey(_homeRevision),
             backend: widget.homeBackend,
@@ -407,7 +411,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             signingOut: _signingOut,
             onSignOut: _signOut,
           ),
-        ],
+        ].map((page) => ClipRect(child: page)).toList(),
       ),
       bottomNavigationBar: AppBottomNavigationBar(
         items: _navigationItems,
