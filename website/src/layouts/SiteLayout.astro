@@ -29,9 +29,11 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={`${config.siteUrl}/app-icon.png`} />
-    <meta property="og:image:alt" content="WeekPact app icon" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={`${config.siteUrl}/social-preview.png`} />
+    <meta property="og:image:alt" content="WeekPact. Good habits. Great company. Weekly goals with your friends." />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>{title}</title>
   </head>
   <body style={tint && `--tint:${tint}`}>
@@ -40,7 +42,7 @@ const canonical = new URL(Astro.url.pathname, config.siteUrl).href;
       <a class="wordmark" href="/" aria-label="WeekPact home"><img src="/app-icon.png" width="40" height="40" alt="" /><span>WeekPact<span class="dot">.</span></span></a>
       <nav aria-label="Main navigation">
         {home
-          ? <><a href="#inside">Inside the app</a><a href="#how-it-works">How it works</a><a class="nav-cta" href="/open/">Open WeekPact <HugeIcon name="arrowUpRight01" size={17} /></a></>
+          ? <><a href="#inside">Inside the app</a><a href="#how-it-works">How it works</a><a class="nav-cta" href="#download">Get WeekPact <HugeIcon name="arrowUpRight01" size={17} /></a></>
           : <a class="text-link" href="/">Back to home</a>}
       </nav>
     </header>

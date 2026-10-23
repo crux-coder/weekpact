@@ -1,6 +1,7 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import HugeIcon from '../components/HugeIcon.astro';
+import StoreLinks from './StoreLinks.astro';
 import '../styles/handoff.css';
 import { readSiteConfig } from '../lib/config.mjs';
 interface Props { invite?: boolean; }
@@ -39,11 +40,11 @@ const stores = config.iosInstallUrl && !config.androidInstallUrl ? 'the App Stor
       </section>
       <div class="install-help" id="install-help">
         <h2 class="eyebrow">New to WeekPact?</h2>
-        <p>Install WeekPact and create or sign in to your account. Then return to this link and tap <strong>Open WeekPact</strong> — your invitation opens in the app, even if you had to set up your profile first.</p>
+        {invite ? <p>Install WeekPact and sign in. Then return to this invitation and tap <strong>Open WeekPact</strong> to review and join your crew.</p> : <p>Get WeekPact for your phone and sign in. Create your own crew and invite your friends, or join a crew with the invite link or code they shared.</p>}
         {(config.iosInstallUrl || config.androidInstallUrl) ? <div class="install-links">
           {config.iosInstallUrl && <a class="button" href={config.iosInstallUrl} rel="noreferrer"><HugeIcon name="apple" size={19} /> Get it for iPhone</a>}
           {config.androidInstallUrl && <a class="button" href={config.androidInstallUrl} rel="noreferrer"><HugeIcon name="android" size={19} /> Get it for Android</a>}
-        </div> : <p class="access-note caption">Need the app? Ask your crew owner for the installation link.</p>}
+        </div> : <StoreLinks />}
       </div>
       <p class="handoff-footnote caption">{invite ? 'Joining is your choice. You’ll accept the invitation in the app.' : 'Your crew and your pacts, all in one place.'}</p>
     </div>

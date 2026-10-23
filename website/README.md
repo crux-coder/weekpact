@@ -35,7 +35,7 @@ Set these in `website/.env` or the hosting provider's build environment, then re
 - `ANDROID_PACKAGE_NAME`: defaults to the current `dev.codepeaktrail.weekpact`; change alongside the app before publishing.
 - `ANDROID_SHA256_CERT_FINGERPRINTS`: comma-separated SHA-256 signing certificate fingerprints. Use the Play App Signing certificate for Play builds. Empty means Android association is disabled (`assetlinks.json` contains an empty array).
 
-Download links are omitted until supplied. These are public build settings; do not add credentials.
+Homepage download actions and the app-opening page use these store URLs. Until supplied, the homepage shows explicit coming-soon labels for each platform; no fake store destinations are used. Set both URLs before launch and rebuild. These are public build settings; do not add credentials.
 
 ## Pages and invitation behavior
 

@@ -1,20 +1,21 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import HugeIcon from '../components/HugeIcon.astro';
+import StoreLinks from '../components/StoreLinks.astro';
 import '../styles/home.css';
 
 // Each feature wears a pact's colours — `pactTint(i)` for the card and
 // `pactBadge(i)` for its icon — the way a pact does in the app.
 const features = [
-  { tint: 'var(--strawberry)', badge: '#ff99a1', icon: 'runningShoes', title: 'One card per pact', copy: 'Each pact gets its own card on Home. Tap Check in, add a photo if the pact asks for one, and watch the week fill.' },
-  { tint: 'var(--mint)', badge: '#54d6a5', icon: 'camera01', title: 'See the crew’s day', copy: 'Everyone sits in a row at the top of Home. Tap a face to see what they kept, give it a clap, or nudge whoever isn’t in yet.' },
-  { tint: 'var(--pistachio)', badge: '#a7ca64', icon: 'crown', title: 'A little friendly race', copy: 'A podium shows who’s leading the week and how far everyone else has come. Your face is ringed, so you always know where you stand.' },
-  { tint: 'var(--mango)', badge: '#f1aa4f', icon: 'bubbleChat', title: 'A chat for every crew', copy: 'Cheer the early runners, call out the stragglers, and promise you’re going at lunch. Every crew gets its own chat.' },
+  { tint: 'var(--strawberry)', badge: '#ff99a1', icon: 'runningShoes', title: 'A rhythm that fits your life', copy: 'Three runs. Five reading nights. Choose a weekly target for each pact and make room for the rest of life.' },
+  { tint: 'var(--mint)', badge: '#54d6a5', icon: 'camera01', title: 'Small wins, shared', copy: 'Check in and see what your friends have been up to. Give their effort a clap, even when you’re miles apart.' },
+  { tint: 'var(--pistachio)', badge: '#a7ca64', icon: 'crown', title: 'A little extra motivation', copy: 'Watch your weekly progress grow alongside your crew. A friendly race can be the reason you show up today.' },
+  { tint: 'var(--mango)', badge: '#f1aa4f', icon: 'bubbleChat', title: 'Your own cheering section', copy: 'Make a plan, celebrate a check-in, or ask for a little encouragement. Keep the conversation in your crew’s chat.' },
 ] as const;
 
 const steps = [
   { icon: 'target01', title: 'Pick one small thing', copy: 'Start a crew and make a pact: a run, a few pages, ten minutes of stretching. Choose how many days a week.' },
-  { icon: 'link01', title: 'Share your code', copy: 'Every crew has a six-character invite code. Send it to your friends and they’re in with one tap.' },
+  { icon: 'link01', title: 'Bring your people', copy: 'Send your crew’s invite link or six-character code. Your friends install WeekPact and join you in the app.' },
   { icon: 'fire', title: 'Show up together', copy: 'Check in, clap for each other, and keep the crew’s streak going week after week.' },
 ] as const;
 
@@ -37,10 +38,10 @@ const screens = {
       <div>
         <p class="eyebrow">A weekly pact with your people</p>
         <h1 id="hero-title">Good habits<span class="dot">.</span><br />Great company<span class="dot">.</span></h1>
-        <p class="hero-lead">Pick one small thing, keep it a few days a week, and do it alongside your friends.</p>
+        <p class="hero-lead">Make weekly habit goals with your friends. Check in, cheer each other on, and see your crew’s progress.</p>
+        <StoreLinks />
         <div class="hero-actions">
-          <a class="button" href="/open/">Get started</a>
-          <a class="button button--ink" href="/invite/"><HugeIcon name="link01" size={18} /> I have an invite code</a>
+          <a class="text-link" href="/open/">Already have WeekPact? Open the app <HugeIcon name="arrowUpRight01" size={18} /></a>
         </div>
         <p class="hero-proof caption"><HugeIcon name="apple" size={16} /> Sign in with Apple or Google. No password to remember.</p>
       </div>
@@ -62,7 +63,7 @@ const screens = {
 
     <section class="features container" id="inside" aria-labelledby="features-title">
       <p class="eyebrow">Inside the app</p>
-      <h2 id="features-title">What a week looks like<span class="dot">.</span></h2>
+      <h2 id="features-title">Good habits need good company<span class="dot">.</span></h2>
       <div class="feature-grid">
         {features.map(feature => (
           <article class="surface surface--card feature" style={`--fill:${feature.tint}`}>
@@ -72,6 +73,36 @@ const screens = {
           </article>
         ))}
       </div>
+    </section>
+
+    <section class="product-detail container" aria-labelledby="detail-title">
+      <div class="detail-screen"><img src="/screenshots/chat.png" width="1170" height="2532" loading="lazy" alt="Example crew conversation in WeekPact, where friends share plans and encourage each other." /></div>
+      <div>
+        <p class="eyebrow">More than a checked box</p>
+        <h2 id="detail-title">Someone to say<br />“nice work”<span class="dot">.</span></h2>
+        <p class="section-lead">Your progress has people behind it. Share the little wins, make plans for tomorrow, and give your friends a reason to keep going.</p>
+        <p class="section-lead">Each crew has its own chat, right alongside the pacts you’re working on together.</p>
+        <p class="caption demo-caption">Real app screen · Example conversation</p>
+      </div>
+    </section>
+
+    <section class="example container" aria-labelledby="example-title">
+      <div>
+        <p class="eyebrow">One crew. One small commitment.</p>
+        <h2 id="example-title">Three walks.<br />A week worth sharing<span class="dot">.</span></h2>
+        <p class="section-lead">You and two friends make a pact to walk three days this week. Monday’s a lunch break. Thursday’s a long way home. Sunday’s a catch-up together.</p>
+        <p class="section-lead">Different schedules. The same little reason to get outside.</p>
+      </div>
+      <article class="surface surface--card week-example" style="--fill:var(--mint)">
+        <p class="eyebrow">An example week</p>
+        <HugeIcon name="runningShoes" size={36} />
+        <h3>Go for a walk</h3>
+        <p class="week-total">3 <span>/ 3 days</span></p>
+        <ol class="week-days" aria-label="Walks completed Monday, Thursday and Sunday">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => <li class:list={{ complete: [0, 3, 6].includes(index) }}><span>{day}</span><b aria-hidden="true">{[0, 3, 6].includes(index) ? '1' : '—'}</b></li>)}
+        </ol>
+        <p>A few days a week. A little more together.</p>
+      </article>
     </section>
 
     <section class="how container" id="how-it-works" aria-labelledby="how-title">
@@ -96,7 +127,21 @@ const screens = {
       </ol>
     </section>
 
-    <section class="close container" aria-labelledby="close-title">
+    <section class="faq container" aria-labelledby="faq-title">
+      <p class="eyebrow">Before your first pact</p>
+      <h2 id="faq-title">A few things to know<span class="dot">.</span></h2>
+      <div class="faq-list">
+        <details><summary>What is a pact?</summary><p>A pact is a habit you commit to a set number of days each week, like reading five days or moving three days. Check in as you go and see your progress alongside your crew.</p></details>
+        <details><summary>Can I start a crew myself?</summary><p>Yes. Create a crew in the app, make your first pact, and invite your friends. You don’t need an invitation from someone else to get started.</p></details>
+        <details><summary>Do my friends need the app?</summary><p>Yes. Each person uses WeekPact on their phone. Share your crew’s invite link or code so they can join after installing and signing in.</p></details>
+        <details><summary>What if I miss a day?</summary><p>Your pact has a weekly target, so a missed day doesn’t have to mean a missed goal. If you’ve planned three days, you can still make progress on the remaining days that week.</p></details>
+        <details><summary>Who can see my check-in photos?</summary><p>You and current members of your crew can view your check-in photos. Read our <a href="/privacy/">privacy policy</a> for more about shared activity and your data.</p></details>
+        <details><summary>Where can I find pricing and availability?</summary><p>Check the App Store or Google Play listing for current availability and any pricing before installing. Store downloads will be linked here when the app is released.</p></details>
+      </div>
+      <p class="section-lead">Something else on your mind? <a href="/support/">Get in touch.</a></p>
+    </section>
+
+    <section class="close container" id="download" aria-labelledby="close-title">
       <div class="surface surface--dark surface--card close-card">
         <div class="fan" aria-hidden="true">
           {fan.map(card => (
@@ -114,7 +159,7 @@ const screens = {
         </div>
         <h2 id="close-title">Your next good week<br />starts together<span class="dot">.</span></h2>
         <p>Bring your people. Make a little progress together.</p>
-        <a class="button" href="/open/">Get started</a>
+        <StoreLinks />
       </div>
     </section>
   </main>

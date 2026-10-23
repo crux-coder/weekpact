@@ -1,0 +1,14 @@
+---
+import HugeIcon from './HugeIcon.astro';
+import { readSiteConfig } from '../lib/config.mjs';
+const config = readSiteConfig();
+---
+<div class="download-links">
+  {config.iosInstallUrl ? <a class="button" href={config.iosInstallUrl}><HugeIcon name="apple" size={22} /> Download for iPhone</a> : <span class="button store-pending" aria-disabled="true"><HugeIcon name="apple" size={22} /> iPhone · Coming soon</span>}
+  {config.androidInstallUrl ? <a class="button" href={config.androidInstallUrl}><HugeIcon name="android" size={22} /> Get it for Android</a> : <span class="button store-pending" aria-disabled="true"><HugeIcon name="android" size={22} /> Android · Coming soon</span>}
+</div>
+<style>
+  .download-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+  .store-pending{cursor:default}
+  @media(max-width:600px){.download-links{width:100%}.download-links .button{width:100%}}
+</style>
