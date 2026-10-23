@@ -229,10 +229,9 @@ class _PastWeekSheetState extends State<PastWeekSheet>
         if (b.id == widget.userId) return 1;
         return a.displayName.compareTo(b.displayName);
       });
-    // The card asks for room for four members and a pager, and shrinks to
-    // whatever it gets; this is the height at which it need not shrink.
-    final deckHeight =
-        320 + (members.length.clamp(1, 4)) * 56 + (members.length > 4 ? 48 : 0);
+    // The sheet scrolls, so the deck takes the card's full height for the
+    // whole crew rather than shrinking anyone's row.
+    final deckHeight = CrewPactCarousel.heightFor(members.length);
     return LayoutBuilder(
       builder: (context, box) {
         final height = box.maxHeight * .92;
@@ -343,7 +342,7 @@ class _PastWeekSheetState extends State<PastWeekSheet>
                       ),
                     ),
                   ] else if (week == null)
-                    _PastWeekSkeleton(deckHeight: deckHeight.toDouble())
+                    _PastWeekSkeleton(deckHeight: deckHeight)
                   else ...[
                     _ClosedWeekBanner(week: week),
                     const SizedBox(height: 18),
@@ -370,7 +369,7 @@ class _PastWeekSheetState extends State<PastWeekSheet>
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
-                      height: deckHeight.toDouble(),
+                      height: deckHeight,
                       child: CrewPactCarousel(
                         week: week,
                         members: members,

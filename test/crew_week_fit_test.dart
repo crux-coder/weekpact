@@ -114,10 +114,17 @@ void main() {
         );
         await tester.pumpUi();
         expect(tester.takeException(), isNull);
+        // The card never shrinks its crew to fit: where it is taller than
+        // the screen, the page scrolls. Scrolled to its end, the whole card
+        // clears the safe area.
+        await tester.drag(
+          find.byKey(const ValueKey('crew-refresh-viewport')),
+          const Offset(0, -3000),
+        );
+        await tester.pumpUi();
         // A neighbouring card peeks in, so measure one card and its own rows.
         final selected = find.byType(CrewPactWeekCard).first;
         final card = tester.getRect(selected);
-        // Nothing may sit past the safe area: the page is one viewport.
         expect(card.bottom, lessThanOrEqualTo(size.height - inset));
         // The deck is Home's: the card in front is as wide as the page's
         // column, with only a sliver of its neighbours in the margin.

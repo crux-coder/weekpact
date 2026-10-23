@@ -22,6 +22,15 @@ class CrewPactCarousel extends StatelessWidget {
     this.onIndexChanged,
   });
 
+  /// The deck's height for a crew of [count]: the card at full rows, the
+  /// room under it for its raised edge, and the dots.
+  static double heightFor(int count) =>
+      CrewPactWeekCard.heightFor(count) +
+      WeekPactMetrics.controlDepth +
+      1 +
+      PactDeck.dotsGap +
+      PactDeck.dotsHeight;
+
   final CrewWeek week;
   final List<WeekMember> members;
   final String userId;

@@ -14,11 +14,9 @@ import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/page_frame.dart';
 import 'crew_month_calendar.dart';
-import 'crew_month_photos_sheet.dart';
 import 'crew_page_layout.dart';
 import 'crew_pact_carousel.dart';
 import 'crew_pact_week_card.dart';
-import 'crew_streak_card.dart';
 import 'crew_switcher.dart';
 import 'past_week_sheet.dart';
 
@@ -264,11 +262,16 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                   // the page goes on.
                   SliverToBoxAdapter(
                     child: SizedBox(
-                      height:
-                          viewport.maxHeight -
-                          top -
-                          bottom -
-                          (_hasHistory ? _historyPeek : 0),
+                      // Taller than that when the crew's card needs it: a
+                      // big crew makes the page scroll rather than its
+                      // check-ins shrink.
+                      height: math.max(
+                        viewport.maxHeight -
+                            top -
+                            bottom -
+                            (_hasHistory ? _historyPeek : 0),
+                        _overviewHeightFor(week, members),
+                      ),
                       child: _overview(context, week, members),
                     ),
                   ),
@@ -305,6 +308,18 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     );
   }
 
+  /// Everything in the overview above the pacts' deck, and its padding, at
+  /// text scale 1: the heading, the week's dates, the podium, and the
+  /// "Crew pacts" line.
+  static const _overviewChrome =
+      4.0 + 48 + 4 + 18 + 18 + CrewPodiumPanel.height + 18 + 28 + 12 + 12;
+
+  /// The height the overview needs to show [members]' card at full rows.
+  double _overviewHeightFor(CrewWeek? week, List<WeekMember> members) =>
+      week == null || week.pacts.isEmpty
+      ? 0
+      : _overviewChrome + CrewPactCarousel.heightFor(members.length);
+
   Widget _overview(
     BuildContext context,
     CrewWeek? week,
@@ -326,7 +341,13 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
               fit: BoxFit.scaleDown,
               child: SizedBox(
                 width: math.max(space.maxWidth, 360 + extraText * 140),
-                height: math.max(space.maxHeight, 700 + extraText * 420),
+                height: math.max(
+                  space.maxHeight,
+                  math.max(
+                    700 + extraText * 420,
+                    _overviewHeightFor(week, members) - 16,
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -383,21 +404,6 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                             : const Center(child: Text('Your crew’s week')),
                       )
                     else ...[
-                      // The crew's month and streak, exactly as Home shows
-                      // them, ahead of who is leading the week.
-                      CrewStreakCard(
-                        key: const ValueKey('crew-week-streak-card'),
-                        week: week,
-                        history: _historyFailed ? null : _history,
-                        onViewMonth: () => showCrewMonthPhotosSheet(
-                          context: context,
-                          crewId: _crew.id,
-                          backend: widget.backend,
-                          userId: widget.userId,
-                          week: week,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       CrewPodiumPanel(
                         key: const ValueKey('crew-week-podium'),
                         week: week,

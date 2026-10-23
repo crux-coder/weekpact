@@ -187,23 +187,7 @@ void main() {
             scale: scale,
           );
           expect(tester.takeException(), isNull);
-          final vertical = tester
-              .stateList<ScrollableState>(find.byType(Scrollable))
-              .where(
-                (state) =>
-                    axisDirectionToAxis(state.widget.axisDirection) ==
-                    Axis.vertical,
-              );
-          expect(vertical, hasLength(1));
-          expect(vertical.single.position.maxScrollExtent, 0);
-          expect(vertical.single.position.minScrollExtent, 0);
-          expect(find.byTooltip('Back to home').hitTestable(), findsOneWidget);
-          final deck = tester.getRect(
-            find.byKey(const ValueKey('crew-pact-carousel')),
-          );
-          expect(deck.bottom, lessThanOrEqualTo(size.height - 20));
-          // The whole crew is on the card at once: there is no pager, and
-          // every member's row sits inside the card.
+          // The whole crew is on the card at once: there is no pager.
           expect(find.byTooltip('Next members'), findsNothing);
           expect(find.textContaining(' of 20 members'), findsNothing);
           final card = find.byType(CrewPactWeekCard).first;
@@ -214,12 +198,33 @@ void main() {
             ),
           );
           expect(mondays, findsNWidgets(20));
-          final cardRect = tester.getRect(card);
-          for (var i = 0; i < 20; i++) {
-            final cell = tester.getRect(mondays.at(i));
-            expect(cell.bottom, lessThanOrEqualTo(cardRect.bottom));
-            expect(cell.height, greaterThan(2));
+          // A big crew makes a taller card, not smaller check-ins: every row
+          // stands at its full height, and the page scrolls to reach them.
+          if (scale == 1) {
+            for (var i = 0; i < 20; i++) {
+              expect(tester.getSize(mondays.at(i)).height, 54);
+            }
           }
+          final vertical = tester
+              .stateList<ScrollableState>(find.byType(Scrollable))
+              .where(
+                (state) =>
+                    axisDirectionToAxis(state.widget.axisDirection) ==
+                    Axis.vertical,
+              );
+          expect(vertical, hasLength(1));
+          expect(vertical.single.position.maxScrollExtent, greaterThan(0));
+          expect(find.byTooltip('Back to home').hitTestable(), findsOneWidget);
+          await tester.drag(
+            find.byKey(const ValueKey('crew-refresh-viewport')),
+            const Offset(0, -6000),
+          );
+          await tester.pumpUi();
+          // Scrolled to the end, the last member is on screen, inside the
+          // card.
+          final last = tester.getRect(mondays.at(19));
+          expect(last.bottom, lessThanOrEqualTo(size.height));
+          expect(last.bottom, lessThanOrEqualTo(tester.getRect(card).bottom));
           expect(tester.takeException(), isNull);
         },
       );

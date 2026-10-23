@@ -61,6 +61,10 @@ class CrewPactWeekCard extends StatelessWidget {
   final List<WeekMember> members;
   final String userId;
 
+  /// The card's height for a crew of [count] at text scale 1: its content
+  /// and the padding around it. A page that can grow gives the card this.
+  static double heightFor(int count) => _contentHeight(count) + 2 * 16;
+
   @override
   Widget build(BuildContext context) {
     return AppSurface(
@@ -75,14 +79,14 @@ class CrewPactWeekCard extends StatelessWidget {
               0.0,
               MediaQuery.textScalerOf(context).scale(1) - 1,
             );
-            // The whole crew is always on the card: rows shrink to share
-            // the room rather than paging people out of sight. Only a crew
-            // too large for rows at [_minRowHeight] scales the card down.
+            // The whole crew is always on the card, every row at its full
+            // height: a bigger crew makes a taller card (see [heightFor]),
+            // not smaller check-ins. Only a card given less than that, on a
+            // page that cannot grow, scales down.
             final contentHeight = math.max(
               space.maxHeight,
-              225 +
-                  members.length * _minRowHeight +
-                  extraText * (220 + members.length * 12),
+              _contentHeight(members.length) +
+                  extraText * (220 + members.length * 50),
             );
             final shrink = math.min(1.0, space.maxHeight / contentHeight);
             return FittedBox(
@@ -130,35 +134,20 @@ class CrewPactWeekCard extends StatelessWidget {
                             _CalendarHeader(week: week),
                             // Room between the dates and the people: the
                             // header labels the grid, it is not a row of it.
-                            SizedBox(height: members.length > 6 ? 10 : 20),
+                            const SizedBox(height: 20),
                             // Each person gets one row's height and the
                             // rows stack from the top: spread over the card,
-                            // two people read as two unrelated strips. A
-                            // large crew shares the room out in thinner rows.
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, rows) {
-                                  final height =
-                                      (rows.maxHeight / members.length)
-                                          .clamp(_minRowHeight, _rowHeight)
-                                          .toDouble();
-                                  return Column(
-                                    children: [
-                                      for (final member in members)
-                                        SizedBox(
-                                          height: height,
-                                          child: _MemberDays(
-                                            week: week,
-                                            pact: pact,
-                                            member: member,
-                                            isYou: member.id == userId,
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                },
+                            // two people read as two unrelated strips.
+                            for (final member in members)
+                              SizedBox(
+                                height: _rowHeight,
+                                child: _MemberDays(
+                                  week: week,
+                                  pact: pact,
+                                  member: member,
+                                  isYou: member.id == userId,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -238,10 +227,9 @@ const _nameWidth = 52.0;
 /// One person's row: a day cell at its full height, with its edge's room.
 const _rowHeight = 54.0;
 
-/// The thinnest a row gets before the card scales instead: a stripe of fill,
-/// enough to read a pattern by, and thin enough that a twenty-strong crew
-/// fits a phone's card without its title and total shrinking.
-const _minRowHeight = 10.0;
+/// What the card's content needs for [count] people: the title, the dates
+/// and the crew total, and a full row for each person.
+double _contentHeight(int count) => 232 + count * _rowHeight;
 
 class _CalendarHeader extends StatelessWidget {
   const _CalendarHeader({required this.week});
