@@ -27,6 +27,8 @@ const memberCrew = PactCrew(
 
 class FakePacts implements PactsBackend {
   List<PactCrew> crews = [ownerCrew, memberCrew];
+  @override
+  List<PactCrew>? cachedCrews() => null;
   final pacts = <CrewPact>[];
   Completer<List<PactCrew>>? loading;
   bool failSave = false;

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/crew/crew_selection_store.dart';
+import 'src/home/home_cache.dart';
 import 'src/home/story_seen_store.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -62,8 +63,16 @@ Future<void> main() async {
     await supabaseAuth.restoreProfile();
     authBackend = supabaseAuth;
     crewBackend = SupabaseCrewBackend(Supabase.instance.client);
-    pactsBackend = SupabasePactsBackend(Supabase.instance.client);
-    homeBackend = SupabaseHomeBackend(Supabase.instance.client);
+    // The last crews and week, for opening on them while fresh ones load.
+    final homeCache = HomeCache(preferences);
+    pactsBackend = SupabasePactsBackend(
+      Supabase.instance.client,
+      cache: homeCache,
+    );
+    homeBackend = SupabaseHomeBackend(
+      Supabase.instance.client,
+      cache: homeCache,
+    );
     chatBackend = SupabaseChatBackend(Supabase.instance.client);
   } else {
     authBackend = const MissingConfigurationAuthBackend();

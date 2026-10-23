@@ -1,8 +1,17 @@
-/// Reuses short-lived avatar URLs so a dashboard refresh keeps the image cache.
+/// Reuses short-lived signed URLs so a refresh keeps the image cache: a URL
+/// signed again is a new URL, and a new URL is a fresh download of the same
+/// picture.
 class AvatarUrlCache {
-  AvatarUrlCache({DateTime Function()? now}) : _now = now ?? DateTime.now;
+  AvatarUrlCache({
+    DateTime Function()? now,
+    this.lifetimeSeconds = defaultLifetimeSeconds,
+  }) : _now = now ?? DateTime.now;
 
-  static const lifetimeSeconds = 300;
+  static const defaultLifetimeSeconds = 300;
+
+  /// How long each URL is signed for. Photos are signed for longer than
+  /// faces: they are the heavy downloads, and the ones a refresh re-fetched.
+  final int lifetimeSeconds;
 
   /// How many keys keep their URLs at once. The fan asks for every crew's
   /// faces in one go, so a handful of crews plus the one the page is showing
@@ -52,7 +61,7 @@ class AvatarUrlCache {
           if (url != null) {
             entries[path] = (
               url: url,
-              expires: started.add(const Duration(seconds: lifetimeSeconds)),
+              expires: started.add(Duration(seconds: lifetimeSeconds)),
             );
           }
         }

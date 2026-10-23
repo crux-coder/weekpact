@@ -138,7 +138,7 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
       await Future.wait([
         for (final crew in crews)
           weeks
-              .fetchWeek(crew.id)
+              .fetchWeekBrief(crew.id)
               .then((week) {
                 if (!mounted || request != _request) return;
                 setState(() {

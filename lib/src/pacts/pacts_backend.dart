@@ -1,5 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../home/avatar_url_cache.dart';
+import '../home/home_cache.dart';
+
 enum PactFrequency { daily, weekly }
 
 class PactCrew {
@@ -69,6 +72,11 @@ abstract interface class PactsBackend {
     required bool photoRequired,
   });
   Future<List<PactCrew>> fetchCrews();
+
+  /// The crews as [fetchCrews] last returned them on this device, without
+  /// their photos, or null when there is nothing kept. What a launch shows
+  /// while the fresh list loads.
+  List<PactCrew>? cachedCrews();
   Future<List<CrewPact>> fetchPacts(String crewId);
   Future<CrewPact> addPact({
     required String crewId,
@@ -81,8 +89,14 @@ abstract interface class PactsBackend {
 }
 
 class SupabasePactsBackend implements PactsBackend {
-  const SupabasePactsBackend(this._client);
+  const SupabasePactsBackend(this._client, {this._cache});
   final SupabaseClient _client;
+  final HomeCache? _cache;
+
+  /// Crew photos, signed once an hour rather than on every load, so a refresh
+  /// keeps the pictures it already has. Shared, because this backend is made
+  /// in more than one place.
+  static final _crewAvatars = AvatarUrlCache(lifetimeSeconds: 3600);
 
   @override
   Future<List<PactCrew>> fetchCrews() async {
@@ -94,37 +108,57 @@ class SupabasePactsBackend implements PactsBackend {
         .eq('user_id', user.id)
         .order('joined_at')
         .order('crew_id');
+    _cache?.writeCrews(user.id, rows);
     final paths = [
       for (final row in rows)
         if ((row['crews'] as Map)['avatar_path'] case final String path) path,
     ];
-    var urls = <String, String>{};
-    if (paths.isNotEmpty) {
-      try {
+    // The list still stands on names; a face that fails falls back to
+    // initials.
+    final urls = await _crewAvatars.resolve(
+      account: user.id,
+      key: 'crews',
+      paths: paths,
+      sign: (missing, lifetime) async {
         final signed = await _client.storage
             .from('crew-avatars')
-            .createSignedUrlsResult(paths, 3600);
-        urls = {
+            .createSignedUrlsResult(missing, lifetime);
+        return {
           for (final result in signed)
             if (result is SignedUrlSuccess) result.path: result.signedUrl,
         };
-      } catch (_) {
-        // The list still stands on names; the faces fall back to initials.
-      }
-    }
-    return rows
-        .map((row) {
-          final crew = row['crews'] as Map<String, dynamic>;
-          return PactCrew(
-            id: crew['id'] as String,
-            name: crew['name'] as String,
-            timezone: crew['timezone'] as String,
-            isOwner: row['role'] == 'owner',
-            avatarUrl: urls[crew['avatar_path']],
-          );
-        })
-        .toList(growable: false);
+      },
+    );
+    return _crews(rows, urls);
   }
+
+  @override
+  List<PactCrew>? cachedCrews() {
+    final user = _client.auth.currentUser;
+    final rows = user == null ? null : _cache?.readCrews(user.id);
+    if (rows == null) return null;
+    try {
+      return _crews(rows, const {});
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<PactCrew> _crews(
+    List<Map<String, dynamic>> rows,
+    Map<String, String> urls,
+  ) => rows
+      .map((row) {
+        final crew = row['crews'] as Map<String, dynamic>;
+        return PactCrew(
+          id: crew['id'] as String,
+          name: crew['name'] as String,
+          timezone: crew['timezone'] as String,
+          isOwner: row['role'] == 'owner',
+          avatarUrl: urls[crew['avatar_path']],
+        );
+      })
+      .toList(growable: false);
 
   @override
   Future<List<CrewPact>> fetchPacts(String crewId) async {
@@ -231,6 +265,8 @@ class MissingPactsBackend implements PactsBackend {
   const MissingPactsBackend();
   @override
   Future<List<PactCrew>> fetchCrews() async => [];
+  @override
+  List<PactCrew>? cachedCrews() => null;
   @override
   Future<List<CrewPact>> fetchPacts(String crewId) async => [];
   @override

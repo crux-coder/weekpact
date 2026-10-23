@@ -12,6 +12,9 @@ class RolloverBackend extends DashboardBackend {
   String today;
   final String completedOn;
 
+  /// When the fake's crew day turns over, as the server would say.
+  DateTime? nextDayAt;
+
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
     final original = await super.fetchWeek(crewId);
@@ -22,6 +25,7 @@ class RolloverBackend extends DashboardBackend {
       today: today,
       weekStart: start,
       timezone: 'Europe/Sarajevo',
+      nextDayAt: nextDayAt,
       pacts: original.pacts.where((pact) => pact.id == 'move').toList(),
       members: original.members,
       checkIns: completedOn.compareTo(start) >= 0
@@ -66,9 +70,10 @@ void main() {
     ['2026-09-13', '2026-09-14'],
   ]) {
     testWidgets(
-      'minute refresh rolls crew day ${dates.first} to ${dates.last}',
+      'the day turning over rolls crew day ${dates.first} to ${dates.last}',
       (tester) async {
-        final backend = RolloverBackend(dates.first);
+        final backend = RolloverBackend(dates.first)
+          ..nextDayAt = DateTime.now().add(const Duration(seconds: 30));
         await pumpHome(tester, backend);
         await tester.pumpUi();
         final sameWeek = dates.first == '2026-09-15';
@@ -87,7 +92,7 @@ void main() {
   }
 
   testWidgets(
-    'resume after midnight refreshes without waiting for the minute timer',
+    'resume after midnight refreshes without waiting for the day timer',
     (tester) async {
       final backend = RolloverBackend('2026-09-15');
       await pumpHome(tester, backend);

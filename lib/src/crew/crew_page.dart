@@ -124,7 +124,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       }
       if (crew != null && widget.profileBackend != null) {
         try {
-          final week = await widget.profileBackend!.fetchWeek(crew.id);
+          final week = await widget.profileBackend!.fetchWeekBrief(crew.id);
           if (!mounted || request != _request) return;
           _memberProfiles = {
             for (final member in week.members) member.id: member,

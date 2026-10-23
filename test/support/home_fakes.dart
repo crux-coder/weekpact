@@ -227,6 +227,14 @@ class DashboardBackend implements HomeBackend {
   }
 
   @override
+  Future<CrewWeek> fetchWeekBrief(String crewId) => fetchWeek(crewId);
+
+  /// The week the fake says this device kept from last time, if any.
+  CrewWeek? cached;
+  @override
+  CrewWeek? cachedWeek(String crewId) => cached;
+
+  @override
   Future<void> saveCheckIns({
     required String crewId,
     required String today,

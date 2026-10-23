@@ -180,7 +180,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   Future<void> _loadMembers(String crewId) async {
     try {
-      final week = await widget.homeBackend.fetchWeek(crewId);
+      final week = await widget.homeBackend.fetchWeekBrief(crewId);
       if (!mounted || _session?.crewId != crewId) return;
       setState(() => _members = {for (final m in week.members) m.id: m});
     } catch (_) {

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pacts/pacts_backend.dart';
 import 'avatar_url_cache.dart';
+import 'home_cache.dart';
 
 class WeekMember {
   const WeekMember(
@@ -295,8 +296,18 @@ class CrewWeek {
     this.streakWeeks = 0,
     this.latestActivity,
     this.achievements = const [],
+    this.nudges,
+    this.nextDayAt,
   });
   final CrewActivity? latestActivity;
+
+  /// Who the viewer can nudge, when the week came with it. Null means it did
+  /// not, and the page asks for it on its own.
+  final Map<String, CrewNudgeState>? nudges;
+
+  /// The instant the crew's day turns over, when the server said: the moment
+  /// this week stops being today's, and the page's cue to load the next.
+  final DateTime? nextDayAt;
 
   /// Today's achievements, oldest first. Only the current week carries them:
   /// the rail is the one place they show, and it shows today.
@@ -310,6 +321,26 @@ class CrewWeek {
   final List<PactCheckIn> checkIns;
 
   factory CrewWeek.fromJson(Map<String, dynamic> row) => CrewWeek(
+    latestActivity: switch (row['latest_activity']) {
+      final Map activity => CrewActivity.fromJson(
+        Map<String, dynamic>.from(activity),
+      ),
+      _ => null,
+    },
+    achievements: [
+      for (final a in row['achievements'] as List? ?? const [])
+        Achievement.fromJson(Map<String, dynamic>.from(a as Map)),
+    ],
+    nudges: switch (row['nudges']) {
+      final List nudges => {
+        for (final n in nudges)
+          (n as Map)['recipient_id'] as String: CrewNudgeState.fromJson(
+            Map<String, dynamic>.from(n),
+          ),
+      },
+      _ => null,
+    },
+    nextDayAt: DateTime.tryParse(row['next_day_at'] as String? ?? ''),
     streakWeeks: row['streak_weeks'] as int? ?? 0,
     today: row['today'] as String,
     weekStart: row['week_start'] as String,
@@ -614,7 +645,20 @@ abstract interface class HomeBackend {
   /// The crew's week: this one, or the finished week that began on
   /// [weekStart] (a Monday, `yyyy-MM-dd`). A past week comes back with the
   /// real [CrewWeek.today], so nothing in it reads as still open.
+  ///
+  /// This week comes with what Home shows beside it: the crew's latest
+  /// check-in, today's achievements and who can be nudged.
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart});
+
+  /// This week as a list or a header needs it — the pacts, the members with
+  /// their faces, the streak — without signing any photo or loading what
+  /// only Home shows.
+  Future<CrewWeek> fetchWeekBrief(String crewId);
+
+  /// This week as [fetchWeek] last returned it on this device, without its
+  /// pictures, or null when nothing is kept or the crew's day has turned
+  /// since. What a launch shows while the fresh week loads.
+  CrewWeek? cachedWeek(String crewId);
 
   /// The crew's week around [checkIn], with that check-in's photo signed
   /// whatever day it was kept on, for opening it as a story.
@@ -688,9 +732,14 @@ abstract interface class HomeBackend {
 }
 
 class SupabaseHomeBackend implements HomeBackend {
-  SupabaseHomeBackend(this.client);
+  SupabaseHomeBackend(this.client, {this._cache});
   final _avatarUrls = AvatarUrlCache();
   final _notificationAvatars = AvatarUrlCache();
+
+  /// Today's story photos, kept signed across refreshes: each one signed
+  /// again was the same picture downloaded again.
+  final _photoUrls = AvatarUrlCache(lifetimeSeconds: 3600);
+  final HomeCache? _cache;
   final SupabaseClient client;
   @override
   Future<Map<String, CrewNudgeState>> fetchNudgeStates(String crewId) async {
@@ -922,7 +971,7 @@ class SupabaseHomeBackend implements HomeBackend {
   Future<Map<String, String>> _signed(
     String bucket,
     List<String> paths, [
-    int lifetime = AvatarUrlCache.lifetimeSeconds,
+    int lifetime = AvatarUrlCache.defaultLifetimeSeconds,
   ]) async {
     if (paths.isEmpty) return {};
     final signed = await client.storage
@@ -987,100 +1036,133 @@ class SupabaseHomeBackend implements HomeBackend {
 
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
+    // This week arrives in one reply with the latest check-in, today's
+    // achievements and the nudge states beside it. A past week has no rail
+    // and no nudges, so it is the snapshot alone.
     final row = Map<String, dynamic>.from(
-      await client.rpc(
-        'crew_week_snapshot',
-        params: {'target_crew_id': crewId, 'target_week_start': ?weekStart},
-      ),
+      weekStart == null
+          ? await client.rpc(
+              'crew_week_overview',
+              params: {'target_crew_id': crewId},
+            )
+          : await client.rpc(
+              'crew_week_snapshot',
+              params: {
+                'target_crew_id': crewId,
+                'target_week_start': weekStart,
+              },
+            ),
     );
+    final account = client.auth.currentUser?.id;
+    if (weekStart == null && account != null) {
+      _cache?.writeWeek(account, crewId, row);
+    }
     final week = CrewWeek.fromJson(row);
-    // The crew's last check-in, whenever it was: the card reads as the latest
-    // thing that happened rather than a second account of today, and it dates
-    // what it shows. Bounded by the week's own pacts and members.
-    final activity = week.pacts.isEmpty || week.members.isEmpty
-        ? null
-        : await client
-              .from('pact_check_ins')
-              .select('pact_id,user_id,created_at,photo_path')
-              .inFilter('pact_id', week.pacts.map((pact) => pact.id).toList())
-              .inFilter(
-                'user_id',
-                week.members.map((member) => member.id).toList(),
-              )
-              .order('created_at', ascending: false)
-              .order('pact_id')
-              .order('user_id')
-              .limit(1)
-              .maybeSingle();
-    // Today's achievements, for the rail beside today's check-ins. A past
-    // week has no rail, so it goes without. A failure here is its own: the
-    // week is the page, and an achievement is one thing on it.
-    final achievements = weekStart != null
-        ? const <Achievement>[]
-        : await client
-              .rpc(
-                'crew_achievements',
-                params: {'target_crew_id': crewId, 'on_day': week.today},
-              )
-              .then(
-                (rows) => [
-                  for (final row in rows as List)
-                    Achievement.fromJson(Map<String, dynamic>.from(row as Map)),
-                ],
-              )
-              .catchError((Object _) => const <Achievement>[]);
     // Today's photos, signed for the stories rail. Only today's: the rail
     // shows the day, and the week's older check-ins are counted rather than
-    // opened.
-    final stories = await _signed('check-in-photos', [
-      ...{
-        ...week.checkIns
-            .where((i) => i.day == week.today)
-            .map((i) => i.photoPath)
-            .nonNulls,
-        ...achievements.map((a) => a.photoPath).nonNulls,
-      },
-    ]);
-    final paths = week.members
-        .where((m) => m.avatarPath == '${m.id}/avatar.png')
-        .map((m) => m.avatarPath!)
-        .toList();
-    final urls = await _avatarUrls.resolve(
-      account: client.auth.currentUser?.id,
-      key: crewId,
-      paths: paths,
-      sign: (missing, lifetime) async {
-        final signed = await client.storage
-            .from('avatars')
-            .createSignedUrlsResult(missing, lifetime);
-        return {
-          for (final result in signed)
-            if (result is SignedUrlSuccess) result.path: result.signedUrl,
-        };
-      },
+    // opened. Signed beside the faces, not after them.
+    final (stories, avatars) = await (
+      _photoUrls.resolve(
+        account: account,
+        key: crewId,
+        paths: [
+          ...{
+            ...week.checkIns
+                .where((i) => i.day == week.today)
+                .map((i) => i.photoPath)
+                .nonNulls,
+            ...week.achievements.map((a) => a.photoPath).nonNulls,
+          },
+        ],
+        sign: (missing, lifetime) =>
+            _signed('check-in-photos', missing, lifetime),
+      ),
+      _memberAvatars(crewId, week.members),
+    ).wait;
+    return _withUrls(week, stories: stories, avatars: avatars);
+  }
+
+  @override
+  Future<CrewWeek> fetchWeekBrief(String crewId) async {
+    final week = CrewWeek.fromJson(
+      Map<String, dynamic>.from(
+        await client.rpc(
+          'crew_week_snapshot',
+          params: {'target_crew_id': crewId},
+        ),
+      ),
     );
-    return CrewWeek(
-      today: week.today,
-      weekStart: week.weekStart,
-      timezone: week.timezone,
-      pacts: week.pacts,
-      members: week.members
-          .map((m) => m.withAvatar(urls[m.avatarPath]))
-          .toList(),
-      checkIns: week.checkIns
-          .map(
-            (i) => i.photoPath == null || stories[i.photoPath] == null
-                ? i
-                : i.withPhotoUrl(stories[i.photoPath]),
-          )
-          .toList(),
-      streakWeeks: week.streakWeeks,
-      latestActivity: activity == null ? null : CrewActivity.fromJson(activity),
-      achievements: [
-        for (final a in achievements) a.withPhotoUrl(stories[a.photoPath]),
-      ],
+    return _withUrls(
+      week,
+      stories: const {},
+      avatars: await _memberAvatars(crewId, week.members),
     );
   }
+
+  @override
+  CrewWeek? cachedWeek(String crewId) {
+    final account = client.auth.currentUser?.id;
+    final row = account == null ? null : _cache?.readWeek(account, crewId);
+    if (row == null) return null;
+    try {
+      final week = CrewWeek.fromJson(row);
+      final turns = week.nextDayAt;
+      // Yesterday's week would offer yesterday's check-ins as today's.
+      if (turns == null || !DateTime.now().isBefore(turns)) return null;
+      return week;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, String>> _memberAvatars(
+    String crewId,
+    List<WeekMember> members,
+  ) => _avatarUrls.resolve(
+    account: client.auth.currentUser?.id,
+    key: crewId,
+    paths: members
+        .where((m) => m.avatarPath == '${m.id}/avatar.png')
+        .map((m) => m.avatarPath!)
+        .toList(),
+    sign: (missing, lifetime) async {
+      final signed = await client.storage
+          .from('avatars')
+          .createSignedUrlsResult(missing, lifetime);
+      return {
+        for (final result in signed)
+          if (result is SignedUrlSuccess) result.path: result.signedUrl,
+      };
+    },
+  );
+
+  static CrewWeek _withUrls(
+    CrewWeek week, {
+    required Map<String, String> stories,
+    required Map<String, String> avatars,
+  }) => CrewWeek(
+    today: week.today,
+    weekStart: week.weekStart,
+    timezone: week.timezone,
+    pacts: week.pacts,
+    members: week.members
+        .map((m) => m.withAvatar(avatars[m.avatarPath]))
+        .toList(),
+    checkIns: week.checkIns
+        .map(
+          (i) => i.photoPath == null || stories[i.photoPath] == null
+              ? i
+              : i.withPhotoUrl(stories[i.photoPath]),
+        )
+        .toList(),
+    streakWeeks: week.streakWeeks,
+    latestActivity: week.latestActivity,
+    achievements: [
+      for (final a in week.achievements) a.withPhotoUrl(stories[a.photoPath]),
+    ],
+    nudges: week.nudges,
+    nextDayAt: week.nextDayAt,
+  );
 
   @override
   Future<void> saveCheckIns({
@@ -1187,6 +1269,11 @@ class MissingHomeBackend implements HomeBackend {
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) =>
       Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<CrewWeek> fetchWeekBrief(String crewId) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  CrewWeek? cachedWeek(String crewId) => null;
   @override
   Future<List<CrewWeekSummary>> fetchWeekHistory(
     String crewId, {

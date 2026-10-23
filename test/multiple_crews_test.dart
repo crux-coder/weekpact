@@ -385,7 +385,10 @@ void main() {
     expect(home.requested, ['second']);
     pacts.crews = [pacts.crews.first];
     await launch('account-a');
-    expect(home.requested, ['crew']);
+    // Home starts on the saved crew's week beside the crews list; the list
+    // no longer has it, so the page falls back and shows the first crew.
+    expect(home.requested, ['second', 'crew']);
+    expect(find.text('Early Birds'), findsWidgets);
     expect(preferences.getString('selected_crew:account-a'), 'crew');
     expect(preferences.getString('selected_crew:account-b'), 'second');
     expect(tester.takeException(), isNull);

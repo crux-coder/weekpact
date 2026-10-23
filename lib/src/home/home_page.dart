@@ -469,7 +469,16 @@ class _HomeDestinationState extends State<_HomeDestination>
   List<CrewWeekSummary>? _history;
   String? _error;
   int _request = 0;
+
+  /// A slow fallback refresh while Home is open, for whatever no push and no
+  /// return to the app brought in.
   Timer? _timer;
+
+  /// Fires as the crew's day turns over, so today becomes tomorrow on time
+  /// without polling for it.
+  Timer? _dayTimer;
+  StreamSubscription<RemoteMessage>? _pushes;
+  NotificationService? _notifications;
   String? _savingPact;
   String? _saveError;
 
@@ -489,17 +498,68 @@ class _HomeDestinationState extends State<_HomeDestination>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _openCached();
     _refresh();
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) {
       if (widget.active && _savingPact == null) _refresh();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifications = NotificationScope.read(context);
+    if (notifications == _notifications) return;
+    unawaited(_pushes?.cancel());
+    _notifications = notifications;
+    // A push that lands while Home is open is usually the crew doing
+    // something Home shows. Chat has its own page and its own updates.
+    _pushes = notifications?.foregroundMessages.listen((message) {
+      if (widget.active &&
+          _savingPact == null &&
+          chatPushCrewId(message) == null) {
+        _refresh();
+      }
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _dayTimer?.cancel();
+    unawaited(_pushes?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Opens on the crews and week this device kept from last time, so a
+  /// launch shows the crew straight away and the refresh fills in behind it.
+  void _openCached() {
+    final crews = widget.pactsBackend.cachedCrews();
+    if (crews == null || crews.isEmpty) return;
+    final matches = crews.where((c) => c.id == widget.selectedCrewId);
+    final crew = matches.isNotEmpty ? matches.first : crews.first;
+    final week = widget.backend.cachedWeek(crew.id);
+    if (week == null) return;
+    _crews = crews;
+    _crew = crew;
+    _week = week;
+    _nudges = week.nudges ?? const {};
+    _seen.addAll(widget.seenStore.read(widget.userId, week.today));
+    _scheduleDayTurn(week);
+  }
+
+  void _scheduleDayTurn(CrewWeek? week) {
+    _dayTimer?.cancel();
+    final turns = week?.nextDayAt;
+    if (turns == null) return;
+    // A moment past midnight, so the server is already on the new day.
+    final wait = turns.difference(DateTime.now()) + const Duration(seconds: 2);
+    // A device clock running ahead of the server's would otherwise refresh
+    // into the same day over and over; it tries again a minute later.
+    _dayTimer = Timer(wait.isNegative ? const Duration(minutes: 1) : wait, () {
+      if (_savingPact == null) _refresh();
+    });
   }
 
   @override
@@ -525,6 +585,14 @@ class _HomeDestinationState extends State<_HomeDestination>
   Future<void> _refresh({String? crewId}) async {
     if (_savingPact != null) return;
     final request = ++_request;
+    // The crew Home expects to show is loaded beside the crews list rather
+    // than after it. Should the list name another crew, this one is dropped.
+    final expected = crewId ?? widget.selectedCrewId ?? _crew?.id;
+    final early = expected == null
+        ? null
+        : widget.backend
+              .fetchWeek(expected)
+              .then<CrewWeek?>((week) => week, onError: (Object _) => null);
     try {
       final crews = await widget.pactsBackend.fetchCrews();
       if (!mounted || request != _request) return;
@@ -555,9 +623,11 @@ class _HomeDestinationState extends State<_HomeDestination>
                 .catchError((Object _) => null);
       final week = crew == null
           ? null
-          : await widget.backend.fetchWeek(crew.id);
+          : (crew.id == expected ? await early : null) ??
+                await widget.backend.fetchWeek(crew.id);
       final weeks = await history;
       if (mounted && request == _request) {
+        _scheduleDayTurn(week);
         setState(() {
           _week = week;
           _history = weeks;
@@ -570,7 +640,13 @@ class _HomeDestinationState extends State<_HomeDestination>
             );
         });
       }
-      await _loadNudges(crew?.id, request);
+      // The week usually brings who can be nudged; one that does not leaves
+      // the page to ask.
+      if (week?.nudges case final nudges?) {
+        if (mounted && request == _request) setState(() => _nudges = nudges);
+      } else {
+        await _loadNudges(crew?.id, request);
+      }
     } catch (_) {
       if (mounted && request == _request) {
         setState(() => _error = 'Could not load your week. Please try again.');
@@ -682,6 +758,7 @@ class _HomeDestinationState extends State<_HomeDestination>
           streakWeeks: week.streakWeeks,
           weekStart: week.weekStart,
           timezone: week.timezone,
+          nextDayAt: week.nextDayAt,
           pacts: week.pacts,
           members: week.members,
           achievements: week.achievements,
@@ -820,6 +897,7 @@ class _HomeDestinationState extends State<_HomeDestination>
         streakWeeks: week.streakWeeks,
         weekStart: week.weekStart,
         timezone: week.timezone,
+        nextDayAt: week.nextDayAt,
         pacts: week.pacts,
         members: week.members,
         latestActivity: week.latestActivity,

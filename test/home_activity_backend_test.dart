@@ -65,59 +65,60 @@ void main() {
 
   for (final hasAny in [true, false]) {
     test(
-      'activity is the crew’s latest check-in of any date, ${hasAny ? 'when there is one' : 'or nothing at all'}',
+      'this week arrives in one call with its activity, achievements and nudges, ${hasAny ? 'when there is a check-in' : 'or no check-in at all'}',
       () async {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         final requests = <Uri>[];
         server.listen((request) async {
           requests.add(request.uri);
           request.response.headers.contentType = ContentType.json;
-          if (request.uri.path.endsWith('/rpc/crew_achievements')) {
-            request.response.write('[]');
-          } else if (request.uri.path.endsWith('/rpc/crew_week_snapshot')) {
-            request.response.write(
-              jsonEncode({
-                'today': '2026-09-14',
-                'week_start': '2026-09-14',
-                'timezone': 'Pacific/Auckland',
-                'pacts': [
-                  {
-                    'id': 'pact',
-                    'crew_id': 'crew',
-                    'title': 'Hangboard',
-                    'frequency': 'weekly',
-                    'days_per_week': 5,
-                  },
-                ],
-                'members': [
-                  {
-                    'user_id': 'member',
-                    'email': 'm@example.com',
-                    'display_name': 'Mirnes',
-                  },
-                ],
-                'check_ins': [
-                  {
-                    'pact_id': 'pact',
-                    'user_id': 'member',
-                    'completed_on': '2026-09-13',
-                  },
-                ],
-              }),
-            );
-          } else {
-            request.response.write(
-              jsonEncode([
-                if (hasAny)
-                  {
-                    'pact_id': 'pact',
-                    'user_id': 'member',
-                    'created_at': '2026-09-13T18:30:00+02:00',
-                    'photo_path': 'member/crew/pact/photo.png',
-                  },
-              ]),
-            );
-          }
+          request.response.write(
+            jsonEncode({
+              'today': '2026-09-14',
+              'week_start': '2026-09-14',
+              'timezone': 'Pacific/Auckland',
+              'next_day_at': '2026-09-14T12:00:00+00:00',
+              'pacts': [
+                {
+                  'id': 'pact',
+                  'crew_id': 'crew',
+                  'title': 'Hangboard',
+                  'frequency': 'weekly',
+                  'days_per_week': 5,
+                },
+              ],
+              'members': [
+                {
+                  'user_id': 'member',
+                  'email': 'm@example.com',
+                  'display_name': 'Mirnes',
+                },
+              ],
+              'check_ins': [
+                {
+                  'pact_id': 'pact',
+                  'user_id': 'member',
+                  'completed_on': '2026-09-13',
+                },
+              ],
+              'latest_activity': hasAny
+                  ? {
+                      'pact_id': 'pact',
+                      'user_id': 'member',
+                      'created_at': '2026-09-13T18:30:00+02:00',
+                      'photo_path': 'member/crew/pact/photo.png',
+                    }
+                  : null,
+              'achievements': [],
+              'nudges': [
+                {
+                  'recipient_id': 'member',
+                  'status': 'cooldown',
+                  'next_allowed_at': '2026-09-15T08:00:00+00:00',
+                },
+              ],
+            }),
+          );
           await request.response.close();
         });
         final client = SupabaseClient(
@@ -129,18 +130,14 @@ void main() {
           await server.close(force: true);
         });
         final week = await SupabaseHomeBackend(client).fetchWeek('crew');
-        final query = requests
-            .singleWhere((uri) => uri.path.endsWith('/pact_check_ins'))
-            .queryParameters;
-        expect(query['select'], 'pact_id,user_id,created_at,photo_path');
-        expect(query['pact_id'], 'in.("pact")');
-        expect(query['user_id'], 'in.("member")');
-        expect(query['order'], startsWith('created_at.desc'));
-        expect(query['limit'], '1');
-        // Not held to today: the card reads as the last thing that happened,
-        // whenever that was, and dates what it shows.
-        expect(query['completed_on'], isNull);
+        // One round trip: nothing else is asked for after the week.
+        expect(requests.map((uri) => uri.path), [
+          endsWith('/rpc/crew_week_overview'),
+        ]);
         expect(week.checkIns.single.day, '2026-09-13');
+        expect(week.nextDayAt, DateTime.utc(2026, 9, 14, 12));
+        expect(week.nudges?['member']?.status, CrewNudgeStatus.cooldown);
+        expect(week.achievements, isEmpty);
         if (hasAny) {
           expect(week.latestActivity?.photoPath, 'member/crew/pact/photo.png');
           expect(
