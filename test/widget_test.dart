@@ -65,6 +65,9 @@ void main() {
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
+    expect(find.text('Log out'), findsOneWidget);
     expect(find.text('Appearance'), findsNothing);
     expect(find.text('Light'), findsNothing);
     expect(find.text('Dark'), findsNothing);
@@ -172,6 +175,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
 
     await tester.ensureVisible(find.text('Log out'));
     await tester.tap(find.text('Log out'));
@@ -214,6 +219,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
 
+    expect(find.text('Edit profile'), findsOneWidget);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
     expect(find.text('Log out'), findsOneWidget);
   });
 
@@ -287,11 +295,14 @@ void main() {
     await tester.pumpUi();
     await submitTestPhoto(tester);
     expect(find.text('Checked in today'), findsWidgets);
-    await tester.tap(
-      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    final hold = await tester.startGesture(
+      tester.getCenter(
+        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+      ),
     );
-    await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('confirm-undo-check-in')));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 1200));
+    await hold.up();
     await tester.pumpUi();
     expect(find.text('Check in').hitTestable(), findsOneWidget);
   });

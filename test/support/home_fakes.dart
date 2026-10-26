@@ -170,6 +170,29 @@ class DashboardBackend implements HomeBackend {
     return clapped ? 1 : 0;
   }
 
+  /// Stories the page marked seen, by [Story.id], and the audience every one
+  /// of the viewer's own stories answers with.
+  final seenStories = <String>[];
+  List<StoryAudienceMember> audience = const [];
+
+  @override
+  Future<void> markCheckInSeen(PactCheckIn checkIn) async =>
+      seenStories.add(checkIn.id);
+
+  @override
+  Future<void> markAchievementSeen(String achievementId) async =>
+      seenStories.add(achievementId);
+
+  @override
+  Future<List<StoryAudienceMember>> fetchCheckInAudience(
+    PactCheckIn checkIn,
+  ) async => audience;
+
+  @override
+  Future<List<StoryAudienceMember>> fetchAchievementAudience(
+    String achievementId,
+  ) async => audience;
+
   /// Finished weeks the fake hands back, newest first, and the week the page
   /// last asked for, so a test can tell which week was opened.
   List<CrewWeekSummary> history = const [];

@@ -303,18 +303,35 @@ crew has told you, which between them is what the feed was for. The navigation
 bar has three destinations: Home, Crews, Account. `lavender` (the old Pacts
 tab's) and `lime` are unspoken for in the destination-dot group.
 
-### Account: profile hub
+### Account: photo wall
 
-`AccountPage` uses the profile-first layout: a sand card with a centered avatar,
-name, email, and pill-shaped Edit profile button. Notifications and optional crash
-report sharing occupy two rows in one offwhite panel. Support and Privacy policy
-are adjacent shortcut tiles, followed by a full-width Log out row and a separate,
-subdued Delete account action. Reset password is omitted from Account; recovery
-remains available through the sign-in flow. The page scrolls on smaller screens
-and with larger text. Existing actions retain confirmation and error handling;
-notification setup details open when needed. `ProfileEditor` owns the name-editing
-form and lifecycle in a bottom sheet. `ProfileAvatar` supports a larger size and
-initials while retaining the existing photo loader.
+`AccountPage` is your own record, Instagram style (`design/account-redesign/`,
+direction 2). A gear in the top right, then the face at 84pt beside three
+`ProfileFigure`s (check-ins, pacts, crews), the name and email, and a
+full-width cream Edit profile button that opens `ProfileEditor` in a sheet.
+`ProfileAvatar` is drawn in the pale-card scope so its initials are card ink
+on the mint.
+
+`CREWS` is a horizontal strip of `ProfileCrewPill`s: dark pills in
+`WeekPactDarkCard`'s set with up to three faces from the crew's brief week and
+the crew's name, the Timeline direction's crew list. A tap pushes `CrewPage`.
+`CHECK-INS` is the wall: `ProfileFilterChip`s (All, then one per pact with its
+badge, shown once there are two pacts) over `ProfileWallGrid`, three wide.
+A `ProfileWallTile` is the photo with its pact badge in the corner, or the
+pact's tint with the badge in the middle when the check-in kept no photo,
+dated in the top right; a tap opens it with `openCheckInStory`. The wall pages
+30 at a time as it nears its end.
+
+The data comes from `ProfileHistoryBackend` (`my_profile_summary` and
+`my_check_ins`), which `SupabaseHomeBackend` implements and fakes need not;
+without it the page is the profile and its settings alone. Both read only the
+crews you are still in.
+
+Settings live in a sheet behind the gear, as Account's foot used to hold them:
+notifications and crash reports in one panel, Support and Privacy tiles, Log
+out, and Delete account. The wall pages on as it scrolls, so nothing can stand
+at its end. Log out closes the sheet first; `AuthGate` clears any route a
+session left open when it ends.
 
 ### Login, registration, and onboarding
 

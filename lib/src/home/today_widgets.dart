@@ -1,6 +1,4 @@
 import '../widgets/app_components.dart';
-import '../widgets/app_dialog.dart';
-import '../widgets/app_sheet.dart';
 import '../widgets/avatar_shape.dart';
 import '../crew/crew_streak_card.dart';
 import '../crew/crew_switcher.dart';
@@ -9,9 +7,11 @@ import 'home_surface.dart';
 import 'pact_deck.dart';
 import '../theme/weekpact_theme.dart';
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
@@ -31,6 +31,10 @@ const _doneFill = WeekPactColors.cream;
 /// One day of the week, on the pact card's progress bar.
 const _segmentHeight = 16.0;
 const _doneMark = WeekPactColors.doneMark;
+
+/// What fills the done bar while undo is held: the grey of a check-in still to
+/// come, the same on every card, so the day visibly drains back to not done.
+const _undoFill = WeekPactColors.pendingCheckIns;
 
 /// The card's measures above its body, shared with the crew week's cards
 /// through [PactCardFace].
@@ -1409,7 +1413,7 @@ class _PactCard extends StatelessWidget {
   }
 }
 
-class _CompletedCheckIn extends StatelessWidget {
+class _CompletedCheckIn extends StatefulWidget {
   const _CompletedCheckIn({
     required this.pactTitle,
     required this.busy,
@@ -1423,124 +1427,183 @@ class _CompletedCheckIn extends StatelessWidget {
   final bool busy;
   final VoidCallback? onUndo;
 
-  /// Undo sits a thumb's width from the check-in it takes back, so it asks
-  /// first rather than letting a stray tap cost the day.
-  Future<void> _confirmUndo(BuildContext context) async {
-    final confirmed = await showAppDialog<bool>(
-      context: context,
-      builder: (context) => AppDialog(
-        key: const ValueKey('undo-check-in-dialog'),
-        centered: true,
-        icon: HugeIconsStrokeRounded.undo02,
-        title: 'Undo check-in?',
-        message: '$pactTitle goes back to not done for today.',
-        emphasis: pactTitle,
-        actions: [
-          AppButton(
-            key: const ValueKey('confirm-undo-check-in'),
-            label: 'UNDO',
-            onPressed: () => Navigator.pop(context, true),
-          ),
-          const AppDialogDismiss(label: 'Keep it', plain: true),
-        ],
-      ),
-    );
-    if (confirmed == true) onUndo?.call();
+  @override
+  State<_CompletedCheckIn> createState() => _CompletedCheckInState();
+}
+
+/// Undo sits a thumb's width from the check-in it takes back, so it has to be
+/// held rather than tapped: the pending grey fills the bar from the left
+/// while the finger stays down, and the check-in only comes off once it is
+/// full. Letting go, or swiping the deck, drains it again.
+class _CompletedCheckInState extends State<_CompletedCheckIn>
+    with SingleTickerProviderStateMixin {
+  static const _holdFor = Duration(milliseconds: 900);
+
+  /// How many of the lightest taps run under the finger while the bar fills,
+  /// about one every 60ms: close enough together to feel like one continuous
+  /// hum rather than a count.
+  static const _hum = 15;
+
+  late final _hold =
+      AnimationController(
+          vsync: this,
+          duration: _holdFor,
+          reverseDuration: const Duration(milliseconds: 200),
+        )
+        ..addListener(_onHoldTick)
+        ..addStatusListener(_onHoldStatus);
+
+  int _humStep = 0;
+
+  bool get _enabled => !widget.busy && widget.onUndo != null;
+
+  void _start() {
+    if (!_enabled) return;
+    _humStep = 0;
+    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
+    _hold.forward();
+  }
+
+  void _onHoldTick() {
+    if (_hold.status != AnimationStatus.forward) return;
+    final step = (_hold.value * _hum).floor();
+    // The last step is the completion's own, firmer tap.
+    if (step <= _humStep || step >= _hum) return;
+    _humStep = step;
+    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
+  }
+
+  void _release() {
+    if (_hold.status == AnimationStatus.completed) return;
+    _hold.reverse();
+  }
+
+  void _onHoldStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    unawaited(HapticFeedback.mediumImpact().catchError((Object _) {}));
+    widget.onUndo?.call();
+    // A failed undo leaves the card checked in, so the bar empties again.
+    _hold.value = 0;
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 56,
-    decoration: ShapeDecoration(
-      color: _doneFill,
-      shape: WeekPactMetrics.buttonShape.copyWith(
-        side: BorderSide(color: edge),
-      ),
-      shadows: [BoxShadow(color: edge, offset: WeekPactMetrics.raisedOffset)],
-    ),
-    padding: const EdgeInsets.only(left: 10),
-    child: Row(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 2, right: 10),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const HugeIcon(
-                    icon: HugeIconsStrokeRounded.tickDouble03,
-                    color: _doneMark,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    liveRegion: true,
-                    child: const Text(
-                      'Checked in today',
-                      style: TextStyle(
-                        color: _ink,
-                        fontFamily: WeekPactType.secondary,
-                        fontFamilyFallback: WeekPactType.secondaryFallback,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+  void dispose() {
+    _hold.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Undo check-in',
+    hint: 'Hold to undo',
+    onTap: _enabled ? widget.onUndo : null,
+    child: GestureDetector(
+      key: ValueKey('check-in-${widget.pactTitle}'),
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _start(),
+      onTapUp: (_) => _release(),
+      onTapCancel: _release,
+      // The fill is painted by the bar's own decoration, under its border,
+      // so it meets the outline exactly instead of being clipped to it.
+      child: AnimatedBuilder(
+        animation: _hold,
+        builder: (context, child) {
+          final fill = _hold.value;
+          return Container(
+            height: 56,
+            decoration: ShapeDecoration(
+              gradient: LinearGradient(
+                colors: [_undoFill, _undoFill, _doneFill, _doneFill],
+                stops: [0, fill, fill, 1],
               ),
+              shape: WeekPactMetrics.buttonShape.copyWith(
+                side: BorderSide(color: widget.edge),
+              ),
+              shadows: [
+                BoxShadow(
+                  color: widget.edge,
+                  offset: WeekPactMetrics.raisedOffset,
+                ),
+              ],
             ),
-          ),
-        ),
-        Container(width: 1, height: 20, color: _ink.withValues(alpha: .10)),
-        SizedBox(
-          width: 80,
-          height: 56,
-          child: Tooltip(
-            message: 'Undo check-in',
-            child: TextButton(
-              key: ValueKey('check-in-$pactTitle'),
-              onPressed: busy || onUndo == null
-                  ? null
-                  : () => _confirmUndo(context),
-              style: TextButton.styleFrom(
-                foregroundColor: _ink,
-                minimumSize: const Size(80, 56),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: EdgeInsets.zero,
-                shape: const ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.horizontal(
-                    right: Radius.circular(WeekPactMetrics.panelCurve),
+            child: child,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const HugeIcon(
+                        icon: HugeIconsStrokeRounded.tickDouble03,
+                        color: _doneMark,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Semantics(
+                        liveRegion: true,
+                        child: const Text(
+                          'Checked in today',
+                          style: TextStyle(
+                            color: _ink,
+                            fontFamily: WeekPactType.secondary,
+                            fontFamilyFallback: WeekPactType.secondaryFallback,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              child: busy
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _doneMark,
-                      ),
-                    )
-                  : const FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'Undo',
-                        style: TextStyle(
-                          fontFamily: WeekPactType.secondary,
-                          fontFamilyFallback: WeekPactType.secondaryFallback,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          decoration: TextDecoration.underline,
+              const SizedBox(width: 10),
+              Container(
+                width: 1,
+                height: 20,
+                color: _ink.withValues(alpha: .10),
+              ),
+              SizedBox(
+                width: 96,
+                child: Center(
+                  child: widget.busy
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _doneMark,
+                          ),
+                        )
+                      : ExcludeSemantics(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            // Faint enough to read as a note, not a button.
+                            child: Text(
+                              'Hold to undo',
+                              style: TextStyle(
+                                color: _ink.withValues(alpha: .38),
+                                fontFamily: WeekPactType.secondary,
+                                fontFamilyFallback:
+                                    WeekPactType.secondaryFallback,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-            ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     ),
   );
 }
