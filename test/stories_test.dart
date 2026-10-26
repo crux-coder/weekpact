@@ -446,6 +446,94 @@ void main() {
     expect(find.text('Clap'), findsOneWidget);
   });
 
+  testWidgets('a crewmate\'s story is marked seen for its poster', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend();
+    await pumpStoriesHome(tester, backend: backend);
+    await tester.tap(find.byKey(const ValueKey('story-tile-bea')));
+    await tester.pumpUi();
+    expect(backend.seenStories, ['move/bea/$_today']);
+    // Walking back onto it does not write it twice.
+    await tester.tapAt(const Offset(350, 400));
+    await tester.pumpUi();
+    await tester.tapAt(const Offset(20, 400));
+    await tester.pumpUi();
+    expect(
+      backend.seenStories.where((id) => id == 'move/bea/$_today'),
+      hasLength(1),
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('your own story shows who clapped instead of a clap, and lists '
+      'who saw it', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = StoriesBackend()
+      ..audience = const [
+        StoryAudienceMember(
+          member: WeekMember('bea', '', displayName: 'Bea Novak'),
+          clapped: true,
+        ),
+        StoryAudienceMember(
+          member: WeekMember('cai', '', displayName: 'Cai Mensah'),
+        ),
+      ];
+    await pumpStoriesHome(tester, backend: backend);
+    await tester.tap(find.byKey(const ValueKey('story-tile-')));
+    await tester.pumpUi();
+    // No clap on your own story, and your own look is not a view.
+    expect(find.byKey(const ValueKey('story-clap')), findsNothing);
+    expect(backend.seenStories, isEmpty);
+    final bar = find.byKey(const ValueKey('story-audience-bar'));
+    expect(bar, findsOneWidget);
+    expect(
+      find.descendant(
+        of: bar,
+        matching: find.byKey(const ValueKey('story-clappers')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: bar, matching: find.text('BN')), findsOneWidget);
+    // Cai only looked, so Cai has no face beside the claps.
+    expect(find.descendant(of: bar, matching: find.text('CM')), findsNothing);
+
+    // The faces open the list, and so does the tally beside them.
+    await tester.tap(find.byKey(const ValueKey('story-clappers')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('story-audience')), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const ValueKey('story-audience'))))
+        .pop();
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('story-clap-tally')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('story-audience')), findsOneWidget);
+    expect(find.text('Bea Novak'), findsOneWidget);
+    expect(find.text('Cai Mensah'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('audience-bea')),
+        matching: find.byKey(const ValueKey('audience-clapped')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('audience-cai')),
+        matching: find.byKey(const ValueKey('audience-clapped')),
+      ),
+      findsNothing,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('your own tile opens your own day', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

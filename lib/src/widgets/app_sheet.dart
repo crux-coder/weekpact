@@ -29,12 +29,34 @@ Future<T?> showAppSheet<T>({
 
 /// A content-sized, edge-to-edge sheet with safe-area space inside its surface.
 class AppSheet extends StatelessWidget {
-  const AppSheet({super.key, required this.builder});
+  const AppSheet({super.key, required this.builder, this.dark = false});
 
   final WidgetBuilder builder;
 
+  /// Draws the sheet on the dark card surface, with its content in the dark
+  /// theme, for sheets that open over a dark page such as a story.
+  final bool dark;
+
   @override
   Widget build(BuildContext context) {
+    if (dark) {
+      return Theme(
+        data: WeekPactTheme.dark,
+        child: Builder(
+          builder: (context) => DefaultTextStyle(
+            style: Theme.of(context).textTheme.bodyMedium!,
+            child: IconTheme(
+              data: const IconThemeData(color: WeekPactDarkCard.ink),
+              child: _build(context),
+            ),
+          ),
+        ),
+      );
+    }
+    return _build(context);
+  }
+
+  Widget _build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final keyboard = MediaQuery.viewInsetsOf(context).bottom;
@@ -50,10 +72,10 @@ class AppSheet extends StatelessWidget {
               width: double.infinity,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: context.surface,
+                color: dark ? WeekPactDarkCard.fill : context.surface,
                 border: Border(
                   top: BorderSide(
-                    color: context.border,
+                    color: dark ? WeekPactDarkCard.outline : context.border,
                     width: WeekPactMetrics.border,
                   ),
                 ),
@@ -82,7 +104,9 @@ class AppSheet extends StatelessWidget {
                           width: 44,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: context.border,
+                            color: dark
+                                ? WeekPactDarkCard.ink.withValues(alpha: .2)
+                                : context.border,
                             borderRadius: WeekPactMetrics.pill,
                           ),
                         ),

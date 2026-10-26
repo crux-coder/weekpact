@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import '../widgets/avatar_shape.dart';
 import '../widgets/pact_icon_badge.dart';
 import 'home_backend.dart';
 import 'stories.dart';
+import 'story_audience.dart';
 
 /// One member's day, full screen, with the rest of the crew behind it.
 ///
@@ -87,6 +89,13 @@ class _StoryViewerState extends State<StoryViewer> {
   final _counts = <String, int>{};
   bool _clapping = false;
 
+  /// Crewmates' stories already marked seen on the server this visit, and
+  /// who saw each of your own, by [Story.id]. An audience is asked for the
+  /// first time its story is shown, and kept for the rest of the visit.
+  final _marked = <String>{};
+  final _audiences = <String, List<StoryAudienceMember>>{};
+  final _loading = <String, Future<List<StoryAudienceMember>>>{};
+
   MemberDay get _day => widget.days[_member];
   Story get _current => _day.stories[_story];
 
@@ -101,7 +110,74 @@ class _StoryViewerState extends State<StoryViewer> {
         if (story.viewerClapped) _clapped.add(story.id);
       }
     }
-    widget.onSeen?.call(_current);
+    _shown();
+  }
+
+  bool _isMine(Story story) => story.userId == widget.viewerId;
+
+  /// Everything that happens as a story comes on screen: the rail's ring,
+  /// the poster's "seen by", and on your own story, who saw it.
+  void _shown() {
+    final story = _current;
+    widget.onSeen?.call(story);
+    final backend = widget.backend;
+    if (backend == null) return;
+    if (_isMine(story)) {
+      unawaited(
+        _loadAudience(story)
+            .catchError((Object _) => const <StoryAudienceMember>[]),
+      );
+    } else if (_marked.add(story.id)) {
+      // Best effort: a look that is not written down costs the poster one
+      // name in their list, never the story in front of the reader.
+      unawaited(
+        switch (story) {
+          PactStory(:final checkIn) => backend.markCheckInSeen(checkIn),
+          AchievementStory(:final achievement) => backend.markAchievementSeen(
+            achievement.id,
+          ),
+        }.catchError((Object _) => _marked.remove(story.id)),
+      );
+    }
+  }
+
+  /// Who saw [story], asked for once however often it is shown or tapped.
+  /// A failed ask is forgotten, so the next tap tries again.
+  Future<List<StoryAudienceMember>> _loadAudience(Story story) {
+    final loaded = _audiences[story.id];
+    final backend = widget.backend;
+    if (loaded != null) return Future.value(loaded);
+    if (backend == null) return Future.value(const []);
+    return _loading[story.id] ??= () async {
+      try {
+        final audience = await switch (story) {
+          PactStory(:final checkIn) => backend.fetchCheckInAudience(checkIn),
+          AchievementStory(:final achievement) =>
+            backend.fetchAchievementAudience(achievement.id),
+        };
+        if (mounted) setState(() => _audiences[story.id] = audience);
+        return audience;
+      } finally {
+        _loading.remove(story.id);
+      }
+    }();
+  }
+
+  /// Opens the list of who saw your story, loading it first if the bar was
+  /// tapped before it arrived or after it failed.
+  Future<void> _openAudience(Story story) async {
+    final List<StoryAudienceMember> audience;
+    try {
+      audience = await _loadAudience(story);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not load who saw it.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await showStoryAudience(context, audience: audience);
   }
 
   void _move(int step) {
@@ -120,13 +196,14 @@ class _StoryViewerState extends State<StoryViewer> {
         _story = step > 0 ? 0 : widget.days[member].stories.length - 1;
       });
     }
-    widget.onSeen?.call(_current);
+    _shown();
   }
 
   Future<void> _clap() async {
     final backend = widget.backend;
     final story = _current;
-    if (backend == null || _clapping) return;
+    // Nobody claps their own story; the bar there opens who saw it instead.
+    if (backend == null || _clapping || _isMine(story)) return;
     final clapped = !_clapped.contains(story.id);
     final before = _counts[story.id] ?? 0;
     setState(() {
@@ -240,7 +317,7 @@ class _StoryViewerState extends State<StoryViewer> {
               );
               _story = 0;
             });
-            widget.onSeen?.call(_current);
+            _shown();
           },
           child: Padding(
             // The progress and the name start clear of where the status bar's
@@ -343,7 +420,14 @@ class _StoryViewerState extends State<StoryViewer> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    if (widget.backend != null)
+                    if (widget.backend != null && _isMine(story))
+                      StoryAudienceBar(
+                        key: const ValueKey('story-audience-bar'),
+                        clapCount: _counts[story.id] ?? 0,
+                        audience: _audiences[story.id],
+                        onPressed: () => _openAudience(story),
+                      )
+                    else if (widget.backend != null)
                       _ClapPill(
                         key: const ValueKey('story-clap'),
                         count: _counts[story.id] ?? 0,

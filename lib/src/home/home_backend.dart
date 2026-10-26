@@ -179,6 +179,38 @@ class Achievement {
   );
 }
 
+/// One crewmate in a story's audience, as its poster reads it: who, when they
+/// last looked, and whether they clapped.
+class StoryAudienceMember {
+  const StoryAudienceMember({
+    required this.member,
+    this.seenAt,
+    this.clapped = false,
+  });
+
+  factory StoryAudienceMember.fromJson(Map<String, dynamic> row) =>
+      StoryAudienceMember(
+        member: WeekMember(
+          row['user_id'] as String,
+          '',
+          displayName: row['display_name'] as String? ?? '',
+          avatarPath: row['avatar_path'] as String?,
+        ),
+        seenAt: DateTime.tryParse(row['seen_at'] as String? ?? ''),
+        clapped: row['clapped'] as bool? ?? false,
+      );
+
+  final WeekMember member;
+  final DateTime? seenAt;
+  final bool clapped;
+
+  StoryAudienceMember withAvatar(String? url) => StoryAudienceMember(
+    member: member.withAvatar(url),
+    seenAt: seenAt,
+    clapped: clapped,
+  );
+}
+
 class CrewActivity {
   const CrewActivity({
     required this.pactId,
@@ -730,6 +762,19 @@ abstract interface class HomeBackend {
     required String achievementId,
     required bool clapped,
   });
+
+  /// Records that the viewer looked at a crewmate's check-in or achievement,
+  /// so its poster can see who saw it. Idempotent, and a poster's look at
+  /// their own is not recorded.
+  Future<void> markCheckInSeen(PactCheckIn checkIn);
+  Future<void> markAchievementSeen(String achievementId);
+
+  /// Who saw or clapped one of the viewer's own stories, clappers first.
+  /// Refused for anyone else's.
+  Future<List<StoryAudienceMember>> fetchCheckInAudience(PactCheckIn checkIn);
+  Future<List<StoryAudienceMember>> fetchAchievementAudience(
+    String achievementId,
+  );
 }
 
 class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
@@ -937,6 +982,63 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
       ),
     );
     return (row['clap_count'] as num).toInt();
+  }
+
+  @override
+  Future<void> markCheckInSeen(PactCheckIn checkIn) => client.rpc(
+    'mark_check_in_seen',
+    params: {
+      'target_pact_id': checkIn.pactId,
+      'target_check_in_user': checkIn.userId,
+      'target_day': checkIn.day,
+    },
+  );
+
+  @override
+  Future<void> markAchievementSeen(String achievementId) => client.rpc(
+    'mark_achievement_seen',
+    params: {'target_achievement_id': achievementId},
+  );
+
+  @override
+  Future<List<StoryAudienceMember>> fetchCheckInAudience(
+    PactCheckIn checkIn,
+  ) async => _audience(
+    await client.rpc(
+      'check_in_audience',
+      params: {
+        'target_pact_id': checkIn.pactId,
+        'target_check_in_user': checkIn.userId,
+        'target_day': checkIn.day,
+      },
+    ),
+  );
+
+  @override
+  Future<List<StoryAudienceMember>> fetchAchievementAudience(
+    String achievementId,
+  ) async => _audience(
+    await client.rpc(
+      'achievement_audience',
+      params: {'target_achievement_id': achievementId},
+    ),
+  );
+
+  /// The audience as the server lists it, with each face's avatar signed
+  /// through the same cache the crew's own avatars are.
+  Future<List<StoryAudienceMember>> _audience(Object? rows) async {
+    final audience = [
+      for (final row in rows as List? ?? const [])
+        StoryAudienceMember.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+    if (audience.isEmpty) return audience;
+    final avatars = await _memberAvatars(
+      'story-audience',
+      audience.map((a) => a.member).toList(),
+    );
+    return audience
+        .map((a) => a.withAvatar(avatars[a.member.avatarPath]))
+        .toList();
   }
 
   @override
@@ -1343,4 +1445,17 @@ class MissingHomeBackend implements HomeBackend {
     required String achievementId,
     required bool clapped,
   }) => Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> markCheckInSeen(PactCheckIn checkIn) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<void> markAchievementSeen(String achievementId) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<StoryAudienceMember>> fetchCheckInAudience(PactCheckIn checkIn) =>
+      Future.error(StateError('Supabase is not configured.'));
+  @override
+  Future<List<StoryAudienceMember>> fetchAchievementAudience(
+    String achievementId,
+  ) => Future.error(StateError('Supabase is not configured.'));
 }
