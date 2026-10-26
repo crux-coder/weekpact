@@ -109,8 +109,6 @@ assert.equal((await db.query("select role from crew_members where crew_id=$1 and
 await assert.rejects(asUser(joiner, () => accept(unknown)), /This invite code is no longer valid/);
 await assert.rejects(asUser(unverified, () => accept(first)), /Confirm your email/);
 await assert.rejects(anon(() => accept(first)), e => e.code === '42501');
-// The free-crew limit still applies: the outsider already owns a crew.
-await assert.rejects(asUser(outsider, () => accept(first)), e => e.code === 'WPPRO');
 
 // Reset gives a new code and the old one stops working everywhere.
 const second = await asUser(owner, () => reset(crew));
@@ -131,7 +129,6 @@ assert.equal((await anon(() => preview(other))).inviter_initials, 'A');
 const legacy = 'c'.repeat(64);
 await db.query(`insert into private.crew_share_links(crew_id,token_hash,created_by,expires_at) values($1,encode(extensions.digest($2,'sha256'),'hex'),$3,now()+interval '7 days')`, [crew, legacy, owner]);
 assert.equal((await anon(() => preview(legacy, member))).inviter_name, 'grace Hopper');
-await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year')", [outsider]);
 assert.equal(await asUser(outsider, () => accept(legacy)), crew);
 
 // New profiles take their name from Apple/Google metadata.

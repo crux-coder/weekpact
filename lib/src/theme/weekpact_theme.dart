@@ -78,8 +78,8 @@ abstract final class WeekPactColors {
 
   /// The palette's two warm notes, and the only ones: the sand on the quay and
   /// the brass on the boats. They carry the roles a marine tint cannot — a
-  /// subscription that is ending, a clap the viewer gave — so those read as
-  /// themselves rather than as one more card colour.
+  /// clap the viewer gave — so those read as themselves rather than as one
+  /// more card colour.
   static const sand = Color(0xFFE0D9C0);
   static const brass = Color(0xFFE6D7A6);
 
@@ -248,9 +248,8 @@ abstract final class WeekPactType {
 /// The charcoal card.
 ///
 /// Most of the app is pale cards with dark ink. The content-heavy surfaces —
-/// the story viewer, the paywall and the subscription page — invert that: the
-/// photos and the pricing carry the colour there, and a pale card would
-/// compete with them. Crew week's streak panel uses it too.
+/// the story viewer — invert that: the photos carry the colour there, and a
+/// pale card would compete with them. Crew week's streak panel uses it too.
 ///
 /// It is a closed set. Take fill, outline, ink and muted from here together;
 /// never put pale-card ink (`WeekPactColors.black`, `mutedLight`) on this fill,

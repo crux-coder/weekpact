@@ -18,7 +18,6 @@ import '../onboarding/onboarding_draft.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/setup_pages.dart';
 import '../pacts/pacts_backend.dart';
-import '../subscriptions/pro_upgrade.dart';
 import 'auth_backend.dart';
 import 'password_page.dart';
 
@@ -201,21 +200,6 @@ class _AuthGateState extends State<AuthGate> {
       });
     } catch (error) {
       if (!mounted) return;
-      if (isCrewLimitError(error)) {
-        // An existing account, already in a crew, that went through setup
-        // before logging in. Its crew stays; the draft goes.
-        await _drafts.clear();
-        if (!mounted) return;
-        setState(() => _setup = _Setup.idle);
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Welcome back. You already have a crew, so we took you to it.',
-            ),
-          ),
-        );
-        return;
-      }
       setState(() {
         _setup = _Setup.failed;
         _setupError =

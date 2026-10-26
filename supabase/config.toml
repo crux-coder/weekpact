@@ -427,9 +427,3 @@ verify_jwt = false
 # The function validates the bearer token with Auth and verifies the password
 # (email accounts) or the typed DELETE (Apple/Google accounts).
 verify_jwt = false
-
-[functions.revenuecat-webhook]
-# RevenueCat sends the Authorization header configured in its dashboard, which
-# the function compares against REVENUECAT_WEBHOOK_SECRET. It is not a JWT.
-verify_jwt = false
-import_map = "./functions/revenuecat-webhook/deno.json"

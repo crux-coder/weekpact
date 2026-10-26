@@ -24,18 +24,9 @@ const supportUrl = String.fromEnvironment(
   'SUPPORT_URL',
   defaultValue: 'https://weekpact.codepeaktrail.dev/support/',
 );
-// Apple requires a subscription screen to link its terms. Their standard EULA
-// is accepted when an app has none of its own, so it is the default rather
-// than a link that would be missing at review.
-const termsUrl = String.fromEnvironment(
-  'TERMS_URL',
-  defaultValue:
-      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-);
 
 /// Opens one of the app's public pages, reporting failure rather than leaving
-/// a tap with no result. Shared so the paywall's required links behave exactly
-/// like the ones on the account page.
+/// a tap with no result.
 Future<void> openPublicLink(BuildContext context, String url) async {
   try {
     final uri = Uri.parse(url);

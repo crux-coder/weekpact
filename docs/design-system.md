@@ -91,9 +91,8 @@ and a new tint needs a new badge on the same line, in the same hue.
 `stone`, `coolGrey` and `mintGreen` are cooler and stay where they are: they
 sit on the canvas and in panels rather than on a pact card. `keptDay` is the
 warm green a kept day takes on the crew week's calendar — sea glass there read
-as the one cool thing on a warm card. `sand` and `brass` carry a subscription
-that is ending and a clap the viewer gave, so those read as themselves rather
-than as one more card colour.
+as the one cool thing on a warm card. `sand` and `brass` carry a clap the
+viewer gave, so it reads as itself rather than as one more card colour.
 
 `salmon`, `lavender`, `lime`, `sky` and `lantern` are the five the palette
 holds at full chroma, and the one place it is loud on purpose. Everything else
@@ -113,9 +112,8 @@ none of the palette's blue-green in it: against a marine card set, waiting has
 to read as absence of colour rather than as a paler sea.
 There are exactly two card languages, and `WeekPactDarkCard` in
 `weekpact_theme.dart` is the second one. Most of the app is a pale card with
-dark ink. The content-heavy surfaces invert that — the story viewer, the paywall
-and the subscription page — because the photos and the pricing carry the colour
-there and a pale card would compete with them; Crew week's streak panel uses
+dark ink. The content-heavy surface inverts that — the story viewer — because the
+photos carry the colour there and a pale card would compete with them; Crew week's streak panel uses
 the same fill. Take `fill`, `outline`, `ink` and
 `muted` from `WeekPactDarkCard` together, as a closed set: never put pale-card
 ink (`black`, `mutedLight`) on that fill, and never put dark-card ink on a pact

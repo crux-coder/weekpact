@@ -65,9 +65,7 @@ await asUser(recipient, async () => assert.rejects(accept('0'.repeat(64)), /no l
 await asUser(unverified, async () => assert.rejects(accept(shareToken), /Confirm your email/));
 await asUser('', async () => assert.rejects(accept(shareToken), /Sign in/));
 await asUser('', async () => assert.rejects(accept(shareToken), e => e.code === '42501'), 'anon');
-// One crew without Pro: the outsider owns one already, so joining a second through a link is refused with WPPRO.
-await asUser(outsider, async () => assert.rejects(accept(shareToken), e => e.code === 'WPPRO'));
-await db.query("insert into private.subscriptions(user_id,entitlement,active,expires_at) values($1,'weekpact_pro',true,now()+interval '1 year')", [outsider]);
+// The outsider owns a crew already and can still join another.
 await asUser(outsider, async () => assert.equal(await accept(shareToken), crew));
 console.log(`${passed} legacy share link, email-invite removal and access-control scenarios passed.`);
 await db.close();

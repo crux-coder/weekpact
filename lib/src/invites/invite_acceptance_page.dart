@@ -5,7 +5,6 @@ import '../crew/crew_backend.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/onboarding_widgets.dart';
 import '../onboarding/setup_pages.dart';
-import '../subscriptions/pro_upgrade.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
@@ -91,16 +90,6 @@ class _InviteAcceptancePageState extends State<InviteAcceptancePage> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _accepting = false);
-      if (isCrewLimitError(error)) {
-        if (await showCrewLimitUpgrade(
-              context,
-              reason: CrewLimitReason.joining,
-            ) &&
-            mounted) {
-          await _accept();
-        }
-        return;
-      }
       if (_isDeadInvite(error)) {
         setState(() => _invalid = true);
         return;

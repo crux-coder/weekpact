@@ -15,7 +15,6 @@ import 'account_actions.dart';
 import '../onboarding/profile_avatar.dart';
 import '../notifications/notification_scope.dart';
 import '../notifications/notification_settings_card.dart';
-import '../subscriptions/subscription_control.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';
@@ -148,8 +147,6 @@ class _AccountPageState extends State<AccountPage> {
             ),
           ),
           const SizedBox(height: 12),
-          SubscriptionControl(enabled: !widget.signingOut),
-          const SizedBox(height: 8),
           const PublicAccountLinks(asTiles: true),
           const SizedBox(height: 12),
           AppSurface(

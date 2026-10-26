@@ -9,8 +9,6 @@ import '../home/home_backend.dart';
 import '../invites/invite_code_entry.dart';
 import '../invites/invite_links.dart';
 import '../pacts/pacts_backend.dart';
-import '../subscriptions/pro_upgrade.dart';
-import '../subscriptions/subscription_scope.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_icon.dart';
@@ -179,22 +177,7 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
     if (mounted) await _refresh();
   }
 
-  /// Opens the new-crew form, or explains why it cannot be opened. Someone who
-  /// upgrades from the dialog lands straight in the form.
-  Future<void> _toggleCreate() async {
-    if (_showCreate) {
-      setState(() => _showCreate = false);
-      return;
-    }
-    if ((_crews ?? const []).isNotEmpty && !context.isPro) {
-      final upgraded = await showCrewLimitUpgrade(
-        context,
-        reason: CrewLimitReason.creating,
-      );
-      if (!upgraded || !mounted) return;
-    }
-    setState(() => _showCreate = true);
-  }
+  void _toggleCreate() => setState(() => _showCreate = !_showCreate);
 
   Future<void> _createCrew() async {
     if (!(_createFormKey.currentState?.validate() ?? false)) return;
@@ -222,21 +205,7 @@ class _CrewsPageState extends State<CrewsPage> with WidgetsBindingObserver {
       widget.onCrewCreated?.call(crew);
     } catch (error) {
       if (!mounted) return;
-      // Postgres has the final say: entitlements can lapse between opening the
-      // form and submitting it, and the SDK's view can be stale.
-      if (isCrewLimitError(error)) {
-        if (await showCrewLimitUpgrade(
-              context,
-              reason: CrewLimitReason.creating,
-            ) &&
-            mounted) {
-          await _createCrew();
-          return;
-        }
-        if (mounted) setState(() => _showCreate = false);
-      } else {
-        setState(() => _error = crewErrorMessage(error));
-      }
+      setState(() => _error = crewErrorMessage(error));
     } finally {
       if (mounted) setState(() => _creating = false);
     }

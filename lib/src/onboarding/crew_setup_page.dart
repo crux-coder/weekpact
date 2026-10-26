@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../crew/crew_backend.dart';
 import '../crew/device_timezone.dart';
-import '../subscriptions/pro_upgrade.dart';
 import '../crew/crew_sharing.dart';
 import '../home/home_backend.dart';
 import '../notifications/notification_primer_page.dart';
@@ -156,12 +155,7 @@ class _CrewSetupPageState extends State<CrewSetupPage> {
       }
     } catch (error) {
       if (!mounted) return;
-      // Reachable only for someone who already has a crew on another device.
-      setState(
-        () => _error = isCrewLimitError(error)
-            ? 'You’re already in a crew. For now, the free plan includes one.'
-            : 'Could not create your crew. Please retry.',
-      );
+      setState(() => _error = 'Could not create your crew. Please retry.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
