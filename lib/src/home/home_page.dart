@@ -8,6 +8,7 @@ import '../widgets/app_sheet.dart';
 import '../widgets/skeleton_switcher.dart';
 import '../auth/account_page.dart';
 import 'home_surface.dart';
+import 'pact_deck.dart';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
@@ -979,12 +980,13 @@ class _HomeDestinationState extends State<_HomeDestination>
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: Padding(
                     // Home does not scroll, so it stops short of the
-                    // navigation floating over its foot.
+                    // navigation floating over its foot, as far below the
+                    // pact dots as the cards stand above them.
                     padding: EdgeInsets.fromLTRB(
                       12,
                       top + 8,
                       12,
-                      4 + MediaQuery.paddingOf(context).bottom,
+                      PactDeck.dotsGap + MediaQuery.paddingOf(context).bottom,
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
