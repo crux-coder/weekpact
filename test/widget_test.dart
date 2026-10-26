@@ -22,6 +22,7 @@ import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/crew/crew_page.dart';
 import 'package:weekpact/src/crew/crew_sharing.dart';
 import 'package:weekpact/src/invites/invite_links.dart';
+import 'package:weekpact/src/onboarding/profile_avatar.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
 import 'package:weekpact/src/widgets/app_components.dart';
 
@@ -71,7 +72,8 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     await tester.pumpUi();
     expect(
-      Theme.of(tester.element(find.text('Account').first)).brightness,
+      Theme.of(tester.element(find.byKey(const ValueKey('nav-account'))))
+          .brightness,
       Brightness.dark,
     );
   });
@@ -206,20 +208,16 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pumpUi();
 
-    expect(find.text('Crews'), findsWidgets);
     expect(find.text('Start your crew'), findsOneWidget);
     expect(find.text('CREATE CREW'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
 
-    expect(find.text('Account'), findsWidgets);
     expect(find.text('Log out'), findsOneWidget);
   });
 
-  testWidgets('labels only the selected destination, beside its icon', (
-    tester,
-  ) async {
+  testWidgets('shows icons only, named for screen readers', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -239,34 +237,24 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    final homeButton = find.byKey(const ValueKey('nav-home'));
-    final homeIcon = find.descendant(
-      of: homeButton,
-      matching: find.byType(HugeIcon),
-    );
-    final homeLabel = find.descendant(
-      of: homeButton,
-      matching: find.text('Home'),
-    );
-
-    // The selected destination's label sits beside its icon.
-    expect(
-      tester.getCenter(homeIcon).dx,
-      lessThan(tester.getCenter(homeLabel).dx),
-    );
-    expect(
-      tester.getCenter(homeIcon).dy,
-      closeTo(tester.getCenter(homeLabel).dy, 1),
-    );
-    for (final label in ['Chat', 'Crews', 'Account']) {
-      final destination = find.byKey(ValueKey('nav-${label.toLowerCase()}'));
-      // The others collapse to their icon, narrower than the selected one.
+    final navigation = find.byType(AppBottomNavigationBar);
+    for (final label in ['Home', 'Chat', 'Crews', 'Account']) {
       expect(
-        tester.getSize(destination).width,
-        lessThan(tester.getSize(homeButton).width),
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsNothing,
       );
       expect(find.bySemanticsLabel(label), findsOneWidget);
     }
+    // Account shows the person's own picture in place of an icon.
+    final account = find.byKey(const ValueKey('nav-account'));
+    expect(
+      find.descendant(of: account, matching: find.byType(ProfileAvatar)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: account, matching: find.byType(HugeIcon)),
+      findsNothing,
+    );
   });
 
   testWidgets('shows daily pacts and checks in directly', (tester) async {
@@ -306,7 +294,7 @@ void main() {
     expect(find.text('Check in').hitTestable(), findsOneWidget);
   });
 
-  testWidgets('slides horizontally between destinations', (tester) async {
+  testWidgets('cuts straight to the destination', (tester) async {
     final auth = FakeAuthBackend();
     addTearDown(auth.dispose);
 
@@ -326,21 +314,14 @@ void main() {
     await tester.tap(find.text('LOG IN'));
     await tester.pumpUi();
 
-    final initialHomeX = tester
-        .getTopLeft(find.byKey(const ValueKey('home-streak-card')))
-        .dx;
-    // The adjacent destination keeps Home mounted through the slide.
-    await tester.tap(find.byKey(const ValueKey('nav-chat')));
+    final home = find.byKey(const ValueKey('home-streak-card'));
+    expect(home.hitTestable(), findsOneWidget);
+    // No slide: one frame later Home is already gone.
+    await tester.tap(find.byKey(const ValueKey('nav-crews')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(
-      tester.getTopLeft(find.byKey(const ValueKey('home-streak-card'))).dx,
-      lessThan(initialHomeX),
-    );
-
+    expect(home.hitTestable(), findsNothing);
     await tester.pumpUi();
-    expect(find.text('Chat'), findsWidgets);
+    expect(find.text('Start your crew').hitTestable(), findsOneWidget);
   });
 
   testWidgets('keeps navigation icons aligned when switching tabs', (
@@ -388,7 +369,7 @@ void main() {
     expect(tester.getCenter(highlight).dx, greaterThan(startX));
     expect(tester.getCenter(highlight).dx, lessThan(endX));
     await tester.pumpUi();
-    // Crews widens to show its label, and the highlight lands on it.
+    // The highlight lands on Crews.
     expect(
       tester.getCenter(highlight).dx,
       closeTo(tester.getCenter(crewsButton).dx, 1),
@@ -403,7 +384,6 @@ void main() {
       tester.getCenter(homeIcon).dy,
       equals(tester.getCenter(crewsIcon).dy),
     );
-    expect(find.text('Crews'), findsWidgets);
   });
 
   testWidgets('floats a wide, rounded navigation bar over the page', (
@@ -440,7 +420,7 @@ void main() {
       isA<ContinuousRectangleBorder>().having(
         (shape) => shape.borderRadius,
         'borderRadius',
-        BorderRadius.circular(32),
+        BorderRadius.circular(40),
       ),
     );
     expect(tester.getSize(navigation).height, lessThan(90));
@@ -450,7 +430,7 @@ void main() {
         .first;
     expect(
       tester.getSize(pill).width,
-      closeTo(math.min(tester.getSize(navigation).width - 24, 640), 1),
+      closeTo(math.min(tester.getSize(navigation).width - 44, 640), 1),
     );
     expect(
       tester

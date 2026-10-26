@@ -44,6 +44,7 @@ import '../crew/crew_streak_card.dart';
 import '../crew/crew_week_page.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
+import '../onboarding/profile_avatar.dart';
 import 'today_widgets.dart';
 
 class HomePage extends StatefulWidget {
@@ -89,27 +90,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   List<AppNavigationItem> get _navigationItems => [
     const AppNavigationItem(
       label: 'Home',
-      icon: HugeIconsStrokeRounded.home01,
+      icon: HugeIconsStrokeRounded.home04,
       color: WeekPactColors.stone,
     ),
     AppNavigationItem(
       label: 'Chat',
-      icon: HugeIconsStrokeRounded.bubbleChat,
+      icon: HugeIconsStrokeRounded.message02,
       color: WeekPactColors.stone,
       // Not while reading it: the page marks what arrives as read.
       badge: _selectedIndex != _chatTab && _unread.values.any((n) => n > 0),
     ),
     const AppNavigationItem(
       label: 'Crews',
-      icon: HugeIconsStrokeRounded.userGroup,
+      icon: HugeIconsStrokeRounded.userGroup02,
       color: WeekPactColors.stone,
     ),
-    const AppNavigationItem(
+    AppNavigationItem(
       label: 'Account',
       icon: HugeIconsStrokeRounded.userAccount,
       color: WeekPactColors.sand,
+      avatar: _navigationAvatar,
     ),
   ];
+
+  /// The account's photo on its tab, made once so it is loaded once.
+  late final Widget _navigationAvatar = ProfileAvatar(
+    backend: widget.authBackend,
+    size: 26,
+    initials: [widget.user.firstName, widget.user.lastName]
+        .where((name) => name.isNotEmpty)
+        .map((name) => name[0].toUpperCase())
+        .join(),
+  );
 
   /// Unread messages from others, by crew, for the dot on Chat.
   Map<String, int> _unread = const {};
@@ -258,16 +270,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _selectDestination(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
-    unawaited(HapticFeedback.lightImpact().catchError((Object _) {}));
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _pageController.jumpToPage(index);
-      return;
-    }
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
+    // Instagram's tabs cut straight to the page, with no slide and no tap.
+    _pageController.jumpToPage(index);
   }
 
   Future<void> _startCrew([CrewDetails? crew]) async {

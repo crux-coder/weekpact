@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -227,6 +228,7 @@ class AppNavigationItem {
     required this.icon,
     required this.color,
     this.badge = false,
+    this.avatar,
   });
 
   final String label;
@@ -235,15 +237,20 @@ class AppNavigationItem {
 
   /// Whether something there is waiting to be seen: a small dot on the icon.
   final bool badge;
+
+  /// A picture shown in place of [icon] by a bar that draws one: the account's
+  /// own photo on its tab.
+  final Widget? avatar;
 }
 
-/// A rounded bar that floats over the page's bottom edge, as wide as the page.
-/// Unselected destinations show just their icon; the selected one sits on an
-/// ink highlight that slides across and widens to show its label.
+/// A floating glass tab bar, after Instagram's: a frosted squircle inset from
+/// the page's edges, with content blurred behind it. Icons only, all in ink;
+/// the selected one sits on a soft grey squircle that slides between
+/// destinations and is drawn a little heavier, standing in for Instagram's
+/// filled icon, which Hugeicons' stroke style has no counterpart for. A destination with an [AppNavigationItem.avatar] shows it
+/// as a circle. A badge is a red dot at the icon's lower corner.
 ///
-/// Meant for a Scaffold with `extendBody`, so content scrolls on behind it;
-/// pages keep their last content clear of it with the bottom padding the
-/// Scaffold then reports.
+/// Meant for a Scaffold with `extendBody`, so content scrolls on behind it.
 class AppBottomNavigationBar extends StatelessWidget {
   const AppBottomNavigationBar({
     super.key,
@@ -255,260 +262,155 @@ class AppBottomNavigationBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
+  static const _height = 60.0;
   static const _inset = 5.0;
+  static const _iconSize = 24.0;
+  static const _avatarSize = 26.0;
+  static const _maxWidth = 640.0;
+  static const _red = Color(0xFFFF2D55);
 
-  /// The bar and its highlight are continuous squircles, like the cards, but
-  /// at a smaller curve than a card's: on a box this short a card's curve
-  /// would round the ends away entirely, and the raised edge below would show
-  /// along their sides. This is about as round as the bar gets while keeping
-  /// a straight stretch at each end. The highlight's curve is the bar's less
-  /// the inset, so the two stay concentric.
-  static const _barCurve = 32.0;
+  /// Continuous squircles, like the cards, at about as round a curve as a
+  /// bar this short takes while keeping a straight stretch at each end; the highlight's curve is the bar's less the inset, so the
+  /// two stay concentric.
+  static const _barCurve = 40.0;
   static const _barShape = ContinuousRectangleBorder(
     borderRadius: BorderRadius.all(Radius.circular(_barCurve)),
   );
   static const _highlightShape = ContinuousRectangleBorder(
     borderRadius: BorderRadius.all(Radius.circular(_barCurve - _inset)),
   );
-  static const _height = 48.0;
-  static const _iconSize = 22.0;
-  static const _labelGap = 8.0;
-
-  /// The narrowest a collapsed destination may get, before a long label at a
-  /// large text scale is cut short to keep it.
-  static const _minCollapsed = 52.0;
-
-  /// No wider than the pages it sits under.
-  static const _maxWidth = 640.0;
-
-  TextStyle _labelStyle(Color color) => TextStyle(
-    fontFamily: WeekPactType.secondary,
-    fontFamilyFallback: WeekPactType.secondaryFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: color,
-  );
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    minimum: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-    child: LayoutBuilder(
-      builder: (context, constraints) => Center(
-        heightFactor: 1,
-        child: _pill(context, math.min(constraints.maxWidth, _maxWidth)),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final glass = dark
+        ? const Color(0xFF1C1C1E).withValues(alpha: .72)
+        : Colors.white.withValues(alpha: .78);
+    final rim = dark
+        ? Colors.white.withValues(alpha: .14)
+        : Colors.white.withValues(alpha: .9);
+    final highlight = dark
+        ? Colors.white.withValues(alpha: .16)
+        : Colors.black.withValues(alpha: .09);
+    final ink = dark ? Colors.white : const Color(0xFF0C0C0C);
 
-  Widget _pill(BuildContext context, double width) {
-    final scaler = MediaQuery.textScalerOf(context);
-    // Inside the border and inset.
-    final inner = math.max(0.0, width - (_inset + 1) * 2);
-    // Room left for the selected label once every destination has its icon;
-    // a longer label, at a large text scale, is cut short with an ellipsis.
-    final labelRoom = math.max(
-      0.0,
-      inner - _minCollapsed * items.length - _labelGap,
-    );
-    final labelWidths = [
-      for (final item in items)
-        (TextPainter(
-          text: TextSpan(
-            text: item.label,
-            // As the Text below will draw it, inherited spacing and all.
-            style: DefaultTextStyle.of(context).style
-                .merge(_labelStyle(context.ink)),
-          ),
-          textDirection: Directionality.of(context),
-          textScaler: scaler,
-          maxLines: 1,
-        )..layout()).width.ceilToDouble().clamp(0.0, labelRoom),
-    ];
-    final highlightColor = context.isDark
-        ? WeekPactColors.navSelected
-        : context.ink;
-    final barColor = context.isDark
-        ? WeekPactColors.darkSurface
-        : WeekPactColors.cream;
-    final barEdge = context.isDark
-        ? WeekPactColors.darkBorder
-        : WeekPactColors.pendingCheckIns;
-
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(_inset),
-      decoration: ShapeDecoration(
-        color: barColor,
-        shape: _barShape.copyWith(side: BorderSide(color: barEdge)),
-        shadows: [
-          BoxShadow(color: barEdge, offset: WeekPactMetrics.raisedOffset),
-        ],
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          begin: selectedIndex.toDouble(),
-          end: selectedIndex.toDouble(),
-        ),
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 280),
-        curve: Curves.easeInOutCubic,
-        builder: (context, position, _) {
-          // How selected each destination is, 0 to 1, as the highlight
-          // travels between them.
-          final selection = [
-            for (var i = 0; i < items.length; i++)
-              (1 - (position - i).abs()).clamp(0.0, 1.0),
-          ];
-          // The selected destination grows by its label; the rest share
-          // what is left of the bar equally.
-          final growth = [
-            for (var i = 0; i < items.length; i++)
-              (_labelGap + labelWidths[i]) * selection[i],
-          ];
-          final share = items.isEmpty
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(22, 0, 22, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = math.min(constraints.maxWidth, _maxWidth);
+          final segment = items.isEmpty
               ? 0.0
-              : (inner - growth.fold(0.0, (a, b) => a + b)) / items.length;
-          final widths = [
-            for (var i = 0; i < items.length; i++) share + growth[i],
-          ];
-          // The highlight starts part-way through the destination it is
-          // leaving and spans the widths it is between, so it moves with
-          // them and lands exactly on the selected one.
-          var highlightStart = 0.0;
-          var highlightWidth = 0.0;
-          for (var i = 0; i < items.length; i++) {
-            highlightStart += widths[i] * (position - i).clamp(0.0, 1.0);
-            highlightWidth += widths[i] * selection[i];
-          }
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (items.isNotEmpty)
-                PositionedDirectional(
-                  start: highlightStart,
-                  top: 0,
-                  bottom: 0,
-                  width: highlightWidth,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      key: const ValueKey('nav-sliding-highlight'),
-                      decoration: ShapeDecoration(
-                        color: highlightColor,
-                        shape: _highlightShape,
+              : (width - _inset * 2) / items.length;
+          return Center(
+            heightFactor: 1,
+            child: Container(
+              width: width,
+              height: _height,
+              decoration: ShapeDecoration(
+                shape: _barShape,
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: dark ? .4 : .12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipPath(
+                clipper: const ShapeBorderClipper(shape: _barShape),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      color: glass,
+                      shape: _barShape.copyWith(side: BorderSide(color: rim)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(_inset),
+                      child: Stack(
+                        children: [
+                          AnimatedPositionedDirectional(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 320),
+                            curve: Curves.easeOutCubic,
+                            start: segment * selectedIndex,
+                            top: 0,
+                            bottom: 0,
+                            width: segment,
+                            child: DecoratedBox(
+                              key: const ValueKey('nav-sliding-highlight'),
+                              decoration: ShapeDecoration(
+                                color: highlight,
+                                shape: _highlightShape,
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              for (var i = 0; i < items.length; i++)
+                                Expanded(child: _destination(i, ink, glass)),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              Row(
-                children: [
-                  for (var i = 0; i < items.length; i++)
-                    _destination(
-                      context,
-                      i,
-                      widths[i],
-                      selection[i],
-                      labelWidths[i],
-                    ),
-                ],
               ),
-            ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _destination(
-    BuildContext context,
-    int i,
-    double width,
-    double selection,
-    double labelWidth,
-  ) {
+  Widget _destination(int i, Color ink, Color glass) {
     final item = items[i];
-    final color = Color.lerp(context.ink, context.canvas, selection)!;
+    final selected = selectedIndex == i;
     return Semantics(
-      selected: selectedIndex == i,
+      selected: selected,
       button: true,
       label: item.badge ? '${item.label}, new' : item.label,
-      child: Tooltip(
-        message: item.label,
-        child: Material(
-          color: Colors.transparent,
-          shape: _highlightShape,
-          child: InkWell(
-            key: ValueKey('nav-${item.label.toLowerCase()}'),
-            splashFactory: NoSplash.splashFactory,
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            customBorder: _highlightShape,
-            onTap: () => onSelected(i),
-            child: SizedBox(
-              width: width,
-              height: _height,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      HugeIcon(
+      child: GestureDetector(
+        key: ValueKey('nav-${item.label.toLowerCase()}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onSelected(i),
+        // The label above says it all; an avatar's initials would only
+        // repeat the person to them.
+        child: ExcludeSemantics(
+          child: Center(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                item.avatar != null
+                    ? SizedBox.square(
+                        dimension: _avatarSize,
+                        child: ClipOval(child: item.avatar),
+                      )
+                    : HugeIcon(
                         icon: item.icon,
                         size: _iconSize,
-                        color: color,
-                        strokeWidth: 1.6,
+                        color: ink,
+                        strokeWidth: selected ? 1.9 : 1.5,
                       ),
-                      if (item.badge)
-                        PositionedDirectional(
-                          top: -2,
-                          end: -3,
-                          child: Container(
-                            key: ValueKey(
-                              'nav-badge-${item.label.toLowerCase()}',
-                            ),
-                            width: 9,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: WeekPactColors.salmon,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: context.isDark
-                                    ? WeekPactColors.darkSurface
-                                    : WeekPactColors.cream,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  ClipRect(
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      widthFactor: selection,
-                      child: Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          start: _labelGap,
-                        ),
-                        child: ExcludeSemantics(
-                          child: SizedBox(
-                            width: labelWidth,
-                            child: Text(
-                              item.label,
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                              style: _labelStyle(color),
-                            ),
-                          ),
-                        ),
+                if (item.badge)
+                  PositionedDirectional(
+                    end: -4,
+                    bottom: -3,
+                    child: Container(
+                      key: ValueKey('nav-badge-${item.label.toLowerCase()}'),
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: _red,
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
           ),
         ),
