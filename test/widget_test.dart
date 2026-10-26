@@ -287,11 +287,14 @@ void main() {
     await tester.pumpUi();
     await submitTestPhoto(tester);
     expect(find.text('Checked in today'), findsWidgets);
-    await tester.tap(
-      find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+    final hold = await tester.startGesture(
+      tester.getCenter(
+        find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
+      ),
     );
-    await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('confirm-undo-check-in')));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 1200));
+    await hold.up();
     await tester.pumpUi();
     expect(find.text('Check in').hitTestable(), findsOneWidget);
   });

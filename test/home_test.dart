@@ -422,7 +422,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('haptics only fire for successful completed check-ins', (
+  testWidgets('haptics fire for completed check-ins and a held undo', (
     tester,
   ) async {
     final calls = <MethodCall>[];
@@ -455,20 +455,33 @@ void main() {
     await submitTestPhoto(tester);
     await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
-    // Undo responds at the section edge, away from its text.
-    final undoBounds = tester.getRect(pact);
-    await tester.tapAt(undoBounds.centerRight - const Offset(2, 0));
-    await tester.pumpUi();
-    // Undo asks first; keeping the check-in leaves it standing.
-    expect(find.byKey(const ValueKey('undo-check-in-dialog')), findsOneWidget);
-    await tester.tap(find.text('Keep it'));
+    // A tap on the done bar does nothing: undo has to be held.
+    await tester.tap(pact);
     await tester.pumpUi();
     expect(backend.selected, contains('move'));
-    await tester.tapAt(undoBounds.centerRight - const Offset(2, 0));
+    // Letting go early drains the bar and keeps the check-in.
+    var hold = await tester.startGesture(tester.getCenter(pact));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 300));
+    await hold.up();
     await tester.pumpUi();
-    await tester.tap(find.byKey(const ValueKey('confirm-undo-check-in')));
+    expect(backend.selected, contains('move'));
+    // Held to full, it comes off with a firmer tap than the press.
+    calls.clear();
+    hold = await tester.startGesture(tester.getCenter(pact));
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await hold.up();
     await tester.pumpUi();
-    expect(calls.length, 1);
+    // Light taps run the whole way up, and only the end lands firmer.
+    final kinds = calls.map((call) => call.arguments).toList();
+    expect(kinds.last, 'HapticFeedbackType.mediumImpact');
+    expect(kinds.length, greaterThan(3));
+    expect(
+      kinds.take(kinds.length - 1),
+      everyElement('HapticFeedbackType.selectionClick'),
+    );
     expect(backend.selected, isNot(contains('move')));
     await tester.pumpWidget(const SizedBox());
   });
