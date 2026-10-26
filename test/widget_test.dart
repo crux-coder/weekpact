@@ -65,6 +65,9 @@ void main() {
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
+    expect(find.text('Log out'), findsOneWidget);
     expect(find.text('Appearance'), findsNothing);
     expect(find.text('Light'), findsNothing);
     expect(find.text('Dark'), findsNothing);
@@ -172,6 +175,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
 
     await tester.ensureVisible(find.text('Log out'));
     await tester.tap(find.text('Log out'));
@@ -214,6 +219,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
 
+    expect(find.text('Edit profile'), findsOneWidget);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
     expect(find.text('Log out'), findsOneWidget);
   });
 

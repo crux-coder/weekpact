@@ -549,6 +549,8 @@ void main() {
     await tester.pumpUi();
     await tester.tap(find.byKey(const ValueKey('nav-account')));
     await tester.pumpUi();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
     await tester.ensureVisible(find.text('Log out'));
     await tester.tap(find.text('Log out'));
     await tester.pumpUi();
@@ -558,6 +560,8 @@ void main() {
       find.text('Could not log out. Check your connection and try again.'),
       findsOneWidget,
     );
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpUi();
     expect(find.text('Log out'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });

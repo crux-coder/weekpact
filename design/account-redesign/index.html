@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* weekpact_theme.dart */
+    --black:#191B19; --canvas:#222A2B; --surface:#1F2627; --ink:#EDF3F2; --muted:#AAB8B9; --border:#67797C;
+    --hair:#323e3f; --cream:#F0F5F4; --stone:#CDE0DC; --sand:#E0D9C0; --cool:#9FCBD9; --mint:#A8D2CC;
+    --inset:#D7E0DF; --muted-l:#46535A; --streak:#E08A45; --salmon:#FF836F; --done:#3F7A6B; --kept:#B8CC8E;
+    --graphite:#363F40; --pending:#C6CACB; --error:#C94F59;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 16px 100px; background:#121616; color:var(--ink);
+    font-family:'Rubik',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1500px; margin:0 auto; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-.4px; margin:0 0 10px; }
+  .lede { color:var(--muted); max-width:80ch; line-height:1.6; font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--ink); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:48px 28px; }
+  figure { margin:0; display:flex; flex-direction:column; align-items:center; }
+  figcaption { width:300px; margin-top:14px; }
+  figcaption .tag { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  figcaption h2 { font-size:17px; margin:4px 0 6px; font-weight:600; }
+  figcaption p { margin:0; font-size:13.5px; line-height:1.55; color:var(--muted); }
+  figcaption .cost { margin-top:8px; font-size:12px; color:var(--ink); opacity:.8; }
+
+  .phone { width:300px; height:620px; border-radius:44px; background:var(--canvas); position:relative; overflow:hidden;
+    box-shadow:0 0 0 8px #0b0d0d, 0 24px 60px rgba(0,0,0,.5); }
+  .phone::before { content:''; position:absolute; z-index:6; top:12px; left:50%; translate:-50% 0; width:90px; height:24px; border-radius:20px; background:#000; }
+  .scroll { position:absolute; inset:0; overflow-y:auto; padding:46px 12px 96px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+  svg { display:block; }
+
+  /* floating glass tab bar, as shipped */
+  .tabbar { position:absolute; z-index:5; left:50%; bottom:18px; translate:-50% 0; display:flex; gap:4px; padding:5px;
+    border-radius:26px; background:rgba(40,50,51,.72); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.09); }
+  .tabbar span { width:58px; height:40px; border-radius:20px; display:grid; place-items:center; color:var(--muted); }
+  .tabbar span.on { background:#CCD8D6; color:var(--black); }
+  .tabbar svg { width:20px; height:20px; }
+
+  /* raised surface recipe: 1px outline .28, 2px solid edge .24 */
+  .s { --f:var(--cream); background:var(--f); color:var(--black); border-radius:20px;
+    border:1px solid color-mix(in srgb,#000 28%,var(--f)); box-shadow:0 2px 0 color-mix(in srgb,#000 24%,var(--f)); }
+  .s.dark { --f:#2a3435; color:var(--ink); border-color:#3e4c4d; box-shadow:0 2px 0 #4a5a5b; }
+  .mt { margin-top:10px; }
+  .muted { color:var(--muted-l); }
+  .dark .muted, .cv .muted, .muted.cv { color:var(--muted); }
+  .eyebrow { font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; }
+  .sec { font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin:18px 4px 8px; display:flex; justify-content:space-between; }
+  .sec a { color:var(--ink); text-decoration:none; letter-spacing:.04em; }
+
+  .av { flex:none; width:36px; height:36px; border-radius:12px; display:grid; place-items:center; font-size:12.5px; font-weight:600; color:var(--black); }
+  .face { border-radius:28px; display:grid; place-items:center; font-weight:600; color:var(--black); background:var(--mint); }
+  .stack { display:flex; }
+  .stack .av { width:24px; height:24px; border-radius:8px; font-size:9.5px; margin-left:-6px; border:2px solid var(--f, var(--cream)); }
+  .stack .av:first-child { margin-left:0; }
+  .badge { flex:none; width:30px; height:30px; border-radius:10px; display:grid; place-items:center; color:var(--black);
+    border:1px solid rgba(0,0,0,.22); box-shadow:0 2px 0 rgba(0,0,0,.2); }
+  .badge svg { width:16px; height:16px; }
+  .badge.sm { width:22px; height:22px; border-radius:7px; }
+  .badge.sm svg { width:12px; height:12px; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:36px; padding:0 14px; border-radius:12px;
+    background:var(--black); color:var(--cream); font-size:13px; font-weight:500; box-shadow:0 2px 0 #484848; }
+  .btn.ghost { background:rgba(0,0,0,.07); color:var(--black); box-shadow:none; }
+  .btn svg { width:15px; height:15px; }
+  .iconbtn { width:34px; height:34px; border-radius:12px; display:grid; place-items:center; color:var(--ink); background:#2a3435; border:1px solid #3e4c4d; }
+  .iconbtn svg { width:17px; height:17px; }
+  .streakmark { display:inline-flex; align-items:center; gap:3px; color:var(--streak); font-weight:600; font-size:12px; }
+  .streakmark svg { width:13px; height:13px; }
+
+  .row { display:flex; align-items:center; gap:12px; padding:12px 14px; font-size:14px; font-weight:500; }
+  .row + .row { border-top:1px solid rgba(0,0,0,.09); }
+  .row .chev { margin-left:auto; color:var(--muted-l); width:16px; height:16px; }
+  .row .ri { width:20px; height:20px; }
+  .toggle { margin-left:auto; width:38px; height:22px; border-radius:11px; background:var(--done); position:relative; }
+  .toggle::after { content:''; position:absolute; right:3px; top:3px; width:16px; height:16px; border-radius:8px; background:#fff; }
+  .toggle.off { background:#b7c2c1; } .toggle.off::after { right:auto; left:3px; }
+  .danger { text-align:center; font-size:13px; color:var(--muted); margin:16px 0 4px; }
+
+  /* stats */
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .stat { text-align:center; padding:10px 4px; }
+  .stat b { display:block; font-size:22px; font-weight:700; letter-spacing:-.3px; }
+  .stat span { font-size:10px; letter-spacing:.07em; text-transform:uppercase; font-weight:500; }
+
+  /* heatmap */
+  .heat { display:grid; grid-auto-flow:column; grid-template-rows:repeat(7,1fr); gap:3px; }
+  .heat i { width:100%; aspect-ratio:1; border-radius:3px; background:rgba(0,0,0,.08); }
+  .dark .heat i { background:rgba(255,255,255,.07); }
+
+  /* photo tiles */
+  .ph { border-radius:12px; position:relative; overflow:hidden; aspect-ratio:1; }
+  .ph::after { content:''; position:absolute; inset:0; background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,.35), transparent 40%),
+    linear-gradient(160deg, transparent 40%, rgba(0,0,0,.28)); }
+  .ph .pb { position:absolute; z-index:1; left:5px; bottom:5px; }
+  .ph .dt { position:absolute; z-index:1; right:6px; top:5px; font-size:9.5px; font-weight:600; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+
+  /* segmented */
+  .seg { display:flex; padding:3px; border-radius:14px; background:#2a3435; border:1px solid #3e4c4d; gap:2px; }
+  .seg span { flex:1; text-align:center; font-size:12.5px; font-weight:500; padding:7px 0; border-radius:11px; color:var(--muted); }
+  .seg span.on { background:var(--cream); color:var(--black); box-shadow:0 2px 0 #b5bdbc; }
+
+  /* month cal */
+  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal .h { font-size:9.5px; text-align:center; font-weight:500; color:var(--muted-l); padding-bottom:2px; }
+  .cal .d { aspect-ratio:1; border-radius:8px; background:rgba(0,0,0,.05); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; font-weight:500; }
+  .cal .d .dots { display:flex; gap:2px; height:5px; }
+  .cal .d .dots i { width:5px; height:5px; border-radius:3px; }
+  .cal .d.full { background:var(--kept); }
+  .cal .d.today { outline:1.5px solid var(--black); }
+  .cal .d.out { opacity:0; }
+
+  /* timeline */
+  .wk { margin-bottom:12px; }
+  .wkh { display:flex; align-items:baseline; justify-content:space-between; margin:0 4px 8px; }
+  .wkh b { font-size:13px; font-weight:600; }
+  .wkh span { font-size:11px; color:var(--muted); }
+  .ci { display:flex; gap:10px; align-items:center; padding:9px 10px; }
+  .ci + .ci { border-top:1px solid rgba(0,0,0,.08); }
+  .ci .thumb { width:40px; height:40px; border-radius:11px; flex:none; position:relative; overflow:hidden; }
+  .ci .t { font-size:13.5px; font-weight:500; }
+  .ci .m { font-size:11px; color:var(--muted-l); margin-top:2px; }
+  .ci .claps { margin-left:auto; font-size:11px; font-weight:500; color:var(--muted-l); display:flex; align-items:center; gap:3px; }
+  .ci .claps svg { width:13px; height:13px; }
+
+  /* pact passport */
+  .pp { padding:12px; }
+  .pp .top { display:flex; align-items:center; gap:10px; }
+  .pp .nm { font-size:14.5px; font-weight:600; }
+  .pp .cr { font-size:11px; opacity:.7; }
+  .pp .big { margin-left:auto; text-align:right; }
+  .pp .big b { font-size:22px; font-weight:700; display:block; line-height:1; }
+  .pp .big span { font-size:9.5px; letter-spacing:.07em; text-transform:uppercase; opacity:.7; }
+  .pp .strip { display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-top:10px; }
+  .pp .strip i { height:18px; border-radius:4px; background:rgba(0,0,0,.09); position:relative; overflow:hidden; }
+  .pp .strip i b { position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); }
+  .pp .foot { display:flex; gap:12px; margin-top:8px; font-size:11px; opacity:.75; }
+
+  /* crew rows */
+  .crew { display:flex; align-items:center; gap:10px; padding:11px 12px; }
+  .crew + .crew { border-top:1px solid rgba(0,0,0,.09); }
+  .crew .cn { font-size:14px; font-weight:600; }
+  .crew .cm { font-size:11px; color:var(--muted-l); margin-top:2px; }
+  .crew .r { margin-left:auto; text-align:right; }
+  .crewtile { flex:none; width:128px; padding:11px; }
+  .crewtile .cn { font-size:13.5px; font-weight:600; margin-top:10px; }
+  .crewtile .cm { font-size:11px; opacity:.7; margin-top:2px; }
+  .hscroll { display:flex; gap:8px; overflow-x:auto; margin:0 -12px; padding:2px 12px 4px; scrollbar-width:none; }
+  .hscroll::-webkit-scrollbar { display:none; }
+  .ring { width:30px; height:30px; }
+
+  /* wrapped */
+  .wrap { padding:18px 16px; }
+  .wrap .huge { font-size:56px; font-weight:700; letter-spacing:-2px; line-height:.95; }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:64px; margin-top:12px; }
+  .bars i { flex:1; border-radius:4px 4px 2px 2px; }
+
+  .verdict { margin-top:56px; max-width:80ch; font-size:15px; line-height:1.65; color:var(--muted); border-top:1px solid #2b3536; padding-top:24px; }
+  .verdict b { color:var(--ink); }
+  .verdict ul { padding-left:18px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Account, a few directions</h1>
+  <p class="lede">Today Account is a settings page with a face on it. Every direction below turns it into <b>your record</b>: what you have kept, across every crew, plus the crews themselves, with <b>Edit profile</b> kept one tap from the top. They differ in what leads: <b>numbers</b> (1, 7), <b>photos</b> (2), <b>days</b> (3, 5), <b>pacts</b> (4) or <b>tabs</b> that split the page (6). Settings, Log out and Delete account stay in every one, either at the foot or behind a gear. Scroll inside each phone.</p>
+  <div class="grid" id="grid"></div>
+  <div class="verdict">
+    <p><b>Where I'd start:</b> <b>1 · Record</b> is the safest step: it keeps today's profile card and settings, and slots history and crews between them, so nothing people already know moves. If you want the page to feel like a place people visit for fun, <b>2 · Photo wall</b> is the strongest, because the check-in photos are the most personal thing the app holds. <b>6 · Tabs</b> is the tidiest if the page is going to keep growing.</p>
+    <p><b>Data cost:</b></p>
+    <ul>
+      <li>All of them need a "my check-ins across every crew" query. The backend reads check-ins per crew week today, so this is one new read-only RPC (additive, fine for older builds).</li>
+      <li>Lifetime counts and best streaks (1, 4, 7) can be computed in that same RPC.</li>
+      <li>Crews rows reuse what the Crews tab already fetches.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const ic = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20H4z"/><path d="M10 20v-5h4v5"/></svg>',
+  crews:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.5" cy="9" r="2.6"/><path d="M16 14c2.4 0 4 1.6 4.5 4.5"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L8 20H4v-4z"/><path d="M12.5 7.5l4 4"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5l1.6 2.2 2.7-.5.6 2.7 2.4 1.3-1.1 2.5 1.1 2.5-2.4 1.3-.6 2.7-2.7-.5L12 20.5l-1.6-2.2-2.7.5-.6-2.7-2.4-1.3 1.1-2.5-1.1-2.5 2.4-1.3.6-2.7 2.7.5z"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 004 0"/></svg>',
+  bug:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M12 11v9M4 13h3M17 13h3M5 8l2.5 1.5M19 8l-2.5 1.5M5 19l2.5-1.5M19 19l-2.5-1.5"/></svg>',
+  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 014.8.8c0 1.7-2.4 2-2.4 3.6M12 17h.01"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l7 2.8v5.2c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6.3z"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5H6v15h8M10.5 12H20M16.5 8.5L20 12l-3.5 3.5"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c.5 3-1.5 4.6-3 6.4C7.6 10.6 6.5 12.4 6.5 15a5.5 5.5 0 0011 0c0-2.4-1.1-4.2-2.3-5.6-.3 1.3-1 2.2-2 2.6.4-3.5-.4-6.9-1.2-9.5z"/></svg>',
+  clap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l4.5-4.5a1.6 1.6 0 012.3 2.3L11 11.6"/><path d="M13 9.2l1.8-1.8a1.6 1.6 0 012.3 2.3l-5.5 5.5c-2 2-5 2-7 0s-2-5 0-7L7 6.2"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13"/></svg>',
+  shoe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5V9l4 1.5L10 7l3 4 5 1.5c1.7.5 3 1.7 3 3.5v.5H3z"/></svg>',
+  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 5-13 14-13 0 9-5 13-11 13z"/><path d="M5 19l7-7"/></svg>',
+  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+};
+
+// sorbet tint/badge pairs, as pactTint(i)/pactBadge(i)
+const P = {
+  hang:{ n:'Hangboard', t:'#FFB8BC', b:'#FF99A1', i:'target', c:'Hangboardasi', total:58, best:9, wk:'3 / 3' },
+  read:{ n:'Read 20 pages', t:'#83E5BC', b:'#54D6A5', i:'book', c:'Book club', total:121, best:23, wk:'4 / 5' },
+  run:{ n:'Run 5k', t:'#FCC17C', b:'#F1AA4F', i:'shoe', c:'Morning runners', total:34, best:6, wk:'1 / 2' },
+  veg:{ n:'Eat a vegetable', t:'#B7CEFF', b:'#9ABAFF', i:'leaf', c:'Hangboardasi', total:47, best:14, wk:'5 / 7' },
+};
+const crews = [
+  { n:'Hangboardasi', ppl:[['MR','#FFB8BC'],['AH','#83E5BC'],['JM','#D6C1FF']], pacts:2, streak:6, you:80, crew:72, role:'Owner', since:'Mar 2026' },
+  { n:'Book club', ppl:[['LS','#B7CEFF'],['DK','#FCC17C'],['AH','#83E5BC'],['JM','#D6C1FF']], pacts:1, streak:11, you:80, crew:65, role:'Member', since:'Jan 2026' },
+  { n:'Morning runners', ppl:[['DK','#FCC17C'],['JM','#D6C1FF']], pacts:1, streak:0, you:50, crew:40, role:'Member', since:'Sep 2026' },
+];
+const me = { n:'Jasmin Mustafic', e:'jasmin@weekpact.app', ini:'JM' };
+
+// deterministic pseudo-random
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const keys = Object.keys(P);
+const photo = (k, extra='') => `<div class="ph" style="background:linear-gradient(140deg, ${P[k].t}, ${P[k].b} 55%, color-mix(in srgb,#000 35%, ${P[k].b}))${extra}">`;
+const badge = (k, sm) => `<span class="badge${sm?' sm':''}" style="background:${P[k].b}">${ic[P[k].i]}</span>`;
+const stack = (ppl, f) => `<div class="stack" style="--f:${f||'var(--cream)'}">${ppl.map(([i,c]) => `<span class="av" style="background:${c}">${i}</span>`).join('')}</div>`;
+const tabbar = `<div class="tabbar"><span>${ic.home}</span><span>${ic.crews}</span><span class="on">${ic.user}</span></div>`;
+const streak = n => n ? `<span class="streakmark">${ic.flame}${n}w</span>` : `<span class="muted" style="font-size:11px">no streak</span>`;
+
+function heat(weeks, dark) {
+  seed = 11; let h = '';
+  for (let w = 0; w < weeks; w++) for (let d = 0; d < 7; d++) {
+    const late = w / weeks; const r = rnd();
+    const lvl = r < .18 - late * .1 ? 0 : r < .45 ? 1 : r < .75 ? 2 : 3;
+    const future = w === weeks - 1 && d > 2;
+    const col = ['', '#4f8f7d', '#6fc1a1', '#a9ecd0'][lvl];
+    const colL = ['', '#b8dccf', '#6fc1a1', '#3F7A6B'][lvl];
+    h += `<i style="${future ? 'opacity:0' : lvl ? `background:${dark ? col : colL}` : ''}"></i>`;
+  }
+  return `<div class="heat" style="grid-template-columns:repeat(${weeks},1fr)">${h}</div>`;
+}
+const settings = (extra='') => `
+  <div class="s${extra}">
+    <div class="row"><span class="ri">${ic.bell}</span>Notifications<span class="toggle"></span></div>
+    <div class="row"><span class="ri">${ic.bug}</span>Share crash reports<span class="toggle off"></span></div>
+    <div class="row"><span class="ri">${ic.help}</span>Support${ic.chev}</div>
+    <div class="row"><span class="ri">${ic.shield}</span>Privacy policy${ic.chev}</div>
+    <div class="row"><span class="ri">${ic.logout}</span>Log out${ic.chev}</div>
+  </div>
+  <div class="danger">Delete account</div>`;
+const crewList = (f='var(--cream)') => `<div class="s" style="--f:${f}">${crews.map(c => `
+  <div class="crew">${stack(c.ppl, f)}<div><div class="cn">${c.n}</div><div class="cm">${c.pacts} pact${c.pacts>1?'s':''} · ${c.role}</div></div>
+  <div class="r">${streak(c.streak)}</div></div>`).join('')}</div>`;
+
+const designs = [];
+
+// 1 · Record
+designs.push({ tag:'1 · Record', title:'Profile, numbers, then the rest',
+  desc:"Keeps today's stone profile card but tucks Edit into a pencil, adds three lifetime figures and a 20-week heatmap of every day you kept, then your crews and the existing settings. The least disruptive step.",
+  cost:'Moves nothing people know; adds two sections.',
+  html:`
+  <div class="s" style="--f:var(--stone);padding:18px 14px 14px;text-align:center;position:relative">
+    <span class="iconbtn" style="position:absolute;right:10px;top:10px;background:rgba(0,0,0,.07);border:0;color:var(--black)">${ic.pencil}</span>
+    <div class="face" style="width:76px;height:76px;margin:0 auto;font-size:24px">${me.ini}</div>
+    <div style="font-size:22px;font-weight:700;margin-top:10px">${me.n}</div>
+    <div class="muted" style="font-size:12.5px;margin-top:2px">Keeping pacts since March 2026</div>
+    <div class="stats" style="margin-top:14px">
+      <div class="stat s" style="--f:var(--cream)"><b>260</b><span class="muted">Check-ins</span></div>
+      <div class="stat s" style="--f:var(--cream)"><b style="color:var(--streak)">11w</b><span class="muted">Best streak</span></div>
+      <div class="stat s" style="--f:var(--cream)"><b>3</b><span class="muted">Crews</span></div>
+    </div>
+  </div>
+  <div class="sec">Last 20 weeks <span>84% kept</span></div>
+  <div class="s" style="padding:12px">${heat(20)}
+    <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:8px" class="muted"><span>Jun</span><span>Aug</span><span>Oct</span></div></div>
+  <div class="sec">Your crews</div>${crewList()}
+  <div class="sec">Settings</div>${settings()}` });
+
+// 2 · Photo wall
+seed = 3;
+designs.push({ tag:'2 · Photo wall', title:'Your check-ins, Instagram style',
+  desc:'Compact header (face, name, three figures, Edit) and a three-wide grid of every check-in photo, each with its pact badge. A filter row picks a pact or crew. Crews sit in a horizontal strip; settings hide behind the gear.',
+  cost:'Most personal and fun to scroll. Check-ins without a photo need a tinted tile.',
+  html:`
+  <div style="display:flex;justify-content:flex-end;margin:-4px 0 4px"><span class="iconbtn">${ic.gear}</span></div>
+  <div style="display:flex;align-items:center;gap:14px" class="cv">
+    <div class="face" style="width:72px;height:72px;font-size:22px;flex:none">${me.ini}</div>
+    <div style="flex:1;display:flex;justify-content:space-around;text-align:center">
+      <div><b style="font-size:18px">260</b><div class="muted" style="font-size:11px">check-ins</div></div>
+      <div><b style="font-size:18px">4</b><div class="muted" style="font-size:11px">pacts</div></div>
+      <div><b style="font-size:18px">3</b><div class="muted" style="font-size:11px">crews</div></div>
+    </div>
+  </div>
+  <div style="margin:10px 2px 0;font-size:16px;font-weight:600">${me.n}</div>
+  <div class="muted cv" style="font-size:12px;margin:2px 2px 10px">Climbing, reading, slowly running.</div>
+  <div class="s" style="--f:var(--cream)"><div class="btn ghost" style="width:100%;background:transparent">${ic.pencil}Edit profile</div></div>
+  <div class="sec" style="margin-top:16px">Crews</div>
+  <div class="hscroll">${crews.map((c,i) => `<div class="s crewtile" style="--f:${['#FFB8BC','#83E5BC','#FCC17C'][i]}">${stack(c.ppl, ['#FFB8BC','#83E5BC','#FCC17C'][i])}<div class="cn">${c.n}</div><div class="cm">${c.streak ? c.streak + ' week streak' : 'New this month'}</div></div>`).join('')}</div>
+  <div style="display:flex;gap:6px;margin:16px 0 8px;overflow:hidden">
+    <span class="seg" style="padding:0;border:0;background:none;gap:6px">
+      <span class="on" style="flex:none;padding:6px 12px;border-radius:10px">All</span>
+      ${keys.map(k => `<span style="flex:none;padding:6px 10px;border-radius:10px;background:#2a3435;display:flex;gap:5px;align-items:center;color:var(--ink)">${badge(k,1)}${P[k].n.split(' ')[0]}</span>`).join('')}
+    </span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+    ${Array.from({length:18}, (_,i) => { const k = keys[Math.floor(rnd()*4)]; return `${photo(k)}<span class="pb">${badge(k,1)}</span><span class="dt">${26 - i} Oct</span></div>`; }).join('')}
+  </div>` });
+
+// 3 · Calendar journal
+const month = () => {
+  seed = 21; let h = 'MTWTFSS'.split('').map(d => `<div class="h">${d}</div>`).join('');
+  for (let i = 0; i < 3; i++) h += '<div class="d out"></div>';
+  for (let d = 1; d <= 31; d++) {
+    const future = d > 26; const dots = [];
+    if (!future) keys.forEach(k => { if (rnd() > .45) dots.push(P[k].b); });
+    const full = dots.length >= 3;
+    h += `<div class="d${full ? ' full' : ''}${d === 26 ? ' today' : ''}" style="${future ? 'opacity:.35' : ''}">${d}<span class="dots">${dots.slice(0,4).map(c => `<i style="background:${c}"></i>`).join('')}</span></div>`;
+  }
+  return h;
+};
+designs.push({ tag:'3 · Journal', title:'A month at a glance',
+  desc:'A month calendar where each day carries one dot per pact you kept, and days where you kept everything turn the kept-day green. Tap a day to open its check-ins. The profile shrinks to a header row; crews and settings follow.',
+  cost:'Reuses the crew month calendar from the streak drawer, across all crews.',
+  html:`
+  <div style="display:flex;align-items:center;gap:10px" class="cv">
+    <div class="face" style="width:48px;height:48px;font-size:16px;border-radius:18px">${me.ini}</div>
+    <div style="flex:1"><div style="font-size:17px;font-weight:600">${me.n}</div><div class="muted" style="font-size:11.5px">${me.e}</div></div>
+    <span class="iconbtn">${ic.pencil}</span>
+  </div>
+  <div class="s mt" style="padding:12px;margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+      <b style="font-size:16px">October</b><span class="muted" style="font-size:11.5px">68 check-ins · 9 full days</span></div>
+    <div class="cal">${month()}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:10px;font-size:10.5px" class="muted">
+      ${keys.map(k => `<span style="display:flex;align-items:center;gap:4px"><i style="width:7px;height:7px;border-radius:4px;background:${P[k].b}"></i>${P[k].n}</span>`).join('')}</div>
+  </div>
+  <div class="sec">Sat 25 Oct</div>
+  <div class="s" style="padding:0">${['hang','read','veg'].map(k => `
+    <div class="ci"><div class="thumb">${photo(k)}</div></div><div><div class="t">${P[k].n}</div><div class="m">${P[k].c} · 18:4${k.length}</div></div><span class="claps">${ic.clap}${k.length}</span></div>`).join('')}</div>
+  <div class="sec">Crews</div>${crewList()}
+  <div class="sec">Settings</div>${settings()}` });
+
+// 4 · Pact passport
+designs.push({ tag:'4 · Pact passport', title:'One card per pact you keep',
+  desc:'Every pact you are in, across all crews, as its own tinted card: lifetime count, best run, and a 12-week strip of how much of each week you kept. Pacts are grouped under their crew header, so crews come for free.',
+  cost:'Answers "how am I doing at climbing?" directly. Least photo-forward.',
+  html:`
+  <div class="s" style="--f:var(--sand);padding:14px;display:flex;align-items:center;gap:12px">
+    <div class="face" style="width:58px;height:58px;font-size:19px;border-radius:22px;flex:none">${me.ini}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:700">${me.n}</div>
+      <div class="muted" style="font-size:11.5px;margin-top:2px">4 pacts · 3 crews · 260 check-ins</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <div class="s" style="flex:1"><div class="btn ghost" style="width:100%;background:transparent">${ic.pencil}Edit profile</div></div>
+    <div class="s" style="flex:none;width:44px;display:grid;place-items:center">${ic.gear.replace('<svg','<svg width="17" height="17"')}</div>
+  </div>
+  ${crews.map(c => {
+    const ps = keys.filter(k => P[k].c === c.n);
+    return `<div class="sec"><span style="display:flex;gap:8px;align-items:center">${c.n}</span>${streak(c.streak)}</div>` + ps.map(k => {
+      seed = P[k].total; const strip = Array.from({length:12}, () => `<i><b style="height:${Math.round(25 + rnd()*75)}%"></b></i>`).join('');
+      return `<div class="s pp" style="--f:${P[k].t};margin-bottom:8px"><div class="top">${badge(k)}<div><div class="nm">${P[k].n}</div><div class="cr">This week ${P[k].wk}</div></div>
+      <div class="big"><b>${P[k].total}</b><span>times</span></div></div><div class="strip">${strip}</div>
+      <div class="foot"><span>Best run ${P[k].best} days</span><span>Since ${c.since}</span></div></div>`; }).join('');
+  }).join('')}` });
+
+// 5 · Timeline
+seed = 40;
+designs.push({ tag:'5 · Timeline', title:'Your weeks, newest first',
+  desc:'A running log grouped by week: each week says how much you kept and lists the check-ins with their photo, crew and claps. Reads like a diary. Profile and crews sit above it; settings move behind the gear.',
+  cost:'Simple to build as one list. Gets long, so it pages by week.',
+  html:`
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin:-4px 0 4px"><span class="iconbtn">${ic.gear}</span></div>
+  <div style="text-align:center" class="cv">
+    <div class="face" style="width:70px;height:70px;font-size:22px;margin:0 auto">${me.ini}</div>
+    <div style="font-size:20px;font-weight:700;margin-top:8px">${me.n}</div>
+    <div style="display:inline-flex;gap:6px;margin-top:10px"><span class="btn" style="background:var(--cream);color:var(--black);box-shadow:0 2px 0 #b5bdbc">${ic.pencil}Edit</span></div>
+  </div>
+  <div class="hscroll" style="margin-top:16px">${crews.map(c => `<div class="s" style="flex:none;padding:8px 10px;display:flex;gap:8px;align-items:center;--f:#2a3435;color:var(--ink);border-color:#3e4c4d;box-shadow:0 2px 0 #4a5a5b">${stack(c.ppl,'#2a3435')}<span style="font-size:12.5px;font-weight:500">${c.n}</span></div>`).join('')}</div>
+  ${[['This week','20 – 26 Oct','9 of 11 kept'],['Last week','13 – 19 Oct','11 of 11 kept'],['6 – 12 Oct','','8 of 11 kept']].map(([a,b,c], wi) => `
+  <div class="wk" style="margin-top:16px"><div class="wkh"><b>${a} <span style="font-weight:400;color:var(--muted)">${b}</span></b><span style="${wi===1?'color:#83E5BC':''}">${wi===1?'All kept · ':''}${c}</span></div>
+  <div class="s" style="padding:0">${Array.from({length:wi?3:4}, (_,i) => { const k = keys[(i+wi)%4]; return `<div class="ci"><div class="thumb">${photo(k)}</div></div><div><div class="t">${P[k].n}</div><div class="m">${['Sun','Sat','Thu','Tue'][i]} · ${P[k].c}</div></div><span class="claps">${ic.clap}${1+Math.floor(rnd()*4)}</span></div>`; }).join('')}</div></div>`).join('')}` });
+
+// 6 · Tabs
+designs.push({ tag:'6 · Tabs', title:'Profile on top, three tabs below',
+  desc:'A fixed profile header with Edit, then a segmented control: History (heatmap + recent check-ins), Crews (rich crew cards with your share of the week) and Settings. Nothing competes for space, and each tab can grow on its own.',
+  cost:'Tidiest long-term. Hides settings one tap deeper than today.',
+  html:`
+  <div class="s" style="--f:var(--cool);padding:14px;display:flex;align-items:center;gap:12px">
+    <div class="face" style="width:56px;height:56px;font-size:18px;border-radius:21px;flex:none;background:var(--cream)">${me.ini}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:700">${me.n}</div>
+      <div style="font-size:11.5px;margin-top:3px;display:flex;gap:10px"><span>${'<b>260</b>'} check-ins</span><span style="color:#9a4a12"><b>11w</b> best</span></div></div>
+    <span class="iconbtn" style="background:rgba(0,0,0,.1);border:0;color:var(--black)">${ic.pencil}</span>
+  </div>
+  <div class="seg" style="margin-top:12px"><span>History</span><span class="on">Crews</span><span>Settings</span></div>
+  ${crews.map(c => `
+  <div class="s" style="margin-top:10px;padding:12px">
+    <div style="display:flex;align-items:center;gap:10px">${stack(c.ppl)}<div style="flex:1"><div style="font-size:14.5px;font-weight:600">${c.n}</div><div class="muted" style="font-size:11px">${c.role} · since ${c.since}</div></div>${streak(c.streak)}</div>
+    <div style="margin-top:12px;font-size:11px;display:grid;grid-template-columns:44px 1fr 30px;gap:6px 8px;align-items:center">
+      <span class="muted">You</span><span style="height:8px;border-radius:4px;background:rgba(0,0,0,.08);overflow:hidden"><i style="display:block;height:100%;width:${c.you}%;background:var(--done);border-radius:4px"></i></span><b style="text-align:right">${c.you}%</b>
+      <span class="muted">Crew</span><span style="height:8px;border-radius:4px;background:rgba(0,0,0,.08);overflow:hidden"><i style="display:block;height:100%;width:${c.crew}%;background:#cfc96a;border-radius:4px"></i></span><b style="text-align:right">${c.crew}%</b>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:10px">${keys.filter(k => P[k].c === c.n).map(k => `<span style="display:flex;align-items:center;gap:5px;padding:3px 8px 3px 3px;border-radius:9px;font-size:11px;font-weight:500;background:${P[k].t}">${badge(k,1)}${P[k].n}</span>`).join('')}</div>
+  </div>`).join('')}
+  <div class="s" style="margin-top:10px;padding:12px;--f:transparent;border:1.5px dashed var(--border);box-shadow:none;color:var(--muted);display:flex;gap:8px;align-items:center;justify-content:center;font-size:13px;font-weight:500">${ic.plus.replace('<svg','<svg width="16" height="16"')}Start or join a crew</div>` });
+
+// 7 · Wrapped
+seed = 90;
+designs.push({ tag:'7 · Wrapped', title:'Big numbers, dark hero',
+  desc:"Leads with this year in the dark card language: one huge check-in count, a bar per month, and your strongest pact. Below it, crews as compact rows and the usual settings. Feels like a reward each visit, and screenshots well for sharing.",
+  cost:'Uses the second card language (WeekPactDarkCard). Needs a monthly rollup.',
+  html:`
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px" class="cv">
+    <div class="face" style="width:40px;height:40px;font-size:14px;border-radius:15px">${me.ini}</div>
+    <div style="flex:1;font-size:16px;font-weight:600">${me.n}</div>
+    <span class="iconbtn">${ic.pencil}</span><span class="iconbtn">${ic.gear}</span>
+  </div>
+  <div class="s dark wrap">
+    <div class="eyebrow muted">Your 2026 so far</div>
+    <div class="huge" style="margin-top:8px">260</div>
+    <div class="muted" style="font-size:13px;margin-top:4px">check-ins across 4 pacts</div>
+    <div class="bars">${Array.from({length:12}, (_,i) => i < 10 ? `<i style="height:${Math.round(20 + rnd()*80)}%;background:${i===9?'#a9ecd0':'#4f8f7d'}"></i>` : `<i style="height:6%;background:rgba(255,255,255,.08)"></i>`).join('')}</div>
+    <div style="display:flex;justify-content:space-between;font-size:9.5px;margin-top:4px" class="muted"><span>Jan</span><span>Dec</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">
+      <div style="padding:10px;border-radius:14px;background:rgba(255,255,255,.05)"><div class="streakmark" style="font-size:20px">${ic.flame.replace('<svg','<svg style="width:18px;height:18px"')}11w</div><div class="muted" style="font-size:11px;margin-top:2px">Longest crew streak</div></div>
+      <div style="padding:10px;border-radius:14px;background:rgba(255,255,255,.05)"><div style="font-size:20px;font-weight:700">94</div><div class="muted" style="font-size:11px;margin-top:2px">Claps received</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;border-radius:14px;background:${P.read.t};color:var(--black)">${badge('read')}<div><div style="font-size:13px;font-weight:600">Read 20 pages</div><div style="font-size:11px;opacity:.7">Your most kept pact · 121 days</div></div></div>
+  </div>
+  <div class="sec">Crews</div>${crewList()}
+  <div class="sec">Recent</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">${Array.from({length:8}, () => { const k = keys[Math.floor(rnd()*4)]; return `${photo(k)}<span class="pb">${badge(k,1)}</span></div>`; }).join('')}</div>` });
+
+document.getElementById('grid').innerHTML = designs.map(d => `
+  <figure><div class="phone"><div class="scroll">${d.html}</div>${tabbar}</div>
+  <figcaption><div class="tag">${d.tag}</div><h2>${d.title}</h2><p>${d.desc}</p><div class="cost">${d.cost}</div></figcaption></figure>`).join('');
+</script>
+</body>
+</html>

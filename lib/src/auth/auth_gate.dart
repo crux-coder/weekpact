@@ -76,6 +76,10 @@ class _AuthGateState extends State<AuthGate> {
   /// is handed Log in, not the front door a new phone gets.
   bool _hadSession = false;
 
+  /// Whether a signed-in session is showing, so its end can clear the routes
+  /// it pushed. Unlike [_hadSession] it falls back once that is done.
+  bool _sessionOpen = false;
+
   _Setup _setup = _Setup.idle;
   String? _setupUser;
   String? _setupError;
@@ -270,6 +274,16 @@ class _AuthGateState extends State<AuthGate> {
         }
         final user = snapshot.data;
         if (user == null) {
+          // Whatever a session left open — Account's settings sheet, a crew's
+          // page — would otherwise stand over the sign-in page.
+          if (_sessionOpen) {
+            _sessionOpen = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
+            });
+          }
           _joinedUser = null;
           _joinedCrewId = null;
           if (_setup != _Setup.idle) {
@@ -280,6 +294,7 @@ class _AuthGateState extends State<AuthGate> {
           return _signedOut();
         }
         _hadSession = true;
+        _sessionOpen = true;
         if (user.passwordRecoveryRequired) {
           // Recovery links can arrive while the reset-request page is open.
           WidgetsBinding.instance.addPostFrameCallback((_) {

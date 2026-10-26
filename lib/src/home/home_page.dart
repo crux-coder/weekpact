@@ -246,9 +246,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// Where Chat and Crews stand in [_navigationItems].
+  /// Where Chat, Crews and Account stand in [_navigationItems].
   static const _chatTab = 1;
   static const _crewsTab = 2;
+  static const _accountTab = 3;
 
   /// The crew Home is showing, opened on its own page: where a member is sent
   /// to read the pacts the owner has set.
@@ -416,6 +417,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backend: widget.authBackend,
             signingOut: _signingOut,
             onSignOut: _signOut,
+            homeBackend: widget.homeBackend,
+            crewBackend: widget.crewBackend,
+            pactsBackend: widget.pactsBackend,
+            active: _selectedIndex == _accountTab,
+            onCrewSelected: _selectCrew,
+            onCrewLeft: () => _selectDestination(0),
           ),
         ].map((page) => ClipRect(child: page)).toList(),
       ),

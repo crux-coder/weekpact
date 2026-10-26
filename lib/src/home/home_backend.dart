@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/profile_history.dart';
 import '../pacts/pacts_backend.dart';
 import 'avatar_url_cache.dart';
 import 'home_cache.dart';
@@ -731,7 +732,7 @@ abstract interface class HomeBackend {
   });
 }
 
-class SupabaseHomeBackend implements HomeBackend {
+class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
   SupabaseHomeBackend(this.client, {this._cache});
   final _avatarUrls = AvatarUrlCache();
   final _notificationAvatars = AvatarUrlCache();
@@ -820,6 +821,45 @@ class SupabaseHomeBackend implements HomeBackend {
     return [
       for (final checkIn in checkIns)
         if (urls[checkIn.photoPath] case final url?) checkIn.withPhotoUrl(url),
+    ];
+  }
+
+  @override
+  Future<ProfileSummary> fetchProfileSummary() async => ProfileSummary.fromJson(
+    Map<String, dynamic>.from(await client.rpc('my_profile_summary')),
+  );
+
+  @override
+  Future<List<ProfileCheckIn>> fetchMyCheckIns({
+    ProfileCheckIn? before,
+    String? pactId,
+    int limit = 30,
+  }) async {
+    final rows = await client.rpc(
+      'my_check_ins',
+      params: {
+        'before_created_at': before?.createdAt.toIso8601String(),
+        'before_pact': before?.ref.pactId,
+        'before_day': before?.day,
+        'target_pact_id': pactId,
+        'page_limit': limit,
+      },
+    );
+    final checkIns = [
+      for (final row in rows as List)
+        ProfileCheckIn.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+    // One batch of signed URLs for the page, rather than one per tile.
+    final urls = await _signed(
+      'check-in-photos',
+      checkIns.map((i) => i.photoPath).nonNulls.toSet().toList(),
+      3600,
+    );
+    return [
+      for (final checkIn in checkIns)
+        checkIn.photoPath == null
+            ? checkIn
+            : checkIn.withPhotoUrl(urls[checkIn.photoPath]),
     ];
   }
 

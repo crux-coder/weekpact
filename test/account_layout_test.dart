@@ -48,13 +48,12 @@ void main() {
           expect(tester.takeException(), isNull);
           expect(find.text('AM'), findsOneWidget);
           expect(find.text('Reset password'), findsNothing);
-          final profile = tester.getRect(
-            find.byKey(const ValueKey('account-profile')),
-          );
-          expect(
-            tester.getCenter(find.byType(ProfileAvatar)).dx,
-            closeTo(profile.center.dx, 1),
-          );
+          expect(find.byType(ProfileAvatar), findsOneWidget);
+          expect(find.byTooltip('Edit profile').hitTestable(), findsOneWidget);
+          // Everything that used to stand under the profile is one tap away,
+          // behind the gear.
+          await tester.tap(find.byTooltip('Settings'));
+          await tester.pumpUi();
           for (final title in [
             'Notifications',
             'Share crash reports',
