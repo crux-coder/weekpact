@@ -1,4 +1,6 @@
 import '../widgets/app_components.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/avatar_shape.dart';
 import '../crew/crew_streak_card.dart';
 import '../crew/crew_switcher.dart';
@@ -1421,6 +1423,31 @@ class _CompletedCheckIn extends StatelessWidget {
   final bool busy;
   final VoidCallback? onUndo;
 
+  /// Undo sits a thumb's width from the check-in it takes back, so it asks
+  /// first rather than letting a stray tap cost the day.
+  Future<void> _confirmUndo(BuildContext context) async {
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        key: const ValueKey('undo-check-in-dialog'),
+        centered: true,
+        icon: HugeIconsStrokeRounded.undo02,
+        title: 'Undo check-in?',
+        message: '$pactTitle goes back to not done for today.',
+        emphasis: pactTitle,
+        actions: [
+          AppButton(
+            key: const ValueKey('confirm-undo-check-in'),
+            label: 'UNDO',
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          const AppDialogDismiss(label: 'Keep it', plain: true),
+        ],
+      ),
+    );
+    if (confirmed == true) onUndo?.call();
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     height: 56,
@@ -1475,7 +1502,9 @@ class _CompletedCheckIn extends StatelessWidget {
             message: 'Undo check-in',
             child: TextButton(
               key: ValueKey('check-in-$pactTitle'),
-              onPressed: busy ? null : onUndo,
+              onPressed: busy || onUndo == null
+                  ? null
+                  : () => _confirmUndo(context),
               style: TextButton.styleFrom(
                 foregroundColor: _ink,
                 minimumSize: const Size(80, 56),

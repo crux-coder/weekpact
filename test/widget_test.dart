@@ -291,6 +291,8 @@ void main() {
       find.byKey(const ValueKey('check-in-Move for 30 min')).hitTestable(),
     );
     await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('confirm-undo-check-in')));
+    await tester.pumpUi();
     expect(find.text('Check in').hitTestable(), findsOneWidget);
   });
 

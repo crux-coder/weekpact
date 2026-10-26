@@ -184,6 +184,7 @@ class _StoryViewerState extends State<StoryViewer> {
       context: context,
       builder: (context) => AppDialog(
         key: const ValueKey('delete-achievement-dialog'),
+        centered: true,
         icon: HugeIconsStrokeRounded.delete02,
         iconColor: WeekPactColors.salmon,
         title: 'Delete this ${story.kind.label.toLowerCase()}?',
@@ -194,7 +195,7 @@ class _StoryViewerState extends State<StoryViewer> {
             label: 'DELETE',
             onPressed: () => Navigator.pop(context, true),
           ),
-          const AppDialogDismiss(label: 'Keep it'),
+          const AppDialogDismiss(label: 'Keep it', plain: true),
         ],
       ),
     );

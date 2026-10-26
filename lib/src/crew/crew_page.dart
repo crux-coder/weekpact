@@ -181,6 +181,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       await showAppDialog<void>(
         context: context,
         builder: (context) => const AppDialog(
+          centered: true,
           icon: HugeIconsStrokeRounded.userGroup02,
           iconColor: WeekPactColors.coolGrey,
           title: 'You’re the only member',
@@ -200,6 +201,9 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AppDialog(
+          // An owner picks a successor in a form under the text, which reads
+          // better from the left edge than from the middle.
+          centered: !(leaving && crew.isOwner),
           icon: leaving
               ? HugeIconsStrokeRounded.logout01
               : HugeIconsStrokeRounded.userMinus01,
@@ -210,6 +214,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     'invitation to rejoin.'
               : 'Remove ${member.email} from ${crew.name}? They’ll lose access '
                     'and need a new invitation to rejoin.',
+          // Leaving names the crew; removing names the person going.
+          emphasis: leaving ? crew.name : member.email,
           content: leaving && crew.isOwner
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -279,7 +285,8 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                   : () => Navigator.pop(context, true),
             ),
             AppDialogDismiss(
-              label: 'CANCEL',
+              label: 'Cancel',
+              plain: true,
               onPressed: () => Navigator.pop(context, false),
             ),
           ],
@@ -352,6 +359,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => AppDialog(
+        centered: true,
         icon: HugeIconsStrokeRounded.delete02,
         iconColor: WeekPactColors.sand,
         title: 'Delete ${crew.name}?',
@@ -361,6 +369,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
             'Everyone in ${crew.name} loses the crew, its pacts, every '
             'check-in made against them, and the week streak. This cannot be '
             'undone.',
+        emphasis: crew.name,
         actions: [
           AppButton(
             label: 'DELETE CREW',
@@ -368,6 +377,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
           ),
           AppDialogDismiss(
             label: 'Keep crew',
+            plain: true,
             onPressed: () => Navigator.pop(context, false),
           ),
         ],
@@ -443,6 +453,7 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
     final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => AppDialog(
+        centered: true,
         icon: HugeIconsStrokeRounded.delete02,
         iconColor: WeekPactColors.sand,
         title: 'Delete pact?',
@@ -452,13 +463,15 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
         message:
             '“${pact.title}” and every check-in the crew has ever made '
             'against it will be gone. This cannot be undone.',
+        emphasis: pact.title,
         actions: [
           AppButton(
             label: 'DELETE',
             onPressed: () => Navigator.pop(context, true),
           ),
           AppDialogDismiss(
-            label: 'CANCEL',
+            label: 'Cancel',
+            plain: true,
             onPressed: () => Navigator.pop(context, false),
           ),
         ],

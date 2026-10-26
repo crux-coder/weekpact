@@ -163,6 +163,7 @@ class _NudgeDialogState extends State<_NudgeDialog> {
   @override
   Widget build(BuildContext context) => AppDialog(
     key: const ValueKey('nudge-dialog'),
+    centered: true,
     icon: HugeIconsStrokeRounded.handPointingRight01,
     iconColor: WeekPactColors.crewProgress,
     title: '$_name hasn’t been out today',
@@ -174,7 +175,7 @@ class _NudgeDialogState extends State<_NudgeDialog> {
         isLoading: _sending,
         onPressed: (_ready || _failed) && !_sending ? _send : null,
       ),
-      const AppDialogDismiss(label: 'Not now'),
+      const AppDialogDismiss(label: 'Not now', plain: true),
     ],
   );
 }

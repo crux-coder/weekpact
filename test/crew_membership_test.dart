@@ -142,7 +142,7 @@ void main() {
     await showCrew(tester, backend, onLeft: () => left = true);
     expect(find.byIcon(Icons.person_remove_outlined), findsNothing);
     await tapLeave(tester);
-    await tester.tap(find.text('CANCEL'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(backend.leaves, 0);
     await tapLeave(tester);

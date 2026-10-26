@@ -459,6 +459,15 @@ void main() {
     final undoBounds = tester.getRect(pact);
     await tester.tapAt(undoBounds.centerRight - const Offset(2, 0));
     await tester.pumpUi();
+    // Undo asks first; keeping the check-in leaves it standing.
+    expect(find.byKey(const ValueKey('undo-check-in-dialog')), findsOneWidget);
+    await tester.tap(find.text('Keep it'));
+    await tester.pumpUi();
+    expect(backend.selected, contains('move'));
+    await tester.tapAt(undoBounds.centerRight - const Offset(2, 0));
+    await tester.pumpUi();
+    await tester.tap(find.byKey(const ValueKey('confirm-undo-check-in')));
+    await tester.pumpUi();
     expect(calls.length, 1);
     expect(backend.selected, isNot(contains('move')));
     await tester.pumpWidget(const SizedBox());

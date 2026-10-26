@@ -470,7 +470,7 @@ void main() {
       find.textContaining('every check-in the crew has ever made'),
       findsOneWidget,
     );
-    await tester.tap(find.text('CANCEL'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(backend.deleted, isEmpty);
     expect(backend.pacts.length, 2);

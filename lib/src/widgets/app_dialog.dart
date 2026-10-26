@@ -15,20 +15,30 @@ class AppDialog extends StatelessWidget {
     super.key,
     required this.title,
     this.message,
+    this.emphasis,
     this.icon,
     this.iconColor,
     this.content,
     this.actions = const [],
+    this.centered = false,
   });
 
   final String title;
   final String? message;
+
+  /// A name inside [message], such as the pact being acted on, drawn bold
+  /// in ink so the eye lands on what the dialog is about.
+  final String? emphasis;
   final List<List<dynamic>>? icon;
   final Color? iconColor;
 
   /// Anything richer than [message], placed between the text and the actions.
   final Widget? content;
   final List<Widget> actions;
+
+  /// Centres the icon, title and message: for a short question asked on its
+  /// own, rather than a dialog that carries a form in [content].
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +60,7 @@ class AppDialog extends StatelessWidget {
             children: [
               if (icon != null) ...[
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: centered ? Alignment.center : Alignment.centerLeft,
                   child: SizedBox.square(
                     dimension: 52,
                     child: AppSurface(
@@ -71,6 +81,7 @@ class AppDialog extends StatelessWidget {
               ],
               Text(
                 title,
+                textAlign: centered ? TextAlign.center : TextAlign.start,
                 style: TextStyle(
                   color: context.ink,
                   fontSize: 27,
@@ -80,8 +91,9 @@ class AppDialog extends StatelessWidget {
               ),
               if (message != null) ...[
                 const SizedBox(height: 10),
-                Text(
-                  message!,
+                Text.rich(
+                  _messageSpan(context, message!),
+                  textAlign: centered ? TextAlign.center : TextAlign.start,
                   style: TextStyle(
                     color: context.muted,
                     fontSize: 15,
@@ -103,21 +115,67 @@ class AppDialog extends StatelessWidget {
       ),
     );
   }
+
+  TextSpan _messageSpan(BuildContext context, String message) {
+    final emphasis = this.emphasis;
+    final at = emphasis == null || emphasis.isEmpty
+        ? -1
+        : message.indexOf(emphasis);
+    if (at < 0) return TextSpan(text: message);
+    return TextSpan(
+      children: [
+        TextSpan(text: message.substring(0, at)),
+        TextSpan(
+          text: emphasis,
+          style: TextStyle(color: context.ink, fontWeight: FontWeight.w600),
+        ),
+        TextSpan(text: message.substring(at + emphasis!.length)),
+      ],
+    );
+  }
 }
 
 /// The quieter of two stacked [AppDialog] actions: still a raised button with
 /// its own edge, but it does not compete with the one being offered.
+///
+/// With [plain] it drops the button altogether and is only its label, so the
+/// action being offered is the one button in the dialog.
 class AppDialogDismiss extends StatelessWidget {
-  const AppDialogDismiss({super.key, required this.label, this.onPressed});
+  const AppDialogDismiss({
+    super.key,
+    required this.label,
+    this.onPressed,
+    this.plain = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;
+  final bool plain;
 
   @override
-  Widget build(BuildContext context) => AppButton(
-    label: label,
-    color: WeekPactColors.neutralInset,
-    foregroundColor: WeekPactColors.black,
-    onPressed: onPressed ?? () => Navigator.pop(context),
-  );
+  Widget build(BuildContext context) {
+    final onPressed = this.onPressed ?? () => Navigator.pop(context);
+    if (!plain) {
+      return AppButton(
+        label: label,
+        color: WeekPactColors.neutralInset,
+        foregroundColor: WeekPactColors.black,
+        onPressed: onPressed,
+      );
+    }
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, 44),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: context.ink,
+        textStyle: const TextStyle(
+          fontFamily: WeekPactType.primary,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      child: Text(label),
+    );
+  }
 }
