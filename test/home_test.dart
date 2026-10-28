@@ -454,7 +454,16 @@ void main() {
     backend.failSave = false;
     await submitTestPhoto(tester);
     await tester.pumpUi();
-    expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
+    // The moment's flourish: a click, two taps, and the heavy one as the
+    // confetti goes. Nothing more while the dialog stands.
+    expect(calls.map((call) => call.arguments), [
+      'HapticFeedbackType.selectionClick',
+      'HapticFeedbackType.lightImpact',
+      'HapticFeedbackType.mediumImpact',
+      'HapticFeedbackType.heavyImpact',
+    ]);
+    await tester.pump(const Duration(seconds: 2));
+    expect(calls.length, 4);
     // The moment is sent off before the bar is reached again.
     await tester.tap(find.text('NICE'));
     await tester.pumpUi();

@@ -802,10 +802,6 @@ class _HomeDestinationState extends State<_HomeDestination>
         );
       }
       if (!mounted) return;
-      if (selected.contains(pactId)) {
-        // Haptics are best-effort and must never turn a saved check-in into an error.
-        unawaited(HapticFeedback.heavyImpact().catchError((Object _) {}));
-      }
       final kept = CrewWeek(
         today: week.today,
         streakWeeks: week.streakWeeks,
