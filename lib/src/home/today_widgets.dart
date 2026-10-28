@@ -1293,61 +1293,87 @@ class _PactCard extends StatelessWidget {
           // above the bar — at 18 the two gaps matched and the bar
           // floated between them, reading as neither.
           const SizedBox(height: _barToAction),
-          if (checked)
-            _CompletedCheckIn(
-              pactTitle: pact.title,
-              busy: busy,
-              onUndo: onToggle,
-              edge: doneEdge,
-            )
-          else
-            Container(
-              width: double.infinity,
-              decoration: const ShapeDecoration(
-                shape: WeekPactMetrics.buttonShape,
-                shadows: [
-                  BoxShadow(
-                    color: WeekPactColors.inkEdge,
-                    offset: WeekPactMetrics.raisedOffset,
-                  ),
-                ],
-              ),
-              child: FilledButton.icon(
-                key: ValueKey('check-in-${pact.title}'),
-                onPressed: onToggle,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _ink,
-                  foregroundColor: homePaper,
-                  minimumSize: const Size(0, 48),
-                  shape: WeekPactMetrics.buttonShape.copyWith(
-                    side: const BorderSide(color: WeekPactColors.inkEdge),
-                  ),
-                ),
-                icon: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : HugeIcon(icon: HugeIconsStrokeRounded.circle, size: 22),
-                label: Text(
-                  'Check in',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontFamily: WeekPactType.secondary,
-                    fontFamilyFallback: WeekPactType.secondaryFallback,
-                    fontSize: 17,
-                  ),
-                ),
+          // The control eases between its two states rather than cutting:
+          // an undo in particular is a bar emptying and the button coming
+          // back, and a cut there read as the card flinching.
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween(begin: .96, end: 1.0).animate(animation),
+                child: child,
               ),
             ),
+            child: checked
+                ? KeyedSubtree(
+                    key: const ValueKey('checked'),
+                    child: _CompletedCheckIn(
+                      pactTitle: pact.title,
+                      busy: busy,
+                      onUndo: onToggle,
+                      edge: doneEdge,
+                    ),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey('unchecked'),
+                    child: _checkInButton(),
+                  ),
+          ),
         ],
       ),
     );
   }
+
+  /// The check-in button: ink on the tint, raised on the same edge as the
+  /// kept days above it.
+  Widget _checkInButton() => Container(
+    width: double.infinity,
+    decoration: const ShapeDecoration(
+      shape: WeekPactMetrics.buttonShape,
+      shadows: [
+        BoxShadow(
+          color: WeekPactColors.inkEdge,
+          offset: WeekPactMetrics.raisedOffset,
+        ),
+      ],
+    ),
+    child: FilledButton.icon(
+      key: ValueKey('check-in-${pact.title}'),
+      onPressed: onToggle,
+      style: FilledButton.styleFrom(
+        backgroundColor: _ink,
+        foregroundColor: homePaper,
+        minimumSize: const Size(0, 48),
+        shape: WeekPactMetrics.buttonShape.copyWith(
+          side: const BorderSide(color: WeekPactColors.inkEdge),
+        ),
+      ),
+      icon: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : HugeIcon(icon: HugeIconsStrokeRounded.circle, size: 22),
+      label: Text(
+        'Check in',
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          fontSize: 17,
+        ),
+      ),
+    ),
+  );
 }
 
 class _CompletedCheckIn extends StatefulWidget {
