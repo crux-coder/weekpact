@@ -12,8 +12,6 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'auth_backend.dart';
 import 'avatar_picker.dart';
 import 'profile_editor.dart';
-import 'pact_history.dart';
-import 'pact_history_card.dart';
 import 'profile_history.dart';
 import 'profile_wall.dart';
 import 'account_actions.dart';
@@ -111,7 +109,6 @@ class _AccountPageState extends State<AccountPage> {
   static const _pageSize = 30;
 
   ProfileSummary? _summary;
-  List<PactHistory>? _pactHistory;
   List<PactCrew>? _crews;
   final Map<String, List<WeekMember>> _members = {};
   List<ProfileCheckIn>? _checkIns;
@@ -150,22 +147,9 @@ class _AccountPageState extends State<AccountPage> {
     final request = ++_request;
     await Future.wait([
       _loadSummary(request),
-      _loadPactHistory(request),
       _loadCrews(request),
       _loadWall(request),
     ]);
-  }
-
-  Future<void> _loadPactHistory(int request) async {
-    final history = _history;
-    if (history == null) return;
-    try {
-      final pacts = await history.fetchPactHistory(userId: widget.member?.id);
-      if (!mounted || request != _request) return;
-      setState(() => _pactHistory = pacts);
-    } catch (_) {
-      // The section stays away, or as it was; the wall says what failed.
-    }
   }
 
   Future<void> _loadSummary(int request) async {
@@ -585,19 +569,6 @@ class _AccountPageState extends State<AccountPage> {
                   ),
                 ),
               ),
-            ],
-            if (_pactHistory case final pacts? when pacts.isNotEmpty) ...[
-              const SizedBox(height: WeekPactMetrics.sectionGap),
-              const CrewSectionLabel('PACTS'),
-              const SizedBox(height: 10),
-              for (final (i, pact) in pacts.indexed) ...[
-                if (i > 0) const SizedBox(height: 8),
-                PactHistoryCard(
-                  key: ValueKey('account-history-${pact.pactId}'),
-                  history: pact,
-                  onTap: () => _filter(pact.pactId),
-                ),
-              ],
             ],
             if (history) ...[
               const SizedBox(height: WeekPactMetrics.sectionGap),

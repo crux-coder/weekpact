@@ -90,18 +90,6 @@ instead. An undo says nothing. With animations off the badge simply stands
 there and only the heavy tap is given. See `CheckInMoment` and
 `CheckInCelebration` in `lib/src/home/check_in_moment.dart`.
 
-Account, and a crewmate's profile, carry a **Pacts** section over the
-check-in wall: a card per pact with how many weeks the person has been on it
-(from the week they first kept it), the days kept, how many of those weeks met
-the pact's target as it stands now, a "wks running" pill for weeks on target
-in a row, and a calendar of the last sixteen weeks, one column each with the
-days kept filled in and the weeks on target set on a pale strip. A week in
-progress is not a miss. Tapping a card narrows the wall to that pact.
-`20261028150000_add_pact_history.sql` adds `my_pact_history` and
-`member_pact_history`, scoped like the wall: your own across every crew you
-are in, a crewmate's across the crews you share, and refused for anyone else.
-`tool/test_pact_history_database.mjs` covers it against PGlite.
-
 Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets

@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/photo_fakes.dart';
 
 import 'package:weekpact/src/auth/auth_backend.dart';
-import 'package:weekpact/src/auth/pact_history.dart';
 import 'package:weekpact/src/auth/profile_history.dart';
 import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
@@ -67,10 +66,6 @@ class NudgeWithProfilesBackend extends NudgeFromRailBackend
   @override
   Future<ProfileSummary> fetchProfileSummary({String? userId}) async =>
       const ProfileSummary(checkIns: 0, crews: 1, crewIds: ['crew']);
-
-  @override
-  Future<List<PactHistory>> fetchPactHistory({String? userId}) async =>
-      const [];
 
   @override
   Future<List<ProfileCheckIn>> fetchMyCheckIns({

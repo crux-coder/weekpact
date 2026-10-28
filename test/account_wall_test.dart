@@ -6,8 +6,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/account_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
-import 'package:weekpact/src/auth/pact_history.dart';
-import 'package:weekpact/src/auth/pact_history_card.dart';
 import 'package:weekpact/src/auth/profile_history.dart';
 import 'package:weekpact/src/auth/profile_scope.dart';
 import 'package:weekpact/src/auth/profile_wall.dart';
@@ -77,17 +75,6 @@ class WallBackend extends DashboardBackend implements ProfileHistoryBackend {
         // A crewmate shares only the first crew with the viewer.
         crewIds: userId == null ? null : const ['crew'],
       );
-
-  /// The record the fake tells for each pact; empty by default, so tests
-  /// that only care about the wall see no cards.
-  List<PactHistory> pactHistory = const [];
-  bool failPactHistory = false;
-
-  @override
-  Future<List<PactHistory>> fetchPactHistory({String? userId}) async {
-    if (failPactHistory) throw StateError('offline');
-    return pactHistory;
-  }
 
   @override
   Future<List<ProfileCheckIn>> fetchMyCheckIns({
@@ -190,69 +177,6 @@ void main() {
     await tester.tap(find.text('All'));
     await tester.pumpUi();
     expect(find.byType(ProfileWallTile), findsNWidgets(10));
-  });
-
-  testWidgets('each pact’s record heads the wall, and opens it on that pact', (
-    tester,
-  ) async {
-    final backend = WallBackend(total: 10)
-      ..pactHistory = const [
-        PactHistory(
-          pactId: 'move',
-          crewId: 'crew',
-          crewName: 'Early Birds',
-          title: 'Move for 30 min',
-          iconKey: 'run',
-          pactIndex: 0,
-          daysPerWeek: 3,
-          today: '2026-10-28',
-          firstDay: '2026-10-06',
-          weeks: [
-            PactWeek(start: '2026-10-05', kept: 3),
-            PactWeek(start: '2026-10-12', kept: 3),
-            PactWeek(start: '2026-10-19', kept: 3),
-            PactWeek(start: '2026-10-26', kept: 1),
-          ],
-          days: ['2026-10-19', '2026-10-21', '2026-10-23', '2026-10-27'],
-        ),
-        PactHistory(
-          pactId: 'read',
-          crewId: 'crew',
-          crewName: 'Early Birds',
-          title: 'Read 20 pages',
-          iconKey: 'book',
-          pactIndex: 1,
-          daysPerWeek: 7,
-          today: '2026-10-28',
-        ),
-      ];
-    await pumpAccount(tester, backend);
-
-    expect(find.byType(PactHistoryCard), findsNWidgets(2));
-    expect(
-      find.text('4 weeks in · 10 days · on target 3 of 4'),
-      findsOneWidget,
-    );
-    expect(find.text('3 wks running'), findsOneWidget);
-    expect(find.text('Not kept yet'), findsOneWidget);
-    expect(find.byType(PactCalendar), findsNWidgets(2));
-
-    final read = find.byKey(const ValueKey('account-history-read'));
-    await tester.ensureVisible(read);
-    await tester.pumpUi();
-    await tester.tap(read);
-    await tester.pumpUi();
-    expect(backend.requests.last.pactId, 'read');
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('a record that will not load leaves the wall standing', (
-    tester,
-  ) async {
-    final backend = WallBackend(total: 4)..failPactHistory = true;
-    await pumpAccount(tester, backend);
-    expect(find.byType(PactHistoryCard), findsNothing);
-    expect(find.byType(ProfileWallTile), findsNWidgets(4));
   });
 
   testWidgets('an empty wall says where check-ins come from', (tester) async {
