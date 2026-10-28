@@ -119,6 +119,33 @@ Future<void> _pump(
 }
 
 void main() {
+  testWidgets('a pull brings the page down with it, and refreshes the week', (
+    tester,
+  ) async {
+    final backend = _backend();
+    await _pump(tester, backend);
+    final podium = find.byKey(const ValueKey('crew-week-podium'));
+    final rest = tester.getTopLeft(podium).dy;
+    final pull = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('crew-week-podium'))),
+    );
+    await pull.moveBy(const Offset(0, 60));
+    await pull.moveBy(const Offset(0, 60));
+    await tester.pump();
+    // The content follows the finger, rather than only the spinner moving.
+    expect(tester.getTopLeft(podium).dy, greaterThan(rest + 20));
+    final before = backend.fetches;
+    for (var i = 0; i < 6; i++) {
+      await pull.moveBy(const Offset(0, 50));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await pull.up();
+    await tester.pumpUi();
+    expect(backend.fetches, before + 1);
+    // And it springs back home.
+    expect(tester.getTopLeft(podium).dy, moreOrLessEquals(rest, epsilon: 1));
+  });
+
   testWidgets(
     'carousel shows the selected pact’s totals and days, stops at both ends, and refreshes selection',
     (tester) async {
@@ -180,6 +207,7 @@ void main() {
       testWidgets(
         'crew carousel fits $size at text scale $scale with 20 members',
         (tester) async {
+          await loadAppFont();
           await _pump(
             tester,
             _backend()..memberCount = 20,
@@ -187,9 +215,9 @@ void main() {
             scale: scale,
           );
           expect(tester.takeException(), isNull);
-          // The whole crew is on the card at once: there is no pager.
+          // Four and a half people are on the card at once, at their full
+          // height; the rest scroll inside it.
           expect(find.byTooltip('Next members'), findsNothing);
-          expect(find.textContaining(' of 20 members'), findsNothing);
           final card = find.byType(CrewPactWeekCard).first;
           final mondays = find.descendant(
             of: card,
@@ -197,38 +225,75 @@ void main() {
               (w) => w is Tooltip && w.message!.startsWith('Sep 14 ·'),
             ),
           );
-          expect(mondays, findsNWidgets(20));
-          // A big crew makes a taller card, not smaller check-ins: every row
-          // stands at its full height, and the page scrolls to reach them.
+          final list = tester
+              .stateList<ScrollableState>(
+                find.descendant(of: card, matching: find.byType(Scrollable)),
+              )
+              .single
+              .position;
+          if (scale == 1) expect(list.viewportDimension, 4.5 * 54);
+          expect(list.maxScrollExtent, 15.5 * 54);
           if (scale == 1) {
-            for (var i = 0; i < 20; i++) {
-              expect(tester.getSize(mondays.at(i)).height, 54);
-            }
+            expect(tester.getSize(mondays.first).height, 54);
           }
-          final vertical = tester
-              .stateList<ScrollableState>(find.byType(Scrollable))
-              .where(
-                (state) =>
-                    axisDirectionToAxis(state.widget.axisDirection) ==
-                    Axis.vertical,
-              );
-          expect(vertical, hasLength(1));
-          expect(vertical.single.position.maxScrollExtent, greaterThan(0));
+          double arrow(String label) => tester
+              .widget<AnimatedOpacity>(
+                find
+                    .ancestor(
+                      of: find.descendant(
+                        of: card,
+                        matching: find.byWidgetPredicate(
+                          (w) => w is Semantics && w.properties.label == label,
+                        ),
+                      ),
+                      matching: find.byType(AnimatedOpacity),
+                    )
+                    .first,
+              )
+              .opacity;
+          expect(arrow('Show earlier members'), 0);
+          expect(arrow('Show more members'), 1);
           expect(find.byTooltip('Back to home').hitTestable(), findsOneWidget);
-          await tester.drag(
-            find.byKey(const ValueKey('crew-refresh-viewport')),
-            const Offset(0, -6000),
-          );
+          await tester.ensureVisible(mondays.first);
           await tester.pumpUi();
-          // Scrolled to the end, the last member is on screen, inside the
-          // card.
-          final last = tester.getRect(mondays.at(19));
-          expect(last.bottom, lessThanOrEqualTo(size.height));
-          expect(last.bottom, lessThanOrEqualTo(tester.getRect(card).bottom));
+          await tester.drag(mondays.first, const Offset(0, -6000));
+          await tester.pumpUi();
+          // Scrolled to the end, the last member is in the card, and only
+          // the arrow back up shows.
+          expect(list.pixels, list.maxScrollExtent);
+          expect(arrow('Show earlier members'), 1);
+          expect(arrow('Show more members'), 0);
+          expect(
+            tester.getRect(mondays.last).bottom,
+            lessThanOrEqualTo(tester.getRect(card).bottom),
+          );
           expect(tester.takeException(), isNull);
         },
       );
     }
+  }
+
+  for (final members in [3, 6]) {
+    testWidgets('the card has no empty room under $members members', (
+      tester,
+    ) async {
+      await loadAppFont();
+      await _pump(
+        tester,
+        _backend()..memberCount = members,
+        size: const Size(430, 932),
+      );
+      final card = find.byType(CrewPactWeekCard).first;
+      Rect rect(Finder finder) =>
+          tester.getRect(find.descendant(of: card, matching: finder).first);
+      expect(tester.getSize(card).height, CrewPactWeekCard.heightFor(members));
+      // Under the rows: the down arrow's room when the list scrolls, then
+      // the gap over the divider, and nothing more.
+      expect(
+        rect(find.byType(Divider)).top - rect(find.byType(ListView)).bottom,
+        closeTo(members > 4 ? 28 : 8, 1),
+      );
+    });
   }
 
   for (final dark in [true, false]) {

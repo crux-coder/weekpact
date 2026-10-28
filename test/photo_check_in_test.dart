@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weekpact/src/home/photo_encoding.dart';
 import 'package:weekpact/src/home/check_in_camera.dart';
 import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/theme/weekpact_theme.dart';
@@ -366,8 +367,8 @@ void main() {
     expect(find.byType(PhotoCheckInPage), findsNothing);
   });
   testWidgets(
-    'camera processor keeps the whole frame at a 1280 long side and rejects '
-    'invalid input',
+    'camera processor keeps the whole frame at a 1280 long side as JPEG and '
+    'rejects invalid input',
     (tester) async {
       await tester.runAsync(() async {
         final photo = await CheckInCamera.prepare(testCheckInPhoto);
@@ -376,6 +377,7 @@ void main() {
         expect(frame.image.width, 1280);
         expect(frame.image.height, 1280);
         expect(photo.length, lessThan(5 * 1024 * 1024));
+        expect(photoContentType(photo), 'image/jpeg');
         frame.image.dispose();
         codec.dispose();
         // A phone frame is taller than it is wide, and stays that way: the

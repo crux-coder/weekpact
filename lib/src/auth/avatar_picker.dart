@@ -3,12 +3,14 @@ import 'dart:ui' as ui;
 
 import 'package:image_picker/image_picker.dart';
 
+import '../home/photo_encoding.dart';
+
 /// How a screen asks for a photo. Tests hand in their own bytes rather than
 /// waiting on a native picker that has no gallery to open.
 typedef AvatarPicker = Future<Uint8List?> Function();
 
 /// The one path a profile photo takes into the app: the picker, then bounded
-/// PNG bytes. Onboarding and the profile editor both save through
+/// JPEG bytes. Onboarding and the profile editor both save through
 /// `completeOnboarding`, so they both have to arrive at the same bytes.
 Future<Uint8List?> pickAvatarPhoto() async {
   final file = await ImagePicker().pickImage(
@@ -21,7 +23,7 @@ Future<Uint8List?> pickAvatarPhoto() async {
   return file == null ? null : prepareAvatarPhoto(file);
 }
 
-/// Re-encodes a bounded image so storage receives PNG bytes without photo
+/// Re-encodes a bounded image so storage receives JPEG bytes without photo
 /// metadata.
 Future<Uint8List> prepareAvatarPhoto(XFile file) async {
   if (await file.length() > 20 * 1024 * 1024) {
@@ -42,13 +44,11 @@ Future<Uint8List> prepareAvatarPhoto(XFile file) async {
     try {
       final frame = await codec.getNextFrame();
       try {
-        final data = await frame.image.toByteData(
-          format: ui.ImageByteFormat.png,
-        );
-        if (data == null || data.lengthInBytes > 5 * 1024 * 1024) {
+        final data = await encodePhotoJpeg(frame.image);
+        if (data.lengthInBytes > 5 * 1024 * 1024) {
           throw StateError('Choose a smaller photo.');
         }
-        return data.buffer.asUint8List();
+        return data;
       } finally {
         frame.image.dispose();
       }

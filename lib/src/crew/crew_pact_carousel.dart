@@ -13,7 +13,7 @@ import 'crew_pact_week_card.dart';
 /// both draw one.
 ///
 /// The card stands as tall as the deck is given, which on the crew week is
-/// taller than Home's: it carries the whole crew's days, not one person's.
+/// taller than Home's: it carries four and a half people's days, not one person's.
 class CrewPactCarousel extends StatelessWidget {
   const CrewPactCarousel({
     super.key,
@@ -24,9 +24,10 @@ class CrewPactCarousel extends StatelessWidget {
   });
 
   /// The deck's height for a crew of [count]: the card at full rows, the
-  /// room under it for its raised edge, and the dots.
-  static double heightFor(int count) =>
-      CrewPactWeekCard.heightFor(count) +
+  /// room under it for its raised edge, and the dots. [extraText] is how far
+  /// the text scale is above 1.
+  static double heightFor(int count, {double extraText = 0}) =>
+      CrewPactWeekCard.heightFor(count, extraText: extraText) +
       WeekPactMetrics.controlDepth +
       1 +
       PactDeck.dotsGap +

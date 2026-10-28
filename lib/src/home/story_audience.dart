@@ -210,6 +210,7 @@ class _Face extends StatelessWidget {
           ? initials
           : Image.network(
               url,
+              cacheWidth: avatarDecodeWidth,
               width: size,
               height: size,
               fit: BoxFit.cover,

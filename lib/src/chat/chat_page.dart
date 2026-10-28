@@ -1248,6 +1248,7 @@ class _ChatAvatar extends StatelessWidget {
           ? initials
           : Image.network(
               url,
+              cacheWidth: avatarDecodeWidth,
               width: size,
               height: size,
               fit: BoxFit.cover,

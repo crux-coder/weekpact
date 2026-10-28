@@ -9,6 +9,7 @@ import '../auth/profile_history.dart';
 import '../pacts/pacts_backend.dart';
 import 'avatar_url_cache.dart';
 import 'home_cache.dart';
+import 'photo_encoding.dart';
 
 class WeekMember {
   const WeekMember(
@@ -1071,8 +1072,8 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
           .uploadBinary(
             path,
             photo,
-            fileOptions: const FileOptions(
-              contentType: 'image/png',
+            fileOptions: FileOptions(
+              contentType: photoContentType(photo),
               upsert: false,
             ),
           );
@@ -1188,6 +1189,18 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
 
   @override
   Future<CrewWeek> fetchWeek(String crewId, {String? weekStart}) async {
+    final account = client.auth.currentUser?.id;
+    // The week kept on the device names most of the photos and faces the
+    // fresh one will, so they are signed while it loads rather than after;
+    // the reply then signs only what is new to it.
+    final kept = weekStart == null ? cachedWeek(crewId) : null;
+    final presigned = kept == null
+        ? null
+        : _signWeek(
+            account,
+            crewId,
+            kept,
+          ).then<void>((_) {}, onError: (Object _) {});
     // This week arrives in one reply with the latest check-in, today's
     // achievements and the nudge states beside it. A past week has no rail
     // and no nudges, so it is the snapshot alone.
@@ -1205,34 +1218,40 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
               },
             ),
     );
-    final account = client.auth.currentUser?.id;
     if (weekStart == null && account != null) {
       _cache?.writeWeek(account, crewId, row);
     }
     final week = CrewWeek.fromJson(row);
-    // Today's photos, signed for the stories rail. Only today's: the rail
-    // shows the day, and the week's older check-ins are counted rather than
-    // opened. Signed beside the faces, not after them.
-    final (stories, avatars) = await (
-      _photoUrls.resolve(
-        account: account,
-        key: crewId,
-        paths: [
-          ...{
-            ...week.checkIns
-                .where((i) => i.day == week.today)
-                .map((i) => i.photoPath)
-                .nonNulls,
-            ...week.achievements.map((a) => a.photoPath).nonNulls,
-          },
-        ],
-        sign: (missing, lifetime) =>
-            _signed('check-in-photos', missing, lifetime),
-      ),
-      _memberAvatars(crewId, week.members),
-    ).wait;
+    await presigned;
+    final (stories, avatars) = await _signWeek(account, crewId, week);
     return _withUrls(week, stories: stories, avatars: avatars);
   }
+
+  /// Today's photos, signed for the stories rail, and the faces beside them.
+  /// Only today's: the rail shows the day, and the week's older check-ins are
+  /// counted rather than opened.
+  Future<(Map<String, String>, Map<String, String>)> _signWeek(
+    String? account,
+    String crewId,
+    CrewWeek week,
+  ) => (
+    _photoUrls.resolve(
+      account: account,
+      key: crewId,
+      paths: [
+        ...{
+          ...week.checkIns
+              .where((i) => i.day == week.today)
+              .map((i) => i.photoPath)
+              .nonNulls,
+          ...week.achievements.map((a) => a.photoPath).nonNulls,
+        },
+      ],
+      sign: (missing, lifetime) =>
+          _signed('check-in-photos', missing, lifetime),
+    ),
+    _memberAvatars(crewId, week.members),
+  ).wait;
 
   @override
   Future<CrewWeek> fetchWeekBrief(String crewId) async {
@@ -1344,8 +1363,8 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
         await bucket.uploadBinary(
           path,
           entry.value,
-          fileOptions: const FileOptions(
-            contentType: 'image/png',
+          fileOptions: FileOptions(
+            contentType: photoContentType(entry.value),
             upsert: false,
           ),
         );

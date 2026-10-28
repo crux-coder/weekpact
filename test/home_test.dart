@@ -20,6 +20,8 @@ import 'support/home_fakes.dart';
 
 import 'package:weekpact/src/crew/crew_week_page.dart';
 
+import 'support/fonts.dart';
+
 /// The crew's day has rolled over on the server. The save is refused with the
 /// sentence `save_pact_check_ins` raises, and the week the next fetch answers
 /// with is already on the new date.
@@ -367,6 +369,7 @@ void main() {
   testWidgets('crew week shows member days for the current week', (
     tester,
   ) async {
+    await loadAppFont();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -383,7 +386,8 @@ void main() {
       ),
     );
     await tester.pumpUi();
-    expect(find.text('This week · Sep 7 – Sep 13'), findsOneWidget);
+    // The podium's headline speaks for the week; the dates line is gone.
+    expect(find.textContaining('This week ·'), findsNothing);
     expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
     expect(find.text('1 of 2 checked in today'), findsNothing);
     await tester.drag(

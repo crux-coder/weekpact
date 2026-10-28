@@ -1,5 +1,6 @@
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../widgets/pull_refresh_physics.dart';
 import '../widgets/app_icon.dart';
 
 import 'dart:async';
@@ -16,9 +17,9 @@ import '../widgets/skeleton_switcher.dart';
 import 'crew_month_calendar.dart';
 import 'crew_page_layout.dart';
 import 'crew_pact_carousel.dart';
-import 'crew_pact_week_card.dart';
 import 'crew_switcher.dart';
 import 'past_week_sheet.dart';
+import 'your_week.dart';
 
 /// The crew's week so far and, under it, a month calendar of the crew's weeks
 /// ([CrewMonthCalendar]). A finished week opens as a sheet over this page
@@ -203,13 +204,6 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
     crewSize: _week?.members.length,
   );
 
-  /// What the line under the crew's name calls the week on show.
-  String _weekLabel(CrewWeek? week) {
-    if (week == null) return 'This week';
-    final monday = DateTime.parse(week.weekStart);
-    return 'This week · ${crewDateLabel(monday)} – ${crewDateLabel(monday.add(const Duration(days: 6)))}';
-  }
-
   /// Whether the page carries a past-weeks section under the overview. Only
   /// when there is something to put there: a crew in its first week has no
   /// history, and the page stays one viewport rather than promising a list
@@ -251,9 +245,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
               backgroundColor: WeekPactColors.cream,
               child: CustomScrollView(
                 key: const ValueKey('crew-refresh-viewport'),
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: ClampingScrollPhysics(),
-                ),
+                // The page comes down under a pull, as Home does; it stood
+                // still while only the indicator moved.
+                physics: refreshPhysics(context),
                 slivers: [
                   // The page scrolls up under the status bar, where
                   // StatusBarBlur frosts it, rather than stopping at its edge.
@@ -311,14 +305,43 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
   }
 
   /// Everything in the overview above the pacts' deck, and its padding, at
-  /// text scale 1: the heading, the week's dates, the podium, and the
-  /// "Crew pacts" line.
+  /// text scale 1: the heading, the podium, the viewer's card under it, and
+  /// the "Crew pacts" line.
   static const _overviewChrome =
-      4.0 + 48 + 4 + 18 + 18 + CrewPodiumPanel.height + 18 + 28 + 12 + 12;
+      4.0 +
+      48 +
+      _headingGap +
+      CrewPodiumPanel.height +
+      _yourWeekGap +
+      YourWeekPanel.height +
+      _pactsGap +
+      // The "Crew pacts" line as it lays out at 23pt, not its font size.
+      33 +
+      12 +
+      12;
+
+  /// The room between the podium and the viewer's line under it: close
+  /// enough that the two read as one block about the crew and you in it.
+  static const _yourWeekGap = 8.0;
+
+  /// The room between the crew's name and the podium.
+  static const _headingGap = 4.0;
+
+  /// The room above the "Crew pacts" line. It was 18 under the podium alone;
+  /// the viewer's lines under the podium took most of it.
+  static const _pactsGap = 8.0;
 
   /// The height the overview needs to show [members]' card at full rows.
+  ///
+  /// While the first week loads, its skeleton stands for a small crew and
+  /// asks for that crew's height, so the page does not grow under it when
+  /// the week arrives.
   double _overviewHeightFor(CrewWeek? week, List<WeekMember> members) =>
-      week == null || week.pacts.isEmpty
+      week == null
+      ? (_refreshing && _error == null
+            ? _overviewChrome + CrewPactCarousel.heightFor(3)
+            : 0)
+      : week.pacts.isEmpty
       ? 0
       : _overviewChrome + CrewPactCarousel.heightFor(members.length);
 
@@ -380,13 +403,10 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                         onSelected: _selectCrew,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _weekLabel(week),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: context.muted, fontSize: 15),
-                    ),
-                    const SizedBox(height: 18),
+                    // The week's dates stood here; the podium's headline
+                    // says what the week means for you, and the dates said
+                    // nothing anyone acted on.
+                    const SizedBox(height: _headingGap),
                     if (_error != null) ...[
                       Text(_error!, style: TextStyle(color: context.errorInk)),
                       TextButton(
@@ -397,7 +417,9 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                     // The week fades in over its skeleton, as Chat does.
                     Expanded(
                       child: SkeletonSwitcher(
-                        skeleton: const _CrewWeekSkeleton(),
+                        skeleton: _CrewWeekSkeleton(
+                          crewSize: week?.members.length,
+                        ),
                         child: week == null
                             ? _refreshing
                                   ? null
@@ -419,7 +441,13 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                     week: week,
                                     userId: widget.userId,
                                   ),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: _yourWeekGap),
+                                  YourWeekPanel(
+                                    key: const ValueKey('crew-week-yours'),
+                                    week: week,
+                                    userId: widget.userId,
+                                  ),
+                                  const SizedBox(height: _pactsGap),
                                   Row(
                                     children: [
                                       const Expanded(
@@ -442,13 +470,31 @@ class _CrewWeekPageState extends State<CrewWeekPage> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
+                                  // The deck stands as tall as its card
+                                  // needs and no taller, so the card has no
+                                  // empty room under its rows; whatever the
+                                  // page has left sits under the dots.
                                   Expanded(
-                                    child: CrewPactCarousel(
-                                      week: week,
-                                      members: members,
-                                      userId: widget.userId,
-                                      onIndexChanged: (index) =>
-                                          setState(() => _index = index),
+                                    child: LayoutBuilder(
+                                      builder: (context, slot) => Align(
+                                        alignment: Alignment.topCenter,
+                                        child: SizedBox(
+                                          height: math.min(
+                                            slot.maxHeight,
+                                            CrewPactCarousel.heightFor(
+                                              members.length,
+                                              extraText: extraText,
+                                            ),
+                                          ),
+                                          child: CrewPactCarousel(
+                                            week: week,
+                                            members: members,
+                                            userId: widget.userId,
+                                            onIndexChanged: (index) =>
+                                                setState(() => _index = index),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -521,7 +567,11 @@ class _History extends StatelessWidget {
 /// The crew week while it loads: the same blocks in the same places as the
 /// page it becomes, so nothing jumps when the week arrives.
 class _CrewWeekSkeleton extends StatefulWidget {
-  const _CrewWeekSkeleton();
+  const _CrewWeekSkeleton({this.crewSize});
+
+  /// How many are in the crew, when a week has already said; the deck stands
+  /// as tall as that crew's card. Before then it stands for a small crew.
+  final int? crewSize;
 
   @override
   State<_CrewWeekSkeleton> createState() => _CrewWeekSkeletonState();
@@ -563,17 +613,38 @@ class _CrewWeekSkeletonState extends State<_CrewWeekSkeleton>
       child: IgnorePointer(
         child: FadeTransition(
           opacity: _opacity,
-          child: const Column(
-            key: ValueKey('crew-week-skeleton'),
+          child: Column(
+            key: const ValueKey('crew-week-skeleton'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // The crew's podium.
-              CrewPodiumPanel.loading(),
-              SizedBox(height: 18),
-              CrewPactsHeadingSkeleton(),
-              SizedBox(height: 12),
-              // The deck takes the rest, as the carousel does.
-              Expanded(child: CrewPactCarouselSkeleton()),
+              const CrewPodiumPanel.loading(),
+              const SizedBox(height: _CrewWeekPageState._yourWeekGap),
+              const YourWeekPanel.loading(),
+              const SizedBox(height: _CrewWeekPageState._pactsGap),
+              const CrewPactsHeadingSkeleton(),
+              const SizedBox(height: 12),
+              // The deck stands as tall as its card, as the carousel does.
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, slot) => Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      height: math.min(
+                        slot.maxHeight,
+                        CrewPactCarousel.heightFor(
+                          widget.crewSize ?? 3,
+                          extraText: math.max(
+                            0.0,
+                            MediaQuery.textScalerOf(context).scale(1) - 1,
+                          ),
+                        ),
+                      ),
+                      child: const CrewPactCarouselSkeleton(),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

@@ -1,5 +1,6 @@
 import 'check_in_moment.dart';
 import 'photo_check_in_page.dart';
+import '../widgets/pull_refresh_physics.dart';
 import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
 import '../invites/invite_code_entry.dart';
@@ -605,13 +606,15 @@ class _HomeDestinationState extends State<_HomeDestination>
     if (_savingPact != null) return;
     final request = ++_request;
     // The crew Home expects to show is loaded beside the crews list rather
-    // than after it. Should the list name another crew, this one is dropped.
+    // than after it, its week and its history both. Should the list name
+    // another crew, these are dropped.
     final expected = crewId ?? widget.selectedCrewId ?? _crew?.id;
     final early = expected == null
         ? null
         : widget.backend
               .fetchWeek(expected)
               .then<CrewWeek?>((week) => week, onError: (Object _) => null);
+    final earlyHistory = expected == null ? null : _fetchHistory(expected);
     try {
       final crews = await widget.pactsBackend.fetchCrews();
       if (!mounted || request != _request) return;
@@ -649,10 +652,9 @@ class _HomeDestinationState extends State<_HomeDestination>
       // only read as not out.
       final history = crew == null
           ? Future<List<CrewWeekSummary>?>.value()
-          : widget.backend
-                .fetchWeekHistory(crew.id, limit: 6)
-                .then<List<CrewWeekSummary>?>((weeks) => weeks)
-                .catchError((Object _) => null);
+          : crew.id == expected
+          ? earlyHistory!
+          : _fetchHistory(crew.id);
       final week = crew == null
           ? null
           : (crew.id == expected ? await early : null) ??
@@ -685,6 +687,11 @@ class _HomeDestinationState extends State<_HomeDestination>
       }
     }
   }
+
+  Future<List<CrewWeekSummary>?> _fetchHistory(String crewId) => widget.backend
+      .fetchWeekHistory(crewId, limit: 6)
+      .then<List<CrewWeekSummary>?>((weeks) => weeks)
+      .catchError((Object _) => null);
 
   /// Who can be nudged, alongside the week.
   ///
@@ -1007,13 +1014,7 @@ class _HomeDestinationState extends State<_HomeDestination>
         backgroundColor: WeekPactColors.cream,
         child: CustomScrollView(
           key: const ValueKey('home-refresh-viewport'),
-          physics: MediaQuery.disableAnimationsOf(context)
-              ? const AlwaysScrollableScrollPhysics(
-                  parent: ClampingScrollPhysics(),
-                )
-              : const _HomeRefreshPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
+          physics: refreshPhysics(context),
           slivers: [
             SliverFillRemaining(
               hasScrollBody: true,
@@ -1227,16 +1228,4 @@ class _HomeDestinationState extends State<_HomeDestination>
       ],
     );
   }
-}
-
-class _HomeRefreshPhysics extends BouncingScrollPhysics {
-  const _HomeRefreshPhysics({super.parent});
-
-  @override
-  _HomeRefreshPhysics applyTo(ScrollPhysics? ancestor) =>
-      _HomeRefreshPhysics(parent: buildParent(ancestor));
-
-  @override
-  SpringDescription get spring =>
-      SpringDescription.withDampingRatio(mass: 1, stiffness: 220, ratio: .75);
 }

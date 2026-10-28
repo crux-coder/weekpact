@@ -736,6 +736,7 @@ class _MemberAvatar extends StatelessWidget {
             ? initials
             : Image.network(
                 url,
+                cacheWidth: avatarDecodeWidth,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
                 errorBuilder: (_, _, _) => initials,
