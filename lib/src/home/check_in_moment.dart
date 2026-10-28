@@ -125,7 +125,13 @@ Future<void> showCheckInMoment(
               ),
             ),
             const SizedBox(height: 22),
-            AppButton(label: 'NICE', onPressed: () => Navigator.pop(context)),
+            // The button in the pact's own badge colour, as the badge above
+            // it is: the dialog is that pact's, top to bottom.
+            AppButton(
+              label: 'NICE',
+              color: WeekPactColors.pactBadge(pactIndex),
+              onPressed: () => Navigator.pop(context),
+            ),
           ],
         ),
       ),
