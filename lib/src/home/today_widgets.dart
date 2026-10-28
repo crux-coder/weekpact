@@ -1148,21 +1148,80 @@ class TodayPactsCard extends StatelessWidget {
       child: PactDeck(
         deckKey: const ValueKey('pact-stack'),
         ids: [for (final pact in pacts) pact.id],
-        itemBuilder: (context, index) => _PactCard(
-          key: ValueKey(pacts[index].id),
-          pact: pacts[index],
-          week: week,
-          userId: userId,
-          color: WeekPactColors.pactTint(index),
-          badge: WeekPactColors.pactBadge(index),
-          busy: savingPact == pacts[index].id,
-          onToggle: savingPact != null || onToggle == null
-              ? null
-              : () => onToggle!(pacts[index].id),
+        itemBuilder: (context, index) => _PactPressEffect(
+          key: ValueKey('press-${pacts[index].id}'),
+          builder: (context, press) => _PactCard(
+            key: ValueKey(pacts[index].id),
+            pact: pacts[index],
+            week: week,
+            userId: userId,
+            color: WeekPactColors.pactTint(index),
+            badge: WeekPactColors.pactBadge(index),
+            busy: savingPact == pacts[index].id,
+            onUndoHeld: press,
+            onToggle: savingPact != null || onToggle == null
+                ? null
+                : () => onToggle!(pacts[index].id),
+          ),
         ),
       ),
     );
   }
+}
+
+/// The card pressing in and coming back: down to [_depth] of its size as the
+/// held undo fills, under the firmer tap it gives, and back over a longer
+/// beat, so the undo reads as the card being pushed and letting go.
+class _PactPressEffect extends StatefulWidget {
+  const _PactPressEffect({super.key, required this.builder});
+
+  /// Builds the card, handed the press to call when the undo fills.
+  final Widget Function(BuildContext context, VoidCallback press) builder;
+
+  static const _depth = .95;
+  static const _in = Duration(milliseconds: 110);
+  static const _out = Duration(milliseconds: 260);
+
+  @override
+  State<_PactPressEffect> createState() => _PactPressEffectState();
+}
+
+class _PactPressEffectState extends State<_PactPressEffect>
+    with SingleTickerProviderStateMixin {
+  late final _press = AnimationController(
+    vsync: this,
+    duration: _PactPressEffect._in,
+    reverseDuration: _PactPressEffect._out,
+  );
+  late final Animation<double> _scale =
+      Tween(begin: 1.0, end: _PactPressEffect._depth).animate(
+        CurvedAnimation(
+          parent: _press,
+          curve: Curves.easeIn,
+          reverseCurve: Curves.easeOutBack,
+        ),
+      );
+
+  void _run() {
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    _press.forward(from: 0).then((_) {
+      if (mounted) _press.reverse();
+    });
+  }
+
+  @override
+  void dispose() {
+    _press.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _scale,
+    child: widget.builder(context, _run),
+    builder: (context, child) =>
+        Transform.scale(scale: _scale.value, child: child),
+  );
 }
 
 class _PactCard extends StatelessWidget {
@@ -1175,10 +1234,15 @@ class _PactCard extends StatelessWidget {
     required this.badge,
     required this.busy,
     required this.onToggle,
+    this.onUndoHeld,
   });
   final CrewPact pact;
   final CrewWeek week;
   final String userId;
+
+  /// Told the instant a held undo fills, with the tap under the thumb, so
+  /// the card can press in with it.
+  final VoidCallback? onUndoHeld;
 
   /// The card's tint, and the deeper companion its icon badge is drawn in.
   /// Both come from the pact's place in the crew's list, so they stay a pair.
@@ -1297,38 +1361,24 @@ class _PactCard extends StatelessWidget {
           // The control eases between its two states rather than cutting:
           // an undo in particular is a bar emptying and the button coming
           // back, and a cut there read as the card flinching.
-          // Pinned to the action's height, so the swap and the fade across
-          // it move nothing above.
+          // Pinned to the action's height, so the swap moves nothing above.
+          // The movement of an undo is the whole card's: it presses in as
+          // the bar fills, under the thumb's tap, and comes back.
           SizedBox(
             height: _actionHeight,
-            child: AnimatedSwitcher(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween(begin: .96, end: 1.0).animate(animation),
-                  child: child,
-                ),
-              ),
-              child: checked
-                  ? KeyedSubtree(
-                      key: const ValueKey('checked'),
-                      child: _CompletedCheckIn(
-                        pactTitle: pact.title,
-                        busy: busy,
-                        onUndo: onToggle,
-                        edge: doneEdge,
-                      ),
-                    )
-                  : KeyedSubtree(
-                      key: const ValueKey('unchecked'),
-                      child: _checkInButton(),
-                    ),
-            ),
+            child: checked
+                ? _CompletedCheckIn(
+                    pactTitle: pact.title,
+                    busy: busy,
+                    onUndo: onToggle == null
+                        ? null
+                        : () {
+                            onUndoHeld?.call();
+                            onToggle!();
+                          },
+                    edge: doneEdge,
+                  )
+                : _checkInButton(),
           ),
         ],
       ),

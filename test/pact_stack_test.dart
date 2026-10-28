@@ -380,9 +380,6 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('third'))).width,
         settled.width,
       );
-      // Mid-fade, with both states in the box, nothing above has moved.
-      await tester.pump(const Duration(milliseconds: 120));
-      expect(tester.getRect(progress), progressDone);
       await tester.pumpUi();
       expect(tester.getRect(progress), progressDone);
       expect(

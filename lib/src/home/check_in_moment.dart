@@ -58,7 +58,7 @@ class CheckInMoment {
 /// it off.
 ///
 /// The dialog itself arrives with the pop the pact card used to make on a
-/// check-in, taken slower: over half a second it swells a little past its
+/// check-in: over four tenths of a second it swells a little past its
 /// size and settles, fading in as it does, so the check-in still lands as
 /// one movement rather than a cut.
 Future<void> showCheckInMoment(
@@ -71,7 +71,7 @@ Future<void> showCheckInMoment(
   barrierDismissible: true,
   barrierLabel: 'Dismiss',
   barrierColor: Colors.black54,
-  transitionDuration: const Duration(milliseconds: 560),
+  transitionDuration: const Duration(milliseconds: 400),
   transitionBuilder: (context, animation, _, child) {
     final pop = TweenSequence<double>([
       TweenSequenceItem(

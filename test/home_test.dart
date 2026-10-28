@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -478,14 +480,21 @@ void main() {
     await hold.up();
     await tester.pumpUi();
     expect(backend.selected, contains('move'));
-    // Held to full, it comes off with a firmer tap than the press.
+    // Held to full, it comes off with a firmer tap than the press, and the
+    // card presses in with it and comes back.
     calls.clear();
+    final card = find.byKey(const ValueKey('move'));
+    final resting = tester.getRect(card).width;
+    var narrowest = resting;
     hold = await tester.startGesture(tester.getCenter(pact));
     for (var frame = 0; frame < 24; frame++) {
       await tester.pump(const Duration(milliseconds: 50));
+      narrowest = math.min(narrowest, tester.getRect(card).width);
     }
     await hold.up();
     await tester.pumpUi();
+    expect(narrowest, lessThan(resting));
+    expect(tester.getRect(card).width, resting);
     // Light taps run the whole way up, and only the end lands firmer.
     final kinds = calls.map((call) => call.arguments).toList();
     expect(kinds.last, 'HapticFeedbackType.mediumImpact');

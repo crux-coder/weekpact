@@ -76,8 +76,9 @@ kept a pact and the one-per-24-hours rule; the crew roster still sends nudges
 too.
 
 The moment a check-in lands, Home says so: the app's own dialog, arriving
-over half a second with the pop the pact card used to make on a check-in (the
-card's control now eases between its two states instead), in which the
+over four tenths of a second with the pop the pact card used to make on a
+check-in (the card now presses in and comes back as a held undo fills,
+under the undo's own tap), in which the
 pact's badge pops in over a burst of confetti cut from the pact palette, with
 a flourish under the thumb (a click, two taps, and the heavy one as the
 confetti goes), says where that puts you in the crew's day
