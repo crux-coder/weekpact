@@ -16,6 +16,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/page_frame.dart';
 import 'crew_backend.dart';
+import '../auth/profile_scope.dart';
 import '../home/home_backend.dart';
 import 'crew_profile.dart';
 import 'crew_roster.dart';
@@ -850,6 +851,16 @@ class _CrewPageState extends State<CrewPage> with WidgetsBindingObserver {
                     crew.isOwner && !members[i].isOwner && !_changingMembership
                     ? () => _changeMembership(member: crew.members[i])
                     : null,
+                onOpen: ProfileScope.opener(
+                  context,
+                  crewId: crew.id,
+                  WeekMember(
+                    members[i].userId,
+                    members[i].email,
+                    displayName: members[i].displayName ?? '',
+                    avatarUrl: members[i].avatarUrl,
+                  ),
+                ),
               ),
           ],
         ),

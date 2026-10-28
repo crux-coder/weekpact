@@ -7,6 +7,7 @@ import '../widgets/app_icon.dart';
 import '../widgets/app_sheet.dart';
 import '../widgets/skeleton_switcher.dart';
 import '../auth/account_page.dart';
+import '../auth/profile_scope.dart';
 import 'home_surface.dart';
 import 'pact_deck.dart';
 
@@ -741,6 +742,28 @@ class _HomeDestinationState extends State<_HomeDestination>
     );
   }
 
+  /// Opens the profile of a crewmate who has not been out today, where the
+  /// nudge is. Without a profile to open, the tap is the nudge itself.
+  void _openProfile(MemberDay day) {
+    final crew = _crew;
+    if (crew == null) return;
+    final open = ProfileScope.opener(
+      context,
+      day.member,
+      crewId: crew.id,
+      onNudged: (state) {
+        if (mounted) {
+          setState(() => _nudges = {..._nudges, day.member.id: state});
+        }
+      },
+    );
+    if (open == null) {
+      unawaited(_nudge(day));
+    } else {
+      open();
+    }
+  }
+
   Future<void> _togglePact(String pactId) async {
     final crew = _crew;
     final week = _week;
@@ -1004,7 +1027,7 @@ class _HomeDestinationState extends State<_HomeDestination>
                           // panel and a usable pact card; shorter viewports
                           // scale down.
                           248 +
-                              HomeHeader.height +
+                              HomeHeader.heightFor(constraints.maxWidth) +
                               CrewTodayBar.height +
                               12 +
                               CrewStreakCard.height +
@@ -1119,10 +1142,8 @@ class _HomeDestinationState extends State<_HomeDestination>
           rail: StoriesRail(
             days: days,
             onNudge: _nudge,
-            // Past the page's own margin, so a
-            // long crew leaves at the screen's
-            // edge rather than at the card's.
-            bleed: 12,
+            onProfile: _openProfile,
+            bleed: HomeHeader.railBleed,
             onOpen: (day) => _openStories(days, day),
             onCompose: _composeAchievement,
           ),

@@ -30,6 +30,7 @@ class StoriesRail extends StatelessWidget {
     required this.days,
     this.onOpen,
     this.onNudge,
+    this.onProfile,
     this.onCompose,
     this.bleed = 0,
   });
@@ -47,10 +48,14 @@ class StoriesRail extends StatelessWidget {
   /// and a member who is not is the tile the thought is about. Never called
   /// for the viewer — you cannot nudge yourself out of bed.
   ///
-  /// A dashed tile answers a plain tap with this as well as a long press. It
-  /// is the one tile with nothing else behind a tap, and a gesture nobody
-  /// discovers is a feature nobody has.
+  /// A dashed tile answers a long press with this, and a plain tap too when
+  /// there is no [onProfile] to open instead.
   final void Function(MemberDay day)? onNudge;
+
+  /// Opens the profile of a crewmate who is not in yet: a dashed tile's plain
+  /// tap. The profile carries the nudge, beside what they have kept before,
+  /// so a tap is a look at the person rather than a poke straight away.
+  final void Function(MemberDay day)? onProfile;
 
   /// Starts a post — an achievement or a plain story. Reached from your own
   /// tile only: its "+", a long press, and a plain tap while you have nothing
@@ -61,79 +66,107 @@ class StoriesRail extends StatelessWidget {
   /// screen at its edge rather than at the page's margin.
   final double bleed;
 
-  /// The tile, and the two lines under it. Sized so the rail costs Home about
-  /// what the heading did: a name a member is known by, over a face big enough
-  /// to be one.
-  static const tileSize = 56.0;
-  static const _gap = 5.0;
-  static const _labelHeight = 13.0;
-  static const height = tileSize + _gap + _labelHeight;
+  /// The gap from a face to its name, and the name's own line.
+  static const _gap = 6.0;
+  static const _labelHeight = 15.0;
+
+  /// The space between two tiles.
+  static const spacing = 8.0;
+
+  /// How many faces a screen shows: four whole, and a sliver of a fifth, so
+  /// the rail plainly runs on past the edge rather than looking like the
+  /// whole crew.
+  static const _visibleTiles = 4.3;
+
+  /// The face for a rail [width] wide that runs [bleed] past it on each side.
+  /// The first face starts at the page's margin and the rail leaves at the
+  /// screen's edge, so that is the span the faces share. Held between a face
+  /// still worth reading and one that would crowd a tablet.
+  static double tileSizeFor(double width, {double bleed = 0}) =>
+      ((width + bleed - _visibleTiles.floor() * spacing) / _visibleTiles).clamp(
+        56.0,
+        120.0,
+      );
+
+  /// The rail's height at [width]: a face and the name under it.
+  static double heightFor(double width, {double bleed = 0}) =>
+      tileSizeFor(width, bleed: bleed) + _gap + _labelHeight;
 
   /// The ring a member who is in wears, and the space it holds off the face.
-  static const _ring = 2.5;
-  static const _inset = 2.0;
+  static const _ring = 3.0;
+  static const _inset = 3.0;
 
   @override
-  Widget build(BuildContext context) {
-    final rail = ListView.separated(
-      key: const ValueKey('stories-rail'),
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(horizontal: bleed),
-      itemCount: days.length,
-      separatorBuilder: (_, _) => const SizedBox(width: 10),
-      itemBuilder: (context, index) => _StoryTile(
-        key: ValueKey('story-tile-${days[index].member.id}'),
-        day: days[index],
-        onOpen: days[index].isIn && onOpen != null
-            ? () => onOpen!(days[index])
-            : null,
-        onNudge: !days[index].isIn && !days[index].isViewer && onNudge != null
-            ? () => onNudge!(days[index])
-            : null,
-        onCompose: days[index].isViewer ? onCompose : null,
-      ),
-    );
-    return SizedBox(
-      key: const ValueKey('home-stories'),
-      height: height,
-      child: bleed == 0
-          ? rail
-          : LayoutBuilder(
-              builder: (context, space) => OverflowBox(
-                minWidth: space.maxWidth + bleed * 2,
-                maxWidth: space.maxWidth + bleed * 2,
-                child: rail,
-              ),
-            ),
-    );
-  }
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, space) {
+      final tile = tileSizeFor(space.maxWidth, bleed: bleed);
+      return SizedBox(
+        key: const ValueKey('home-stories'),
+        height: tile + _gap + _labelHeight,
+        child: OverflowBox(
+          minWidth: space.maxWidth + bleed * 2,
+          maxWidth: space.maxWidth + bleed * 2,
+          child: _rail(tile),
+        ),
+      );
+    },
+  );
+
+  Widget _rail(double tile) => ListView.separated(
+    key: const ValueKey('stories-rail'),
+    scrollDirection: Axis.horizontal,
+    padding: EdgeInsets.symmetric(horizontal: bleed),
+    itemCount: days.length,
+    separatorBuilder: (_, _) => const SizedBox(width: spacing),
+    itemBuilder: (context, index) => _StoryTile(
+      key: ValueKey('story-tile-${days[index].member.id}'),
+      day: days[index],
+      size: tile,
+      onOpen: days[index].isIn && onOpen != null
+          ? () => onOpen!(days[index])
+          : null,
+      onNudge: !days[index].isIn && !days[index].isViewer && onNudge != null
+          ? () => onNudge!(days[index])
+          : null,
+      onProfile: !days[index].isIn && !days[index].isViewer && onProfile != null
+          ? () => onProfile!(days[index])
+          : null,
+      onCompose: days[index].isViewer ? onCompose : null,
+    ),
+  );
 }
 
 class _StoryTile extends StatelessWidget {
   const _StoryTile({
     super.key,
     required this.day,
+    required this.size,
     this.onOpen,
     this.onNudge,
+    this.onProfile,
     this.onCompose,
   });
 
   final MemberDay day;
+
+  /// The face's side. See [StoriesRail.tileSizeFor].
+  final double size;
   final VoidCallback? onOpen;
   final VoidCallback? onNudge;
+  final VoidCallback? onProfile;
   final VoidCallback? onCompose;
 
   /// The corner marks: a trophy for an achievement today, a "+" for posting
   /// one. Small enough to sit inside the tile's corner without covering the
   /// face.
-  static const _pip = 20.0;
+  static const _pip = 24.0;
 
   /// The name under the face. Your own tile says so rather than repeating a
   /// name you know, which is also the only label in the rail that never
   /// changes position.
   ///
   /// Everyone else goes by their first name, as they do in the crew roster: a
-  /// tile is 56pt wide and a crew is on first-name terms. The whole name stays
+  /// tile is under a hundred points wide and a crew is on first-name terms. The whole name stays
   /// in the tooltip and in what a screen reader reads.
   String get _label {
     if (day.isViewer) return 'You';
@@ -167,7 +200,7 @@ class _StoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final face = SizedBox.square(
-      dimension: StoriesRail.tileSize,
+      dimension: size,
       child: day.isIn
           ? Container(
               padding: const EdgeInsets.all(StoriesRail._inset),
@@ -185,15 +218,18 @@ class _StoryTile extends StatelessWidget {
                   ),
                 ),
               ),
-              child: _Face(day: day),
+              child: _Face(day: day, size: size),
             )
           : Container(
               padding: const EdgeInsets.all(StoriesRail._inset),
               decoration: const ShapeDecoration(shape: _DashedAvatarShape()),
-              child: Opacity(opacity: .55, child: _Face(day: day)),
+              child: Opacity(
+                opacity: .55,
+                child: _Face(day: day, size: size),
+              ),
             ),
     );
-    final tap = onOpen ?? onNudge ?? onCompose;
+    final tap = onOpen ?? onProfile ?? onNudge ?? onCompose;
     final press = onNudge ?? onCompose;
     final pressHint = onNudge != null
         ? 'Nudge them'
@@ -206,24 +242,28 @@ class _StoryTile extends StatelessWidget {
       onTap: tap,
       // Neither gesture has a glyph a screen reader can find, so this is the
       // only place either is announced.
-      onTapHint: onOpen == null ? pressHint : null,
+      onTapHint: onProfile != null
+          ? 'Open their profile'
+          : onOpen == null
+          ? pressHint
+          : null,
       onLongPressHint: pressHint,
       onLongPress: press,
       excludeSemantics: true,
       child: SizedBox(
-        width: StoriesRail.tileSize,
+        width: size,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Tooltip(
               message: day.isViewer ? 'You' : _fullName,
               child: InkWell(
-                // A dashed tile has nothing to open, so its plain tap is the
-                // nudge. The press is kept beside it because the tile still
+                // A dashed tile has no story, so its plain tap opens the
+                // crewmate's profile, where the nudge stands beside what they
+                // have kept. The press stays the quick nudge; the tile itself
                 // carries no nudge mark and should not — a rail of dashed
                 // squares each wearing a button would read as a page about
-                // who is behind — but a press alone was the only way in, on a
-                // page that draws no crew roster at all.
+                // who is behind.
                 onTap: tap,
                 onLongPress: press == null
                     ? null
@@ -281,7 +321,7 @@ class _StoryTile extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: WeekPactType.secondary,
                   fontFamilyFallback: WeekPactType.secondaryFallback,
-                  fontSize: 10.5,
+                  fontSize: 12,
                   height: 1.2,
                   fontWeight: day.isViewer ? FontWeight.w600 : FontWeight.w400,
                   // Canvas ink, not card ink: the label sits on the page
@@ -333,9 +373,10 @@ class _Pip extends StatelessWidget {
 }
 
 class _Face extends StatelessWidget {
-  const _Face({required this.day});
+  const _Face({required this.day, required this.size});
 
   final MemberDay day;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -344,7 +385,7 @@ class _Face extends StatelessWidget {
       style: TextStyle(
         fontFamily: WeekPactType.secondary,
         fontFamilyFallback: WeekPactType.secondaryFallback,
-        fontSize: 16,
+        fontSize: size * .29,
         fontWeight: FontWeight.w500,
         color: homeInk,
       ),
@@ -361,8 +402,8 @@ class _Face extends StatelessWidget {
               : Image.network(
                   url,
                   fit: BoxFit.cover,
-                  width: StoriesRail.tileSize,
-                  height: StoriesRail.tileSize,
+                  width: size,
+                  height: size,
                   errorBuilder: (_, _, _) => Center(child: initials),
                 ),
         ),

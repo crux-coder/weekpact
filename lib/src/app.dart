@@ -18,6 +18,7 @@ import 'pacts/pacts_backend.dart';
 
 import 'auth/auth_backend.dart';
 import 'auth/auth_gate.dart';
+import 'auth/profile_scope.dart';
 import 'chat/chat_backend.dart';
 import 'crew/crew_backend.dart';
 import 'crew/crew_selection_store.dart';
@@ -124,10 +125,18 @@ class _WeekPactAppState extends State<WeekPactApp> with WidgetsBindingObserver {
       theme: WeekPactTheme.dark,
       themeMode: ThemeMode.dark,
       builder: (context, child) {
-        final content = PushBannerHost(
-          key: _banner,
-          child: StatusBarBlur(
-            child: WeekPactBackground(child: child ?? const SizedBox.shrink()),
+        final content = ProfileScope(
+          authBackend: widget.authBackend,
+          homeBackend: widget.homeBackend,
+          crewBackend: widget.crewBackend,
+          pactsBackend: widget.pactsBackend,
+          child: PushBannerHost(
+            key: _banner,
+            child: StatusBarBlur(
+              child: WeekPactBackground(
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
           ),
         );
         final notifications = widget.notifications;

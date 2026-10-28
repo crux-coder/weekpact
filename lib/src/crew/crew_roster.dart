@@ -105,11 +105,15 @@ class CrewPersonBand extends StatelessWidget {
     required this.isCurrentUser,
     required this.color,
     this.onRemove,
+    this.onOpen,
   });
   final CrewMember member;
   final bool isCurrentUser;
   final Color color;
   final VoidCallback? onRemove;
+
+  /// Opens the member's profile. The remove button keeps its own tap.
+  final VoidCallback? onOpen;
 
   String get _name => member.displayName?.trim().isNotEmpty == true
       ? member.displayName!.trim()
@@ -147,54 +151,57 @@ class CrewPersonBand extends StatelessWidget {
     final stacked = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     return CrewBand(
       fillColor: color,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-        child: Row(
-          children: [
-            SizedBox.square(dimension: 40, child: CrewFace(member: member)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Tooltip(
-                    message: _name,
-                    child: Text(
-                      _name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w500,
+      builder: (context) => InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+          child: Row(
+            children: [
+              SizedBox.square(dimension: 40, child: CrewFace(member: member)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Tooltip(
+                      message: _name,
+                      child: Text(
+                        _name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  if (stacked) _roleLabel(context),
-                ],
+                    if (stacked) _roleLabel(context),
+                  ],
+                ),
               ),
-            ),
-            if (!stacked) ...[const SizedBox(width: 10), _roleLabel(context)],
-            // The slot and its gap are held whether or not the row has a
-            // button, so every role label lines up down the roster and none of
-            // them runs under the button.
-            const SizedBox(width: 12),
-            SizedBox.square(
-              dimension: _bandSlot,
-              child: onRemove == null
-                  ? null
-                  // A person-minus glyph: the one control on the band says
-                  // what it does, where three dots said only that something
-                  // was hidden behind them.
-                  : BandGlyph(
-                      icon: HugeIconsStrokeRounded.userMinus01,
-                      face: context.ink,
-                      glyph: color,
-                      tooltip: 'Remove $_name',
-                      onPressed: onRemove,
-                    ),
-            ),
-          ],
+              if (!stacked) ...[const SizedBox(width: 10), _roleLabel(context)],
+              // The slot and its gap are held whether or not the row has a
+              // button, so every role label lines up down the roster and none of
+              // them runs under the button.
+              const SizedBox(width: 12),
+              SizedBox.square(
+                dimension: _bandSlot,
+                child: onRemove == null
+                    ? null
+                    // A person-minus glyph: the one control on the band says
+                    // what it does, where three dots said only that something
+                    // was hidden behind them.
+                    : BandGlyph(
+                        icon: HugeIconsStrokeRounded.userMinus01,
+                        face: context.ink,
+                        glyph: color,
+                        tooltip: 'Remove $_name',
+                        onPressed: onRemove,
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

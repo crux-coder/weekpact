@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import 'clap_control.dart';
+import '../auth/profile_scope.dart';
 import '../pacts/pact_icons.dart';
 import '../theme/status_bar_blur.dart';
 import '../theme/weekpact_theme.dart';
@@ -603,7 +604,13 @@ class _Head extends StatelessWidget {
             TimeOfDay.fromDateTime(kept!),
             alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
           );
-    return Row(
+    final story = this.story;
+    final openProfile = ProfileScope.opener(
+      context,
+      day.member,
+      crewId: story is PactStory ? story.pact.crewId : null,
+    );
+    final who = Row(
       children: [
         SizedBox.square(
           dimension: 32,
@@ -665,12 +672,32 @@ class _Head extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+    return Row(
+      children: [
+        Expanded(
+          child: openProfile == null
+              ? who
+              // The face and name open the poster's profile; the rest of the
+              // page still pages through the stories.
+              : Semantics(
+                  button: true,
+                  label: 'Open $name’s profile',
+                  child: GestureDetector(
+                    key: const ValueKey('story-open-profile'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: openProfile,
+                    child: who,
+                  ),
+                ),
+        ),
         if (onDelete != null)
           IconButton(
             key: const ValueKey('delete-achievement'),
             onPressed: onDelete,
             tooltip: story is AchievementStory
-                ? 'Delete ${(story as AchievementStory).kind.label.toLowerCase()}'
+                ? 'Delete ${story.kind.label.toLowerCase()}'
                 : 'Delete',
             icon: const HugeIcon(
               icon: HugeIconsStrokeRounded.delete02,

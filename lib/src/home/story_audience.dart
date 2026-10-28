@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../auth/profile_scope.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_sheet.dart';
@@ -273,7 +274,8 @@ class _AudienceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = who.member.displayName.trim();
-    return Padding(
+    final openProfile = ProfileScope.opener(context, who.member);
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       child: Row(
         children: [
@@ -312,5 +314,6 @@ class _AudienceRow extends StatelessWidget {
         ],
       ),
     );
+    return openProfile == null ? row : InkWell(onTap: openProfile, child: row);
   }
 }

@@ -8,6 +8,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../notifications/notification_preferences.dart';
+
 /// Where a person is in onboarding, as public.users.onboarding_step stores it.
 /// `profile` is an account whose name is still missing (Apple can withhold
 /// it), `crew` an account from the old flow that never answered the crew
@@ -114,7 +116,8 @@ abstract interface class AuthBackend {
   Future<void> deleteAccount({String? password});
 }
 
-class SupabaseAuthBackend implements AuthBackend {
+class SupabaseAuthBackend
+    implements AuthBackend, NotificationPreferencesBackend {
   SupabaseAuthBackend(this._client) {
     // Subscribe before other startup work so cold-start recovery links are retained.
     _client.auth.onAuthStateChange.listen(
@@ -481,6 +484,27 @@ class SupabaseAuthBackend implements AuthBackend {
       emailRedirectTo: emailRedirectTo ?? inviteRedirectBase,
     );
   }
+
+  @override
+  Future<NotificationPreferences> fetchNotificationPreferences() async =>
+      NotificationPreferences.fromJson(
+        Map<String, dynamic>.from(
+          await _client.rpc('my_notification_preferences') as Map,
+        ),
+      );
+
+  @override
+  Future<NotificationPreferences> setNotificationPreference(
+    NotificationKind kind,
+    bool enabled,
+  ) async => NotificationPreferences.fromJson(
+    Map<String, dynamic>.from(
+      await _client.rpc(
+        'set_notification_preference',
+        params: {'kind': kind.key, 'enabled': enabled},
+      ) as Map,
+    ),
+  );
 
   @override
   Future<void> updatePassword(String password) async {
