@@ -357,13 +357,21 @@ void main() {
       refresh(() => week = updated);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      // Completing pops the card out and then returns it to its resting size.
-      final popped = tester.getRect(find.byKey(const ValueKey('third')));
+      // Completing leaves the card at its size: the celebration is the
+      // dialog's, not the card's.
+      final before = tester.getRect(find.byKey(const ValueKey('third')));
       await tester.pumpUi();
       final settled = tester.getRect(find.byKey(const ValueKey('third')));
-      expect(popped.width, greaterThan(settled.width));
+      expect(before.width, settled.width);
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Checked in today').hitTestable(), findsOneWidget);
+      // The done bar stands exactly where the button stood, so the count
+      // and its bar above do not shift by the difference.
+      final progress = find.byKey(const ValueKey('pact-progress-third'));
+      final progressDone = tester.getRect(progress);
+      final actionDone = tester.getRect(
+        find.byKey(const ValueKey('check-in-Stretch')),
+      );
       backend.selected.remove('third');
       final undone = await backend.fetchWeek('crew');
       refresh(() => week = undone);
@@ -373,6 +381,11 @@ void main() {
         settled.width,
       );
       await tester.pumpUi();
+      expect(tester.getRect(progress), progressDone);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('check-in-Stretch'))),
+        actionDone,
+      );
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Check in').hitTestable(), findsOneWidget);
       await tester.drag(

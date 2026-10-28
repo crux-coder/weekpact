@@ -75,6 +75,21 @@ crewmate who has not checked in today offers a nudge, with the day they last
 kept a pact and the one-per-24-hours rule; the crew roster still sends nudges
 too.
 
+The moment a check-in lands, Home says so: the app's own dialog, arriving
+over four tenths of a second with the pop the pact card used to make on a
+check-in (the card now presses in and comes back as a held undo fills,
+under the undo's own tap), in which the
+pact's badge pops in over a burst of confetti cut from the pact palette, with
+a flourish under the thumb (a click, two taps, and the heavy one as the
+confetti goes), says where that puts you in the crew's day
+("First in the crew today.", "You and 2 crewmates are in today.", "The whole
+crew is in today."). It is read off the week in hand, before the refetch, and
+stays until
+sent off by its button or a tap outside; a crew of one hears about its week
+instead. An undo says nothing. With animations off the badge simply stands
+there and only the heavy tap is given. See `CheckInMoment` and
+`CheckInCelebration` in `lib/src/home/check_in_moment.dart`.
+
 Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets

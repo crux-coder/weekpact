@@ -53,9 +53,10 @@ const _countCaptionHeight = 1.2;
 const _captionToBar = 10.0;
 const _barToAction = 26.0;
 
-/// The tallest the card's action gets. [_CompletedCheckIn] stands 8 taller
-/// than the check-in button, and the card has to stand in the same box in
-/// either state — a card that grew on check-in would jump the whole stack.
+/// The card's action, in either state: the check-in button and the done bar
+/// are both exactly this tall. The count and its bar sit on top of the
+/// action, so if one state stood taller than the other they would shift by
+/// the difference on every check-in and undo.
 const _actionHeight = 56.0;
 
 /// What the card's content needs at its natural size, added up from the parts
@@ -1142,16 +1143,14 @@ class TodayPactsCard extends StatelessWidget {
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final deckHeight = height ?? (248 + math.max(0.0, scale - 1) * 200);
-    final checked = week.checkedToday(userId);
     return SizedBox(
       height: deckHeight,
       child: PactDeck(
         deckKey: const ValueKey('pact-stack'),
         ids: [for (final pact in pacts) pact.id],
-        itemBuilder: (context, index) => _PactCompletionEffect(
-          key: ValueKey('completion-${pacts[index].id}'),
-          completed: checked.contains(pacts[index].id),
-          child: _PactCard(
+        itemBuilder: (context, index) => _PactPressEffect(
+          key: ValueKey('press-${pacts[index].id}'),
+          builder: (context, press) => _PactCard(
             key: ValueKey(pacts[index].id),
             pact: pacts[index],
             week: week,
@@ -1159,6 +1158,7 @@ class TodayPactsCard extends StatelessWidget {
             color: WeekPactColors.pactTint(index),
             badge: WeekPactColors.pactBadge(index),
             busy: savingPact == pacts[index].id,
+            onUndoHeld: press,
             onToggle: savingPact != null || onToggle == null
                 ? null
                 : () => onToggle!(pacts[index].id),
@@ -1169,74 +1169,58 @@ class TodayPactsCard extends StatelessWidget {
   }
 }
 
-class _PactCompletionEffect extends StatefulWidget {
-  const _PactCompletionEffect({
-    super.key,
-    required this.completed,
-    required this.child,
-  });
-  final bool completed;
-  final Widget child;
+/// The card pressing in and coming back: down to [_depth] of its size as the
+/// held undo fills, under the firmer tap it gives, and back over a longer
+/// beat, so the undo reads as the card being pushed and letting go.
+class _PactPressEffect extends StatefulWidget {
+  const _PactPressEffect({super.key, required this.builder});
+
+  /// Builds the card, handed the press to call when the undo fills.
+  final Widget Function(BuildContext context, VoidCallback press) builder;
+
+  static const _depth = .95;
+  static const _in = Duration(milliseconds: 110);
+  static const _out = Duration(milliseconds: 260);
+
   @override
-  State<_PactCompletionEffect> createState() => _PactCompletionEffectState();
+  State<_PactPressEffect> createState() => _PactPressEffectState();
 }
 
-/// One short pop when a check-in lands. It runs after the check-in drawer has
-/// finished closing, and the buzz comes from the save itself.
-class _PactCompletionEffectState extends State<_PactCompletionEffect>
+class _PactPressEffectState extends State<_PactPressEffect>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _animation = AnimationController(
+  late final _press = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 260),
+    duration: _PactPressEffect._in,
+    reverseDuration: _PactPressEffect._out,
   );
-  late final Animation<double> _scale = TweenSequence<double>([
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.0,
-        end: 1.06,
-      ).chain(CurveTween(curve: Curves.easeOut)),
-      weight: 40,
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.06,
-        end: 1.0,
-      ).chain(CurveTween(curve: Curves.easeInOut)),
-      weight: 60,
-    ),
-  ]).animate(_animation);
+  late final Animation<double> _scale =
+      Tween(begin: 1.0, end: _PactPressEffect._depth).animate(
+        CurvedAnimation(
+          parent: _press,
+          curve: Curves.easeIn,
+          reverseCurve: Curves.easeOutBack,
+        ),
+      );
 
-  @override
-  void didUpdateWidget(covariant _PactCompletionEffect oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.completed) _animation.stop();
-    if (widget.completed &&
-        !oldWidget.completed &&
-        !MediaQuery.disableAnimationsOf(context)) {
-      _animation.forward(from: 0);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) _animation.stop();
+  void _run() {
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    _press.forward(from: 0).then((_) {
+      if (mounted) _press.reverse();
+    });
   }
 
   @override
   void dispose() {
-    _animation.dispose();
+    _press.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _animation,
-    child: widget.child,
-    builder: (context, child) => Transform.scale(
-      scale: _animation.isAnimating ? _scale.value : 1.0,
-      child: child,
-    ),
+    animation: _scale,
+    child: widget.builder(context, _run),
+    builder: (context, child) =>
+        Transform.scale(scale: _scale.value, child: child),
   );
 }
 
@@ -1250,10 +1234,15 @@ class _PactCard extends StatelessWidget {
     required this.badge,
     required this.busy,
     required this.onToggle,
+    this.onUndoHeld,
   });
   final CrewPact pact;
   final CrewWeek week;
   final String userId;
+
+  /// Told the instant a held undo fills, with the tap under the thumb, so
+  /// the card can press in with it.
+  final VoidCallback? onUndoHeld;
 
   /// The card's tint, and the deeper companion its icon badge is drawn in.
   /// Both come from the pact's place in the crew's list, so they stay a pair.
@@ -1369,61 +1358,79 @@ class _PactCard extends StatelessWidget {
           // above the bar — at 18 the two gaps matched and the bar
           // floated between them, reading as neither.
           const SizedBox(height: _barToAction),
-          if (checked)
-            _CompletedCheckIn(
-              pactTitle: pact.title,
-              busy: busy,
-              onUndo: onToggle,
-              edge: doneEdge,
-            )
-          else
-            Container(
-              width: double.infinity,
-              decoration: const ShapeDecoration(
-                shape: WeekPactMetrics.buttonShape,
-                shadows: [
-                  BoxShadow(
-                    color: WeekPactColors.inkEdge,
-                    offset: WeekPactMetrics.raisedOffset,
-                  ),
-                ],
-              ),
-              child: FilledButton.icon(
-                key: ValueKey('check-in-${pact.title}'),
-                onPressed: onToggle,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _ink,
-                  foregroundColor: homePaper,
-                  minimumSize: const Size(0, 48),
-                  shape: WeekPactMetrics.buttonShape.copyWith(
-                    side: const BorderSide(color: WeekPactColors.inkEdge),
-                  ),
-                ),
-                icon: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : HugeIcon(icon: HugeIconsStrokeRounded.circle, size: 22),
-                label: Text(
-                  'Check in',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontFamily: WeekPactType.secondary,
-                    fontFamilyFallback: WeekPactType.secondaryFallback,
-                    fontSize: 17,
-                  ),
-                ),
-              ),
-            ),
+          // The control eases between its two states rather than cutting:
+          // an undo in particular is a bar emptying and the button coming
+          // back, and a cut there read as the card flinching.
+          // Pinned to the action's height, so the swap moves nothing above.
+          // The movement of an undo is the whole card's: it presses in as
+          // the bar fills, under the thumb's tap, and comes back.
+          SizedBox(
+            height: _actionHeight,
+            child: checked
+                ? _CompletedCheckIn(
+                    pactTitle: pact.title,
+                    busy: busy,
+                    onUndo: onToggle == null
+                        ? null
+                        : () {
+                            onUndoHeld?.call();
+                            onToggle!();
+                          },
+                    edge: doneEdge,
+                  )
+                : _checkInButton(),
+          ),
         ],
       ),
     );
   }
+
+  /// The check-in button: ink on the tint, raised on the same edge as the
+  /// kept days above it.
+  Widget _checkInButton() => Container(
+    width: double.infinity,
+    height: _actionHeight,
+    decoration: const ShapeDecoration(
+      shape: WeekPactMetrics.buttonShape,
+      shadows: [
+        BoxShadow(
+          color: WeekPactColors.inkEdge,
+          offset: WeekPactMetrics.raisedOffset,
+        ),
+      ],
+    ),
+    child: FilledButton.icon(
+      key: ValueKey('check-in-${pact.title}'),
+      onPressed: onToggle,
+      style: FilledButton.styleFrom(
+        backgroundColor: _ink,
+        foregroundColor: homePaper,
+        minimumSize: const Size(0, _actionHeight),
+        shape: WeekPactMetrics.buttonShape.copyWith(
+          side: const BorderSide(color: WeekPactColors.inkEdge),
+        ),
+      ),
+      icon: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : HugeIcon(icon: HugeIconsStrokeRounded.circle, size: 22),
+      label: Text(
+        'Check in',
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontFamily: WeekPactType.secondary,
+          fontFamilyFallback: WeekPactType.secondaryFallback,
+          fontSize: 17,
+        ),
+      ),
+    ),
+  );
 }
 
 class _CompletedCheckIn extends StatefulWidget {
@@ -1524,7 +1531,7 @@ class _CompletedCheckInState extends State<_CompletedCheckIn>
         builder: (context, child) {
           final fill = _hold.value;
           return Container(
-            height: 56,
+            height: _actionHeight,
             decoration: ShapeDecoration(
               gradient: LinearGradient(
                 colors: [_undoFill, _undoFill, _doneFill, _doneFill],
@@ -1856,16 +1863,10 @@ class _SkeletonPactFace extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: _barToAction),
-              SizedBox(
+              SkeletonBar(
                 height: _actionHeight,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: SkeletonBar(
-                    height: WeekPactMetrics.buttonHeight,
-                    shape: WeekPactMetrics.buttonShape,
-                    color: _ink.withValues(alpha: .8),
-                  ),
-                ),
+                shape: WeekPactMetrics.buttonShape,
+                color: _ink.withValues(alpha: .8),
               ),
             ],
           ),

@@ -635,10 +635,7 @@ class _AccountPageState extends State<AccountPage> {
         visualDensity: VisualDensity.compact,
         shape: WeekPactMetrics.buttonShape,
       ),
-      icon: const AppIcon(
-        icon: HugeIconsStrokeRounded.zap,
-        size: 16,
-      ),
+      icon: const AppIcon(icon: HugeIconsStrokeRounded.zap, size: 16),
       label: Text(
         nudged ? 'Nudged' : 'Nudge',
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),

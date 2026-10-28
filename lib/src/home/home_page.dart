@@ -1,3 +1,4 @@
+import 'check_in_moment.dart';
 import 'photo_check_in_page.dart';
 import '../crew/crew_selection_store.dart';
 import '../onboarding/crew_setup_page.dart';
@@ -801,34 +802,45 @@ class _HomeDestinationState extends State<_HomeDestination>
         );
       }
       if (!mounted) return;
+      final kept = CrewWeek(
+        today: week.today,
+        streakWeeks: week.streakWeeks,
+        weekStart: week.weekStart,
+        timezone: week.timezone,
+        nextDayAt: week.nextDayAt,
+        pacts: week.pacts,
+        members: week.members,
+        achievements: week.achievements,
+        latestActivity:
+            week.latestActivity?.userId == widget.userId &&
+                week.latestActivity?.pactId == pactId &&
+                !selected.contains(pactId)
+            ? null
+            : week.latestActivity,
+        checkIns: [
+          ...week.checkIns.where(
+            (i) => i.userId != widget.userId || i.day != week.today,
+          ),
+          ...selected.map((id) => PactCheckIn(id, widget.userId, week.today)),
+        ],
+      );
+      setState(() => _week = kept);
       if (selected.contains(pactId)) {
-        // Haptics are best-effort and must never turn a saved check-in into an error.
-        unawaited(HapticFeedback.heavyImpact().catchError((Object _) {}));
-      }
-      setState(() {
-        _week = CrewWeek(
-          today: week.today,
-          streakWeeks: week.streakWeeks,
-          weekStart: week.weekStart,
-          timezone: week.timezone,
-          nextDayAt: week.nextDayAt,
-          pacts: week.pacts,
-          members: week.members,
-          achievements: week.achievements,
-          latestActivity:
-              week.latestActivity?.userId == widget.userId &&
-                  week.latestActivity?.pactId == pactId &&
-                  !selected.contains(pactId)
-              ? null
-              : week.latestActivity,
-          checkIns: [
-            ...week.checkIns.where(
-              (i) => i.userId != widget.userId || i.day != week.today,
+        // Said at once, off the week as it now stands: the reward for a
+        // check-in belongs to the moment of it, not to the next refresh.
+        unawaited(
+          showCheckInMoment(
+            context,
+            moment: CheckInMoment.read(
+              kept,
+              userId: widget.userId,
+              pactId: pactId,
             ),
-            ...selected.map((id) => PactCheckIn(id, widget.userId, week.today)),
-          ],
+            pactIndex: week.pacts.indexWhere((p) => p.id == pactId),
+            iconKey: pact.iconKey,
+          ),
         );
-      });
+      }
     } catch (error) {
       // Midnight in the crew's timezone is its own failure, not a failed
       // write: the server refuses a check-in dated against the day that just

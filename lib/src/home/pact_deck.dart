@@ -98,7 +98,7 @@ class _PactDeckState extends State<PactDeck> {
             builder: (context, box) => PageView.builder(
               key: widget.deckKey,
               controller: _controller,
-              // The card's raised edge and its completion pop reach past its box.
+              // The card's raised edge reaches past its box.
               clipBehavior: Clip.none,
               itemCount: count,
               onPageChanged: (index) {

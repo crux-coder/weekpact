@@ -294,6 +294,9 @@ void main() {
     );
     await tester.pumpUi();
     await submitTestPhoto(tester);
+    // The moment is said, and sent off, before the bar is reached again.
+    await tester.tap(find.text('NICE'));
+    await tester.pumpUi();
     expect(find.text('Checked in today'), findsWidgets);
     final hold = await tester.startGesture(
       tester.getCenter(

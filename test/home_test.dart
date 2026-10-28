@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'support/photo_fakes.dart';
 import 'support/pump_ui.dart';
 
@@ -454,7 +456,19 @@ void main() {
     backend.failSave = false;
     await submitTestPhoto(tester);
     await tester.pumpUi();
-    expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
+    // The moment's flourish: a click, two taps, and the heavy one as the
+    // confetti goes. Nothing more while the dialog stands.
+    expect(calls.map((call) => call.arguments), [
+      'HapticFeedbackType.selectionClick',
+      'HapticFeedbackType.lightImpact',
+      'HapticFeedbackType.mediumImpact',
+      'HapticFeedbackType.heavyImpact',
+    ]);
+    await tester.pump(const Duration(seconds: 2));
+    expect(calls.length, 4);
+    // The moment is sent off before the bar is reached again.
+    await tester.tap(find.text('NICE'));
+    await tester.pumpUi();
     // A tap on the done bar does nothing: undo has to be held.
     await tester.tap(pact);
     await tester.pumpUi();
@@ -466,14 +480,21 @@ void main() {
     await hold.up();
     await tester.pumpUi();
     expect(backend.selected, contains('move'));
-    // Held to full, it comes off with a firmer tap than the press.
+    // Held to full, it comes off with a firmer tap than the press, and the
+    // card presses in with it and comes back.
     calls.clear();
+    final card = find.byKey(const ValueKey('move'));
+    final resting = tester.getRect(card).width;
+    var narrowest = resting;
     hold = await tester.startGesture(tester.getCenter(pact));
     for (var frame = 0; frame < 24; frame++) {
       await tester.pump(const Duration(milliseconds: 50));
+      narrowest = math.min(narrowest, tester.getRect(card).width);
     }
     await hold.up();
     await tester.pumpUi();
+    expect(narrowest, lessThan(resting));
+    expect(tester.getRect(card).width, resting);
     // Light taps run the whole way up, and only the end lands firmer.
     final kinds = calls.map((call) => call.arguments).toList();
     expect(kinds.last, 'HapticFeedbackType.mediumImpact');
@@ -511,6 +532,55 @@ void main() {
     expect(find.byKey(const ValueKey('take-picture')), findsNothing);
     expect(backend.selected, contains('move'));
     expect(backend.lastPhotos, isEmpty);
+    // The moment is said at once, off the week in hand: the viewer already
+    // had a pact in today, so they are the crew's first.
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
+    expect(find.text('First in the crew today.'), findsOneWidget);
+    // It stays until it is sent off.
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
+    await tester.tap(find.text('NICE'));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a tap outside sends the check-in moment off, and an undo shows '
+      'none', (tester) async {
+    final backend = DashboardBackend();
+    backend.pacts.pacts = [
+      for (final pact in backend.pacts.pacts)
+        CrewPact(
+          id: pact.id,
+          crewId: pact.crewId,
+          title: pact.title,
+          frequency: pact.frequency,
+          daysPerWeek: pact.daysPerWeek,
+          iconKey: pact.iconKey,
+          photoRequired: false,
+        ),
+    ];
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    final pact = find
+        .byKey(const ValueKey('check-in-Move for 30 min'))
+        .hitTestable();
+    await tester.tap(pact);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
+    // Held to full, the check-in comes off without a word.
+    final hold = await tester.startGesture(tester.getCenter(pact));
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await hold.up();
+    await tester.pumpUi();
+    expect(backend.selected, isNot(contains('move')));
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
