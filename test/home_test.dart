@@ -455,6 +455,9 @@ void main() {
     await submitTestPhoto(tester);
     await tester.pumpUi();
     expect(calls.single.arguments, 'HapticFeedbackType.heavyImpact');
+    // The moment is sent off before the bar is reached again.
+    await tester.tap(find.text('NICE'));
+    await tester.pumpUi();
     // A tap on the done bar does nothing: undo has to be held.
     await tester.tap(pact);
     await tester.pumpUi();
@@ -516,16 +519,16 @@ void main() {
     expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
     expect(find.text('First in the crew today.'), findsOneWidget);
     expect(find.textContaining('Move for 30 min: 1 of'), findsOneWidget);
-    // And it lifts away on its own, after a proper look at it.
-    await tester.pump(const Duration(seconds: 3));
+    // It stays until it is sent off.
+    await tester.pump(const Duration(seconds: 10));
     expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
+    await tester.tap(find.text('NICE'));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a tap sends the check-in moment off early, and an undo shows '
+  testWidgets('a tap outside sends the check-in moment off, and an undo shows '
       'none', (tester) async {
     final backend = DashboardBackend();
     backend.pacts.pacts = [
@@ -547,12 +550,10 @@ void main() {
         .hitTestable();
     await tester.tap(pact);
     await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(find.byKey(const ValueKey('check-in-moment')));
-    // A frame to restart the life from its lift-out, the lift-out, and a
-    // frame for the overlay to let go of the entry.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpUi();
     expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
     // Held to full, the check-in comes off without a word.
     final hold = await tester.startGesture(tester.getCenter(pact));

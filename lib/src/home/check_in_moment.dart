@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/styles/stroke_rounded.dart';
 
 import '../pacts/pact_icons.dart';
 import '../theme/weekpact_theme.dart';
-import '../widgets/app_icon.dart';
-import '../widgets/pact_icon_badge.dart';
+import '../widgets/app_components.dart';
+import '../widgets/app_dialog.dart';
 import 'home_backend.dart';
-import 'home_surface.dart';
 
 /// What Home says the moment a check-in lands: where that puts you in the
 /// crew's day, and how far along the pact's week it takes you.
@@ -64,235 +62,25 @@ class CheckInMoment {
   }
 }
 
-/// The moment, shown over Home as a raised card in the pact's tint that drops
-/// in under the status bar, holds for a breath, and lifts away. A tap sends
-/// it off early.
-///
-/// Its whole life is one animation rather than a timer, so a page torn down
-/// under it (a crew switched, a test ended) takes it along with nothing left
-/// ticking.
-class CheckInMomentBanner extends StatefulWidget {
-  const CheckInMomentBanner({
-    super.key,
-    required this.moment,
-    required this.tint,
-    required this.badge,
-    required this.iconKey,
-    required this.onDone,
-  });
-
-  final CheckInMoment moment;
-  final Color tint;
-  final Color badge;
-  final String iconKey;
-  final VoidCallback onDone;
-
-  /// The one banner on screen. A second check-in replaces the first rather
-  /// than stacking under it.
-  static OverlayEntry? _showing;
-
-  /// Puts the banner up over [context]'s nearest overlay.
-  static void show(
-    BuildContext context, {
-    required CheckInMoment moment,
-    required int pactIndex,
-    required String iconKey,
-  }) {
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) return;
-    _showing?.remove();
-    late final OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => CheckInMomentBanner(
-        key: const ValueKey('check-in-moment'),
-        moment: moment,
-        tint: WeekPactColors.pactTint(pactIndex),
-        badge: WeekPactColors.pactBadge(pactIndex),
-        iconKey: iconKey,
-        onDone: () {
-          if (_showing == entry) _showing = null;
-          entry.remove();
-        },
-      ),
-    );
-    _showing = entry;
-    overlay.insert(entry);
-  }
-
-  @override
-  State<CheckInMomentBanner> createState() => _CheckInMomentBannerState();
-}
-
-class _CheckInMomentBannerState extends State<CheckInMomentBanner>
-    with SingleTickerProviderStateMixin {
-  static const _in = Duration(milliseconds: 360);
-  static const _hold = Duration(milliseconds: 5000);
-  static const _out = Duration(milliseconds: 260);
-
-  late final _life = AnimationController(
-    vsync: this,
-    duration: _in + _hold + _out,
-  );
-
-  /// 1 while the card is up; the ends of the life ramp it in and out.
-  late final Animation<double> _presence = TweenSequence<double>([
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 0.0,
-        end: 1.0,
-      ).chain(CurveTween(curve: Curves.easeOutBack)),
-      weight: _in.inMilliseconds.toDouble(),
-    ),
-    TweenSequenceItem(
-      tween: ConstantTween(1.0),
-      weight: _hold.inMilliseconds.toDouble(),
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.0,
-        end: 0.0,
-      ).chain(CurveTween(curve: Curves.easeIn)),
-      weight: _out.inMilliseconds.toDouble(),
-    ),
-  ]).animate(_life);
-
-  @override
-  void initState() {
-    super.initState();
-    _life
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) widget.onDone();
-      })
-      ..forward();
-  }
-
-  @override
-  void dispose() {
-    _life.dispose();
-    super.dispose();
-  }
-
-  /// Off early, from wherever the life has got to: the lift-out is the same
-  /// length whether the hold ran or not.
-  void _dismiss() {
-    if (_life.status == AnimationStatus.completed) return;
-    final outStart = 1 - _out.inMilliseconds / _life.duration!.inMilliseconds;
-    if (_life.value < outStart) _life.value = outStart;
-    _life.forward();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    return Positioned(
-      left: 12,
-      right: 12,
-      top: top + 8,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640 - 24),
-          child: AnimatedBuilder(
-            animation: _presence,
-            builder: (context, child) {
-              final presence = _presence.value.clamp(0.0, 1.2);
-              return Transform.translate(
-                offset: Offset(0, -24 * (1 - presence)),
-                child: Opacity(opacity: presence.clamp(0.0, 1.0), child: child),
-              );
-            },
-            child: Semantics(
-              liveRegion: true,
-              label: '${widget.moment.headline} ${widget.moment.detail}',
-              excludeSemantics: true,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _dismiss,
-                child: HomeSurface(
-                  tint: widget.tint,
-                  radius: WeekPactMetrics.cardCorner,
-                  raised: true,
-                  depth: WeekPactMetrics.cardDepth,
-                  outlineColor: Color.lerp(widget.tint, Colors.black, .28),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 18, 18),
-                  child: Row(
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          PactIconBadge(
-                            icon: PactIcon.find(widget.iconKey).data,
-                            tint: widget.badge,
-                            size: 64,
-                          ),
-                          // The done mark, as the card's own check-in wears it.
-                          Positioned(
-                            right: -7,
-                            bottom: -7,
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: const BoxDecoration(
-                                color: WeekPactColors.doneMark,
-                                shape: BoxShape.circle,
-                                border: Border.fromBorderSide(
-                                  BorderSide(
-                                    color: WeekPactColors.cream,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                              child: const Center(
-                                child: AppIcon(
-                                  icon: HugeIconsStrokeRounded.tick02,
-                                  color: WeekPactColors.cream,
-                                  size: 16,
-                                  strokeWidth: 2.4,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              widget.moment.headline,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: homeInk,
-                                fontSize: 22,
-                                height: 1.15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              widget.moment.detail,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: homeMutedInk,
-                                fontSize: 15,
-                                height: 1.25,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// The moment, put up as the app's own dialog in the pact's badge colour:
+/// the pact's icon, the headline, the detail, and one button. It stays until
+/// it is read and sent off, by the button or a tap outside it.
+Future<void> showCheckInMoment(
+  BuildContext context, {
+  required CheckInMoment moment,
+  required int pactIndex,
+  required String iconKey,
+}) => showDialog<void>(
+  context: context,
+  builder: (context) => AppDialog(
+    key: const ValueKey('check-in-moment'),
+    centered: true,
+    icon: PactIcon.find(iconKey).data,
+    iconColor: WeekPactColors.pactBadge(pactIndex),
+    title: moment.headline,
+    message: moment.detail,
+    actions: [
+      AppButton(label: 'NICE', onPressed: () => Navigator.pop(context)),
+    ],
+  ),
+);

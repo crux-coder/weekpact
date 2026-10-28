@@ -832,15 +832,17 @@ class _HomeDestinationState extends State<_HomeDestination>
       if (selected.contains(pactId)) {
         // Said at once, off the week as it now stands: the reward for a
         // check-in belongs to the moment of it, not to the next refresh.
-        CheckInMomentBanner.show(
-          context,
-          moment: CheckInMoment.read(
-            kept,
-            userId: widget.userId,
-            pactId: pactId,
+        unawaited(
+          showCheckInMoment(
+            context,
+            moment: CheckInMoment.read(
+              kept,
+              userId: widget.userId,
+              pactId: pactId,
+            ),
+            pactIndex: week.pacts.indexWhere((p) => p.id == pactId),
+            iconKey: pact.iconKey,
           ),
-          pactIndex: week.pacts.indexWhere((p) => p.id == pactId),
-          iconKey: pact.iconKey,
         );
       }
     } catch (error) {

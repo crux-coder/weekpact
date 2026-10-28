@@ -75,13 +75,14 @@ crewmate who has not checked in today offers a nudge, with the day they last
 kept a pact and the one-per-24-hours rule; the crew roster still sends nudges
 too.
 
-The moment a check-in lands, Home says so: a card in the pact's tint drops in
-under the status bar with where that puts you in the crew's day ("First in
-the crew today.", "You and 2 crewmates are in today.", "The whole crew is in
-today.") and the pact's count for the week with what is left of today. It is
-read off the week in hand, before the refetch, holds for a breath and lifts
-away, or goes on a tap; a crew of one hears about its week instead. An undo
-says nothing. See `CheckInMoment` in `lib/src/home/check_in_moment.dart`.
+The moment a check-in lands, Home says so: the app's own dialog, with the
+pact's icon in its badge colour, says where that puts you in the crew's day
+("First in the crew today.", "You and 2 crewmates are in today.", "The whole
+crew is in today.") and the pact's count for the week with what is left of
+today. It is read off the week in hand, before the refetch, and stays until
+sent off by its button or a tap outside; a crew of one hears about its week
+instead. An undo says nothing. See `CheckInMoment` in
+`lib/src/home/check_in_moment.dart`.
 
 Account, and a crewmate's profile, carry a **Pacts** section over the
 check-in wall: a card per pact with how many weeks the person has been on it
