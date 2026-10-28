@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 
+import '../auth/profile_scope.dart';
 import '../crew/crew_page_layout.dart';
 import '../crew/crew_switcher.dart';
 import '../home/home_backend.dart';
@@ -348,6 +349,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                   for (final who in people)
                     _PersonRow(
                       member: _members[who],
+                      crewId: _crew?.id,
                       name: _name(who),
                       reaction: message.reactions[who],
                     ),
@@ -656,6 +658,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           message: message,
           mine: message.senderId == widget.userId,
           member: _members[message.senderId],
+          crewId: _crew?.id,
           senderName: _name(message.senderId),
           opensRun: opensRun,
           closesRun: closesRun,
@@ -1209,9 +1212,20 @@ class _DayLine extends StatelessWidget {
 }
 
 class _ChatAvatar extends StatelessWidget {
-  const _ChatAvatar({required this.member, this.size = 28});
+  const _ChatAvatar({
+    required this.member,
+    this.size = 28,
+    this.opensProfile = false,
+    this.crewId,
+  });
   final WeekMember? member;
   final double size;
+
+  /// Whether a tap opens the member's profile, where one can be opened.
+  final bool opensProfile;
+
+  /// The chat's crew, which a nudge from the profile goes out in.
+  final String? crewId;
 
   @override
   Widget build(BuildContext context) {
@@ -1224,7 +1238,10 @@ class _ChatAvatar extends StatelessWidget {
       ),
     );
     final url = member?.avatarUrl;
-    return FlatAvatar(
+    final openProfile = opensProfile
+        ? ProfileScope.opener(context, member, crewId: crewId)
+        : null;
+    final avatar = FlatAvatar(
       radius: size / 2,
       backgroundColor: context.ink.withValues(alpha: .14),
       child: url == null || url.trim().isEmpty
@@ -1238,6 +1255,18 @@ class _ChatAvatar extends StatelessWidget {
               errorBuilder: (_, _, _) => initials,
             ),
     );
+    if (openProfile == null) return avatar;
+    final name = member?.displayName.trim() ?? '';
+    return Semantics(
+      button: true,
+      label: name.isEmpty ? 'Open profile' : 'Open $name’s profile',
+      child: GestureDetector(
+        key: ValueKey('chat-open-profile-${member?.id}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: openProfile,
+        child: avatar,
+      ),
+    );
   }
 }
 
@@ -1248,6 +1277,7 @@ class _MessageRow extends StatelessWidget {
     required this.mine,
     required this.member,
     required this.senderName,
+    this.crewId,
     required this.opensRun,
     required this.closesRun,
     required this.seenBy,
@@ -1263,6 +1293,7 @@ class _MessageRow extends StatelessWidget {
   final ChatMessage message;
   final bool mine;
   final WeekMember? member;
+  final String? crewId;
   final String senderName;
   final bool opensRun;
   final bool closesRun;
@@ -1457,7 +1488,12 @@ class _MessageRow extends StatelessWidget {
                   SizedBox(
                     width: _avatar,
                     child: opensRun
-                        ? _ChatAvatar(member: member, size: _avatar)
+                        ? _ChatAvatar(
+                            member: member,
+                            size: _avatar,
+                            opensProfile: true,
+                            crewId: crewId,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 8),
@@ -1929,7 +1965,13 @@ class _SheetButton extends StatelessWidget {
 /// Somebody in a message's sheet: who they are, and the reaction they gave,
 /// or a quiet tick for having seen it.
 class _PersonRow extends StatelessWidget {
-  const _PersonRow({required this.member, required this.name, this.reaction});
+  const _PersonRow({
+    required this.member,
+    required this.name,
+    this.reaction,
+    this.crewId,
+  });
+  final String? crewId;
   final WeekMember? member;
   final String name;
   final String? reaction;
@@ -1937,7 +1979,7 @@ class _PersonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reaction = this.reaction;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       child: Row(
         children: [
@@ -1966,6 +2008,14 @@ class _PersonRow extends StatelessWidget {
         ],
       ),
     );
+    final openProfile = ProfileScope.opener(context, member, crewId: crewId);
+    return openProfile == null
+        ? row
+        : InkWell(
+            key: ValueKey('person-open-profile-${member?.id}'),
+            onTap: openProfile,
+            child: row,
+          );
   }
 }
 

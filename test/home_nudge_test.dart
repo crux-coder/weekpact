@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/photo_fakes.dart';
 
+import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/auth/profile_history.dart';
 import 'package:weekpact/src/home/photo_check_in_page.dart';
 import 'package:weekpact/src/home/home_backend.dart';
 import 'package:weekpact/src/home/nudge_sheet.dart';
@@ -56,6 +58,30 @@ class NudgeFromRailBackend extends StoriesBackend {
       nextAllowedAt: DateTime.utc(2026, 9, 10, 9),
     );
   }
+}
+
+/// The rail's backend with a wall, so Eli's tile opens his profile.
+class NudgeWithProfilesBackend extends NudgeFromRailBackend
+    implements ProfileHistoryBackend {
+  @override
+  Future<ProfileSummary> fetchProfileSummary({String? userId}) async =>
+      const ProfileSummary(checkIns: 0, crews: 1, crewIds: ['crew']);
+
+  @override
+  Future<List<ProfileCheckIn>> fetchMyCheckIns({
+    ProfileCheckIn? before,
+    String? pactId,
+    int limit = 30,
+    String? userId,
+  }) async => const [];
+}
+
+class _SignedIn extends MissingConfigurationAuthBackend {
+  const _SignedIn();
+
+  @override
+  AuthUser? get currentUser =>
+      const AuthUser(id: 'me', email: 'person@example.com');
 }
 
 Finder _tile(String id) => find.byKey(ValueKey('story-tile-$id'));
@@ -132,12 +158,43 @@ void main() {
     expect(find.text('Nudged Eli Fisher.'), findsOneWidget);
   });
 
-  testWidgets('a plain tap on a dashed tile opens the same offer', (
+  testWidgets('a plain tap on a dashed tile opens their profile, nudge on it', (
     tester,
   ) async {
-    // A long press was the only entrance on the one page that draws the rail,
-    // and a gesture with no mark on it is a feature nobody finds. A dashed
-    // tile has nothing else behind a tap, so the tap is the nudge.
+    final backend = NudgeWithProfilesBackend();
+    await pumpStoriesHome(
+      tester,
+      backend: backend,
+      profileAuth: const _SignedIn(),
+    );
+    await tester.tap(_tile('eli'));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('nudge-dialog')), findsNothing);
+    expect(find.text('Eli Fisher'), findsOneWidget);
+    expect(find.text('Edit profile'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('profile-nudge')));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('nudge-dialog')), findsOneWidget);
+    expect(find.textContaining('Nothing kept this week yet.'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('send-nudge')));
+    await tester.pumpUi();
+    expect(backend.sent, ['eli']);
+    expect(find.text('Nudged Eli Fisher.'), findsOneWidget);
+    // Still on the profile, which now says so.
+    expect(find.text('Nudged'), findsOneWidget);
+
+    // Home took the answer too: the quick nudge says it is already sent.
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpUi();
+    await tester.longPress(_tile('eli'));
+    await tester.pumpUi();
+    expect(find.text('ALREADY NUDGED'), findsOneWidget);
+  });
+
+  testWidgets('without a profile to open, a dashed tile\'s tap is the nudge', (
+    tester,
+  ) async {
     final backend = NudgeFromRailBackend();
     await pumpStoriesHome(tester, backend: backend);
     await tester.tap(_tile('eli'));

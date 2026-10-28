@@ -235,34 +235,47 @@ class HomeHeader extends StatelessWidget {
   /// own middle — a row of three would push it left by half a bell.
   final Widget? action;
 
-  static const railHeight = StoriesRail.height;
   static const gap = CrewSwitcher.gap;
+
+  /// How far the rail runs past the page's own margin, so a long crew leaves
+  /// at the screen's edge rather than at the card's.
+  static const railBleed = 12.0;
+
+  /// The rail's height on a page [width] wide. Its faces grow with the
+  /// screen; see [StoriesRail.tileSizeFor].
+  static double railHeightFor(double width) =>
+      StoriesRail.heightFor(width, bleed: railBleed);
 
   /// The title row. Tall enough for the bell's tap target, which is the taller
   /// of the two things standing in it; the name centres in whatever is left.
   static const selectorHeight = NotificationsBell.size;
-  static const height = selectorHeight + gap + railHeight;
-
-  /// The rail alone, with nothing over it.
-  static const headingHeight = railHeight;
+  static double heightFor(double width) =>
+      selectorHeight + gap + railHeightFor(width);
 
   @override
   Widget build(BuildContext context) {
     final above = selector;
     final corner = action;
-    return SizedBox(
-      key: const ValueKey('home-header'),
-      height: above == null && corner == null ? headingHeight : height,
-      child: above == null && corner == null
-          ? rail
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                HomeTitleRow(selector: above, action: corner),
-                const SizedBox(height: gap),
-                SizedBox(height: railHeight, child: rail),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, space) {
+        final railHeight = railHeightFor(space.maxWidth);
+        return SizedBox(
+          key: const ValueKey('home-header'),
+          height: above == null && corner == null
+              ? railHeight
+              : heightFor(space.maxWidth),
+          child: above == null && corner == null
+              ? rail
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    HomeTitleRow(selector: above, action: corner),
+                    const SizedBox(height: gap),
+                    SizedBox(height: railHeight, child: rail),
+                  ],
+                ),
+        );
+      },
     );
   }
 }
@@ -1660,25 +1673,34 @@ class _TodaySkeletonState extends State<TodaySkeleton>
               // than most have, so the row is full whatever arrives. It runs
               // off the edge on a narrow phone exactly as the rail itself
               // does, rather than squeezing to fit and then jumping.
-              SizedBox(
-                height: HomeHeader.headingHeight,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: 5,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (_, _) => const Column(
-                    children: [
-                      SkeletonBar(
-                        width: StoriesRail.tileSize,
-                        height: StoriesRail.tileSize,
-                        shape: AvatarShape(),
+              LayoutBuilder(
+                builder: (context, space) {
+                  final tile = StoriesRail.tileSizeFor(
+                    space.maxWidth,
+                    bleed: HomeHeader.railBleed,
+                  );
+                  return SizedBox(
+                    height: HomeHeader.railHeightFor(space.maxWidth),
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 5,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(width: StoriesRail.spacing),
+                      itemBuilder: (_, _) => Column(
+                        children: [
+                          SkeletonBar(
+                            width: tile,
+                            height: tile,
+                            shape: const AvatarShape(),
+                          ),
+                          const SizedBox(height: 6),
+                          const SkeletonBar(width: 36, height: 9),
+                        ],
                       ),
-                      SizedBox(height: 5),
-                      SkeletonBar(width: 28, height: 8),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               // The streak card's silhouette, at its own height, so nothing on

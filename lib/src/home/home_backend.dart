@@ -870,19 +870,29 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
   }
 
   @override
-  Future<ProfileSummary> fetchProfileSummary() async => ProfileSummary.fromJson(
-    Map<String, dynamic>.from(await client.rpc('my_profile_summary')),
-  );
+  Future<ProfileSummary> fetchProfileSummary({String? userId}) async =>
+      ProfileSummary.fromJson(
+        Map<String, dynamic>.from(
+          userId == null
+              ? await client.rpc('my_profile_summary')
+              : await client.rpc(
+                  'member_profile_summary',
+                  params: {'target_user_id': userId},
+                ),
+        ),
+      );
 
   @override
   Future<List<ProfileCheckIn>> fetchMyCheckIns({
     ProfileCheckIn? before,
     String? pactId,
     int limit = 30,
+    String? userId,
   }) async {
     final rows = await client.rpc(
-      'my_check_ins',
+      userId == null ? 'my_check_ins' : 'member_check_ins',
       params: {
+        'target_user_id': ?userId,
         'before_created_at': before?.createdAt.toIso8601String(),
         'before_pact': before?.ref.pactId,
         'before_day': before?.day,

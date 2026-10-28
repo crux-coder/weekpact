@@ -20,13 +20,17 @@ import '../crew/crew_page.dart';
 import '../crew/crew_page_layout.dart';
 import '../home/check_in_story.dart';
 import '../home/home_backend.dart';
+import '../home/nudge_sheet.dart';
 import '../onboarding/profile_avatar.dart';
+import '../notifications/notification_kind_controls.dart';
+import '../notifications/notification_preferences.dart';
 import '../notifications/notification_scope.dart';
 import '../notifications/notification_settings_card.dart';
 import '../pacts/pacts_backend.dart';
 import '../theme/weekpact_theme.dart';
 import '../widgets/app_components.dart';
 import '../widgets/app_sheet.dart';
+import '../widgets/avatar_shape.dart';
 import '../widgets/page_frame.dart';
 
 /// The Account tab: your own record, as a wall of every check-in you have
@@ -35,6 +39,10 @@ import '../widgets/page_frame.dart';
 ///
 /// Settings, Log out and Delete account sit behind the gear in the corner:
 /// the wall pages on as it scrolls, so nothing can stand at its foot.
+///
+/// Given a [member], it is that crewmate's profile instead, opened from their
+/// face elsewhere: the same header and wall, scoped to the crews you share,
+/// with a way back where the gear was and nothing to edit.
 class AccountPage extends StatefulWidget {
   const AccountPage({
     super.key,
@@ -49,7 +57,12 @@ class AccountPage extends StatefulWidget {
     this.active = true,
     this.onCrewSelected,
     this.onCrewLeft,
+    this.member,
+    this.nudgeCrewId,
+    this.onNudged,
   });
+
+  /// Whoever is signed in, on their own profile or on a crewmate's.
   final AuthUser user;
   final AuthBackend backend;
   final bool signingOut;
@@ -72,6 +85,17 @@ class AccountPage extends StatefulWidget {
   final ValueChanged<String>? onCrewSelected;
   final VoidCallback? onCrewLeft;
 
+  /// The crewmate whose profile this is. Null for your own.
+  final WeekMember? member;
+
+  /// The crew a nudge to [member] goes out in: the one their face was seen
+  /// in. Null, or a crew the two of you no longer share, falls back to the
+  /// first crew you do.
+  final String? nudgeCrewId;
+
+  /// Hears of a nudge sent from the profile, so the page behind keeps step.
+  final ValueChanged<CrewNudgeState>? onNudged;
+
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
@@ -93,6 +117,14 @@ class _AccountPageState extends State<AccountPage> {
   bool _wallFailed = false;
   String? _pactFilter;
   int _request = 0;
+
+  /// The nudge on a crewmate's profile: the crew it goes out in, that crew's
+  /// week for the dialog's reason, and whether one is allowed. The button
+  /// waits for the week; a state that will not load leaves it standing, since
+  /// the send is what decides.
+  String? _nudgeCrew;
+  CrewWeek? _nudgeWeek;
+  CrewNudgeState? _nudgeState;
 
   ProfileHistoryBackend? get _history => switch (widget.homeBackend) {
     final ProfileHistoryBackend history => history,
@@ -124,15 +156,49 @@ class _AccountPageState extends State<AccountPage> {
     final history = _history;
     if (history == null) return;
     try {
-      final summary = await history.fetchProfileSummary();
+      final summary = await history.fetchProfileSummary(
+        userId: widget.member?.id,
+      );
       if (!mounted || request != _request) return;
       setState(() {
         _summary = summary;
         // A pact the filter was on may have gone with its crew.
         if (!summary.pacts.any((p) => p.id == _pactFilter)) _pactFilter = null;
       });
+      await _loadNudge(request, summary);
     } catch (_) {
       // The figures keep their dashes; the wall says what failed.
+    }
+  }
+
+  Future<void> _loadNudge(int request, ProfileSummary summary) async {
+    final member = widget.member;
+    final backend = widget.homeBackend;
+    final shared = summary.crewIds ?? const <String>[];
+    if (member == null || backend == null || member.id == widget.user.id) {
+      return;
+    }
+    final hint = widget.nudgeCrewId;
+    final crewId = shared.contains(hint) ? hint : shared.firstOrNull;
+    if (crewId == null) {
+      setState(() => _nudgeCrew = null);
+      return;
+    }
+    final states = backend
+        .fetchNudgeStates(crewId)
+        .then<CrewNudgeState?>((states) => states[member.id])
+        .catchError((Object _) => null);
+    try {
+      final week = await backend.fetchWeekBrief(crewId);
+      final state = await states;
+      if (!mounted || request != _request) return;
+      setState(() {
+        _nudgeCrew = crewId;
+        _nudgeWeek = week;
+        _nudgeState = state;
+      });
+    } catch (_) {
+      // No week, no reason to give: the button stays away until a refresh.
     }
   }
 
@@ -169,6 +235,7 @@ class _AccountPageState extends State<AccountPage> {
       final page = await history.fetchMyCheckIns(
         pactId: _pactFilter,
         limit: _pageSize,
+        userId: widget.member?.id,
       );
       if (!mounted || request != _request) return;
       setState(() {
@@ -191,6 +258,7 @@ class _AccountPageState extends State<AccountPage> {
         before: loaded.last,
         pactId: _pactFilter,
         limit: _pageSize,
+        userId: widget.member?.id,
       );
       if (!mounted || request != _request) return;
       setState(() {
@@ -240,6 +308,41 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
+  Future<void> _nudge() async {
+    final crewId = _nudgeCrew;
+    final week = _nudgeWeek;
+    final member = widget.member;
+    final backend = widget.homeBackend;
+    if (crewId == null || week == null || member == null || backend == null) {
+      return;
+    }
+    final kept =
+        week.checkIns
+            .where((i) => i.userId == member.id)
+            .map((i) => i.day)
+            .toList()
+          ..sort();
+    final result = await showNudge(
+      context: context,
+      backend: backend,
+      crewId: crewId,
+      member: member,
+      state: _nudgeState,
+      today: week.today,
+      lastKept: kept.lastOrNull,
+    );
+    if (!mounted || result == null) return;
+    setState(() => _nudgeState = result);
+    // Only the crew the page behind was showing is its business.
+    if (crewId == widget.nudgeCrewId) widget.onNudged?.call(result);
+    final name = member.displayName.trim();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Nudged ${name.isEmpty ? 'your crewmate' : name}.'),
+      ),
+    );
+  }
+
   Future<void> _openSettings() => showAppSheet<void>(
     context: context,
     builder: (sheetContext) => AppSheet(
@@ -282,7 +385,9 @@ class _AccountPageState extends State<AccountPage> {
       openCheckInStory(
         context,
         checkIn: checkIn.ref,
-        viewerId: checkIn.ref.userId,
+        // On your own wall the check-in's author is you, whatever id the
+        // signed-in user arrived with.
+        viewerId: widget.member == null ? checkIn.ref.userId : widget.user.id,
         backend: backend,
       ),
     );
@@ -290,14 +395,24 @@ class _AccountPageState extends State<AccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    final member = widget.member;
     final user = _edited ?? widget.user;
-    final name = '${user.firstName} ${user.lastName}'.trim();
+    final name = member == null
+        ? '${user.firstName} ${user.lastName}'.trim()
+        : member.displayName.trim();
     final initials = [user.firstName, user.lastName]
         .where((part) => part.trim().isNotEmpty)
         .map((part) => part.trim().characters.first.toUpperCase())
         .join();
     final summary = _summary;
-    final crews = _crews ?? const <PactCrew>[];
+    // A crewmate's strip is the crews you share, which only the summary knows.
+    final shared = summary?.crewIds;
+    final crews = (_crews ?? const <PactCrew>[])
+        .where(
+          (crew) =>
+              member == null || (shared != null && shared.contains(crew.id)),
+        )
+        .toList();
     final history = _history != null;
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
@@ -307,18 +422,32 @@ class _AccountPageState extends State<AccountPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                tooltip: 'Settings',
-                onPressed: _openSettings,
-                icon: AppIcon(
-                  icon: HugeIconsStrokeRounded.settings01,
-                  color: context.ink,
-                  size: 24,
+            if (member == null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: 'Settings',
+                  onPressed: _openSettings,
+                  icon: AppIcon(
+                    icon: HugeIconsStrokeRounded.settings01,
+                    color: context.ink,
+                    size: 24,
+                  ),
+                ),
+              )
+            else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: AppIcon(
+                    icon: HugeIconsStrokeRounded.arrowLeft01,
+                    color: context.ink,
+                    size: 24,
+                  ),
                 ),
               ),
-            ),
             Row(
               key: const ValueKey('account-profile'),
               children: [
@@ -326,13 +455,15 @@ class _AccountPageState extends State<AccountPage> {
                 // rather than the canvas's light ink.
                 Theme(
                   data: WeekPactTheme.light,
-                  child: ProfileAvatar(
-                    backend: widget.backend,
-                    size: 84,
-                    initials: initials,
-                    backgroundColor: WeekPactColors.mintGreen,
-                    photo: _avatar,
-                  ),
+                  child: member == null
+                      ? ProfileAvatar(
+                          backend: widget.backend,
+                          size: 84,
+                          initials: initials,
+                          backgroundColor: WeekPactColors.mintGreen,
+                          photo: _avatar,
+                        )
+                      : _MemberAvatar(member: member, size: 84),
                 ),
                 if (history) ...[
                   const SizedBox(width: 12),
@@ -365,40 +496,60 @@ class _AccountPageState extends State<AccountPage> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              name.isEmpty ? 'Your profile' : name,
-              style: TextStyle(
-                color: context.ink,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
+            // A crewmate's nudge stands beside their name, small: the page is
+            // about them, and the button is one thing you might do there.
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name.isNotEmpty
+                        ? name
+                        : member == null
+                        ? 'Your profile'
+                        : 'Crew member',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (member != null)
+                  if (_nudgeButton() case final button?) ...[
+                    const SizedBox(width: 12),
+                    button,
+                  ],
+              ],
+            ),
+            // A crewmate's address is theirs; the crews you share say enough.
+            if (member == null) ...[
+              const SizedBox(height: 2),
+              Text(
+                user.email,
+                style: TextStyle(color: context.muted, fontSize: 14),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              user.email,
-              style: TextStyle(color: context.muted, fontSize: 14),
-            ),
-            const SizedBox(height: 14),
-            Tooltip(
-              message: 'Edit profile',
-              child: FilledButton.icon(
-                onPressed: widget.signingOut ? null : _edit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: WeekPactColors.cream,
-                  foregroundColor: WeekPactColors.black,
-                  minimumSize: const Size.fromHeight(44),
-                  shape: WeekPactMetrics.buttonShape,
-                ),
-                icon: const AppIcon(
-                  icon: HugeIconsStrokeRounded.pencilEdit02,
-                  size: 20,
-                ),
-                label: const Text(
-                  'Edit profile',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              const SizedBox(height: 14),
+              Tooltip(
+                message: 'Edit profile',
+                child: FilledButton.icon(
+                  onPressed: widget.signingOut ? null : _edit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: WeekPactColors.cream,
+                    foregroundColor: WeekPactColors.black,
+                    minimumSize: const Size.fromHeight(44),
+                    shape: WeekPactMetrics.buttonShape,
+                  ),
+                  icon: const AppIcon(
+                    icon: HugeIconsStrokeRounded.pencilEdit02,
+                    size: 20,
+                  ),
+                  label: const Text(
+                    'Edit profile',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
-            ),
+            ],
             if (crews.isNotEmpty) ...[
               const SizedBox(height: WeekPactMetrics.sectionGap),
               const CrewSectionLabel('CREWS'),
@@ -458,11 +609,50 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  /// The nudge, a small pill beside a crewmate's name. Gone once they are in
+  /// or cannot be nudged; still there once nudged, so the dialog can say when
+  /// the next one is allowed.
+  Widget? _nudgeButton() {
+    if (_nudgeCrew == null || _nudgeWeek == null) return null;
+    final status = _nudgeState?.status;
+    if (status == CrewNudgeStatus.checkedIn ||
+        status == CrewNudgeStatus.unavailable) {
+      return null;
+    }
+    final nudged =
+        status == CrewNudgeStatus.sent || status == CrewNudgeStatus.cooldown;
+    return FilledButton.icon(
+      key: const ValueKey('profile-nudge'),
+      onPressed: _nudge,
+      style: FilledButton.styleFrom(
+        backgroundColor: nudged
+            ? context.ink.withValues(alpha: .12)
+            : WeekPactColors.cream,
+        foregroundColor: nudged ? context.ink : WeekPactColors.black,
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.fromLTRB(10, 0, 14, 0),
+        tapTargetSize: MaterialTapTargetSize.padded,
+        visualDensity: VisualDensity.compact,
+        shape: WeekPactMetrics.buttonShape,
+      ),
+      icon: const AppIcon(
+        icon: HugeIconsStrokeRounded.zap,
+        size: 16,
+      ),
+      label: Text(
+        nudged ? 'Nudged' : 'Nudge',
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
   Widget _buildWall(BuildContext context) {
     final checkIns = _checkIns;
     if (checkIns == null && _wallFailed) {
       return _WallMessage(
-        text: 'Your check-ins could not load.',
+        text: widget.member == null
+            ? 'Your check-ins could not load.'
+            : 'These check-ins could not load.',
         action: 'Try again',
         onAction: () => _loadWall(_request),
       );
@@ -471,19 +661,21 @@ class _AccountPageState extends State<AccountPage> {
       return ProfileWallGrid(
         itemCount: 9,
         itemBuilder: (context, _) => DecoratedBox(
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: context.ink.withValues(alpha: .06),
-            borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
+            shape: ProfileWallTile.shape,
           ),
         ),
       );
     }
     if (checkIns.isEmpty) {
       return _WallMessage(
-        text: _pactFilter == null
+        text: _pactFilter != null
+            ? 'Nothing kept for this pact yet.'
+            : widget.member == null
             ? 'Every check-in you keep collects here. Keep a pact on Home '
                   'and it is the first.'
-            : 'Nothing kept for this pact yet.',
+            : 'Nothing kept in your crews yet.',
       );
     }
     return Column(
@@ -510,6 +702,48 @@ class _AccountPageState extends State<AccountPage> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A crewmate's face in the header: their photo, or their initials on the
+/// mint your own wears.
+class _MemberAvatar extends StatelessWidget {
+  const _MemberAvatar({required this.member, required this.size});
+
+  final WeekMember member;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = Center(
+      child: Text(
+        member.initials,
+        style: TextStyle(
+          color: context.ink,
+          fontSize: size * .35,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+    final url = member.avatarUrl;
+    return Container(
+      width: size,
+      height: size,
+      decoration: const ShapeDecoration(
+        shape: AvatarShape(),
+        color: WeekPactColors.mintGreen,
+      ),
+      child: AvatarClip(
+        child: url == null || url.trim().isEmpty
+            ? initials
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, _, _) => initials,
+              ),
+      ),
     );
   }
 }
@@ -574,9 +808,16 @@ class _AccountSettings extends StatelessWidget {
       const SizedBox(height: 12),
       AppSurface(
         key: const ValueKey('account-preferences'),
-        builder: (_) => Column(
+        builder: (context) => Column(
           children: [
             _NotificationControl(enabled: enabled),
+            // What the account is sent, once this phone is sent anything.
+            if (backend case final NotificationPreferencesBackend preferences)
+              if (NotificationScope.maybeOf(context)?.enabled ?? false)
+                NotificationKindControls(
+                  backend: preferences,
+                  enabled: enabled,
+                ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Divider(height: 1),

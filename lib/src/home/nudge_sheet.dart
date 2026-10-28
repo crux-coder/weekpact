@@ -164,7 +164,7 @@ class _NudgeDialogState extends State<_NudgeDialog> {
   Widget build(BuildContext context) => AppDialog(
     key: const ValueKey('nudge-dialog'),
     centered: true,
-    icon: HugeIconsStrokeRounded.handPointingRight01,
+    icon: HugeIconsStrokeRounded.zap,
     iconColor: WeekPactColors.crewProgress,
     title: '$_name hasn’t been out today',
     message: _message,

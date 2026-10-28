@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
+import 'package:weekpact/src/auth/profile_scope.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/achievement_composer.dart';
 import 'package:weekpact/src/home/clap_control.dart';
@@ -97,11 +98,22 @@ Future<void> pumpStoriesHome(
   StorySeenStore? seen,
   ThemeData? theme,
   CheckInPhotoCapture? capturePhoto,
+  AuthBackend? profileAuth,
 }) async {
   final home = backend ?? StoriesBackend();
   await tester.pumpWidget(
     MaterialApp(
       theme: theme ?? WeekPactTheme.light,
+      // With a signed-in [profileAuth], faces open profiles as in the app.
+      builder: profileAuth == null
+          ? null
+          : (context, child) => ProfileScope(
+              authBackend: profileAuth,
+              homeBackend: home,
+              crewBackend: const MissingCrewBackend(),
+              pactsBackend: home.pacts,
+              child: child!,
+            ),
       home: HomePage(
         user: const AuthUser(email: 'person@example.com'),
         authBackend: const MissingConfigurationAuthBackend(),

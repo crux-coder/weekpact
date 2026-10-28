@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:weekpact/src/auth/account_page.dart';
 import 'package:weekpact/src/auth/auth_backend.dart';
 import 'package:weekpact/src/auth/profile_history.dart';
+import 'package:weekpact/src/auth/profile_scope.dart';
 import 'package:weekpact/src/auth/profile_wall.dart';
 import 'package:weekpact/src/crew/crew_backend.dart';
 import 'package:weekpact/src/home/home_backend.dart';
@@ -24,6 +25,7 @@ class WallBackend extends DashboardBackend implements ProfileHistoryBackend {
 
   final int total;
   final requests = <({String? before, String? pactId})>[];
+  final userIds = <String?>[];
 
   static const wallPacts = [
     ProfilePact(
@@ -65,16 +67,24 @@ class WallBackend extends DashboardBackend implements ProfileHistoryBackend {
   ];
 
   @override
-  Future<ProfileSummary> fetchProfileSummary() async =>
-      ProfileSummary(checkIns: total, crews: 1, pacts: wallPacts);
+  Future<ProfileSummary> fetchProfileSummary({String? userId}) async =>
+      ProfileSummary(
+        checkIns: total,
+        crews: 1,
+        pacts: wallPacts,
+        // A crewmate shares only the first crew with the viewer.
+        crewIds: userId == null ? null : const ['crew'],
+      );
 
   @override
   Future<List<ProfileCheckIn>> fetchMyCheckIns({
     ProfileCheckIn? before,
     String? pactId,
     int limit = 30,
+    String? userId,
   }) async {
     requests.add((before: before?.day, pactId: pactId));
+    userIds.add(userId);
     final matching = _all
         .where((c) => pactId == null || c.ref.pactId == pactId)
         .toList();
@@ -216,5 +226,81 @@ void main() {
         image.dispose();
       });
     }
+  });
+
+  memberProfileTests();
+}
+
+class SignedIn extends MissingConfigurationAuthBackend {
+  const SignedIn();
+
+  @override
+  AuthUser? get currentUser =>
+      const AuthUser(id: 'me', email: 'alex.morgan@example.com');
+}
+
+void memberProfileTests() {
+  const sam = WeekMember('sam', '', displayName: 'Sam Rivera');
+
+  testWidgets('a face opens the crewmate\'s profile, read-only', (
+    tester,
+  ) async {
+    final backend = WallBackend(total: 5);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: WeekPactTheme.dark,
+        builder: (context, child) => ProfileScope(
+          authBackend: const SignedIn(),
+          homeBackend: backend,
+          crewBackend: const TwoCrews(),
+          pactsBackend: const MissingPactsBackend(),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: ProfileScope.opener(context, sam),
+              child: const Text('Sam'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Sam'));
+    await tester.pumpUi();
+
+    expect(find.text('Sam Rivera'), findsOneWidget);
+    expect(find.text('5'), findsOneWidget);
+    expect(find.byType(ProfileWallTile), findsNWidgets(5));
+    expect(backend.userIds, everyElement('sam'));
+    // Nothing of yours to change on somebody else's page.
+    expect(find.text('Edit profile'), findsNothing);
+    expect(find.byTooltip('Settings'), findsNothing);
+    expect(find.text('alex.morgan@example.com'), findsNothing);
+    // The nudge comes with the profile wherever it was opened from, in the
+    // first crew the two of you share when the face came with none.
+    expect(find.byKey(const ValueKey('profile-nudge')), findsOneWidget);
+    // Only the crew the two of you share.
+    expect(find.byKey(const ValueKey('account-crew-crew')), findsOneWidget);
+    expect(find.byKey(const ValueKey('account-crew-club')), findsNothing);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpUi();
+    expect(find.text('Sam Rivera'), findsNothing);
+  });
+
+  testWidgets('without a scope a face opens nothing', (tester) async {
+    late VoidCallback? opener;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            opener = ProfileScope.opener(context, sam);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+    expect(opener, isNull);
   });
 }

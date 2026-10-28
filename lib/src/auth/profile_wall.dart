@@ -235,6 +235,11 @@ class ProfileWallTile extends StatelessWidget {
   final ProfileCheckIn checkIn;
   final VoidCallback? onTap;
 
+  /// A tile's outline: a story's own squircle, stepped down to a tile's curve.
+  static const shape = ContinuousRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(WeekPactMetrics.panelCurve)),
+  );
+
   static const _months = [
     'Jan',
     'Feb',
@@ -269,55 +274,54 @@ class ProfileWallTile extends StatelessWidget {
       button: onTap != null,
       label: '${checkIn.pactTitle}, ${checkIn.crewName}, $day',
       excludeSemantics: true,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(WeekPactMetrics.controlRadius),
-        child: Material(
-          color: tint,
-          child: InkWell(
-            onTap: onTap,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (url == null)
-                  Center(child: bare)
-                else
-                  Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Center(child: bare),
-                  ),
-                if (url != null)
-                  Positioned(
-                    left: 6,
-                    bottom: 6,
-                    child: PactIconBadge(
-                      icon: icon,
-                      tint: badge,
-                      size: 22,
-                      depth: 1,
-                    ),
-                  ),
+      child: Material(
+        color: tint,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (url == null)
+                Center(child: bare)
+              else
+                Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(child: bare),
+                ),
+              if (url != null)
                 Positioned(
-                  top: 5,
-                  right: 7,
-                  child: Text(
-                    day,
-                    style: TextStyle(
-                      color: url == null
-                          ? WeekPactColors.black.withValues(alpha: .74)
-                          : Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      shadows: url == null
-                          ? null
-                          : const [
-                              Shadow(color: Color(0x99000000), blurRadius: 3),
-                            ],
-                    ),
+                  left: 6,
+                  bottom: 6,
+                  child: PactIconBadge(
+                    icon: icon,
+                    tint: badge,
+                    size: 22,
+                    depth: 1,
                   ),
                 ),
-              ],
-            ),
+              Positioned(
+                top: 5,
+                right: 7,
+                child: Text(
+                  day,
+                  style: TextStyle(
+                    color: url == null
+                        ? WeekPactColors.black.withValues(alpha: .74)
+                        : Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    shadows: url == null
+                        ? null
+                        : const [
+                            Shadow(color: Color(0x99000000), blurRadius: 3),
+                          ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -326,7 +330,8 @@ class ProfileWallTile extends StatelessWidget {
 }
 
 /// The wall's three-wide grid, laid out in the page's own scroll rather than
-/// scrolling on its own.
+/// scrolling on its own. Each tile is a story's shape, tall rather than square,
+/// so a check-in reads on the wall the way it was seen in the rail.
 class ProfileWallGrid extends StatelessWidget {
   const ProfileWallGrid({
     super.key,
@@ -336,6 +341,9 @@ class ProfileWallGrid extends StatelessWidget {
 
   static const columns = 3;
   static const gap = 4.0;
+
+  /// Width over height: a story's 9:16 frame.
+  static const aspectRatio = 9 / 16;
 
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
@@ -349,7 +357,11 @@ class ProfileWallGrid extends StatelessWidget {
         runSpacing: gap,
         children: [
           for (var i = 0; i < itemCount; i++)
-            SizedBox.square(dimension: side, child: itemBuilder(context, i)),
+            SizedBox(
+              width: side,
+              height: side / aspectRatio,
+              child: itemBuilder(context, i),
+            ),
         ],
       );
     },

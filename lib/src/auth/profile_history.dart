@@ -1,6 +1,6 @@
 import '../home/home_backend.dart';
 
-/// One of the viewer's own check-ins as Account's photo wall shows it: with
+/// One check-in as a profile's photo wall shows it: with
 /// the crew and pact it was kept for, so a tile can be drawn and opened
 /// without the crew's week.
 class ProfileCheckIn {
@@ -94,11 +94,16 @@ class ProfileSummary {
     required this.checkIns,
     required this.crews,
     this.pacts = const [],
+    this.crewIds,
   });
 
   final int checkIns;
   final int crews;
   final List<ProfilePact> pacts;
+
+  /// On a crewmate's profile, the crews you share with them. Null on your
+  /// own, where every crew you are in is one.
+  final List<String>? crewIds;
 
   factory ProfileSummary.fromJson(Map<String, dynamic> row) => ProfileSummary(
     checkIns: (row['check_ins'] as num?)?.toInt() ?? 0,
@@ -107,19 +112,26 @@ class ProfileSummary {
       for (final pact in row['pacts'] as List? ?? const [])
         ProfilePact.fromJson(Map<String, dynamic>.from(pact as Map)),
     ],
+    crewIds: switch (row['crew_ids']) {
+      final List ids => [for (final id in ids) id as String],
+      _ => null,
+    },
   );
 }
 
-/// The viewer's own record across every crew they are in. Kept apart from
-/// [HomeBackend] so the fakes that stand in for it need not grow a wall.
+/// A person's record across the crews they keep it in: the viewer's own
+/// across every crew they are in, or, given a [userId], a crewmate's across
+/// the crews the two of them share. Kept apart from [HomeBackend] so the
+/// fakes that stand in for it need not grow a wall.
 abstract interface class ProfileHistoryBackend {
-  Future<ProfileSummary> fetchProfileSummary();
+  Future<ProfileSummary> fetchProfileSummary({String? userId});
 
-  /// The viewer's check-ins, newest first, after [before] when given and of
+  /// The person's check-ins, newest first, after [before] when given and of
   /// [pactId] alone when given, each with its photo signed.
   Future<List<ProfileCheckIn>> fetchMyCheckIns({
     ProfileCheckIn? before,
     String? pactId,
     int limit = 30,
+    String? userId,
   });
 }
