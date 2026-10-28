@@ -196,6 +196,7 @@ class _CrewFace extends StatelessWidget {
                   ? label
                   : Image.network(
                       url,
+                      cacheWidth: avatarDecodeWidth,
                       fit: BoxFit.cover,
                       width: size,
                       height: size,
@@ -694,10 +695,14 @@ Widget _scaledToBox(WidgetBuilder child) => LayoutBuilder(
 
 /// The crew's week as a podium, at the top of the crew week page.
 ///
-/// It carried a headline — what was left of the week, and your place — and a
-/// figure on every step. The podium says both on its own: the tallest bar is
-/// the leader, and your face is the one ringed in ink. The words came off so
-/// the bars could be the whole card.
+/// It carried a headline once — what was left of the week, and your place —
+/// and gave it up so the bars could be the whole card. The bars say who leads;
+/// they cannot say what it means for you, so a headline is back over them:
+/// one line on where you stand and one on what would change it
+/// ([YourWeek.headline]), in the viewer's own card under the podium
+/// ([YourWeekPanel]): the podium is the crew's, the headline is yours.
+/// The podium wears a gold "Top 3" tab on its top edge, naming what it shows
+/// without a row of its own.
 class CrewPodiumPanel extends StatelessWidget {
   const CrewPodiumPanel({super.key, required this.week, required this.userId});
 
@@ -718,38 +723,70 @@ class CrewPodiumPanel extends StatelessWidget {
   /// exactly when a crew ran close. A podium needs room for a face over a bar,
   /// so the card took the difference from the pact card under it, which fills
   /// whatever the page has left.
-  static const cardHeight = 148.0;
+  ///
+  /// It gave up a share of its bars to a headline, which has since moved to a
+  /// card of its own. Its title stood in a row over the bars, with a rule
+  /// under it; it is a tab on the card's edge now, so the card is the bars,
+  /// the crown, and room under the tab.
+  static const cardHeight = 128.0;
 
-  /// The block's height, which is the card's own.
-  static const height = cardHeight;
+  /// The "Top 3" tab, half of which stands over the card's top edge.
+  static const _tab = 26.0;
 
-  static const _inset = EdgeInsets.all(WeekPactMetrics.pageInset);
+  /// Room at the card's top for the half of the tab inside it, and the crown
+  /// that stands under it.
+  static const _inset = EdgeInsets.fromLTRB(
+    WeekPactMetrics.pageInset,
+    _tab / 2 + 4,
+    WeekPactMetrics.pageInset,
+    WeekPactMetrics.pageInset,
+  );
+
+  /// The block's height: the card, and the half of the tab over it.
+  static const height = cardHeight + _tab / 2;
 
   @override
   Widget build(BuildContext context) {
     final crew = week;
     return SizedBox(
-      height: cardHeight,
+      height: height,
       child: Semantics(
         container: true,
         label: 'Crew week',
-        value: crew == null ? 'Loading' : _spoken(crew),
+        value: crew == null
+            ? 'Loading'
+            : '${_TopTab.title(crew)}. ${_spoken(crew)}',
         child: ExcludeSemantics(
-          // The crew week bar's own surface and corner: the two stand one over
-          // the other at the same width, and read as one column of the crew.
-          child: CrewHeaderSurface(
-            curve: WeekPactMetrics.cardCurve,
-            child: Padding(
-              padding: _inset,
-              child: _scaledToBox(
-                (context) => crew == null
-                    ? const _Podium.loading(key: ValueKey('crew-podium'))
-                    : _Podium(
-                        key: const ValueKey('crew-podium'),
-                        standings: crew.standings(userId),
-                      ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                top: _tab / 2,
+                // The crew week bar's own surface and corner: the two stand
+                // one over the other at the same width, and read as one
+                // column of the crew.
+                child: CrewHeaderSurface(
+                  curve: WeekPactMetrics.cardCurve,
+                  child: Padding(
+                    padding: _inset,
+                    child: _scaledToBox(
+                      (context) => crew == null
+                          ? const _Podium.loading(key: ValueKey('crew-podium'))
+                          : _Podium(
+                              key: const ValueKey('crew-podium'),
+                              standings: crew.standings(userId),
+                            ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  height: _tab,
+                  child: _TopTab(crew: crew),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -792,6 +829,76 @@ class CrewPodiumPanel extends StatelessWidget {
     return 'You are ${_ordinal(mine?.place ?? standings.length)} '
         'of ${crew.members.length} this week, '
         '${leaders.join(' and ')} leading';
+  }
+}
+
+/// What the podium shows, on a raised gold tab over the card's top edge: a
+/// trophy and the crew's top three, or as many as the crew has. Gold is the
+/// podium's own colour, the one a fully kept week wears.
+class _TopTab extends StatelessWidget {
+  const _TopTab({required this.crew});
+
+  /// Null while the week loads, when the tab stands empty and grey.
+  final CrewWeek? crew;
+
+  static String title(CrewWeek crew) => crew.members.length < 2
+      ? 'This week'
+      : 'Top ${math.min(3, crew.members.length)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final week = crew;
+    final face = week == null
+        ? Color.lerp(CrewHeaderSurface.faceColor(context), context.ink, .10)!
+        : WeekPactColors.gold;
+    final ink = Color.lerp(WeekPactColors.gold, Colors.black, .78)!;
+    return DecoratedBox(
+      key: const ValueKey('podium-top-tab'),
+      decoration: ShapeDecoration(
+        color: face,
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(WeekPactMetrics.curveFor(9)),
+        ),
+        shadows: [
+          BoxShadow(
+            color: Color.lerp(face, Colors.black, .3)!,
+            offset: WeekPactMetrics.raisedOffset,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        // Larger system text is scaled back into the tab rather than
+        // stretching it past the card's edge.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: week == null
+              ? const SizedBox(width: 64)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    HugeIcon(
+                      icon: HugeIconsStrokeRounded.trophy,
+                      size: 16,
+                      color: ink,
+                      strokeWidth: 2,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      title(week),
+                      key: const ValueKey('podium-top-label'),
+                      style: TextStyle(
+                        color: ink,
+                        fontSize: 15,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
   }
 }
 
@@ -859,7 +966,7 @@ class _Podium extends StatelessWidget {
   /// A bar at a kept week, which reaches the top of the podium under the
   /// crown's row, and the sliver an empty week still stands at so it can be
   /// seen. Between the two a bar is exactly its share of the full height.
-  static const _barMax = 102.0;
+  static const _barMax = 76.0;
   static const _barSliver = 6.0;
 
   /// The share at which a face moves into its bar. Under it a bar is too
@@ -867,7 +974,7 @@ class _Podium extends StatelessWidget {
   static const _inside = 50;
 
   /// The dashed bar a viewer off the podium stands in.
-  static const _offHeight = 72.0;
+  static const _offHeight = 56.0;
 
   /// The bars the loading card draws, in the order the podium stands.
   static const _loadingBars = [_barMax * .7, _barMax, _barMax * .45];

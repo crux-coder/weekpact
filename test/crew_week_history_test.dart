@@ -236,7 +236,7 @@ void main() {
     await tester.tap(find.byTooltip('Back to this week'));
     await tester.pumpUi();
     expect(sheet, findsNothing);
-    expect(find.text('This week · Sep 14 – Sep 20'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
   });
 
   testWidgets('a week further back is a past week, not last week', (
@@ -273,12 +273,20 @@ void main() {
     (tester) async {
       await _pump(tester, _backend()..history = const []);
       expect(find.byKey(const ValueKey('crew-month-calendar')), findsNothing);
+      // The page's own scroll, not the member list inside each pact card.
+      final cards = find.byType(CrewPactWeekCard);
+      final inCards = tester
+          .stateList<ScrollableState>(
+            find.descendant(of: cards, matching: find.byType(Scrollable)),
+          )
+          .toSet();
       final vertical = tester
           .stateList<ScrollableState>(find.byType(Scrollable))
           .where(
             (state) =>
                 axisDirectionToAxis(state.widget.axisDirection) ==
-                Axis.vertical,
+                    Axis.vertical &&
+                !inCards.contains(state),
           );
       expect(vertical.single.position.maxScrollExtent, 0);
     },
@@ -432,7 +440,7 @@ void main() {
     );
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('crew-week-switcher')), findsOneWidget);
-    expect(find.text('This week · Sep 14 – Sep 20'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crew-week-podium')), findsOneWidget);
     final before = backend.fetches;
 
     await tester.tap(find.byTooltip('Switch crew'));

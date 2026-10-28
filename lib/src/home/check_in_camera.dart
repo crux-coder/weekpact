@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 
+import 'photo_encoding.dart';
+
 /// A picture just taken: what the camera handed over, to show at once, and
 /// the upload-ready version, made in the background and awaited only when the
 /// check-in is saved.
@@ -28,8 +30,7 @@ class CapturedPhoto {
 /// Prepares camera photos for upload: the whole frame the person saw, scaled
 /// to a fixed long side so a check-in never outgrows the bucket.
 class CheckInCamera {
-  /// The longest side of a prepared photo, in pixels. A phone frame at this
-  /// size encodes to roughly the same PNG the old 1024 square did.
+  /// The longest side of a prepared photo, in pixels.
   static const longSide = 1280;
 
   /// Decoding and re-encoding strips EXIF, including location, before upload.
@@ -81,13 +82,11 @@ class CheckInCamera {
           try {
             final image = await picture.toImage(width, height);
             try {
-              final result = await image.toByteData(
-                format: ui.ImageByteFormat.png,
-              );
-              if (result == null || result.lengthInBytes > 5 * 1024 * 1024) {
+              final result = await encodePhotoJpeg(image);
+              if (result.lengthInBytes > 5 * 1024 * 1024) {
                 throw StateError('Please retake a smaller photo.');
               }
-              return result.buffer.asUint8List();
+              return result;
             } finally {
               image.dispose();
             }

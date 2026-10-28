@@ -42,12 +42,16 @@ Future<void> main() async {
       url: _supabaseUrl,
       publishableKey: _supabasePublishableKey,
     );
-    final supabaseAuth = SupabaseAuthBackend(Supabase.instance.client);
+    // The last profile, crews and week, for opening on them while fresh ones
+    // load.
+    final homeCache = HomeCache(preferences);
+    final supabaseAuth = SupabaseAuthBackend(
+      Supabase.instance.client,
+      cache: homeCache,
+    );
     await supabaseAuth.restoreProfile();
     authBackend = supabaseAuth;
     crewBackend = SupabaseCrewBackend(Supabase.instance.client);
-    // The last crews and week, for opening on them while fresh ones load.
-    final homeCache = HomeCache(preferences);
     pactsBackend = SupabasePactsBackend(
       Supabase.instance.client,
       cache: homeCache,

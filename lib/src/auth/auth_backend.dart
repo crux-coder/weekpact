@@ -8,6 +8,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../home/home_cache.dart';
+import '../home/photo_encoding.dart';
 import '../notifications/notification_preferences.dart';
 
 /// Where a person is in onboarding, as public.users.onboarding_step stores it.
@@ -118,7 +120,7 @@ abstract interface class AuthBackend {
 
 class SupabaseAuthBackend
     implements AuthBackend, NotificationPreferencesBackend {
-  SupabaseAuthBackend(this._client) {
+  SupabaseAuthBackend(this._client, {this._cache}) {
     // Subscribe before other startup work so cold-start recovery links are retained.
     _client.auth.onAuthStateChange.listen(
       (state) {
@@ -131,6 +133,9 @@ class SupabaseAuthBackend
     );
   }
   bool _recovering = false;
+
+  /// Where the last profile row is kept, so a restored session opens on it.
+  final HomeCache? _cache;
 
   /// The signed-in account's row in public.users, fetched once per account.
   /// Every auth event for the same account reuses it; only a different
@@ -155,6 +160,7 @@ class SupabaseAuthBackend
         if (event.event == AuthChangeEvent.signedOut) {
           _recovering = false;
           // The next sign-in, even by the same account, reads a fresh row.
+          if (_profileUserId case final id?) _cache?.clearProfile(id);
           _profileUserId = null;
           _profileLoad = null;
           _profileReady = false;
@@ -165,14 +171,23 @@ class SupabaseAuthBackend
         return _mapUser(user);
       });
 
-  /// Fetches the restored session's profile before the first frame, so a
-  /// returning account opens on Home rather than a loading screen. A failure
+  /// Readies the restored session's profile before the first frame, so a
+  /// returning account opens on Home rather than a loading screen. The row
+  /// kept from the last launch is used at once and refreshed behind it; only
+  /// a device with none waits on the network, and not for long. A failure
   /// here is left for the auth stream to retry and report.
   Future<void> restoreProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
+    if (_cache?.readProfile(user.id) case final kept?) {
+      _profileUserId = user.id;
+      _profile = kept;
+      _profileReady = true;
+      _loadProfile(user.id).ignore();
+      return;
+    }
     try {
-      await _loadProfile(user.id);
+      await _loadProfile(user.id).timeout(const Duration(seconds: 3));
     } catch (_) {}
   }
 
@@ -180,28 +195,37 @@ class SupabaseAuthBackend
     if (_profileUserId == userId && _profileLoad != null) {
       return _profileLoad!;
     }
+    // The same account's row stays up while a fresh one loads.
+    final known = _profileUserId == userId && _profileReady;
     _profileUserId = userId;
-    _profileReady = false;
-    _profile = null;
-    final load = _client
+    if (!known) {
+      _profileReady = false;
+      _profile = null;
+    }
+    final fetched = _client
         .from('users')
         .select()
         .eq('id', userId)
         .maybeSingle()
         .then((row) {
-          if (_profileUserId == userId) {
-            _profile = row;
-            _profileReady = true;
-          }
+          if (_profileUserId == userId) _keepProfile(userId, row);
           return row;
         });
+    // With a row already showing, a failed refresh leaves it standing.
+    final load = known ? fetched.catchError((Object _) => _profile) : fetched;
     _profileLoad = load;
     // A failed fetch is not remembered, so the next auth event asks again.
-    load.catchError((Object _) {
+    fetched.catchError((Object _) {
       if (_profileLoad == load) _profileLoad = null;
       return null;
     });
     return load;
+  }
+
+  void _keepProfile(String userId, Map<String, dynamic>? row) {
+    _profile = row;
+    _profileReady = true;
+    _cache?.writeProfile(userId, row);
   }
 
   @override
@@ -431,8 +455,8 @@ class SupabaseAuthBackend
           .uploadBinary(
             path!,
             avatar,
-            fileOptions: const FileOptions(
-              contentType: 'image/png',
+            fileOptions: FileOptions(
+              contentType: photoContentType(avatar),
               upsert: true,
             ),
           );
@@ -465,8 +489,7 @@ class SupabaseAuthBackend
         .single();
     _profileUserId = userId;
     _profileLoad = Future.value(row);
-    _profile = row;
-    _profileReady = true;
+    _keepProfile(userId, row);
   }
 
   @override

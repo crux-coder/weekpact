@@ -89,6 +89,7 @@ class CrewFace extends StatelessWidget {
         ? _initial(context)
         : Image.network(
             member.avatarUrl!,
+            cacheWidth: avatarDecodeWidth,
             fit: BoxFit.cover,
             gaplessPlayback: true,
             frameBuilder: (context, child, frame, synchronous) =>

@@ -628,6 +628,7 @@ class _Head extends StatelessWidget {
                       ? initials
                       : Image.network(
                           url,
+                          cacheWidth: avatarDecodeWidth,
                           fit: BoxFit.cover,
                           width: 32,
                           height: 32,

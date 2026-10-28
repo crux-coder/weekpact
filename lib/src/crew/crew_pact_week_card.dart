@@ -61,9 +61,11 @@ class CrewPactWeekCard extends StatelessWidget {
   final List<WeekMember> members;
   final String userId;
 
-  /// The card's height for a crew of [count] at text scale 1: its content
-  /// and the padding around it. A page that can grow gives the card this.
-  static double heightFor(int count) => _contentHeight(count) + 2 * 16;
+  /// The card's height for a crew of [count]: its content and the padding
+  /// around it. [extraText] is how far the text scale is above 1. A page
+  /// gives the card this, so it stands no taller than what it draws.
+  static double heightFor(int count, {double extraText = 0}) =>
+      _contentHeight(count) + _extraTextHeight(count, extraText) + 2 * 16;
 
   @override
   Widget build(BuildContext context) {
@@ -79,14 +81,15 @@ class CrewPactWeekCard extends StatelessWidget {
               0.0,
               MediaQuery.textScalerOf(context).scale(1) - 1,
             );
-            // The whole crew is always on the card, every row at its full
-            // height: a bigger crew makes a taller card (see [heightFor]),
-            // not smaller check-ins. Only a card given less than that, on a
-            // page that cannot grow, scales down.
+            // Four people are on the card at once, every row at its full
+            // height, and a bigger crew shows half of a fifth and scrolls
+            // inside the card (see [heightFor]): it does not get smaller
+            // check-ins. Only a card given less than that, on a page that
+            // cannot grow, scales down.
             final contentHeight = math.max(
               space.maxHeight,
               _contentHeight(members.length) +
-                  extraText * (220 + members.length * 50),
+                  _extraTextHeight(members.length, extraText),
             );
             final shrink = math.min(1.0, space.maxHeight / contentHeight);
             return FittedBox(
@@ -132,22 +135,14 @@ class CrewPactWeekCard extends StatelessWidget {
                         child: Column(
                           children: [
                             _CalendarHeader(week: week),
-                            // Room between the dates and the people: the
-                            // header labels the grid, it is not a row of it.
-                            const SizedBox(height: 20),
-                            // Each person gets one row's height and the
-                            // rows stack from the top: spread over the card,
-                            // two people read as two unrelated strips.
-                            for (final member in members)
-                              SizedBox(
-                                height: _rowHeight,
-                                child: _MemberDays(
-                                  week: week,
-                                  pact: pact,
-                                  member: member,
-                                  isYou: member.id == userId,
-                                ),
+                            Expanded(
+                              child: _MemberRows(
+                                week: week,
+                                pact: pact,
+                                members: members,
+                                userId: userId,
                               ),
+                            ),
                           ],
                         ),
                       ),
@@ -227,9 +222,251 @@ const _nameWidth = 52.0;
 /// One person's row: a day cell at its full height, with its edge's room.
 const _rowHeight = 54.0;
 
+/// The most people a card shows whole; a bigger crew shows half of the next
+/// one too, so the cut-off row says the list scrolls.
+const _wholeRows = 4;
+
+/// How many rows a crew of [count] has in view.
+double _visibleRows(int count) =>
+    count > _wholeRows ? _wholeRows + .5 : count.toDouble();
+
+/// The room between the dates and the people, which holds the up arrow, and
+/// under the people of a crew that scrolls, which holds the down arrow.
+const _arrowRoom = 20.0;
+
 /// What the card's content needs for [count] people: the title, the dates
-/// and the crew total, and a full row for each person.
-double _contentHeight(int count) => 232 + count * _rowHeight;
+/// and the crew total, the rows in view, and the room for the down arrow
+/// when the list scrolls.
+double _contentHeight(int count) =>
+    _chromeHeight +
+    _visibleRows(count) * _rowHeight +
+    (count > _wholeRows ? _arrowRoom : 0);
+
+/// Everything on the card but the rows, at text scale 1: the title row (as
+/// tall as the pact's badge), the gap under it, the dates, the room above the
+/// rows, the gap and divider over the crew total, and the crew total itself.
+/// Any more than the card draws is left as empty room under the rows.
+const _chromeHeight = 56.0 + 12 + 44 + _arrowRoom + 8 + 1 + 10 + 40;
+
+/// What larger text adds to the card's content for [count] people.
+double _extraTextHeight(int count, double extraText) =>
+    extraText * (220 + _visibleRows(count) * 50);
+
+/// The crew's rows: four and a half in view, and the rest scrolled to inside
+/// the card. An arrow above says there are people scrolled past,
+/// and one below says there are more to come.
+class _MemberRows extends StatefulWidget {
+  const _MemberRows({
+    required this.week,
+    required this.pact,
+    required this.members,
+    required this.userId,
+  });
+  final CrewWeek week;
+  final CrewPact pact;
+  final List<WeekMember> members;
+  final String userId;
+
+  @override
+  State<_MemberRows> createState() => _MemberRowsState();
+}
+
+class _MemberRowsState extends State<_MemberRows> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Moves the list a page's worth of people up or down.
+  void _page(int direction) {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    _scroll.animateTo(
+      (position.pixels + direction * (_wholeRows - 1) * _rowHeight).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final members = widget.members;
+    final scrolls = members.length > _wholeRows;
+    return Column(
+      children: [
+        // Room between the dates and the people: the header labels the grid,
+        // it is not a row of it. It holds the up arrow once the list has
+        // been scrolled.
+        SizedBox(
+          height: _arrowRoom,
+          child: !scrolls
+              ? null
+              : _ScrollArrow(
+                  controller: _scroll,
+                  up: true,
+                  onTap: () => _page(-1),
+                ),
+        ),
+        // Each person gets one row's height and the rows stack from the top:
+        // spread over the card, two people read as two unrelated strips. The
+        // list stands four and a half rows tall at most; a card given less
+        // shows less, rather than overflowing.
+        Flexible(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: _visibleRows(members.length) * _rowHeight,
+            ),
+            child: _EdgeFade(
+              controller: scrolls ? _scroll : null,
+              child: ListView.builder(
+                controller: _scroll,
+                padding: EdgeInsets.zero,
+                // A crew that fits leaves vertical drags to the page, so
+                // pulling down on the card still refreshes it.
+                physics: scrolls
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                itemExtent: _rowHeight,
+                itemCount: members.length,
+                itemBuilder: (context, index) => _MemberDays(
+                  week: widget.week,
+                  pact: widget.pact,
+                  member: members[index],
+                  isYou: members[index].id == widget.userId,
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (scrolls)
+          SizedBox(
+            height: _arrowRoom,
+            child: _ScrollArrow(
+              controller: _scroll,
+              up: false,
+              onTap: () => _page(1),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Fades the list out at an end that has people scrolled past it, so the rows
+/// run under the edge rather than stopping at a hard line. Each fade comes in
+/// over the first row's worth of scrolling. A list that does not scroll, with
+/// no [controller], is drawn as it is.
+class _EdgeFade extends StatelessWidget {
+  const _EdgeFade({required this.controller, required this.child});
+  final ScrollController? controller;
+  final Widget child;
+
+  /// How far into the list each fade reaches.
+  static const _depth = 24.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) return child;
+    return ListenableBuilder(
+      listenable: controller,
+      child: child,
+      builder: (context, child) {
+        final position =
+            controller.hasClients && controller.position.hasContentDimensions
+            ? controller.position
+            : null;
+        // Before the list is laid out it sits at the top, with more below.
+        final top = position == null
+            ? 0.0
+            : (position.extentBefore / _rowHeight).clamp(0.0, 1.0);
+        final bottom = position == null
+            ? 1.0
+            : (position.extentAfter / _rowHeight).clamp(0.0, 1.0);
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) {
+            final depth = math.min(_depth / bounds.height, .5);
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 1 - top),
+                Colors.black,
+                Colors.black,
+                Colors.black.withValues(alpha: 1 - bottom),
+              ],
+              stops: [0, depth, 1 - depth, 1],
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+    );
+  }
+}
+
+/// An arrow that shows while the list has people scrolled out of view on its
+/// side: above for those scrolled past, below for those still to come.
+class _ScrollArrow extends StatelessWidget {
+  const _ScrollArrow({
+    required this.controller,
+    required this.up,
+    required this.onTap,
+  });
+  final ScrollController controller;
+  final bool up;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        // Before the list is laid out it sits at the top, so only the down
+        // arrow shows.
+        final shown =
+            controller.hasClients && controller.position.hasContentDimensions
+            ? (up
+                      ? controller.position.extentBefore
+                      : controller.position.extentAfter) >
+                  .5
+            : !up;
+        return IgnorePointer(
+          ignoring: !shown,
+          child: AnimatedOpacity(
+            opacity: shown ? 1 : 0,
+            duration: const Duration(milliseconds: 150),
+            child: Semantics(
+              button: true,
+              label: up ? 'Show earlier members' : 'Show more members',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: Center(
+                  child: HugeIcon(
+                    icon: up
+                        ? HugeIconsStrokeRounded.arrowUp01
+                        : HugeIconsStrokeRounded.arrowDown01,
+                    size: 18,
+                    strokeWidth: 2,
+                    color: context.muted,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _CalendarHeader extends StatelessWidget {
   const _CalendarHeader({required this.week});

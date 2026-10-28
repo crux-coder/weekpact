@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../home/photo_encoding.dart';
 import '../pacts/pacts_backend.dart';
 
 class CrewMember {
@@ -343,7 +344,7 @@ class SupabaseCrewBackend
     await bucket.uploadBinary(
       path,
       avatar,
-      fileOptions: const FileOptions(contentType: 'image/png'),
+      fileOptions: FileOptions(contentType: photoContentType(avatar)),
     );
     await _client.from('crews').update({'avatar_path': path}).eq('id', crewId);
     try {

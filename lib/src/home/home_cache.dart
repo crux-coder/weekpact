@@ -2,8 +2,9 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The crews list and the current week as the server last sent them, kept on
-/// the device so the next launch opens on them while fresh ones load.
+/// The profile, the crews list and the current week as the server last sent
+/// them, kept on the device so the next launch opens on them while fresh ones
+/// load.
 ///
 /// Rows are kept as they arrived, signed URLs left out, under the account
 /// they were read for: nothing one account was shown is handed to the next.
@@ -23,8 +24,22 @@ class HomeCache {
   /// written is dropped.
   static const _weeks = 4;
 
+  String _profileKey(String account) => 'home_cache_profile:$account';
   String _crewsKey(String account) => 'home_cache_crews:$account';
   String _weeksKey(String account) => 'home_cache_weeks:$account';
+
+  Map<String, dynamic>? readProfile(String account) {
+    final row = _decode(_profileKey(account));
+    return row is Map ? Map<String, dynamic>.from(row) : null;
+  }
+
+  void writeProfile(String account, Map<String, dynamic>? row) =>
+      row == null ? clearProfile(account) : _encode(_profileKey(account), row);
+
+  void clearProfile(String account) {
+    _memory.remove(_profileKey(account));
+    _preferences?.remove(_profileKey(account)).ignore();
+  }
 
   List<Map<String, dynamic>>? readCrews(String account) {
     final rows = _decode(_crewsKey(account));

@@ -141,48 +141,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the card carries no headline, only the podium and its figures', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      CrewPodiumPanel(
-        userId: 'me',
-        week: _weekWith({
-          'me': (move: 2, read: 1),
-          'other': (move: 0, read: 0),
-        }, streakWeeks: 4),
-      ),
-    );
-    // No headline and no place: the bars and their figures are the card.
-    expect(find.textContaining('DAYS LEFT'), findsNothing);
-    expect(find.textContaining('LAST DAY'), findsNothing);
-    expect(find.textContaining("YOU'RE"), findsNothing);
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('podium-bar-me')),
-        matching: find.text('60%'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        // Under half a week the figure stands on the bar rather than in it.
-        of: find.byKey(const ValueKey('podium-step-other')),
-        matching: find.text('0%'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('crew-week-streak')), findsNothing);
-    // The standing is still said, to a screen reader.
-    final semantics = tester.widget<Semantics>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Semantics && widget.properties.label == 'Crew week',
-      ),
-    );
-    expect(semantics.properties.value, contains('You are 1st of 2'));
-  });
+  testWidgets(
+    'the card names what it shows, and leaves your headline to its own card',
+    (tester) async {
+      await _pump(
+        tester,
+        CrewPodiumPanel(
+          userId: 'me',
+          week: _weekWith({
+            'me': (move: 2, read: 1),
+            'other': (move: 0, read: 0),
+          }, streakWeeks: 4),
+        ),
+      );
+      // The podium says what it is, a crew of two's top two, and nothing
+      // about you: that is the headline card's.
+      expect(find.text('Top 2'), findsOneWidget);
+      expect(find.byKey(const ValueKey('podium-headline')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('podium-bar-me')),
+          matching: find.text('60%'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          // Under half a week the figure stands on the bar rather than in it.
+          of: find.byKey(const ValueKey('podium-step-other')),
+          matching: find.text('0%'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('crew-week-streak')), findsNothing);
+      // The standing is still said, to a screen reader.
+      final semantics = tester.widget<Semantics>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == 'Crew week',
+        ),
+      );
+      expect(semantics.properties.value, contains('You are 1st of 2'));
+    },
+  );
 
   testWidgets('the card stands on the crew week bar\'s surface', (
     tester,
@@ -333,12 +334,21 @@ void main() {
     // the top of the page says who is in, and a frame around a single card is
     // a box drawn round one object.
     expect(find.text('in today'), findsNothing);
-    // What is left is the card, at the card's own height.
+    // What is left is the card, at the card's own height, and the gold tab
+    // standing half over its top edge.
     expect(
       tester.getRect(find.byType(CrewPodiumPanel)).height,
       CrewPodiumPanel.height,
     );
-    expect(CrewPodiumPanel.height, CrewPodiumPanel.cardHeight);
+    expect(
+      tester.getRect(find.byType(CrewHeaderSurface)).height,
+      CrewPodiumPanel.cardHeight,
+    );
+    final tab = tester.getRect(find.byKey(const ValueKey('podium-top-tab')));
+    final card = tester.getRect(find.byType(CrewHeaderSurface));
+    expect(tab.top, lessThan(card.top));
+    expect(tab.bottom, greaterThan(card.top));
+    expect(tab.center.dx, closeTo(card.center.dx, 1));
   });
 
   testWidgets('the block is one height, whatever the crew', (tester) async {

@@ -55,6 +55,11 @@ class AvatarShape extends OutlinedBorder {
       AvatarShape(side: side ?? this.side);
 }
 
+/// The width every avatar photo is decoded at: the largest face the app
+/// draws (84pt) at 3x. One width everywhere, so a face shown at several
+/// sizes is still one download and one decoded image, not one per size.
+const avatarDecodeWidth = 256;
+
 class AvatarClip extends StatelessWidget {
   const AvatarClip({super.key, required this.child});
   final Widget child;
