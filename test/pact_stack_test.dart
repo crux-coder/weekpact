@@ -365,6 +365,13 @@ void main() {
       expect(before.width, settled.width);
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Checked in today').hitTestable(), findsOneWidget);
+      // The done bar stands exactly where the button stood, so the count
+      // and its bar above do not shift by the difference.
+      final progress = find.byKey(const ValueKey('pact-progress-third'));
+      final progressDone = tester.getRect(progress);
+      final actionDone = tester.getRect(
+        find.byKey(const ValueKey('check-in-Stretch')),
+      );
       backend.selected.remove('third');
       final undone = await backend.fetchWeek('crew');
       refresh(() => week = undone);
@@ -373,7 +380,15 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('third'))).width,
         settled.width,
       );
+      // Mid-fade, with both states in the box, nothing above has moved.
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(tester.getRect(progress), progressDone);
       await tester.pumpUi();
+      expect(tester.getRect(progress), progressDone);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('check-in-Stretch'))),
+        actionDone,
+      );
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Check in').hitTestable(), findsOneWidget);
       await tester.drag(

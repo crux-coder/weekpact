@@ -53,9 +53,10 @@ const _countCaptionHeight = 1.2;
 const _captionToBar = 10.0;
 const _barToAction = 26.0;
 
-/// The tallest the card's action gets. [_CompletedCheckIn] stands 8 taller
-/// than the check-in button, and the card has to stand in the same box in
-/// either state — a card that grew on check-in would jump the whole stack.
+/// The card's action, in either state: the check-in button and the done bar
+/// are both exactly this tall. The count and its bar sit on top of the
+/// action, so if one state stood taller than the other they would shift by
+/// the difference on every check-in and undo.
 const _actionHeight = 56.0;
 
 /// What the card's content needs at its natural size, added up from the parts
@@ -1296,33 +1297,38 @@ class _PactCard extends StatelessWidget {
           // The control eases between its two states rather than cutting:
           // an undo in particular is a bar emptying and the button coming
           // back, and a cut there read as the card flinching.
-          AnimatedSwitcher(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween(begin: .96, end: 1.0).animate(animation),
-                child: child,
+          // Pinned to the action's height, so the swap and the fade across
+          // it move nothing above.
+          SizedBox(
+            height: _actionHeight,
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween(begin: .96, end: 1.0).animate(animation),
+                  child: child,
+                ),
               ),
-            ),
-            child: checked
-                ? KeyedSubtree(
-                    key: const ValueKey('checked'),
-                    child: _CompletedCheckIn(
-                      pactTitle: pact.title,
-                      busy: busy,
-                      onUndo: onToggle,
-                      edge: doneEdge,
+              child: checked
+                  ? KeyedSubtree(
+                      key: const ValueKey('checked'),
+                      child: _CompletedCheckIn(
+                        pactTitle: pact.title,
+                        busy: busy,
+                        onUndo: onToggle,
+                        edge: doneEdge,
+                      ),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('unchecked'),
+                      child: _checkInButton(),
                     ),
-                  )
-                : KeyedSubtree(
-                    key: const ValueKey('unchecked'),
-                    child: _checkInButton(),
-                  ),
+            ),
           ),
         ],
       ),
@@ -1333,6 +1339,7 @@ class _PactCard extends StatelessWidget {
   /// kept days above it.
   Widget _checkInButton() => Container(
     width: double.infinity,
+    height: _actionHeight,
     decoration: const ShapeDecoration(
       shape: WeekPactMetrics.buttonShape,
       shadows: [
@@ -1348,7 +1355,7 @@ class _PactCard extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: _ink,
         foregroundColor: homePaper,
-        minimumSize: const Size(0, 48),
+        minimumSize: const Size(0, _actionHeight),
         shape: WeekPactMetrics.buttonShape.copyWith(
           side: const BorderSide(color: WeekPactColors.inkEdge),
         ),
@@ -1474,7 +1481,7 @@ class _CompletedCheckInState extends State<_CompletedCheckIn>
         builder: (context, child) {
           final fill = _hold.value;
           return Container(
-            height: 56,
+            height: _actionHeight,
             decoration: ShapeDecoration(
               gradient: LinearGradient(
                 colors: [_undoFill, _undoFill, _doneFill, _doneFill],
@@ -1806,16 +1813,10 @@ class _SkeletonPactFace extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: _barToAction),
-              SizedBox(
+              SkeletonBar(
                 height: _actionHeight,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: SkeletonBar(
-                    height: WeekPactMetrics.buttonHeight,
-                    shape: WeekPactMetrics.buttonShape,
-                    color: _ink.withValues(alpha: .8),
-                  ),
-                ),
+                shape: WeekPactMetrics.buttonShape,
+                color: _ink.withValues(alpha: .8),
               ),
             ],
           ),
