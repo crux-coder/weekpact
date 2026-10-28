@@ -126,7 +126,7 @@ class CheckInMomentBanner extends StatefulWidget {
 class _CheckInMomentBannerState extends State<CheckInMomentBanner>
     with SingleTickerProviderStateMixin {
   static const _in = Duration(milliseconds: 360);
-  static const _hold = Duration(milliseconds: 2400);
+  static const _hold = Duration(milliseconds: 5000);
   static const _out = Duration(milliseconds: 260);
 
   late final _life = AnimationController(
@@ -213,7 +213,7 @@ class _CheckInMomentBannerState extends State<CheckInMomentBanner>
                   raised: true,
                   depth: WeekPactMetrics.cardDepth,
                   outlineColor: Color.lerp(widget.tint, Colors.black, .28),
-                  padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 18, 18),
                   child: Row(
                     children: [
                       Stack(
@@ -222,15 +222,15 @@ class _CheckInMomentBannerState extends State<CheckInMomentBanner>
                           PactIconBadge(
                             icon: PactIcon.find(widget.iconKey).data,
                             tint: widget.badge,
-                            size: 44,
+                            size: 64,
                           ),
                           // The done mark, as the card's own check-in wears it.
                           Positioned(
-                            right: -5,
-                            bottom: -5,
+                            right: -7,
+                            bottom: -7,
                             child: Container(
-                              width: 20,
-                              height: 20,
+                              width: 28,
+                              height: 28,
                               decoration: const BoxDecoration(
                                 color: WeekPactColors.doneMark,
                                 shape: BoxShape.circle,
@@ -245,7 +245,7 @@ class _CheckInMomentBannerState extends State<CheckInMomentBanner>
                                 child: AppIcon(
                                   icon: HugeIconsStrokeRounded.tick02,
                                   color: WeekPactColors.cream,
-                                  size: 12,
+                                  size: 16,
                                   strokeWidth: 2.4,
                                 ),
                               ),
@@ -253,7 +253,7 @@ class _CheckInMomentBannerState extends State<CheckInMomentBanner>
                           ),
                         ],
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,20 +265,20 @@ class _CheckInMomentBannerState extends State<CheckInMomentBanner>
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: homeInk,
-                                fontSize: 17,
+                                fontSize: 22,
                                 height: 1.15,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 6),
                             Text(
                               widget.moment.detail,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: homeMutedInk,
-                                fontSize: 13,
-                                height: 1.2,
+                                fontSize: 15,
+                                height: 1.25,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

@@ -516,7 +516,9 @@ void main() {
     expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
     expect(find.text('First in the crew today.'), findsOneWidget);
     expect(find.textContaining('Move for 30 min: 1 of'), findsOneWidget);
-    // And it lifts away on its own.
+    // And it lifts away on its own, after a proper look at it.
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpUi();
     expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
