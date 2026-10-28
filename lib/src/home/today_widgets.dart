@@ -1142,102 +1142,26 @@ class TodayPactsCard extends StatelessWidget {
     if (pacts.isEmpty) return const SizedBox.shrink();
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final deckHeight = height ?? (248 + math.max(0.0, scale - 1) * 200);
-    final checked = week.checkedToday(userId);
     return SizedBox(
       height: deckHeight,
       child: PactDeck(
         deckKey: const ValueKey('pact-stack'),
         ids: [for (final pact in pacts) pact.id],
-        itemBuilder: (context, index) => _PactCompletionEffect(
-          key: ValueKey('completion-${pacts[index].id}'),
-          completed: checked.contains(pacts[index].id),
-          child: _PactCard(
-            key: ValueKey(pacts[index].id),
-            pact: pacts[index],
-            week: week,
-            userId: userId,
-            color: WeekPactColors.pactTint(index),
-            badge: WeekPactColors.pactBadge(index),
-            busy: savingPact == pacts[index].id,
-            onToggle: savingPact != null || onToggle == null
-                ? null
-                : () => onToggle!(pacts[index].id),
-          ),
+        itemBuilder: (context, index) => _PactCard(
+          key: ValueKey(pacts[index].id),
+          pact: pacts[index],
+          week: week,
+          userId: userId,
+          color: WeekPactColors.pactTint(index),
+          badge: WeekPactColors.pactBadge(index),
+          busy: savingPact == pacts[index].id,
+          onToggle: savingPact != null || onToggle == null
+              ? null
+              : () => onToggle!(pacts[index].id),
         ),
       ),
     );
   }
-}
-
-class _PactCompletionEffect extends StatefulWidget {
-  const _PactCompletionEffect({
-    super.key,
-    required this.completed,
-    required this.child,
-  });
-  final bool completed;
-  final Widget child;
-  @override
-  State<_PactCompletionEffect> createState() => _PactCompletionEffectState();
-}
-
-/// One short pop when a check-in lands. It runs after the check-in drawer has
-/// finished closing, and the buzz comes from the save itself.
-class _PactCompletionEffectState extends State<_PactCompletionEffect>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animation = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 260),
-  );
-  late final Animation<double> _scale = TweenSequence<double>([
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.0,
-        end: 1.06,
-      ).chain(CurveTween(curve: Curves.easeOut)),
-      weight: 40,
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.06,
-        end: 1.0,
-      ).chain(CurveTween(curve: Curves.easeInOut)),
-      weight: 60,
-    ),
-  ]).animate(_animation);
-
-  @override
-  void didUpdateWidget(covariant _PactCompletionEffect oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.completed) _animation.stop();
-    if (widget.completed &&
-        !oldWidget.completed &&
-        !MediaQuery.disableAnimationsOf(context)) {
-      _animation.forward(from: 0);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) _animation.stop();
-  }
-
-  @override
-  void dispose() {
-    _animation.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _animation,
-    child: widget.child,
-    builder: (context, child) => Transform.scale(
-      scale: _animation.isAnimating ? _scale.value : 1.0,
-      child: child,
-    ),
-  );
 }
 
 class _PactCard extends StatelessWidget {

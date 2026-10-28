@@ -357,11 +357,12 @@ void main() {
       refresh(() => week = updated);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      // Completing pops the card out and then returns it to its resting size.
-      final popped = tester.getRect(find.byKey(const ValueKey('third')));
+      // Completing leaves the card at its size: the celebration is the
+      // dialog's, not the card's.
+      final before = tester.getRect(find.byKey(const ValueKey('third')));
       await tester.pumpUi();
       final settled = tester.getRect(find.byKey(const ValueKey('third')));
-      expect(popped.width, greaterThan(settled.width));
+      expect(before.width, settled.width);
       expect(find.text('Stretch').hitTestable(), findsOneWidget);
       expect(find.text('Checked in today').hitTestable(), findsOneWidget);
       backend.selected.remove('third');

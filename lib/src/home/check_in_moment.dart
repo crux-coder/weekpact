@@ -56,14 +56,44 @@ class CheckInMoment {
 /// a burst of the palette's confetti, with a flourish under the thumb, and
 /// the headline under it. It stays until its button or a tap outside sends
 /// it off.
+///
+/// The dialog itself arrives with the pop the pact card used to make on a
+/// check-in: it swells a little past its size and settles, fading in as it
+/// does, so the check-in still lands as one movement rather than a cut.
 Future<void> showCheckInMoment(
   BuildContext context, {
   required CheckInMoment moment,
   required int pactIndex,
   required String iconKey,
-}) => showDialog<void>(
+}) => showGeneralDialog<void>(
   context: context,
-  builder: (context) => Dialog(
+  barrierDismissible: true,
+  barrierLabel: 'Dismiss',
+  barrierColor: Colors.black54,
+  transitionDuration: const Duration(milliseconds: 300),
+  transitionBuilder: (context, animation, _, child) {
+    final pop = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.9,
+          end: 1.04,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.04,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 45,
+      ),
+    ]).animate(animation);
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      child: ScaleTransition(scale: pop, child: child),
+    );
+  },
+  pageBuilder: (context, _, _) => Dialog(
     key: const ValueKey('check-in-moment'),
     backgroundColor: Colors.transparent,
     elevation: 0,
