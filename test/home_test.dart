@@ -511,6 +511,56 @@ void main() {
     expect(find.byKey(const ValueKey('take-picture')), findsNothing);
     expect(backend.selected, contains('move'));
     expect(backend.lastPhotos, isEmpty);
+    // The moment is said at once, off the week in hand: the viewer already
+    // had a pact in today, so they are the crew's first.
+    expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
+    expect(find.text('First in the crew today.'), findsOneWidget);
+    expect(find.textContaining('Move for 30 min: 1 of'), findsOneWidget);
+    // And it lifts away on its own.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpUi();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a tap sends the check-in moment off early, and an undo shows '
+      'none', (tester) async {
+    final backend = DashboardBackend();
+    backend.pacts.pacts = [
+      for (final pact in backend.pacts.pacts)
+        CrewPact(
+          id: pact.id,
+          crewId: pact.crewId,
+          title: pact.title,
+          frequency: pact.frequency,
+          daysPerWeek: pact.daysPerWeek,
+          iconKey: pact.iconKey,
+          photoRequired: false,
+        ),
+    ];
+    await pumpHome(tester, backend);
+    await tester.pumpUi();
+    final pact = find
+        .byKey(const ValueKey('check-in-Move for 30 min'))
+        .hitTestable();
+    await tester.tap(pact);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('check-in-moment')));
+    // A frame to restart the life from its lift-out, the lift-out, and a
+    // frame for the overlay to let go of the entry.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
+    // Held to full, the check-in comes off without a word.
+    final hold = await tester.startGesture(tester.getCenter(pact));
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await hold.up();
+    await tester.pumpUi();
+    expect(backend.selected, isNot(contains('move')));
+    expect(find.byKey(const ValueKey('check-in-moment')), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 

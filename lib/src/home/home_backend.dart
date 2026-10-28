@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/pact_history.dart';
 import '../auth/profile_history.dart';
 import '../pacts/pacts_backend.dart';
 import 'avatar_url_cache.dart';
@@ -881,6 +882,20 @@ class SupabaseHomeBackend implements HomeBackend, ProfileHistoryBackend {
                 ),
         ),
       );
+
+  @override
+  Future<List<PactHistory>> fetchPactHistory({String? userId}) async {
+    final rows = userId == null
+        ? await client.rpc('my_pact_history')
+        : await client.rpc(
+            'member_pact_history',
+            params: {'target_user_id': userId},
+          );
+    return [
+      for (final row in rows as List)
+        PactHistory.fromJson(Map<String, dynamic>.from(row as Map)),
+    ];
+  }
 
   @override
   Future<List<ProfileCheckIn>> fetchMyCheckIns({

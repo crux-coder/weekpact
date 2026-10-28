@@ -75,6 +75,26 @@ crewmate who has not checked in today offers a nudge, with the day they last
 kept a pact and the one-per-24-hours rule; the crew roster still sends nudges
 too.
 
+The moment a check-in lands, Home says so: a card in the pact's tint drops in
+under the status bar with where that puts you in the crew's day ("First in
+the crew today.", "You and 2 crewmates are in today.", "The whole crew is in
+today.") and the pact's count for the week with what is left of today. It is
+read off the week in hand, before the refetch, holds for a breath and lifts
+away, or goes on a tap; a crew of one hears about its week instead. An undo
+says nothing. See `CheckInMoment` in `lib/src/home/check_in_moment.dart`.
+
+Account, and a crewmate's profile, carry a **Pacts** section over the
+check-in wall: a card per pact with how many weeks the person has been on it
+(from the week they first kept it), the days kept, how many of those weeks met
+the pact's target as it stands now, a "wks running" pill for weeks on target
+in a row, and a calendar of the last sixteen weeks, one column each with the
+days kept filled in and the weeks on target set on a pale strip. A week in
+progress is not a miss. Tapping a card narrows the wall to that pact.
+`20261028150000_add_pact_history.sql` adds `my_pact_history` and
+`member_pact_history`, scoped like the wall: your own across every crew you
+are in, a crewmate's across the crews you share, and refused for anyone else.
+`tool/test_pact_history_database.mjs` covers it against PGlite.
+
 Home includes skeleton loading, empty/error states, pull to refresh, and refresh
 when returning to the page or resuming the app. While visible it refreshes every
 minute. A crew streak counts consecutive weeks in which every eligible member meets

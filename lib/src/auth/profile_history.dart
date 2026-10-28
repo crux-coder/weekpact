@@ -1,4 +1,5 @@
 import '../home/home_backend.dart';
+import 'pact_history.dart';
 
 /// One check-in as a profile's photo wall shows it: with
 /// the crew and pact it was kept for, so a tile can be drawn and opened
@@ -125,6 +126,9 @@ class ProfileSummary {
 /// fakes that stand in for it need not grow a wall.
 abstract interface class ProfileHistoryBackend {
   Future<ProfileSummary> fetchProfileSummary({String? userId});
+
+  /// The person's record on each pact they keep, in the crews' order.
+  Future<List<PactHistory>> fetchPactHistory({String? userId});
 
   /// The person's check-ins, newest first, after [before] when given and of
   /// [pactId] alone when given, each with its photo signed.
