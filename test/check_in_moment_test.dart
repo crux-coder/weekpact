@@ -46,7 +46,6 @@ void main() {
       pactId: 'run',
     );
     expect(moment.headline, 'First in the crew today.');
-    expect(moment.detail, 'Run: 1 of 3 this week · 1 more pact today');
   });
 
   test('crewmates already in are counted, and a finished week is said', () {
@@ -66,7 +65,6 @@ void main() {
       pactId: 'run',
     );
     expect(moment.headline, 'You and 1 crewmate are in today.');
-    expect(moment.detail, 'Run: week done · today done');
   });
 
   test('the whole crew in is its own line', () {
@@ -97,7 +95,6 @@ void main() {
       pactId: 'run',
     );
     expect(moment.headline, 'Day 2 of 3 for Run.');
-    expect(moment.detail, '1 more pact today.');
     final done = CheckInMoment.read(
       week(
         members: const [me],
@@ -112,6 +109,5 @@ void main() {
       pactId: 'run',
     );
     expect(done.headline, 'Run done for the week.');
-    expect(done.detail, 'That’s everything for today.');
   });
 }

@@ -527,7 +527,6 @@ void main() {
     // had a pact in today, so they are the crew's first.
     expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);
     expect(find.text('First in the crew today.'), findsOneWidget);
-    expect(find.textContaining('Move for 30 min: 1 of'), findsOneWidget);
     // It stays until it is sent off.
     await tester.pump(const Duration(seconds: 10));
     expect(find.byKey(const ValueKey('check-in-moment')), findsOneWidget);

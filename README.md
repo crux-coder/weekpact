@@ -80,8 +80,8 @@ pact's badge pops in over a burst of confetti cut from the pact palette, with
 a flourish under the thumb (a click, two taps, and the heavy one as the
 confetti goes), says where that puts you in the crew's day
 ("First in the crew today.", "You and 2 crewmates are in today.", "The whole
-crew is in today.") and the pact's count for the week with what is left of
-today. It is read off the week in hand, before the refetch, and stays until
+crew is in today."). It is read off the week in hand, before the refetch, and
+stays until
 sent off by its button or a tap outside; a crew of one hears about its week
 instead. An undo says nothing. With animations off the badge simply stands
 there and only the heavy tap is given. See `CheckInMoment` and
